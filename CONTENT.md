@@ -32,20 +32,27 @@
 
 > 确认：无「负数」单元，无「小数乘除法（二）」。综合实践共 4 个，穿插在对应单元之后。
 
-### 英语（译林版）— 8 单元 + 2 Project
+### 英语（译林版 · 三年级起点）— ✅ 已按实物目录核对（8 单元 + 2 Project）
 
-- Unit 1 Good habits
-- Unit 2 I feel good
-- Unit 3 Hobbies
-- Unit 4 Safety first
-- Project 1 A happy life poster
-- Unit 5 At weekends
-- Unit 6 Getting along with others
-- Unit 7 Shopping smart
-- Unit 8 We love festivals
-- Project 2 An invitation card
+每个单元固定模块：Lead-in（Big question）→ Story time → Cartoon time → Sounds in focus（拼读）→ Grammar time → Wrap-up time（任务）→ Assessment
 
-> Unit 8 已确认。U1–U7 目前来自检索，待实物核对一遍无误后即可整体定稿。
+| 单元 | 主题 | Big question | 拼读 | 语法点 |
+|---|---|---|---|---|
+| U1 | Good habits | What good habits should you have? | bl (blackboard) | He/She does (not) … |
+| U2 | I feel good | What makes you feel good? | cl (climbing) | Does he/she like …? |
+| U3 | Hobbies | Why are hobbies good for you? | br (brother) | What does he/she like doing? |
+| U4 | Safety first | What should you do to keep safe? | gr (great) | should / shouldn't |
+| U5 | At weekends | How can you spend your weekends well? | tr (travel) | always/usually/often/sometimes/never |
+| U6 | Getting along with others | How can you get along well with others? | dr (children) | Why don't …? |
+| U7 | Shopping smart | How can you be a smart shopper? | st/sk/sp (stop/sky/spring) | How much is/are …? |
+| U8 | We love festivals | How do you celebrate festivals? | ing (morning) | in / on / at |
+
+- Project 1：A happy life poster
+- Project 2：An invitation card
+- 语料：每个单元含 Story time 故事 + Cartoon time 寓言/幽默对话
+- 附录：Word lists（词汇表）
+
+> U1–U8 全部按实物目录核对无误。
 
 ### 语文（人教部编版 · 六三制）— ✅ 已按实物目录核对（2026 新教材，25 篇课文 / 8 单元）
 
