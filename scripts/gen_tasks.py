@@ -9,6 +9,18 @@ TERM = {"id": "g5s1", "label": "五年级上", "grade": "五年级", "term": "�
         "version": "江苏南通 · 2026秋新教材"}
 SUN = 5  # 默认每卡阳光
 
+SUBJECTS = ["语文", "数学", "英语", "体育"]
+
+# 每日循环任务（无单元，每天出现）。metrics 为要记录的数字维度。
+DAILY_TASKS = [
+    {"id": "pe-jump-rope", "subject": "体育", "name": "跳绳打卡",
+     "sunshine": SUN, "frequency": "daily",
+     "metrics": [
+         {"id": "t100", "label": "100下用时", "unit": "秒", "note": "跳完100下用时（秒）"},
+         {"id": "n1m", "label": "1分钟跳多少个", "unit": "个", "note": "1分钟最多跳多少个"},
+     ]},
+]
+
 # 动作模板：code -> (标签, 标题模板)
 ACTIONS = {
     "语文": [
@@ -95,13 +107,15 @@ def main():
     units, tasks = build()
     os.makedirs("data", exist_ok=True)
     with open("data/tasks.seed.json", "w", encoding="utf-8") as f:
-        json.dump({"term": TERM, "units": units, "tasks": tasks},
+        json.dump({"term": TERM, "subjects": SUBJECTS,
+                   "units": units, "tasks": tasks, "daily_tasks": DAILY_TASKS},
                   f, ensure_ascii=False, indent=2)
 
     # 过目用 markdown
-    lines = ["# 三科任务卡草稿（方案3：单元 + 固定动作）", "",
+    lines = ["# 任务卡草稿（方案3：单元 + 固定动作）", "",
              f"> 学期：**{TERM['label']}** · {TERM['version']} · 每卡默认 {SUN} 阳光",
-             f"> 合计：**{len(tasks)}** 张卡（{len(units)} 个单元/项目）", ""]
+             f"> 单元卡合计：**{len(tasks)}** 张（{len(units)} 个单元/项目）",
+             f"> 每日卡：**{len(DAILY_TASKS)}** 张（体育跳绳等）", ""]
     by_subj = {}
     unit_map = {u["id"]: u for u in units}
     for t in tasks:
@@ -114,13 +128,22 @@ def main():
         for t in by_subj[subj]:
             lines.append(f"| {unit_map[t['unit_id']]['name']} | {t['action']} | {t['title']} | {t['sunshine']} |")
         lines.append("")
+    if DAILY_TASKS:
+        lines.append("## 体育（每日循环）")
+        lines.append("")
+        lines.append("| 任务 | 频率 | 记录维度 | 阳光 |")
+        lines.append("|---|---|---|---|")
+        for t in DAILY_TASKS:
+            dims = " · ".join(f"{m['label']}({m['unit']})" for m in t["metrics"])
+            lines.append(f"| {t['name']} | 每天 | {dims} | {t['sunshine']} |")
+        lines.append("")
     with open("data/tasks_review.md", "w", encoding="utf-8") as f:
         f.write("\n".join(lines))
 
     # 控制台摘要
     from collections import Counter
     c = Counter(t["subject"] for t in tasks)
-    print(f"units={len(units)} tasks={len(tasks)}", dict(c))
+    print(f"units={len(units)} tasks={len(tasks)}", dict(c), f"daily={len(DAILY_TASKS)}")
     print("wrote -> data/tasks_review.md, data/tasks.seed.json")
 
 if __name__ == "__main__":

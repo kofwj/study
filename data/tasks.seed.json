@@ -6,6 +6,12 @@
     "term": "上",
     "version": "江苏南通 · 2026秋新教材"
   },
+  "subjects": [
+    "语文",
+    "数学",
+    "英语",
+    "体育"
+  ],
   "units": [
     {
       "id": "cn-1",
@@ -1252,6 +1258,29 @@
       "title": "完成 Project：An invitation card",
       "sunshine": 5,
       "sort": 1
+    }
+  ],
+  "daily_tasks": [
+    {
+      "id": "pe-jump-rope",
+      "subject": "体育",
+      "name": "跳绳打卡",
+      "sunshine": 5,
+      "frequency": "daily",
+      "metrics": [
+        {
+          "id": "t100",
+          "label": "100下用时",
+          "unit": "秒",
+          "note": "跳完100下用时（秒）"
+        },
+        {
+          "id": "n1m",
+          "label": "1分钟跳多少个",
+          "unit": "个",
+          "note": "1分钟最多跳多少个"
+        }
+      ]
     }
   ]
 }
