@@ -42,10 +42,10 @@
 - Unit 5 At weekends
 - Unit 6 Getting along with others
 - Unit 7 Shopping smart
-- Unit 8 ❓（未查到）
+- Unit 8 We love festivals
 - Project 2 An invitation card
 
-⚠️ 缺 Unit 8，需实物确认。
+> Unit 8 已确认。U1–U7 目前来自检索，待实物核对一遍无误后即可整体定稿。
 
 ### 语文（人教部编版）
 
