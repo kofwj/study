@@ -1,0 +1,63 @@
+# 阳光学习工作台
+
+娃的自主打卡 + 阳光奖励系统。P0 已跑通核心闭环：**签到领阳光 → 完成任务 +5/点错 -5 → 商店兑换 → 等级成长**。
+
+## 技术栈
+
+- 后端：FastAPI + SQLite（流水账是唯一真相源，余额/累计/等级/连击全由流水推导）
+- 前端：Vue3 + Vite（单页，移动优先）
+- 当前科目内容：语文 / 数学 / 英语（单元卡）+ 体育跳绳（每日卡，带破纪录叠加）
+
+## 运行
+
+### 本地开发
+
+```bash
+# 后端（端口 8000）
+cd backend
+python3 -m venv .venv
+./.venv/bin/pip install -r requirements.txt
+./.venv/bin/uvicorn main:app --port 8000 --reload
+
+# 前端（端口 5173，自动代理 /api 到 8000）
+cd frontend
+npm install
+npm run dev
+```
+
+浏览器开 http://localhost:5173
+
+### 单进程（构建后由后端直接托管）
+
+```bash
+cd frontend && npm install && npm run build
+cd ../backend && ./.venv/bin/uvicorn main:app --port 8000
+# 访问 http://localhost:8000
+```
+
+## 目录
+
+- `PLAN.md` —— 设计思路与数据模型
+- `CONTENT.md` —— 教材版本 + 目录
+- `data/` —— 任务卡草稿（`tasks_review.md` 给人看，`tasks.seed.json` 给机器）
+- `scripts/gen_tasks.py` —— 任务卡生成器。下学期改其中 UNITS 后重跑即可再生
+- `backend/` —— FastAPI 后端（`db.py` 存储与种子，`main.py` 接口）
+- `frontend/` —— Vue3 单页
+
+## 关键规则（已在代码中落定）
+
+- 等级看「累计获得」= 流水之和但排除兑换消费 → **消费不掉级**
+- 取消 = 一条负流水，逻辑上正负抵消 → **点错扣回、且刷不出等级**
+- 跳绳「进步」= 破个人纪录（非比昨天）→ 防囤分
+- 连续打卡天数由日期推导
+
+## 重置数据
+
+删除 `backend/sunshine.db`，下次启动会自动重新导入种子。
+
+## 待办（P1+）
+
+- 管理端（家长增删改商店/等级/任务、改奖励）
+- PWA 安装 + 桌面优化
+- 其余 4 科（科学/道法/音美/综合）目录录入
+- Docker + Cloudflare Tunnel 部署到 VPS
