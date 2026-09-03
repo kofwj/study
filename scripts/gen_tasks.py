@@ -15,9 +15,11 @@ SUBJECTS = ["语文", "数学", "英语", "体育"]
 DAILY_TASKS = [
     {"id": "pe-jump-rope", "subject": "体育", "name": "跳绳打卡",
      "sunshine": SUN, "frequency": "daily",
+     "bonus_rule": {"type": "personal_best", "per_metric": 3,
+                   "note": "破个人纪录才叠加（首日只记基线，防囤分）"},
      "metrics": [
-         {"id": "t100", "label": "100下用时", "unit": "秒", "note": "跳完100下用时（秒）"},
-         {"id": "n1m", "label": "1分钟跳多少个", "unit": "个", "note": "1分钟最多跳多少个"},
+         {"id": "t100", "label": "100下用时", "unit": "秒", "direction": "lower_better", "note": "跳完100下用时（秒）"},
+         {"id": "n1m", "label": "1分钟跳多少个", "unit": "个", "direction": "higher_better", "note": "1分钟最多跳多少个"},
      ]},
 ]
 
@@ -134,8 +136,14 @@ def main():
         lines.append("| 任务 | 频率 | 记录维度 | 阳光 |")
         lines.append("|---|---|---|---|")
         for t in DAILY_TASKS:
-            dims = " · ".join(f"{m['label']}({m['unit']})" for m in t["metrics"])
+            dims = " · ".join(
+                f"{m['label']}({m['unit']}，越{'多' if m['direction']=='higher_better' else '少'}越好)"
+                for m in t["metrics"])
             lines.append(f"| {t['name']} | 每天 | {dims} | {t['sunshine']} |")
+        br = DAILY_TASKS[0].get("bonus_rule")
+        if br:
+            lines.append("")
+            lines.append(f"> 破纪录叠加：每破一个维度个人纪录 +{br['per_metric']} 阳光（首日只记基线，防囤分）。")
         lines.append("")
     with open("data/tasks_review.md", "w", encoding="utf-8") as f:
         f.write("\n".join(lines))

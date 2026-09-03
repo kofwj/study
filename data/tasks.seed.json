@@ -1267,17 +1267,24 @@
       "name": "跳绳打卡",
       "sunshine": 5,
       "frequency": "daily",
+      "bonus_rule": {
+        "type": "personal_best",
+        "per_metric": 3,
+        "note": "破个人纪录才叠加（首日只记基线，防囤分）"
+      },
       "metrics": [
         {
           "id": "t100",
           "label": "100下用时",
           "unit": "秒",
+          "direction": "lower_better",
           "note": "跳完100下用时（秒）"
         },
         {
           "id": "n1m",
           "label": "1分钟跳多少个",
           "unit": "个",
+          "direction": "higher_better",
           "note": "1分钟最多跳多少个"
         }
       ]

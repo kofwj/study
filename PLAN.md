@@ -44,7 +44,8 @@ fork 别人 2 万行家务 App、硬塞教材结构 = 改一半留一半，最�
    └─ 单元 unit     （第一单元…） 属于某学科某学期
         └─ 任务 task （背诵《白鹭》/ 口算 100 道…） 类型 + 默认阳光 + frequency(once/daily)
              ├─ once：单元任务，打完一次即完（三科主体）
-             └─ daily：每日循环（如体育跳绳），可选 metrics 记录数字（100下用时/1分钟个数等）
+             └─ daily：每日循环（如体育跳绳），可选 metrics 记录数字
+                └─ metric 带 direction(higher/lower_better) 判「进步」；bonus_rule 破个人纪录叠阳光（防囤分）
 
 孩子 kid            （单娃为先，多娃后期）
 今日签到 checkin    （日期 + 领到的阳光）
