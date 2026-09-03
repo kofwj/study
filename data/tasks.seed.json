@@ -1,0 +1,1257 @@
+{
+  "term": {
+    "id": "g5s1",
+    "label": "五年级上",
+    "grade": "五年级",
+    "term": "上",
+    "version": "江苏南通 · 2026秋新教材"
+  },
+  "units": [
+    {
+      "id": "cn-1",
+      "subject": "语文",
+      "term_id": "g5s1",
+      "seq": 1,
+      "name": "第一单元"
+    },
+    {
+      "id": "cn-2",
+      "subject": "语文",
+      "term_id": "g5s1",
+      "seq": 2,
+      "name": "第二单元"
+    },
+    {
+      "id": "cn-3",
+      "subject": "语文",
+      "term_id": "g5s1",
+      "seq": 3,
+      "name": "第三单元"
+    },
+    {
+      "id": "cn-4",
+      "subject": "语文",
+      "term_id": "g5s1",
+      "seq": 4,
+      "name": "第四单元"
+    },
+    {
+      "id": "cn-5",
+      "subject": "语文",
+      "term_id": "g5s1",
+      "seq": 5,
+      "name": "第五单元"
+    },
+    {
+      "id": "cn-6",
+      "subject": "语文",
+      "term_id": "g5s1",
+      "seq": 6,
+      "name": "第六单元"
+    },
+    {
+      "id": "cn-7",
+      "subject": "语文",
+      "term_id": "g5s1",
+      "seq": 7,
+      "name": "第七单元"
+    },
+    {
+      "id": "cn-8",
+      "subject": "语文",
+      "term_id": "g5s1",
+      "seq": 8,
+      "name": "第八单元"
+    },
+    {
+      "id": "ma-1",
+      "subject": "数学",
+      "term_id": "g5s1",
+      "seq": 1,
+      "name": "图形的运动"
+    },
+    {
+      "id": "ma-2",
+      "subject": "数学",
+      "term_id": "g5s1",
+      "seq": 2,
+      "name": "统计表和条形统计图（二）"
+    },
+    {
+      "id": "ma-3",
+      "subject": "数学",
+      "term_id": "g5s1",
+      "seq": 3,
+      "name": "多边形的面积"
+    },
+    {
+      "id": "ma-4",
+      "subject": "数学",
+      "term_id": "g5s1",
+      "seq": 4,
+      "name": "小数乘法和除法（一）"
+    },
+    {
+      "id": "ma-5",
+      "subject": "数学",
+      "term_id": "g5s1",
+      "seq": 5,
+      "name": "可能性"
+    },
+    {
+      "id": "ma-6",
+      "subject": "数学",
+      "term_id": "g5s1",
+      "seq": 6,
+      "name": "因数与倍数"
+    },
+    {
+      "id": "ma-7",
+      "subject": "数学",
+      "term_id": "g5s1",
+      "seq": 7,
+      "name": "用字母表示数量关系（一）"
+    },
+    {
+      "id": "ma-8",
+      "subject": "数学",
+      "term_id": "g5s1",
+      "seq": 8,
+      "name": "观察物体（三）"
+    },
+    {
+      "id": "en-1",
+      "subject": "英语",
+      "term_id": "g5s1",
+      "seq": 1,
+      "name": "Good habits"
+    },
+    {
+      "id": "en-2",
+      "subject": "英语",
+      "term_id": "g5s1",
+      "seq": 2,
+      "name": "I feel good"
+    },
+    {
+      "id": "en-3",
+      "subject": "英语",
+      "term_id": "g5s1",
+      "seq": 3,
+      "name": "Hobbies"
+    },
+    {
+      "id": "en-4",
+      "subject": "英语",
+      "term_id": "g5s1",
+      "seq": 4,
+      "name": "Safety first"
+    },
+    {
+      "id": "en-5",
+      "subject": "英语",
+      "term_id": "g5s1",
+      "seq": 5,
+      "name": "At weekends"
+    },
+    {
+      "id": "en-6",
+      "subject": "英语",
+      "term_id": "g5s1",
+      "seq": 6,
+      "name": "Getting along with others"
+    },
+    {
+      "id": "en-7",
+      "subject": "英语",
+      "term_id": "g5s1",
+      "seq": 7,
+      "name": "Shopping smart"
+    },
+    {
+      "id": "en-8",
+      "subject": "英语",
+      "term_id": "g5s1",
+      "seq": 8,
+      "name": "We love festivals"
+    },
+    {
+      "id": "en-p1",
+      "subject": "英语",
+      "term_id": "g5s1",
+      "seq": 9,
+      "name": "Project 1：A happy life poster"
+    },
+    {
+      "id": "en-p2",
+      "subject": "英语",
+      "term_id": "g5s1",
+      "seq": 10,
+      "name": "Project 2：An invitation card"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "cn-1-read",
+      "subject": "语文",
+      "unit_id": "cn-1",
+      "action": "朗读课文",
+      "title": "朗读本单元课文",
+      "sunshine": 5,
+      "sort": 1
+    },
+    {
+      "id": "cn-1-dict",
+      "subject": "语文",
+      "unit_id": "cn-1",
+      "action": "生字听写",
+      "title": "听写/默写本单元生字词",
+      "sunshine": 5,
+      "sort": 2
+    },
+    {
+      "id": "cn-1-recite",
+      "subject": "语文",
+      "unit_id": "cn-1",
+      "action": "背诵默写",
+      "title": "背诵默写本单元要求篇目",
+      "sunshine": 5,
+      "sort": 3
+    },
+    {
+      "id": "cn-1-exer",
+      "subject": "语文",
+      "unit_id": "cn-1",
+      "action": "课后练习",
+      "title": "完成本单元练习（同步练习册）",
+      "sunshine": 5,
+      "sort": 4
+    },
+    {
+      "id": "cn-1-review",
+      "subject": "语文",
+      "unit_id": "cn-1",
+      "action": "单元复习",
+      "title": "复习本单元重点并整理错题",
+      "sunshine": 5,
+      "sort": 5
+    },
+    {
+      "id": "cn-2-read",
+      "subject": "语文",
+      "unit_id": "cn-2",
+      "action": "朗读课文",
+      "title": "朗读本单元课文",
+      "sunshine": 5,
+      "sort": 1
+    },
+    {
+      "id": "cn-2-dict",
+      "subject": "语文",
+      "unit_id": "cn-2",
+      "action": "生字听写",
+      "title": "听写/默写本单元生字词",
+      "sunshine": 5,
+      "sort": 2
+    },
+    {
+      "id": "cn-2-recite",
+      "subject": "语文",
+      "unit_id": "cn-2",
+      "action": "背诵默写",
+      "title": "背诵默写本单元要求篇目",
+      "sunshine": 5,
+      "sort": 3
+    },
+    {
+      "id": "cn-2-exer",
+      "subject": "语文",
+      "unit_id": "cn-2",
+      "action": "课后练习",
+      "title": "完成本单元练习（同步练习册）",
+      "sunshine": 5,
+      "sort": 4
+    },
+    {
+      "id": "cn-2-review",
+      "subject": "语文",
+      "unit_id": "cn-2",
+      "action": "单元复习",
+      "title": "复习本单元重点并整理错题",
+      "sunshine": 5,
+      "sort": 5
+    },
+    {
+      "id": "cn-3-read",
+      "subject": "语文",
+      "unit_id": "cn-3",
+      "action": "朗读课文",
+      "title": "朗读本单元课文",
+      "sunshine": 5,
+      "sort": 1
+    },
+    {
+      "id": "cn-3-dict",
+      "subject": "语文",
+      "unit_id": "cn-3",
+      "action": "生字听写",
+      "title": "听写/默写本单元生字词",
+      "sunshine": 5,
+      "sort": 2
+    },
+    {
+      "id": "cn-3-recite",
+      "subject": "语文",
+      "unit_id": "cn-3",
+      "action": "背诵默写",
+      "title": "背诵默写本单元要求篇目",
+      "sunshine": 5,
+      "sort": 3
+    },
+    {
+      "id": "cn-3-exer",
+      "subject": "语文",
+      "unit_id": "cn-3",
+      "action": "课后练习",
+      "title": "完成本单元练习（同步练习册）",
+      "sunshine": 5,
+      "sort": 4
+    },
+    {
+      "id": "cn-3-review",
+      "subject": "语文",
+      "unit_id": "cn-3",
+      "action": "单元复习",
+      "title": "复习本单元重点并整理错题",
+      "sunshine": 5,
+      "sort": 5
+    },
+    {
+      "id": "cn-4-read",
+      "subject": "语文",
+      "unit_id": "cn-4",
+      "action": "朗读课文",
+      "title": "朗读本单元课文",
+      "sunshine": 5,
+      "sort": 1
+    },
+    {
+      "id": "cn-4-dict",
+      "subject": "语文",
+      "unit_id": "cn-4",
+      "action": "生字听写",
+      "title": "听写/默写本单元生字词",
+      "sunshine": 5,
+      "sort": 2
+    },
+    {
+      "id": "cn-4-recite",
+      "subject": "语文",
+      "unit_id": "cn-4",
+      "action": "背诵默写",
+      "title": "背诵默写本单元要求篇目",
+      "sunshine": 5,
+      "sort": 3
+    },
+    {
+      "id": "cn-4-exer",
+      "subject": "语文",
+      "unit_id": "cn-4",
+      "action": "课后练习",
+      "title": "完成本单元练习（同步练习册）",
+      "sunshine": 5,
+      "sort": 4
+    },
+    {
+      "id": "cn-4-review",
+      "subject": "语文",
+      "unit_id": "cn-4",
+      "action": "单元复习",
+      "title": "复习本单元重点并整理错题",
+      "sunshine": 5,
+      "sort": 5
+    },
+    {
+      "id": "cn-5-read",
+      "subject": "语文",
+      "unit_id": "cn-5",
+      "action": "朗读课文",
+      "title": "朗读本单元课文",
+      "sunshine": 5,
+      "sort": 1
+    },
+    {
+      "id": "cn-5-dict",
+      "subject": "语文",
+      "unit_id": "cn-5",
+      "action": "生字听写",
+      "title": "听写/默写本单元生字词",
+      "sunshine": 5,
+      "sort": 2
+    },
+    {
+      "id": "cn-5-recite",
+      "subject": "语文",
+      "unit_id": "cn-5",
+      "action": "背诵默写",
+      "title": "背诵默写本单元要求篇目",
+      "sunshine": 5,
+      "sort": 3
+    },
+    {
+      "id": "cn-5-exer",
+      "subject": "语文",
+      "unit_id": "cn-5",
+      "action": "课后练习",
+      "title": "完成本单元练习（同步练习册）",
+      "sunshine": 5,
+      "sort": 4
+    },
+    {
+      "id": "cn-5-review",
+      "subject": "语文",
+      "unit_id": "cn-5",
+      "action": "单元复习",
+      "title": "复习本单元重点并整理错题",
+      "sunshine": 5,
+      "sort": 5
+    },
+    {
+      "id": "cn-6-read",
+      "subject": "语文",
+      "unit_id": "cn-6",
+      "action": "朗读课文",
+      "title": "朗读本单元课文",
+      "sunshine": 5,
+      "sort": 1
+    },
+    {
+      "id": "cn-6-dict",
+      "subject": "语文",
+      "unit_id": "cn-6",
+      "action": "生字听写",
+      "title": "听写/默写本单元生字词",
+      "sunshine": 5,
+      "sort": 2
+    },
+    {
+      "id": "cn-6-recite",
+      "subject": "语文",
+      "unit_id": "cn-6",
+      "action": "背诵默写",
+      "title": "背诵默写本单元要求篇目",
+      "sunshine": 5,
+      "sort": 3
+    },
+    {
+      "id": "cn-6-exer",
+      "subject": "语文",
+      "unit_id": "cn-6",
+      "action": "课后练习",
+      "title": "完成本单元练习（同步练习册）",
+      "sunshine": 5,
+      "sort": 4
+    },
+    {
+      "id": "cn-6-review",
+      "subject": "语文",
+      "unit_id": "cn-6",
+      "action": "单元复习",
+      "title": "复习本单元重点并整理错题",
+      "sunshine": 5,
+      "sort": 5
+    },
+    {
+      "id": "cn-7-read",
+      "subject": "语文",
+      "unit_id": "cn-7",
+      "action": "朗读课文",
+      "title": "朗读本单元课文",
+      "sunshine": 5,
+      "sort": 1
+    },
+    {
+      "id": "cn-7-dict",
+      "subject": "语文",
+      "unit_id": "cn-7",
+      "action": "生字听写",
+      "title": "听写/默写本单元生字词",
+      "sunshine": 5,
+      "sort": 2
+    },
+    {
+      "id": "cn-7-recite",
+      "subject": "语文",
+      "unit_id": "cn-7",
+      "action": "背诵默写",
+      "title": "背诵默写本单元要求篇目",
+      "sunshine": 5,
+      "sort": 3
+    },
+    {
+      "id": "cn-7-exer",
+      "subject": "语文",
+      "unit_id": "cn-7",
+      "action": "课后练习",
+      "title": "完成本单元练习（同步练习册）",
+      "sunshine": 5,
+      "sort": 4
+    },
+    {
+      "id": "cn-7-review",
+      "subject": "语文",
+      "unit_id": "cn-7",
+      "action": "单元复习",
+      "title": "复习本单元重点并整理错题",
+      "sunshine": 5,
+      "sort": 5
+    },
+    {
+      "id": "cn-8-read",
+      "subject": "语文",
+      "unit_id": "cn-8",
+      "action": "朗读课文",
+      "title": "朗读本单元课文",
+      "sunshine": 5,
+      "sort": 1
+    },
+    {
+      "id": "cn-8-dict",
+      "subject": "语文",
+      "unit_id": "cn-8",
+      "action": "生字听写",
+      "title": "听写/默写本单元生字词",
+      "sunshine": 5,
+      "sort": 2
+    },
+    {
+      "id": "cn-8-recite",
+      "subject": "语文",
+      "unit_id": "cn-8",
+      "action": "背诵默写",
+      "title": "背诵默写本单元要求篇目",
+      "sunshine": 5,
+      "sort": 3
+    },
+    {
+      "id": "cn-8-exer",
+      "subject": "语文",
+      "unit_id": "cn-8",
+      "action": "课后练习",
+      "title": "完成本单元练习（同步练习册）",
+      "sunshine": 5,
+      "sort": 4
+    },
+    {
+      "id": "cn-8-review",
+      "subject": "语文",
+      "unit_id": "cn-8",
+      "action": "单元复习",
+      "title": "复习本单元重点并整理错题",
+      "sunshine": 5,
+      "sort": 5
+    },
+    {
+      "id": "ma-1-preview",
+      "subject": "数学",
+      "unit_id": "ma-1",
+      "action": "预习例题",
+      "title": "预习本单元例题，圈出疑问",
+      "sunshine": 5,
+      "sort": 1
+    },
+    {
+      "id": "ma-1-mental",
+      "subject": "数学",
+      "unit_id": "ma-1",
+      "action": "口算天天练",
+      "title": "口算 20 题",
+      "sunshine": 5,
+      "sort": 2
+    },
+    {
+      "id": "ma-1-exer",
+      "subject": "数学",
+      "unit_id": "ma-1",
+      "action": "课后练习",
+      "title": "完成本单元课后练习",
+      "sunshine": 5,
+      "sort": 3
+    },
+    {
+      "id": "ma-1-review",
+      "subject": "数学",
+      "unit_id": "ma-1",
+      "action": "单元复习",
+      "title": "整理本单元知识点与公式",
+      "sunshine": 5,
+      "sort": 4
+    },
+    {
+      "id": "ma-1-practice",
+      "subject": "数学",
+      "unit_id": "ma-1",
+      "action": "综合实践",
+      "title": "完成综合实践「图案的还原」",
+      "sunshine": 5,
+      "sort": 99
+    },
+    {
+      "id": "ma-2-preview",
+      "subject": "数学",
+      "unit_id": "ma-2",
+      "action": "预习例题",
+      "title": "预习本单元例题，圈出疑问",
+      "sunshine": 5,
+      "sort": 1
+    },
+    {
+      "id": "ma-2-mental",
+      "subject": "数学",
+      "unit_id": "ma-2",
+      "action": "口算天天练",
+      "title": "口算 20 题",
+      "sunshine": 5,
+      "sort": 2
+    },
+    {
+      "id": "ma-2-exer",
+      "subject": "数学",
+      "unit_id": "ma-2",
+      "action": "课后练习",
+      "title": "完成本单元课后练习",
+      "sunshine": 5,
+      "sort": 3
+    },
+    {
+      "id": "ma-2-review",
+      "subject": "数学",
+      "unit_id": "ma-2",
+      "action": "单元复习",
+      "title": "整理本单元知识点与公式",
+      "sunshine": 5,
+      "sort": 4
+    },
+    {
+      "id": "ma-2-practice",
+      "subject": "数学",
+      "unit_id": "ma-2",
+      "action": "综合实践",
+      "title": "完成综合实践「绿色出行」",
+      "sunshine": 5,
+      "sort": 99
+    },
+    {
+      "id": "ma-3-preview",
+      "subject": "数学",
+      "unit_id": "ma-3",
+      "action": "预习例题",
+      "title": "预习本单元例题，圈出疑问",
+      "sunshine": 5,
+      "sort": 1
+    },
+    {
+      "id": "ma-3-mental",
+      "subject": "数学",
+      "unit_id": "ma-3",
+      "action": "口算天天练",
+      "title": "口算 20 题",
+      "sunshine": 5,
+      "sort": 2
+    },
+    {
+      "id": "ma-3-exer",
+      "subject": "数学",
+      "unit_id": "ma-3",
+      "action": "课后练习",
+      "title": "完成本单元课后练习",
+      "sunshine": 5,
+      "sort": 3
+    },
+    {
+      "id": "ma-3-review",
+      "subject": "数学",
+      "unit_id": "ma-3",
+      "action": "单元复习",
+      "title": "整理本单元知识点与公式",
+      "sunshine": 5,
+      "sort": 4
+    },
+    {
+      "id": "ma-3-practice",
+      "subject": "数学",
+      "unit_id": "ma-3",
+      "action": "综合实践",
+      "title": "完成综合实践「农田收入调查」",
+      "sunshine": 5,
+      "sort": 99
+    },
+    {
+      "id": "ma-4-preview",
+      "subject": "数学",
+      "unit_id": "ma-4",
+      "action": "预习例题",
+      "title": "预习本单元例题，圈出疑问",
+      "sunshine": 5,
+      "sort": 1
+    },
+    {
+      "id": "ma-4-mental",
+      "subject": "数学",
+      "unit_id": "ma-4",
+      "action": "口算天天练",
+      "title": "口算 20 题",
+      "sunshine": 5,
+      "sort": 2
+    },
+    {
+      "id": "ma-4-exer",
+      "subject": "数学",
+      "unit_id": "ma-4",
+      "action": "课后练习",
+      "title": "完成本单元课后练习",
+      "sunshine": 5,
+      "sort": 3
+    },
+    {
+      "id": "ma-4-review",
+      "subject": "数学",
+      "unit_id": "ma-4",
+      "action": "单元复习",
+      "title": "整理本单元知识点与公式",
+      "sunshine": 5,
+      "sort": 4
+    },
+    {
+      "id": "ma-5-preview",
+      "subject": "数学",
+      "unit_id": "ma-5",
+      "action": "预习例题",
+      "title": "预习本单元例题，圈出疑问",
+      "sunshine": 5,
+      "sort": 1
+    },
+    {
+      "id": "ma-5-mental",
+      "subject": "数学",
+      "unit_id": "ma-5",
+      "action": "口算天天练",
+      "title": "口算 20 题",
+      "sunshine": 5,
+      "sort": 2
+    },
+    {
+      "id": "ma-5-exer",
+      "subject": "数学",
+      "unit_id": "ma-5",
+      "action": "课后练习",
+      "title": "完成本单元课后练习",
+      "sunshine": 5,
+      "sort": 3
+    },
+    {
+      "id": "ma-5-review",
+      "subject": "数学",
+      "unit_id": "ma-5",
+      "action": "单元复习",
+      "title": "整理本单元知识点与公式",
+      "sunshine": 5,
+      "sort": 4
+    },
+    {
+      "id": "ma-6-preview",
+      "subject": "数学",
+      "unit_id": "ma-6",
+      "action": "预习例题",
+      "title": "预习本单元例题，圈出疑问",
+      "sunshine": 5,
+      "sort": 1
+    },
+    {
+      "id": "ma-6-mental",
+      "subject": "数学",
+      "unit_id": "ma-6",
+      "action": "口算天天练",
+      "title": "口算 20 题",
+      "sunshine": 5,
+      "sort": 2
+    },
+    {
+      "id": "ma-6-exer",
+      "subject": "数学",
+      "unit_id": "ma-6",
+      "action": "课后练习",
+      "title": "完成本单元课后练习",
+      "sunshine": 5,
+      "sort": 3
+    },
+    {
+      "id": "ma-6-review",
+      "subject": "数学",
+      "unit_id": "ma-6",
+      "action": "单元复习",
+      "title": "整理本单元知识点与公式",
+      "sunshine": 5,
+      "sort": 4
+    },
+    {
+      "id": "ma-7-preview",
+      "subject": "数学",
+      "unit_id": "ma-7",
+      "action": "预习例题",
+      "title": "预习本单元例题，圈出疑问",
+      "sunshine": 5,
+      "sort": 1
+    },
+    {
+      "id": "ma-7-mental",
+      "subject": "数学",
+      "unit_id": "ma-7",
+      "action": "口算天天练",
+      "title": "口算 20 题",
+      "sunshine": 5,
+      "sort": 2
+    },
+    {
+      "id": "ma-7-exer",
+      "subject": "数学",
+      "unit_id": "ma-7",
+      "action": "课后练习",
+      "title": "完成本单元课后练习",
+      "sunshine": 5,
+      "sort": 3
+    },
+    {
+      "id": "ma-7-review",
+      "subject": "数学",
+      "unit_id": "ma-7",
+      "action": "单元复习",
+      "title": "整理本单元知识点与公式",
+      "sunshine": 5,
+      "sort": 4
+    },
+    {
+      "id": "ma-7-practice",
+      "subject": "数学",
+      "unit_id": "ma-7",
+      "action": "综合实践",
+      "title": "完成综合实践「钉子板上的多边形」",
+      "sunshine": 5,
+      "sort": 99
+    },
+    {
+      "id": "ma-8-preview",
+      "subject": "数学",
+      "unit_id": "ma-8",
+      "action": "预习例题",
+      "title": "预习本单元例题，圈出疑问",
+      "sunshine": 5,
+      "sort": 1
+    },
+    {
+      "id": "ma-8-mental",
+      "subject": "数学",
+      "unit_id": "ma-8",
+      "action": "口算天天练",
+      "title": "口算 20 题",
+      "sunshine": 5,
+      "sort": 2
+    },
+    {
+      "id": "ma-8-exer",
+      "subject": "数学",
+      "unit_id": "ma-8",
+      "action": "课后练习",
+      "title": "完成本单元课后练习",
+      "sunshine": 5,
+      "sort": 3
+    },
+    {
+      "id": "ma-8-review",
+      "subject": "数学",
+      "unit_id": "ma-8",
+      "action": "单元复习",
+      "title": "整理本单元知识点与公式",
+      "sunshine": 5,
+      "sort": 4
+    },
+    {
+      "id": "en-1-words",
+      "subject": "英语",
+      "unit_id": "en-1",
+      "action": "背单词",
+      "title": "背本单元词汇（Word list）",
+      "sunshine": 5,
+      "sort": 1
+    },
+    {
+      "id": "en-1-phonics",
+      "subject": "英语",
+      "unit_id": "en-1",
+      "action": "拼读练习",
+      "title": "练习 Sounds in focus 拼读",
+      "sunshine": 5,
+      "sort": 2
+    },
+    {
+      "id": "en-1-read",
+      "subject": "英语",
+      "unit_id": "en-1",
+      "action": "跟读课文",
+      "title": "跟读 Story time，模仿语音语调",
+      "sunshine": 5,
+      "sort": 3
+    },
+    {
+      "id": "en-1-grammar",
+      "subject": "英语",
+      "unit_id": "en-1",
+      "action": "语法练习",
+      "title": "掌握并练习 Grammar time 句型",
+      "sunshine": 5,
+      "sort": 4
+    },
+    {
+      "id": "en-1-wrapup",
+      "subject": "英语",
+      "unit_id": "en-1",
+      "action": "Wrap-up 任务",
+      "title": "完成 Wrap-up time 任务",
+      "sunshine": 5,
+      "sort": 5
+    },
+    {
+      "id": "en-2-words",
+      "subject": "英语",
+      "unit_id": "en-2",
+      "action": "背单词",
+      "title": "背本单元词汇（Word list）",
+      "sunshine": 5,
+      "sort": 1
+    },
+    {
+      "id": "en-2-phonics",
+      "subject": "英语",
+      "unit_id": "en-2",
+      "action": "拼读练习",
+      "title": "练习 Sounds in focus 拼读",
+      "sunshine": 5,
+      "sort": 2
+    },
+    {
+      "id": "en-2-read",
+      "subject": "英语",
+      "unit_id": "en-2",
+      "action": "跟读课文",
+      "title": "跟读 Story time，模仿语音语调",
+      "sunshine": 5,
+      "sort": 3
+    },
+    {
+      "id": "en-2-grammar",
+      "subject": "英语",
+      "unit_id": "en-2",
+      "action": "语法练习",
+      "title": "掌握并练习 Grammar time 句型",
+      "sunshine": 5,
+      "sort": 4
+    },
+    {
+      "id": "en-2-wrapup",
+      "subject": "英语",
+      "unit_id": "en-2",
+      "action": "Wrap-up 任务",
+      "title": "完成 Wrap-up time 任务",
+      "sunshine": 5,
+      "sort": 5
+    },
+    {
+      "id": "en-3-words",
+      "subject": "英语",
+      "unit_id": "en-3",
+      "action": "背单词",
+      "title": "背本单元词汇（Word list）",
+      "sunshine": 5,
+      "sort": 1
+    },
+    {
+      "id": "en-3-phonics",
+      "subject": "英语",
+      "unit_id": "en-3",
+      "action": "拼读练习",
+      "title": "练习 Sounds in focus 拼读",
+      "sunshine": 5,
+      "sort": 2
+    },
+    {
+      "id": "en-3-read",
+      "subject": "英语",
+      "unit_id": "en-3",
+      "action": "跟读课文",
+      "title": "跟读 Story time，模仿语音语调",
+      "sunshine": 5,
+      "sort": 3
+    },
+    {
+      "id": "en-3-grammar",
+      "subject": "英语",
+      "unit_id": "en-3",
+      "action": "语法练习",
+      "title": "掌握并练习 Grammar time 句型",
+      "sunshine": 5,
+      "sort": 4
+    },
+    {
+      "id": "en-3-wrapup",
+      "subject": "英语",
+      "unit_id": "en-3",
+      "action": "Wrap-up 任务",
+      "title": "完成 Wrap-up time 任务",
+      "sunshine": 5,
+      "sort": 5
+    },
+    {
+      "id": "en-4-words",
+      "subject": "英语",
+      "unit_id": "en-4",
+      "action": "背单词",
+      "title": "背本单元词汇（Word list）",
+      "sunshine": 5,
+      "sort": 1
+    },
+    {
+      "id": "en-4-phonics",
+      "subject": "英语",
+      "unit_id": "en-4",
+      "action": "拼读练习",
+      "title": "练习 Sounds in focus 拼读",
+      "sunshine": 5,
+      "sort": 2
+    },
+    {
+      "id": "en-4-read",
+      "subject": "英语",
+      "unit_id": "en-4",
+      "action": "跟读课文",
+      "title": "跟读 Story time，模仿语音语调",
+      "sunshine": 5,
+      "sort": 3
+    },
+    {
+      "id": "en-4-grammar",
+      "subject": "英语",
+      "unit_id": "en-4",
+      "action": "语法练习",
+      "title": "掌握并练习 Grammar time 句型",
+      "sunshine": 5,
+      "sort": 4
+    },
+    {
+      "id": "en-4-wrapup",
+      "subject": "英语",
+      "unit_id": "en-4",
+      "action": "Wrap-up 任务",
+      "title": "完成 Wrap-up time 任务",
+      "sunshine": 5,
+      "sort": 5
+    },
+    {
+      "id": "en-5-words",
+      "subject": "英语",
+      "unit_id": "en-5",
+      "action": "背单词",
+      "title": "背本单元词汇（Word list）",
+      "sunshine": 5,
+      "sort": 1
+    },
+    {
+      "id": "en-5-phonics",
+      "subject": "英语",
+      "unit_id": "en-5",
+      "action": "拼读练习",
+      "title": "练习 Sounds in focus 拼读",
+      "sunshine": 5,
+      "sort": 2
+    },
+    {
+      "id": "en-5-read",
+      "subject": "英语",
+      "unit_id": "en-5",
+      "action": "跟读课文",
+      "title": "跟读 Story time，模仿语音语调",
+      "sunshine": 5,
+      "sort": 3
+    },
+    {
+      "id": "en-5-grammar",
+      "subject": "英语",
+      "unit_id": "en-5",
+      "action": "语法练习",
+      "title": "掌握并练习 Grammar time 句型",
+      "sunshine": 5,
+      "sort": 4
+    },
+    {
+      "id": "en-5-wrapup",
+      "subject": "英语",
+      "unit_id": "en-5",
+      "action": "Wrap-up 任务",
+      "title": "完成 Wrap-up time 任务",
+      "sunshine": 5,
+      "sort": 5
+    },
+    {
+      "id": "en-6-words",
+      "subject": "英语",
+      "unit_id": "en-6",
+      "action": "背单词",
+      "title": "背本单元词汇（Word list）",
+      "sunshine": 5,
+      "sort": 1
+    },
+    {
+      "id": "en-6-phonics",
+      "subject": "英语",
+      "unit_id": "en-6",
+      "action": "拼读练习",
+      "title": "练习 Sounds in focus 拼读",
+      "sunshine": 5,
+      "sort": 2
+    },
+    {
+      "id": "en-6-read",
+      "subject": "英语",
+      "unit_id": "en-6",
+      "action": "跟读课文",
+      "title": "跟读 Story time，模仿语音语调",
+      "sunshine": 5,
+      "sort": 3
+    },
+    {
+      "id": "en-6-grammar",
+      "subject": "英语",
+      "unit_id": "en-6",
+      "action": "语法练习",
+      "title": "掌握并练习 Grammar time 句型",
+      "sunshine": 5,
+      "sort": 4
+    },
+    {
+      "id": "en-6-wrapup",
+      "subject": "英语",
+      "unit_id": "en-6",
+      "action": "Wrap-up 任务",
+      "title": "完成 Wrap-up time 任务",
+      "sunshine": 5,
+      "sort": 5
+    },
+    {
+      "id": "en-7-words",
+      "subject": "英语",
+      "unit_id": "en-7",
+      "action": "背单词",
+      "title": "背本单元词汇（Word list）",
+      "sunshine": 5,
+      "sort": 1
+    },
+    {
+      "id": "en-7-phonics",
+      "subject": "英语",
+      "unit_id": "en-7",
+      "action": "拼读练习",
+      "title": "练习 Sounds in focus 拼读",
+      "sunshine": 5,
+      "sort": 2
+    },
+    {
+      "id": "en-7-read",
+      "subject": "英语",
+      "unit_id": "en-7",
+      "action": "跟读课文",
+      "title": "跟读 Story time，模仿语音语调",
+      "sunshine": 5,
+      "sort": 3
+    },
+    {
+      "id": "en-7-grammar",
+      "subject": "英语",
+      "unit_id": "en-7",
+      "action": "语法练习",
+      "title": "掌握并练习 Grammar time 句型",
+      "sunshine": 5,
+      "sort": 4
+    },
+    {
+      "id": "en-7-wrapup",
+      "subject": "英语",
+      "unit_id": "en-7",
+      "action": "Wrap-up 任务",
+      "title": "完成 Wrap-up time 任务",
+      "sunshine": 5,
+      "sort": 5
+    },
+    {
+      "id": "en-8-words",
+      "subject": "英语",
+      "unit_id": "en-8",
+      "action": "背单词",
+      "title": "背本单元词汇（Word list）",
+      "sunshine": 5,
+      "sort": 1
+    },
+    {
+      "id": "en-8-phonics",
+      "subject": "英语",
+      "unit_id": "en-8",
+      "action": "拼读练习",
+      "title": "练习 Sounds in focus 拼读",
+      "sunshine": 5,
+      "sort": 2
+    },
+    {
+      "id": "en-8-read",
+      "subject": "英语",
+      "unit_id": "en-8",
+      "action": "跟读课文",
+      "title": "跟读 Story time，模仿语音语调",
+      "sunshine": 5,
+      "sort": 3
+    },
+    {
+      "id": "en-8-grammar",
+      "subject": "英语",
+      "unit_id": "en-8",
+      "action": "语法练习",
+      "title": "掌握并练习 Grammar time 句型",
+      "sunshine": 5,
+      "sort": 4
+    },
+    {
+      "id": "en-8-wrapup",
+      "subject": "英语",
+      "unit_id": "en-8",
+      "action": "Wrap-up 任务",
+      "title": "完成 Wrap-up time 任务",
+      "sunshine": 5,
+      "sort": 5
+    },
+    {
+      "id": "en-p1-project",
+      "subject": "英语",
+      "unit_id": "en-p1",
+      "action": "项目任务",
+      "title": "完成 Project：A happy life poster",
+      "sunshine": 5,
+      "sort": 1
+    },
+    {
+      "id": "en-p2-project",
+      "subject": "英语",
+      "unit_id": "en-p2",
+      "action": "项目任务",
+      "title": "完成 Project：An invitation card",
+      "sunshine": 5,
+      "sort": 1
+    }
+  ]
+}
