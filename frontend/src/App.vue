@@ -452,7 +452,7 @@ body {
   margin: 0 0 10px; font-size: 16px; color: #1f7bb8; display: flex; align-items: center; gap: 8px;
 }
 .unit h2 i { width: 4px; height: 16px; background: #3aa4e0; border-radius: 2px; display: inline-block; }
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 260px)); gap: 12px; }
 .card {
   position: relative; background: #fff; border-radius: 16px; padding: 16px 14px 14px 14px;
   display: flex; gap: 10px; align-items: flex-start; min-height: 86px;
