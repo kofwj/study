@@ -35,6 +35,16 @@ def get_conn():
     return db.connect()
 
 
+def require_admin(x_admin_pin: Optional[str] = Header(None)):
+    c = get_conn()
+    try:
+        ok = x_admin_pin == db.get_setting(c, "admin_pin", "8888")
+    finally:
+        c.close()
+    if not ok:
+        raise HTTPException(401, "家长密码不对")
+
+
 def earned(c):
     # 累计获得：赚/取消都算（正负抵消），唯独「兑换消费(redeem)」不算 → 消费不掉级
     return c.execute("SELECT COALESCE(SUM(delta),0) FROM ledger WHERE reason != 'redeem'").fetchone()[0]
@@ -555,15 +565,6 @@ def ledger(limit: int = 20):
 
 
 # ---------------- 管理端（家长，需 PIN） -------------
-
-def require_admin(x_admin_pin: Optional[str] = Header(None)):
-    c = get_conn()
-    try:
-        ok = x_admin_pin == db.get_setting(c, "admin_pin", "8888")
-    finally:
-        c.close()
-    if not ok:
-        raise HTTPException(401, "家长密码不对")
 
 
 class CursorBody(BaseModel):
