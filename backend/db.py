@@ -68,6 +68,9 @@ CREATE TABLE IF NOT EXISTS redemptions (
   id INTEGER PRIMARY KEY AUTOINCREMENT, reward_id TEXT, date TEXT, price INTEGER,
   status TEXT, created_at TEXT);
 CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT);
+CREATE TABLE IF NOT EXISTS tests (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, subject_id TEXT, score INTEGER, sunshine INTEGER,
+  note TEXT, date TEXT, created_at TEXT);
 """
 
 

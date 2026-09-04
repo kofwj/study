@@ -54,5 +54,8 @@ export const api = {
     updateDaily: (id, o) => j(`/api/admin/daily/${id}`, { method: 'PUT', ...body(o) }, true),
     delDaily: (id) => j(`/api/admin/daily/${id}`, { method: 'DELETE' }, true),
     setCursor: (o) => j('/api/admin/cursor', { method: 'POST', ...body(o) }, true),
+    tests: () => j('/api/admin/tests', {}, true),
+    createTest: (o) => j('/api/admin/tests', { method: 'POST', ...body(o) }, true),
+    delTest: (id) => j(`/api/admin/tests/${id}`, { method: 'DELETE' }, true),
   },
 }

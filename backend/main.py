@@ -653,6 +653,59 @@ def redemption_deliver(rid: str):
     return {"ok": True}
 
 
+# --- 单元测试成绩奖励 ---
+TEST_BANDS = [(100, 30), (95, 20), (90, 15), (85, 10), (0, 5)]
+
+
+def score_sunshine(score):
+    for th, sun in TEST_BANDS:
+        if score >= th:
+            return sun
+    return 0
+
+
+class TestIn(BaseModel):
+    subject_id: str
+    score: int
+    note: str = ""
+
+
+@app.post("/api/admin/tests", dependencies=[Depends(require_admin)])
+def test_create(b: TestIn):
+    if not (0 <= b.score <= 100):
+        raise HTTPException(400, "分数要在 0~100 之间")
+    sun = score_sunshine(b.score)
+    c = get_conn()
+    cur = c.execute("INSERT INTO tests(subject_id,score,sunshine,note,date,created_at) VALUES(?,?,?,?,?,?)",
+                    (b.subject_id, b.score, sun, (b.note or "").strip()[:40], db.today(), db.now()))
+    db.insert_ledger(c, db.today(), sun, "test", f"test-{cur.lastrowid}",
+                     f"{b.subject_id}测试 {b.score} 分")
+    c.commit()
+    res = {"id": cur.lastrowid, "sunshine": sun, "level": level_info(c)}
+    c.close()
+    return res
+
+
+@app.get("/api/admin/tests", dependencies=[Depends(require_admin)])
+def tests_list():
+    c = get_conn()
+    rows = [dict(r) for r in c.execute("SELECT * FROM tests ORDER BY id DESC LIMIT 50").fetchall()]
+    c.close()
+    return rows
+
+
+@app.delete("/api/admin/tests/{tid}", dependencies=[Depends(require_admin)])
+def test_delete(tid: str):
+    c = get_conn()
+    r = c.execute("SELECT * FROM tests WHERE id=?", (tid,)).fetchone()
+    if not r:
+        c.close(); raise HTTPException(404, "没找到这条测试")
+    c.execute("DELETE FROM tests WHERE id=?", (tid,))
+    db.insert_ledger(c, db.today(), -r["sunshine"], "test_cancel", f"test-{tid}", "删除测试冲正")
+    c.commit(); c.close()
+    return {"ok": True}
+
+
 # --- 等级 ---
 class RankIn(BaseModel):
     name: str

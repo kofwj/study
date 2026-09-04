@@ -12,6 +12,9 @@ const tasks = ref([])
 const daily = ref([])
 const cursors = ref({})
 const redemptions = ref([])
+const tests = ref([])
+const newTest = reactive({ subject_id: '', score: '', note: '' })
+const TEST_BANDS = [[100, 30], [95, 20], [90, 15], [85, 10], [0, 5]]
 const weekly = ref({ days: [], weeks: [], by_subject: [], total_earned: 0, total_spent: 0, net: 0, balance: 0, earned_all: 0, streak: 0, checkins: 0, week_start: '', week_end: '' })
 const toast = ref('')
 
@@ -33,7 +36,7 @@ function showToast(m) { toast.value = m; setTimeout(() => (toast.value = ''), 22
 function unitName(id) { return units.value.find(u => u.id === id)?.name || id }
 
 async function load() {
-  const [r, rk, t, rd, wk] = await Promise.all([api.rewards(), api.admin.ranks(), api.tasks(), api.admin.redemptions(), api.admin.weekly()])
+  const [r, rk, t, rd, wk, ts] = await Promise.all([api.rewards(), api.admin.ranks(), api.tasks(), api.admin.redemptions(), api.admin.weekly(), api.admin.tests()])
   rewards.value = r
   ranks.value = rk
   subjects.value = t.subjects
@@ -43,6 +46,7 @@ async function load() {
   cursors.value = t.cursors || {}
   redemptions.value = rd
   weekly.value = wk
+  tests.value = ts
 }
 
 // —— 商店 ——
@@ -69,6 +73,21 @@ async function rejectRedeem(id) {
 async function deliverRedeem(id) {
   try { await api.admin.deliverRedeem(id); showToast('已标记兑现'); await load() }
   catch (e) { showToast(e.message) }
+}
+async function addTest() {
+  if (!newTest.subject_id || newTest.score === '' || newTest.score === null) return showToast('选科目、填分数')
+  const sc = Number(newTest.score)
+  if (sc < 0 || sc > 100) return showToast('分数要在 0~100')
+  try {
+    const r = await api.admin.createTest({ subject_id: newTest.subject_id, score: sc, note: newTest.note })
+    showToast(`已发 +${r.sunshine} 阳光`)
+    Object.assign(newTest, { subject_id: '', score: '', note: '' })
+    await load()
+  } catch (e) { showToast(e.message) }
+}
+async function delTest(id) {
+  if (!confirm('删除这条测试记录？会冲正扣回阳光。')) return
+  await api.admin.delTest(id); await load()
 }
 
 // —— 等级 ——
@@ -165,6 +184,7 @@ onMounted(load)
       <button :class="{ on: tab === 'rank' }" @click="tab = 'rank'">等级</button>
       <button :class="{ on: tab === 'task' }" @click="tab = 'task'">任务</button>
       <button :class="{ on: tab === 'cursor' }" @click="tab = 'cursor'">已学到</button>
+      <button :class="{ on: tab === 'test' }" @click="tab = 'test'">测试</button>
       <button :class="{ on: tab === 'pin' }" @click="tab = 'pin'">密码</button>
     </div>
 
@@ -344,6 +364,32 @@ onMounted(load)
       </div>
     </section>
 
+    <!-- 单元测试成绩 -->
+    <section v-if="tab === 'test'" class="a-card">
+      <h3>单元测试成绩奖励</h3>
+      <p class="lead">孩子考完单元测试，你录入分数，按档自动发阳光（孩子不能自己录）。</p>
+      <div class="band-box">
+        <span v-for="[th, sun] in TEST_BANDS" :key="th" class="band">{{ th === 0 ? '85 以下' : th + ' 分' }} → +{{ sun }} 阳光</span>
+      </div>
+      <div class="a-item add">
+        <select v-model="newTest.subject_id">
+          <option value="" disabled>科目</option>
+          <option v-for="s in subjects" :key="s.id" :value="s.id">{{ s.name }}</option>
+        </select>
+        <input v-model="newTest.score" type="number" placeholder="分数 0~100" class="w-num" />
+        <input v-model="newTest.note" placeholder="第几单元（如：第一单元）" class="w-name" />
+        <button class="ok" @click="addTest">录成绩</button>
+      </div>
+      <div v-if="!tests.length" class="dim">还没录过测试成绩。</div>
+      <div class="a-item" v-for="t in tests" :key="t.id">
+        <span class="badge">{{ t.subject_id }}</span>
+        <span class="badge daily">{{ t.score }} 分</span>
+        <span class="dim" style="flex:1">{{ t.note || '—' }} · {{ t.date }}</span>
+        <span class="st delivered">+{{ t.sunshine }} ☀️</span>
+        <button class="del" @click="delTest(t.id)">删</button>
+      </div>
+    </section>
+
     <!-- 密码 -->
     <section v-if="tab === 'pin'" class="a-card">
       <h3>修改家长密码</h3>
@@ -419,6 +465,8 @@ onMounted(load)
 .w-subj-track { flex: 1; background: #e8f3fa; border-radius: 6px; height: 12px; overflow: hidden; }
 .w-subj-track i { display: block; height: 100%; background: linear-gradient(90deg,#4db6ea,#3aa4e0); border-radius: 6px; }
 .w-subj-num { flex: none; font-size: 12px; color: #4a6780; }
+.band-box { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 14px; }
+.band { font-size: 12px; padding: 4px 10px; border-radius: 12px; background: #fff3d6; color: #c07b00; font-weight: 700; }
 
 @media (max-width: 560px) {
   .w-summary { grid-template-columns: repeat(2, 1fr); }

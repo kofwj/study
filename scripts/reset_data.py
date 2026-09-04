@@ -14,7 +14,7 @@ if not src.exists():
     print("无数据库:", src)
     raise SystemExit(1)
 
-TABLES = ["ledger", "completions", "checkins", "daily_metrics", "redemptions"]
+TABLES = ["ledger", "completions", "checkins", "daily_metrics", "redemptions", "tests"]
 c = sqlite3.connect(src)
 for t in TABLES:
     c.execute(f"DELETE FROM {t}")
