@@ -154,20 +154,6 @@ async function delCustom(task) {
 }
 
 const unitName = (id) => data.units.find(u => u.id === id)?.name || ''
-const recommend = computed(() => {
-  // 跳绳（今天没打）+ 语数英各取未完成前 3 条，避免某一科占满
-  const out = data.daily.filter(d => !d.done_today)
-  const by = {}
-  for (const t of data.tasks) {
-    if (t.done) continue
-    if (!by[t.subject_id]) by[t.subject_id] = []
-    by[t.subject_id].push(t)
-  }
-  for (const subj of ['语文', '数学', '英语']) {
-    out.push(...(by[subj] || []).slice(0, 3))
-  }
-  return out
-})
 const bySubject = computed(() => {
   const m = {}
   for (const s of data.subjects) m[s.id] = { name: s.name, units: [] }
@@ -183,6 +169,17 @@ const bySubject = computed(() => {
     if (unit) unit.tasks.push(t)
   }
   return m
+})
+const recommend = computed(() => {
+  // 今天该干啥：跳绳（未打）+ 语数英「当前单元」各 2 条
+  // 当前单元 = 该科第一个还有未完成任务的单元；做完自动滚到下一单元
+  const out = data.daily.filter(d => !d.done_today)
+  for (const subj of ['语文', '数学', '英语']) {
+    const units = (bySubject.value[subj] && bySubject.value[subj].units) || []
+    const cur = units.find(u => u.tasks.some(t => !t.done))
+    if (cur) out.push(...cur.tasks.filter(t => !t.done).slice(0, 2))
+  }
+  return out
 })
 const subjectProgress = computed(() => {
   const m = {}
