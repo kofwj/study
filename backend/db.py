@@ -52,7 +52,8 @@ CREATE TABLE IF NOT EXISTS checkins (
   id INTEGER PRIMARY KEY AUTOINCREMENT, date TEXT NOT NULL, sunshine INTEGER, created_at TEXT);
 CREATE TABLE IF NOT EXISTS completions (
   id INTEGER PRIMARY KEY AUTOINCREMENT, task_id TEXT NOT NULL, date TEXT NOT NULL,
-  status TEXT NOT NULL DEFAULT 'completed', sunshine INTEGER NOT NULL, metrics TEXT, created_at TEXT);
+  status TEXT NOT NULL DEFAULT 'completed', sunshine INTEGER NOT NULL, metrics TEXT, created_at TEXT,
+  kind TEXT NOT NULL DEFAULT 'unit');
 CREATE TABLE IF NOT EXISTS ledger (
   id INTEGER PRIMARY KEY AUTOINCREMENT, date TEXT NOT NULL, delta INTEGER NOT NULL,
   reason TEXT, ref_id TEXT, note TEXT, created_at TEXT);
@@ -150,6 +151,22 @@ def init_db():
         conn.execute("ALTER TABLE tasks ADD COLUMN custom INTEGER DEFAULT 0")
     except sqlite3.OperationalError:
         pass
+    # completions 加 kind 列（unit/daily）用于防重复唯一索引
+    try:
+        conn.execute("ALTER TABLE completions ADD COLUMN kind TEXT NOT NULL DEFAULT 'unit'")
+    except sqlite3.OperationalError:
+        pass
+    conn.execute("UPDATE completions SET kind='daily' WHERE task_id IN (SELECT id FROM daily_tasks)")
+    for ddl in (
+        "CREATE UNIQUE INDEX IF NOT EXISTS ux_cmp_unit ON completions(task_id) WHERE status='completed' AND kind='unit'",
+        "CREATE UNIQUE INDEX IF NOT EXISTS ux_cmp_daily ON completions(task_id, date) WHERE status='completed' AND kind='daily'",
+        "CREATE UNIQUE INDEX IF NOT EXISTS ux_chk_date ON checkins(date)",
+    ):
+        try:
+            conn.execute(ddl)
+        except sqlite3.OperationalError as e:
+            # 已有重复 completed 数据时建索引可能失败，仅告警不中断
+            print("[sunshine] index warn:", e)
     if conn.execute("SELECT COUNT(*) FROM subjects").fetchone()[0] == 0:
         seed(conn)
     else:

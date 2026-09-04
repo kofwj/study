@@ -11,13 +11,14 @@ const units = ref([])
 const tasks = ref([])
 const daily = ref([])
 const cursors = ref({})
+const redemptions = ref([])
 const toast = ref('')
 
 function showToast(m) { toast.value = m; setTimeout(() => (toast.value = ''), 2200) }
 function unitName(id) { return units.value.find(u => u.id === id)?.name || id }
 
 async function load() {
-  const [r, rk, t] = await Promise.all([api.rewards(), api.admin.ranks(), api.tasks()])
+  const [r, rk, t, rd] = await Promise.all([api.rewards(), api.admin.ranks(), api.tasks(), api.admin.redemptions()])
   rewards.value = r
   ranks.value = rk
   subjects.value = t.subjects
@@ -25,6 +26,7 @@ async function load() {
   tasks.value = t.tasks
   daily.value = t.daily
   cursors.value = t.cursors || {}
+  redemptions.value = rd
 }
 
 // —— 商店 ——
@@ -37,6 +39,17 @@ async function addReward() {
 }
 async function saveReward(r) { await api.admin.updateReward(r.id, r); showToast('已保存') }
 async function delReward(id) { if (!confirm('删除这个奖励？')) return; await api.admin.delReward(id); await load() }
+
+// —— 兑换审批 ——
+async function approveRedeem(id) {
+  try { await api.admin.approveRedeem(id); showToast('已同意并扣除阳光'); await load() }
+  catch (e) { showToast(e.message) }
+}
+async function rejectRedeem(id) {
+  if (!confirm('拒绝这条申请？')) return
+  try { await api.admin.rejectRedeem(id); showToast('已拒绝'); await load() }
+  catch (e) { showToast(e.message) }
+}
 
 // —— 等级 ——
 const newRank = reactive({ name: '', min_sunshine: 0 })
@@ -124,6 +137,7 @@ onMounted(load)
 
     <div class="a-tabs">
       <button :class="{ on: tab === 'shop' }" @click="tab = 'shop'">商店</button>
+      <button :class="{ on: tab === 'approve' }" @click="tab = 'approve'">审批</button>
       <button :class="{ on: tab === 'rank' }" @click="tab = 'rank'">等级</button>
       <button :class="{ on: tab === 'task' }" @click="tab = 'task'">任务</button>
       <button :class="{ on: tab === 'cursor' }" @click="tab = 'cursor'">已学到</button>
@@ -145,6 +159,22 @@ onMounted(load)
         <input v-model.number="newReward.price" type="number" placeholder="价格" class="w-num" />
         <input v-model="newReward.category" placeholder="分类" class="w-cat" />
         <button class="ok" @click="addReward">＋新增</button>
+      </div>
+    </section>
+
+    <!-- 审批 -->
+    <section v-if="tab === 'approve'" class="a-card">
+      <h3>兑换审批（需家长同意的奖励）</h3>
+      <p class="dim">孩子申请「游乐场/心愿礼物」这类奖励会先到这里，你同意后才会扣阳光。</p>
+      <div v-if="!redemptions.length" class="dim">还没有任何兑换记录。</div>
+      <div class="a-item" v-for="rd in redemptions" :key="rd.id">
+        <span class="badge">{{ rd.name }}</span>
+        <span class="dim">{{ rd.date }} · -{{ rd.price }} ☀️</span>
+        <template v-if="rd.status === 'pending'">
+          <button class="ok" @click="approveRedeem(rd.id)">同意</button>
+          <button class="del" @click="rejectRedeem(rd.id)">拒绝</button>
+        </template>
+        <span v-else class="badge daily">{{ rd.status === 'done' ? '已兑换' : rd.status }}</span>
       </div>
     </section>
 

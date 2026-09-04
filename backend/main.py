@@ -11,16 +11,13 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 from fastapi import FastAPI, HTTPException, Depends, Header
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 import db
 
 app = FastAPI(title="阳光学习工作台")
-app.add_middleware(
-    CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"],
-)
+# 前端由 StaticFiles 同源托管，无需跨域；删掉 CORS 避免任何外部站点能调用接口
 
 CHECKIN_SUN = 5  # 每日签到领 5 阳光
 
@@ -93,10 +90,15 @@ def is_past(c, task_id, subject_id):
 
 
 def streak(c):
-    rows = {r["date"] for r in c.execute("SELECT DISTINCT date FROM checkins").fetchall()}
+    # 连击 = 连续几天有「任何学习活动」（签到 / 完成任务 / 每日打卡 / 兑换成功）
+    dates = {r["date"] for r in c.execute("SELECT DISTINCT date FROM checkins").fetchall()}
+    dates |= {r["date"] for r in c.execute(
+        "SELECT DISTINCT date FROM completions WHERE status='completed'").fetchall()}
+    dates |= {r["date"] for r in c.execute(
+        "SELECT DISTINCT date FROM redemptions WHERE status='done'").fetchall()}
     d = datetime.now().date()
     n = 0
-    while d.isoformat() in rows:
+    while d.isoformat() in dates:
         n += 1
         d -= timedelta(days=1)
     return n
@@ -177,12 +179,16 @@ def tasks():
 def checkin():
     c = get_conn()
     t = db.today()
-    if c.execute("SELECT 1 FROM checkins WHERE date=?", (t,)).fetchone():
+    cur = c.execute("INSERT OR IGNORE INTO checkins(date,sunshine,created_at) VALUES(?,?,?)",
+                    (t, CHECKIN_SUN, db.now()))
+    if cur.rowcount == 0:
+        c.close()
         raise HTTPException(409, "今天已经签到过啦")
-    c.execute("INSERT INTO checkins(date,sunshine,created_at) VALUES(?,?,?)", (t, CHECKIN_SUN, db.now()))
     db.insert_ledger(c, t, CHECKIN_SUN, "checkin", None, "每日签到")
     c.commit()
-    return {"delta": CHECKIN_SUN, "level": level_info(c), "streak": streak(c)}
+    res = {"delta": CHECKIN_SUN, "level": level_info(c), "streak": streak(c)}
+    c.close()
+    return res
 
 
 # ---------------- 任务完成 / 取消 ----------------
@@ -227,28 +233,38 @@ def complete(body: CompleteBody):
     row = c.execute("SELECT * FROM tasks WHERE id=?", (tid,)).fetchone()
     if row:
         if is_past(c, tid, row["subject_id"]):
+            c.close()
             raise HTTPException(409, "这课已经学过了，不加阳光")
-        if c.execute("SELECT 1 FROM completions WHERE task_id=? AND status='completed'", (tid,)).fetchone():
-            raise HTTPException(409, "这项已经完成过啦")
         delta = row["sunshine"]
-        cur = c.execute("INSERT INTO completions(task_id,date,status,sunshine,metrics,created_at) VALUES(?,?,?,?,?,?)",
-                  (tid, t, "completed", delta, None, db.now()))
+        cur = c.execute("INSERT OR IGNORE INTO completions(task_id,date,status,sunshine,metrics,kind,created_at) "
+                        "VALUES(?,?,?,?,?,?,?)",
+                        (tid, t, "completed", delta, None, "unit", db.now()))
+        if cur.rowcount == 0:
+            c.close()
+            raise HTTPException(409, "这项已经完成过啦")
         db.insert_ledger(c, t, delta, "task", f"cmp-{cur.lastrowid}", row["title"])
         c.commit()
-        return {"delta": delta, "bonus": 0, "level": level_info(c)}
+        res = {"delta": delta, "bonus": 0, "level": level_info(c)}
+        c.close()
+        return res
     d = c.execute("SELECT * FROM daily_tasks WHERE id=?", (tid,)).fetchone()
     if d:
-        if c.execute("SELECT 1 FROM completions WHERE task_id=? AND date=? AND status='completed'", (tid, t)).fetchone():
-            raise HTTPException(409, "今天这项已完成过啦")
         bonus, detail = compute_daily_bonus(c, d, body.metrics)
         delta = d["sunshine"] + bonus
         mj = json.dumps(body.metrics) if body.metrics else None
-        cur = c.execute("INSERT INTO completions(task_id,date,status,sunshine,metrics,created_at) VALUES(?,?,?,?,?,?)",
-                  (tid, t, "completed", delta, mj, db.now()))
+        cur = c.execute("INSERT OR IGNORE INTO completions(task_id,date,status,sunshine,metrics,kind,created_at) "
+                        "VALUES(?,?,?,?,?,?,?)",
+                        (tid, t, "completed", delta, mj, "daily", db.now()))
+        if cur.rowcount == 0:
+            c.close()
+            raise HTTPException(409, "今天这项已完成过啦")
         db.insert_ledger(c, t, delta, "daily", f"cmp-{cur.lastrowid}",
                          d["name"] + ("（破纪录 +%d）" % bonus if bonus else ""))
         c.commit()
-        return {"delta": delta, "bonus": bonus, "bonus_detail": detail, "level": level_info(c)}
+        res = {"delta": delta, "bonus": bonus, "bonus_detail": detail, "level": level_info(c)}
+        c.close()
+        return res
+    c.close()
     raise HTTPException(404, "没找到这个任务")
 
 
@@ -264,6 +280,7 @@ def set_kid_name(body: KidNameBody):
     c = get_conn()
     db.set_setting(c, "kid_name", name)
     c.commit()
+    c.close()
     return {"name": name}
 
 
@@ -280,17 +297,17 @@ def custom_task(body: CustomTaskBody):
         raise HTTPException(400, "填一下任务名称")
     c = get_conn()
     if not c.execute("SELECT 1 FROM subjects WHERE id=?", (body.subject_id,)).fetchone():
+        c.close()
         raise HTTPException(404, "没有这个学科")
-    unit = c.execute("SELECT id FROM units WHERE subject_id=? ORDER BY seq LIMIT 1",
-                     (body.subject_id,)).fetchone()
-    unit_id = unit["id"] if unit else f"custom-{body.subject_id}"
-    if not unit:
-        c.execute("INSERT OR IGNORE INTO units(id,subject_id,term_id,seq,name) VALUES(?,?,?,?,?)",
-                  (unit_id, body.subject_id, "g5s1", 99, "自定义"))
+    # 自定义任务归到独立的「自定义」单元（seq=99 排最后），不混进教材单元
+    unit_id = f"custom-{body.subject_id}"
+    c.execute("INSERT OR IGNORE INTO units(id,subject_id,term_id,seq,name) VALUES(?,?,?,?,?)",
+              (unit_id, body.subject_id, "g5s1", 99, "自定义"))
     tid = uuid.uuid4().hex[:8]
     c.execute("INSERT INTO tasks(id,subject_id,unit_id,action,title,sunshine,sort,custom) VALUES(?,?,?,?,?,?,99,1)",
               (tid, body.subject_id, unit_id, "自定义", title, body.sunshine or 5))
     c.commit()
+    c.close()
     return {"id": tid}
 
 
@@ -299,11 +316,14 @@ def delete_task_kid(tid: str):
     c = get_conn()
     row = c.execute("SELECT custom FROM tasks WHERE id=?", (tid,)).fetchone()
     if not row:
+        c.close()
         raise HTTPException(404, "没找到这个任务")
     if not row["custom"]:
+        c.close()
         raise HTTPException(403, "系统任务请在家长端删除")
     c.execute("DELETE FROM tasks WHERE id=?", (tid,))
     c.commit()
+    c.close()
     return {"ok": True}
 
 
@@ -316,12 +336,15 @@ def cancel(body: CompleteBody):
         "SELECT * FROM completions WHERE task_id=? AND status='completed' ORDER BY id DESC LIMIT 1",
         (body.task_id,)).fetchone()
     if not comp:
+        c.close()
         raise HTTPException(404, "没有可取消的记录")
     c.execute("UPDATE completions SET status='cancelled' WHERE id=?", (comp["id"],))
     delta = -comp["sunshine"]
     db.insert_ledger(c, t, delta, "cancel", f"cmp-{comp['id']}", "点错取消")
     c.commit()
-    return {"delta": delta, "level": level_info(c)}
+    res = {"delta": delta, "level": level_info(c)}
+    c.close()
+    return res
 
 
 # ---------------- 商店 ----------------
@@ -341,14 +364,36 @@ def redeem(body: RedeemBody):
     c = get_conn()
     r = c.execute("SELECT * FROM rewards WHERE id=?", (body.reward_id,)).fetchone()
     if not r:
+        c.close()
         raise HTTPException(404, "没找到这个奖励")
+    # 需要家长同意的奖励：只挂起，不扣阳光，等家长端「审批」通过
+    if r["need_approval"]:
+        c.execute("INSERT INTO redemptions(reward_id,date,price,status,created_at) VALUES(?,?,?,?,?)",
+                  (r["id"], db.today(), r["price"], "pending", db.now()))
+        c.commit()
+        res = {"pending": True, "reward": r["name"], "level": level_info(c)}
+        c.close()
+        return res
     if balance(c) < r["price"]:
+        c.close()
         raise HTTPException(409, "阳光不够哦，还差 %d" % (r["price"] - balance(c)))
     cur = c.execute("INSERT INTO redemptions(reward_id,date,price,status,created_at) VALUES(?,?,?,?,?)",
               (r["id"], db.today(), r["price"], "done", db.now()))
     db.insert_ledger(c, db.today(), -r["price"], "redeem", f"red-{cur.lastrowid}", r["name"])
     c.commit()
-    return {"delta": -r["price"], "reward": r["name"], "level": level_info(c)}
+    res = {"delta": -r["price"], "reward": r["name"], "level": level_info(c)}
+    c.close()
+    return res
+
+
+@app.get("/api/redemptions")
+def redemptions():
+    c = get_conn()
+    rows = c.execute(
+        "SELECT rd.id, rd.date, rd.price, rd.status, rw.name FROM redemptions rd "
+        "LEFT JOIN rewards rw ON rw.id=rd.reward_id ORDER BY rd.id DESC LIMIT 30").fetchall()
+    c.close()
+    return [dict(r) for r in rows]
 
 
 # ---------------- 流水 ----------------
@@ -437,6 +482,47 @@ def reward_update(rid: str, b: RewardIn):
 def reward_delete(rid: str):
     c = get_conn()
     c.execute("DELETE FROM rewards WHERE id=?", (rid,))
+    c.commit(); c.close()
+    return {"ok": True}
+
+
+# --- 兑换审批 ---
+@app.get("/api/admin/redemptions", dependencies=[Depends(require_admin)])
+def redemptions_admin():
+    c = get_conn()
+    rows = c.execute(
+        "SELECT rd.id, rd.date, rd.price, rd.status, rw.name FROM redemptions rd "
+        "LEFT JOIN rewards rw ON rw.id=rd.reward_id ORDER BY rd.id DESC LIMIT 50").fetchall()
+    c.close()
+    return [dict(r) for r in rows]
+
+
+@app.post("/api/admin/redemptions/{rid}/approve", dependencies=[Depends(require_admin)])
+def redemption_approve(rid: str):
+    c = get_conn()
+    rd = c.execute("SELECT * FROM redemptions WHERE id=?", (rid,)).fetchone()
+    if not rd:
+        c.close(); raise HTTPException(404, "没找到这条兑换")
+    if rd["status"] != "pending":
+        c.close(); raise HTTPException(409, "这条已处理过")
+    if balance(c) < rd["price"]:
+        c.close(); raise HTTPException(409, "阳光不够，还差 %d" % (rd["price"] - balance(c)))
+    c.execute("UPDATE redemptions SET status='done' WHERE id=?", (rid,))
+    rw = c.execute("SELECT name FROM rewards WHERE id=?", (rd["reward_id"],)).fetchone()
+    db.insert_ledger(c, db.today(), -rd["price"], "redeem", f"red-{rid}", rw["name"] if rw else "兑换")
+    c.commit(); c.close()
+    return {"ok": True}
+
+
+@app.post("/api/admin/redemptions/{rid}/reject", dependencies=[Depends(require_admin)])
+def redemption_reject(rid: str):
+    c = get_conn()
+    rd = c.execute("SELECT status FROM redemptions WHERE id=?", (rid,)).fetchone()
+    if not rd:
+        c.close(); raise HTTPException(404, "没找到这条兑换")
+    if rd["status"] != "pending":
+        c.close(); raise HTTPException(409, "这条已处理过")
+    c.execute("DELETE FROM redemptions WHERE id=?", (rid,))
     c.commit(); c.close()
     return {"ok": True}
 

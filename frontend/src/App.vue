@@ -20,6 +20,7 @@ const loading = ref(true)
 const err = ref('')
 const toast = ref('')
 const shopOpen = ref(false)
+const myRedeems = ref([])
 const customTitle = ref('')
 const renaming = ref(false)
 const renameVal = ref('')
@@ -121,14 +122,21 @@ async function cancelDaily(task) {
 }
 
 async function redeem(reward) {
-  if (!confirm(`确定用 ${reward.price} 阳光兑换「${reward.name}」吗？`)) return
+  const needApproval = !!reward.need_approval
+  if (!needApproval && !confirm(`确定用 ${reward.price} 阳光兑换「${reward.name}」吗？`)) return
   try {
-    await api.redeem(reward.id)
-    showToast(`兑换成功 🎁 -${reward.price} 阳光`)
+    const r = await api.redeem(reward.id)
+    if (r.pending) showToast(`已提交「${reward.name}」，等家长同意 ✅`)
+    else showToast(`兑换成功 🎁 -${reward.price} 阳光`)
     shopOpen.value = false
     await refresh()
   } catch (e) { showToast(e.message) }
 }
+async function openShop() {
+  shopOpen.value = true
+  try { myRedeems.value = await api.redemptions() } catch {}
+}
+const STATUS_TXT = { pending: '等家长同意', done: '已兑换' }
 
 async function saveName() {
   const n = renameVal.value.trim()
@@ -153,6 +161,7 @@ async function addCustom() {
 }
 
 async function delCustom(task) {
+  if (!confirm(`删除自定义任务「${task.title}」？`)) return
   try {
     await api.delCustom(task.id)
     await refresh()
@@ -336,7 +345,7 @@ onMounted(async () => {
       <input v-model="customTitle" class="foot-input" placeholder="任务名，如：背《山居秋暝》"
         @keyup.enter="addCustom" />
       <button class="foot-add" @click="addCustom">添加</button>
-      <button class="shop-fab" @click="shopOpen = true">🛒 商店</button>
+      <button class="shop-fab" @click="openShop">🛒 商店</button>
     </footer>
 
     <!-- 商店抽屉 -->
@@ -346,10 +355,20 @@ onMounted(async () => {
         <div class="shop-list">
           <div v-for="r in rewards" :key="r.id" class="shop-item">
             <div>
-              <div class="shop-name">{{ r.name }}</div>
+              <div class="shop-name">{{ r.name }}<template v-if="r.need_approval"> · 需家长同意</template></div>
               <div class="shop-price">☀️ {{ r.price }}</div>
             </div>
-            <button class="do" :disabled="data.level.balance < r.price" @click="redeem(r)">兑换</button>
+            <button class="do" :disabled="data.level.balance < r.price" @click="redeem(r)">
+              {{ r.need_approval ? '申请' : '兑换' }}
+            </button>
+          </div>
+        </div>
+        <div v-if="myRedeems.length" class="redeem-hist">
+          <h4>📜 兑换记录</h4>
+          <div v-for="rd in myRedeems" :key="rd.id" class="redeem-row">
+            <span>{{ rd.name }}</span>
+            <span class="dim-s">-{{ rd.price }} ☀️</span>
+            <span :class="{ wait: rd.status === 'pending' }">{{ STATUS_TXT[rd.status] || rd.status }}</span>
           </div>
         </div>
         <button class="ghost" @click="shopOpen = false">关闭</button>
@@ -498,6 +517,11 @@ body {
 .shop-list { display: flex; flex-direction: column; gap: 10px; }
 .shop-item { display: flex; justify-content: space-between; align-items: center; border: 1px solid #e8f3fa; border-radius: 12px; padding: 12px; }
 .shop-price { color: #f5a623; font-weight: 800; }
+.redeem-hist { margin-top: 16px; border-top: 1px dashed #e8f3fa; padding-top: 12px; }
+.redeem-hist h4 { margin: 0 0 8px; font-size: 13px; color: #7aa0b8; }
+.redeem-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 13px; padding: 4px 0; }
+.redeem-row .wait { color: #f5a623; font-weight: 700; }
+.dim-s { color: #9db8c8; }
 .do { border: none; background: #3aa4e0; color: #fff; border-radius: 16px; padding: 8px 16px; font-weight: 800; cursor: pointer; }
 .do:disabled { background: #c5d8e6; cursor: default; }
 .do.big { width: 100%; padding: 12px; margin-top: 8px; }
