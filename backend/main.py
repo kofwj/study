@@ -27,7 +27,7 @@ async def lifespan(app):
 app = FastAPI(title="阳光学习工作台", lifespan=lifespan)
 # 前端由 StaticFiles 同源托管，无需跨域；删掉 CORS 避免任何外部站点能调用接口
 
-CHECKIN_SUN = 5  # 每日签到领 5 阳光
+# 签到不发阳光（无门槛白拿会通胀），保留为「今天来过」记录 + 连击兜底
 
 
 def get_conn():
@@ -187,13 +187,12 @@ def checkin():
     c = get_conn()
     t = db.today()
     cur = c.execute("INSERT OR IGNORE INTO checkins(date,sunshine,created_at) VALUES(?,?,?)",
-                    (t, CHECKIN_SUN, db.now()))
+                    (t, 0, db.now()))
     if cur.rowcount == 0:
         c.close()
         raise HTTPException(409, "今天已经签到过啦")
-    db.insert_ledger(c, t, CHECKIN_SUN, "checkin", None, "每日签到")
     c.commit()
-    res = {"delta": CHECKIN_SUN, "level": level_info(c), "streak": streak(c)}
+    res = {"delta": 0, "level": level_info(c), "streak": streak(c)}
     c.close()
     return res
 

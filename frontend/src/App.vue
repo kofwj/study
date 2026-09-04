@@ -79,7 +79,7 @@ async function refresh() {
 async function checkin() {
   try {
     const r = await api.checkin()
-    showToast(`每日打卡领阳光 +${r.delta} ☀️`)
+    showToast('已签到，开始学习吧！')
     await refresh()
   } catch (e) { showToast(e.message) }
 }
@@ -314,7 +314,7 @@ onMounted(async () => {
 
     <div class="cta-row">
       <button class="cta check" :disabled="data.today_checkin" @click="checkin">
-        📅 每日打卡领阳光（+5 ☀️）
+        📅 {{ data.today_checkin ? '今日已签到' : '每日签到' }}
       </button>
       <div v-if="toast" class="cta toast-bar">{{ toast }}</div>
     </div>
