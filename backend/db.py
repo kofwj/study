@@ -57,6 +57,7 @@ CREATE TABLE IF NOT EXISTS ledger (
 CREATE TABLE IF NOT EXISTS redemptions (
   id INTEGER PRIMARY KEY AUTOINCREMENT, reward_id TEXT, date TEXT, price INTEGER,
   status TEXT, created_at TEXT);
+CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT);
 """
 
 
@@ -113,10 +114,22 @@ def seed(conn):
 def init_db():
     conn = connect()
     conn.executescript(SCHEMA)
-    if conn.execute("SELECT COUNT(*) FROM tasks").fetchone()[0] == 0:
+    # 只以「科目是否存在」判断首次初始化，避免家长删光任务后重启被重置
+    if conn.execute("SELECT COUNT(*) FROM subjects").fetchone()[0] == 0:
         seed(conn)
+    conn.execute("INSERT OR IGNORE INTO settings(key,value) VALUES('admin_pin','8888')")
     conn.commit()
     conn.close()
+
+
+def get_setting(conn, key, default=None):
+    r = conn.execute("SELECT value FROM settings WHERE key=?", (key,)).fetchone()
+    return r["value"] if r else default
+
+
+def set_setting(conn, key, value):
+    conn.execute("INSERT INTO settings(key,value) VALUES(?,?) "
+                 "ON CONFLICT(key) DO UPDATE SET value=excluded.value", (str(key), str(value)))
 
 
 def insert_ledger(conn, date, delta, reason, ref_id, note):

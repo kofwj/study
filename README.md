@@ -44,6 +44,10 @@ cd ../backend && ./.venv/bin/uvicorn main:app --port 8000
 - `backend/` —— FastAPI 后端（`db.py` 存储与种子，`main.py` 接口）
 - `frontend/` —— Vue3 单页
 
+## 家长管理端
+
+孩子端右下角「👤 家长」→ 输密码进入。默认密码 **8888**（进入后可改）。可增删改：商店奖励、等级阈值、单元任务、每日任务（含记录维度）。
+
 ## 关键规则（已在代码中落定）
 
 - 等级看「累计获得」= 流水之和但排除兑换消费 → **消费不掉级**
@@ -57,7 +61,6 @@ cd ../backend && ./.venv/bin/uvicorn main:app --port 8000
 
 ## 待办（P1+）
 
-- 管理端（家长增删改商店/等级/任务、改奖励）
 - PWA 安装 + 桌面优化
 - 其余 4 科（科学/道法/音美/综合）目录录入
 - Docker + Cloudflare Tunnel 部署到 VPS

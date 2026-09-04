@@ -1,6 +1,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { api } from './api.js'
+import Admin from './Admin.vue'
 
 const data = reactive({
   level: { earned: 0, balance: 0, level: '阳光萌新', next: null, next_need: 0, progress: 0 },
@@ -22,6 +23,24 @@ function showToast(msg) {
   toast.value = msg
   clearTimeout(toastTimer)
   toastTimer = setTimeout(() => (toast.value = ''), 2500)
+}
+
+// —— 家长入口 ——
+const isAdmin = ref(false)
+const pinForm = reactive({ open: false, val: '' })
+async function verifyPin() {
+  try {
+    await api.admin.verify(pinForm.val)
+    sessionStorage.setItem('admin_pin', pinForm.val)
+    pinForm.open = false
+    pinForm.val = ''
+    isAdmin.value = true
+  } catch (e) { showToast(e.message) }
+}
+function exitAdmin() {
+  isAdmin.value = false
+  sessionStorage.removeItem('admin_pin')
+  refresh()
 }
 
 async function refresh() {
@@ -137,7 +156,8 @@ function pickValue(daily, id) {
 </script>
 
 <template>
-  <div class="wrap">
+  <Admin v-if="isAdmin" @exit="exitAdmin" />
+  <div v-else class="wrap">
     <!-- 顶栏 -->
     <header class="top">
       <div class="level">
@@ -249,8 +269,21 @@ function pickValue(daily, id) {
       </div>
     </div>
 
+    <!-- 家长入口 -->
+    <button class="parent-btn" @click="pinForm.open = true">👤 家长</button>
+
     <div v-if="toast" class="toast">{{ toast }}</div>
     <p v-if="err" class="err">{{ err }}</p>
+
+    <!-- 家长密码弹窗 -->
+    <div v-if="pinForm.open" class="mask" @click.self="pinForm.open = false">
+      <div class="modal">
+        <h3>家长密码</h3>
+        <input v-model="pinForm.val" type="password" inputmode="numeric" placeholder="密码" @keyup.enter="verifyPin" />
+        <button class="do big" @click="verifyPin">进入管理</button>
+        <button class="ghost" @click="pinForm.open = false">取消</button>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -317,6 +350,7 @@ body {
 .delta.neg { color: #c62828; font-weight: 700; }
 
 .dim { color: #b7a26b; font-size: 13px; }
+.parent-btn { float: right; margin: 14px 0; background: none; border: 1px solid #e4d5b4; border-radius: 20px; padding: 6px 14px; color: #8a7444; cursor: pointer; }
 .err { color: #c62828; text-align: center; }
 
 .mask { position: fixed; inset: 0; background: rgba(0,0,0,.4); display: flex; align-items: center; justify-content: center; z-index: 10; }

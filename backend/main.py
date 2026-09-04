@@ -5,11 +5,12 @@
 「点错取消」= 一条负 delta 流水 + completion 置 cancelled，不删历史。
 """
 import json
+import uuid
 from datetime import datetime, timedelta
 
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -92,7 +93,8 @@ def tasks():
         "today_checkin": c.execute(
             "SELECT 1 FROM checkins WHERE date=?", (db.today(),)).fetchone() is not None,
         "subjects": [dict(r) for r in c.execute("SELECT * FROM subjects").fetchall()],
-        "units": [{"id": r["id"], "name": r["name"]} for r in c.execute("SELECT id, name FROM units").fetchall()],
+        "units": [{"id": r["id"], "name": r["name"], "subject_id": r["subject_id"]}
+                  for r in c.execute("SELECT id, name, subject_id FROM units").fetchall()],
     }
     # 单元任务 + 完成状态
     tasks_rows = c.execute("SELECT * FROM tasks ORDER BY subject_id, sort").fetchall()
@@ -262,6 +264,201 @@ def ledger(limit: int = 20):
     c = get_conn()
     return [dict(r) for r in c.execute(
         "SELECT * FROM ledger ORDER BY id DESC LIMIT ?", (limit,)).fetchall()]
+
+
+# ---------------- 管理端（家长，需 PIN） -------------
+
+def require_admin(x_admin_pin: Optional[str] = Header(None)):
+    c = get_conn()
+    try:
+        ok = x_admin_pin == db.get_setting(c, "admin_pin", "8888")
+    finally:
+        c.close()
+    if not ok:
+        raise HTTPException(401, "家长密码不对")
+
+
+class PinBody(BaseModel):
+    pin: str
+
+
+@app.post("/api/admin/verify")
+def admin_verify(b: PinBody):
+    c = get_conn()
+    ok = b.pin == db.get_setting(c, "admin_pin", "8888")
+    c.close()
+    if not ok:
+        raise HTTPException(401, "家长密码不对")
+    return {"ok": True}
+
+
+@app.post("/api/admin/pin", dependencies=[Depends(require_admin)])
+def admin_change_pin(b: PinBody):
+    c = get_conn()
+    db.set_setting(c, "admin_pin", b.pin)
+    c.commit(); c.close()
+    return {"ok": True}
+
+
+# --- 商店 ---
+class RewardIn(BaseModel):
+    name: str
+    price: int
+    category: str = "其他"
+
+
+@app.post("/api/admin/rewards", dependencies=[Depends(require_admin)])
+def reward_create(b: RewardIn):
+    c = get_conn()
+    rid = uuid.uuid4().hex[:8]
+    c.execute("INSERT INTO rewards(id,name,price,category,need_approval) VALUES(?,?,?,?,0)",
+              (rid, b.name, b.price, b.category))
+    c.commit(); c.close()
+    return {"id": rid}
+
+
+@app.put("/api/admin/rewards/{rid}", dependencies=[Depends(require_admin)])
+def reward_update(rid: str, b: RewardIn):
+    c = get_conn()
+    c.execute("UPDATE rewards SET name=?, price=?, category=? WHERE id=?",
+              (b.name, b.price, b.category, rid))
+    c.commit(); c.close()
+    return {"ok": True}
+
+
+@app.delete("/api/admin/rewards/{rid}", dependencies=[Depends(require_admin)])
+def reward_delete(rid: str):
+    c = get_conn()
+    c.execute("DELETE FROM rewards WHERE id=?", (rid,))
+    c.commit(); c.close()
+    return {"ok": True}
+
+
+# --- 等级 ---
+class RankIn(BaseModel):
+    name: str
+    min_sunshine: int
+
+
+@app.get("/api/admin/ranks")
+def ranks_admin():
+    c = get_conn()
+    rows = [dict(r) for r in c.execute("SELECT * FROM ranks ORDER BY min_sunshine").fetchall()]
+    c.close()
+    return rows
+
+
+@app.post("/api/admin/ranks", dependencies=[Depends(require_admin)])
+def rank_create(b: RankIn):
+    c = get_conn()
+    c.execute("INSERT INTO ranks(id,name,min_sunshine,sort) VALUES(?,?,?,?)",
+              (uuid.uuid4().hex[:8], b.name, b.min_sunshine, b.min_sunshine))
+    c.commit(); c.close()
+    return {"ok": True}
+
+
+@app.put("/api/admin/ranks/{rid}", dependencies=[Depends(require_admin)])
+def rank_update(rid: str, b: RankIn):
+    c = get_conn()
+    c.execute("UPDATE ranks SET name=?, min_sunshine=? WHERE id=?",
+              (b.name, b.min_sunshine, rid))
+    c.commit(); c.close()
+    return {"ok": True}
+
+
+@app.delete("/api/admin/ranks/{rid}", dependencies=[Depends(require_admin)])
+def rank_delete(rid: str):
+    c = get_conn()
+    r = c.execute("SELECT min_sunshine FROM ranks WHERE id=?", (rid,)).fetchone()
+    if r and r["min_sunshine"] == 0:
+        c.close()
+        raise HTTPException(400, "基础等级（0阳光）不能删")
+    c.execute("DELETE FROM ranks WHERE id=?", (rid,))
+    c.commit(); c.close()
+    return {"ok": True}
+
+
+# --- 单元任务 ---
+class TaskIn(BaseModel):
+    subject_id: str
+    unit_id: str
+    action: str
+    title: str
+    sunshine: int = 5
+
+
+@app.post("/api/admin/tasks", dependencies=[Depends(require_admin)])
+def task_create(b: TaskIn):
+    c = get_conn()
+    tid = uuid.uuid4().hex[:8]
+    c.execute("INSERT INTO tasks(id,subject_id,unit_id,action,title,sunshine,sort) VALUES(?,?,?,?,?,?,99)",
+              (tid, b.subject_id, b.unit_id, b.action, b.title, b.sunshine))
+    c.commit(); c.close()
+    return {"id": tid}
+
+
+@app.put("/api/admin/tasks/{tid}", dependencies=[Depends(require_admin)])
+def task_update(tid: str, b: TaskIn):
+    c = get_conn()
+    c.execute("UPDATE tasks SET subject_id=?, unit_id=?, action=?, title=?, sunshine=? WHERE id=?",
+              (b.subject_id, b.unit_id, b.action, b.title, b.sunshine, tid))
+    c.commit(); c.close()
+    return {"ok": True}
+
+
+@app.delete("/api/admin/tasks/{tid}", dependencies=[Depends(require_admin)])
+def task_delete(tid: str):
+    c = get_conn()
+    c.execute("DELETE FROM tasks WHERE id=?", (tid,))
+    c.commit(); c.close()
+    return {"ok": True}
+
+
+# --- 每日任务（跳绳等） ---
+class DailyTaskIn(BaseModel):
+    subject_id: str
+    name: str
+    sunshine: int = 5
+    bonus_per_metric: Optional[int] = 3
+    metrics: Optional[list] = None
+
+
+def _replace_metrics(c, did, metrics):
+    c.execute("DELETE FROM daily_metrics WHERE task_id=?", (did,))
+    for m in (metrics or []):
+        c.execute("INSERT INTO daily_metrics(task_id,id,label,unit,direction,note) VALUES(?,?,?,?,?,?)",
+                  (did, m.get("id"), m.get("label"), m.get("unit"), m.get("direction", "higher_better"), m.get("note", "")))
+
+
+@app.post("/api/admin/daily", dependencies=[Depends(require_admin)])
+def daily_create(b: DailyTaskIn):
+    c = get_conn()
+    did = uuid.uuid4().hex[:8]
+    c.execute("INSERT INTO daily_tasks(id,subject_id,name,sunshine,frequency,bonus_type,bonus_per_metric) "
+              "VALUES(?,?,?,?,'daily','personal_best',?)",
+              (did, b.subject_id, b.name, b.sunshine, b.bonus_per_metric))
+    _replace_metrics(c, did, b.metrics)
+    c.commit(); c.close()
+    return {"id": did}
+
+
+@app.put("/api/admin/daily/{did}", dependencies=[Depends(require_admin)])
+def daily_update(did: str, b: DailyTaskIn):
+    c = get_conn()
+    c.execute("UPDATE daily_tasks SET subject_id=?, name=?, sunshine=?, bonus_per_metric=? WHERE id=?",
+              (b.subject_id, b.name, b.sunshine, b.bonus_per_metric, did))
+    _replace_metrics(c, did, b.metrics)
+    c.commit(); c.close()
+    return {"ok": True}
+
+
+@app.delete("/api/admin/daily/{did}", dependencies=[Depends(require_admin)])
+def daily_delete(did: str):
+    c = get_conn()
+    c.execute("DELETE FROM daily_metrics WHERE task_id=?", (did,))
+    c.execute("DELETE FROM daily_tasks WHERE id=?", (did,))
+    c.commit(); c.close()
+    return {"ok": True}
 
 
 # ---------------- 静态前端（构建后由本后端直接托管） ----------------
