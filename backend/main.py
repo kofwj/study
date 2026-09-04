@@ -713,7 +713,7 @@ def daily_history(task_id: str):
     """孩子端查看某每日任务（跳绳等）的逐次记录（按日期升序），画趋势图用。"""
     c = get_conn()
     rows = c.execute(
-        "SELECT date, metrics FROM completions WHERE task_id=? AND status='completed' AND metrics IS NOT NULL "
+        "SELECT date, metrics FROM completions WHERE task_id=? AND status='completed' "
         "ORDER BY date, id", (task_id,)).fetchall()
     c.close()
     return [{"date": r["date"], "metrics": (json.loads(r["metrics"]) if r["metrics"] else {})} for r in rows]

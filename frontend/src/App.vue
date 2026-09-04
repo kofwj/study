@@ -127,6 +127,18 @@ function lineFor(m) {
   const bestY = dots.find(p => p.best).y
   return { pts: dots.map(p => `${p.x},${p.y}`).join(' '), dots, min, max, bestY }
 }
+// 无数值维度任务（眼保健操/阅读/练字）：近 14 天打卡日历
+const chartDays = computed(() => {
+  const done = new Set((chartOpen.history || []).map(h => h.date))
+  const days = []
+  const now = new Date()
+  for (let i = 13; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i)
+    const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    days.push({ date: iso, daynum: d.getDate(), done: done.has(iso), today: i === 0 })
+  }
+  return days
+})
 const dailyDialog = reactive({ open: false, task: null, vals: {} })
 function openDaily(task) {
   if (task.done_today) return
@@ -435,21 +447,43 @@ onMounted(async () => {
     <div v-if="chartOpen.open" class="mask" @click.self="chartOpen.open = false">
       <div class="shop-modal chart-modal">
         <h3>📈 {{ chartOpen.task?.name }} 成长趋势</h3>
-        <div v-if="!chartOpen.history.length" class="dim-s">还没打过卡，先跳一跳吧！</div>
-        <div v-for="m in (chartOpen.task?.metrics || [])" :key="m.id" class="chart-block">
-          <div class="chart-head">
-            <span class="chart-title">{{ m.label }}</span>
-            <span class="chart-scale">{{ lineFor(m).min }} ~ {{ lineFor(m).max }} {{ m.unit }}</span>
+
+        <div v-if="!chartOpen.history.length" class="dim-s">还没打过卡，坚持一下吧！</div>
+
+        <!-- 有数值维度：折线图 + 个人纪录 -->
+        <template v-if="chartOpen.history.length && (chartOpen.task?.metrics || []).length">
+          <div v-for="m in chartOpen.task.metrics" :key="m.id" class="chart-block">
+            <div class="chart-head">
+              <span class="chart-title">{{ m.label }}</span>
+              <span class="chart-scale">{{ lineFor(m).min }} ~ {{ lineFor(m).max }} {{ m.unit }}</span>
+            </div>
+            <svg viewBox="0 0 288 92" class="chart-svg" preserveAspectRatio="none">
+              <line v-if="lineFor(m).dots.length" x1="14" :y1="lineFor(m).bestY" x2="274" :y2="lineFor(m).bestY" class="chart-pb-line" />
+              <polyline :points="lineFor(m).pts" fill="none" stroke="#ff9800" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+              <circle v-for="(p, i) in lineFor(m).dots" :key="i" :cx="p.x" :cy="p.y" :r="p.best ? 5 : 3.5" :fill="p.best ? '#e53935' : '#ffb800'" stroke="#fff" stroke-width="1.5">
+                <title>{{ p.v }}{{ m.unit }}</title>
+              </circle>
+            </svg>
+            <div class="chart-pb">🏅 个人纪录：{{ chartOpen.task.pb?.[m.id] ?? '—' }} {{ m.unit }} · 共 {{ lineFor(m).dots.length }} 次</div>
           </div>
-          <svg viewBox="0 0 288 92" class="chart-svg" preserveAspectRatio="none">
-            <line v-if="lineFor(m).dots.length" x1="14" :y1="lineFor(m).bestY" x2="274" :y2="lineFor(m).bestY" class="chart-pb-line" />
-            <polyline :points="lineFor(m).pts" fill="none" stroke="#ff9800" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
-            <circle v-for="(p, i) in lineFor(m).dots" :key="i" :cx="p.x" :cy="p.y" :r="p.best ? 5 : 3.5" :fill="p.best ? '#e53935' : '#ffb800'" stroke="#fff" stroke-width="1.5">
-              <title>{{ p.v }}{{ m.unit }}</title>
-            </circle>
-          </svg>
-          <div class="chart-pb">🏅 个人纪录：{{ chartOpen.task.pb?.[m.id] ?? '—' }} {{ m.unit }} · 共 {{ lineFor(m).dots.length }} 次</div>
-        </div>
+        </template>
+
+        <!-- 无数值维度：打卡日历 -->
+        <template v-else-if="chartOpen.history.length">
+          <div class="cal-block">
+            <div class="chart-head">
+              <span class="chart-title">坚持打卡</span>
+              <span class="chart-scale">共打卡 {{ chartOpen.history.length }} 次</span>
+            </div>
+            <div class="cal-row">
+              <div v-for="d in chartDays" :key="d.date" class="cal-cell" :class="{ on: d.done, today: d.today }">
+                {{ d.daynum }}
+              </div>
+            </div>
+            <div class="cal-legend">近 14 天 · 绿色=已打卡 · 橙色框=今天</div>
+          </div>
+        </template>
+
         <button class="ghost" @click="chartOpen.open = false">关闭</button>
       </div>
     </div>
@@ -616,6 +650,12 @@ body {
 .chart-svg { width: 100%; height: 92px; display: block; }
 .chart-pb-line { stroke: #e53935; stroke-width: 1.5; stroke-dasharray: 4 4; opacity: .55; }
 .chart-pb { font-size: 12px; color: #c07b00; margin-top: 6px; }
+.cal-block { padding: 10px 12px; background: #f7fbfe; border-radius: 12px; }
+.cal-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+.cal-cell { width: 34px; height: 34px; border-radius: 8px; background: #edf4f9; color: #a9bdc9; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; border: 2px solid transparent; }
+.cal-cell.on { background: #3cb371; color: #fff; }
+.cal-cell.today { border-color: #ff9800; }
+.cal-legend { font-size: 11px; color: #9db8c8; margin-top: 8px; }
 .shop-modal input, .metric input { width: 100%; padding: 10px 12px; border: 1px solid #d7e6f0; border-radius: 10px; font-size: 15px; }
 .parent { position: fixed; left: 16px; bottom: 86px; border: none; background: none; color: #7aa0b8; cursor: pointer; z-index: 5; }
 .err { color: #c62828; text-align: center; }
