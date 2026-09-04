@@ -231,7 +231,7 @@ onMounted(async () => {
           <div class="name-row">
             <template v-if="!renaming">
               <b class="kid">{{ data.kid_name }}</b>
-              <button class="rename" @click="renaming = true; renameVal = data.kid_name">✏️ 点击改名</button>
+              <button class="rename" @click="renaming = true; renameVal = data.kid_name">✏️ <span class="rename-txt">点击改名</span></button>
             </template>
             <template v-else>
               <input v-model="renameVal" maxlength="12" @keyup.enter="saveName" />
@@ -510,22 +510,24 @@ body {
 @media (max-width: 900px) {
   .desk { padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
   .topbar {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    grid-template-areas: "who pills" "next next";
-    gap: 8px 10px;
-    padding: 10px 14px 8px;
-    align-items: center;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: 12px 14px 8px;
   }
-  .who { grid-area: who; min-width: 0; }
-  .avatar { width: 40px; height: 40px; font-size: 22px; }
-  .kid { font-size: 18px; }
-  .hello { font-size: 11px; }
+  .who { width: 100%; min-width: 0; }
+  .who > div { min-width: 0; flex: 1; }
+  .avatar { width: 40px; height: 40px; font-size: 22px; flex: 0 0 40px; }
+  .kid { font-size: 18px; white-space: nowrap; }
+  .hello { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .greet-long { display: none; }
-  .rename { font-size: 11px; }
-  .pills { grid-area: pills; justify-content: flex-end; gap: 6px; }
+  .name-row { flex-wrap: nowrap; }
+  .rename { font-size: 12px; white-space: nowrap; flex: 0 0 auto; }
+  .rename-txt { display: none; }
+  .pills { width: 100%; justify-content: flex-start; flex-wrap: wrap; gap: 8px; }
   .pill { padding: 6px 10px; font-size: 13px; }
-  .next { grid-area: next; margin-left: 0; text-align: left; min-width: 0; width: 100%; font-size: 12px; }
+  .next { margin-left: 0; text-align: left; min-width: 0; width: 100%; font-size: 12px; }
   .cta-row { padding: 0 14px 12px; }
   .cta { width: 100%; padding: 12px; font-size: 15px; }
   .toast-bar { width: 100%; text-align: center; }
