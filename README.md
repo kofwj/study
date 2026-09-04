@@ -97,6 +97,7 @@ ssh -o BatchMode=yes root@192.168.100.5 \
 
 ## 目录结构
 
+- `OPS.md` —— 运维速查（改教材/部署/备份/重置/查库命令一页）
 - `PLAN.md` —— 设计思路与数据模型
 - `CONTENT.md` —— 教材版本 + 目录
 - `data/tasks.seed.json` —— 任务卡种子（机器读）；`data/tasks_review.md`（人读）
