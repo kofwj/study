@@ -226,7 +226,8 @@ onMounted(async () => {
       <div class="who">
         <div class="avatar">😊</div>
         <div>
-          <div class="hello">{{ data.today || '今天' }} · 你好呀，五年级的小主人！</div>
+          <div class="hello">{{ data.today || '今天' }}</div>
+          <div class="hello greet-long">你好呀，五年级的小主人！</div>
           <div class="name-row">
             <template v-if="!renaming">
               <b class="kid">{{ data.kid_name }}</b>
@@ -291,7 +292,7 @@ onMounted(async () => {
 
         <template v-else>
           <h1>{{ ICONS[activeTab] || '📒' }} {{ activeTab }}</h1>
-          <p class="hint">完成一项 +5 ☀️，取消勾选会扣回哦。把鼠标移到卡片右上角可以删除自定义任务。</p>
+          <p class="hint">完成一项 +5 ☀️，再点一次会扣回。自定义任务点卡片右上角可删。</p>
 
           <div v-for="u in currentUnits" :key="u.id" class="unit">
             <h2><i></i> {{ u.name }}</h2>
@@ -331,11 +332,11 @@ onMounted(async () => {
 
     <!-- 底栏：自定义任务 + 商店 -->
     <footer class="foot">
-      <span class="foot-label">自定义任务</span>
-      <input v-model="customTitle" class="foot-input" placeholder="任务名称，如：背古诗《山居秋暝》"
+      <span class="foot-label">自定义</span>
+      <input v-model="customTitle" class="foot-input" placeholder="任务名，如：背《山居秋暝》"
         @keyup.enter="addCustom" />
       <button class="foot-add" @click="addCustom">添加</button>
-      <button class="shop-fab" @click="shopOpen = true">🛒 阳光兑换商店</button>
+      <button class="shop-fab" @click="shopOpen = true">🛒 商店</button>
     </footer>
 
     <!-- 商店抽屉 -->
@@ -507,10 +508,57 @@ body {
 .err { color: #c62828; text-align: center; }
 
 @media (max-width: 900px) {
-  .grid { grid-template-columns: 1fr; }
-  .body { flex-direction: column; }
-  .side { width: 100%; flex: none; display: flex; overflow-x: auto; }
-  .nav { min-width: 120px; }
-  .next { margin-left: 0; text-align: left; width: 100%; }
+  .desk { padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
+  .topbar {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-areas: "who pills" "next next";
+    gap: 8px 10px;
+    padding: 10px 14px 8px;
+    align-items: center;
+  }
+  .who { grid-area: who; min-width: 0; }
+  .avatar { width: 40px; height: 40px; font-size: 22px; }
+  .kid { font-size: 18px; }
+  .hello { font-size: 11px; }
+  .greet-long { display: none; }
+  .rename { font-size: 11px; }
+  .pills { grid-area: pills; justify-content: flex-end; gap: 6px; }
+  .pill { padding: 6px 10px; font-size: 13px; }
+  .next { grid-area: next; margin-left: 0; text-align: left; min-width: 0; width: 100%; font-size: 12px; }
+  .cta-row { padding: 0 14px 12px; }
+  .cta { width: 100%; padding: 12px; font-size: 15px; }
+  .toast-bar { width: 100%; text-align: center; }
+
+  .body { flex-direction: column; gap: 0; padding: 0; }
+  .side {
+    position: sticky; top: 0; z-index: 6;
+    width: 100%; flex: none; border-radius: 0;
+    display: flex; gap: 6px; overflow-x: auto;
+    padding: 8px 12px; box-shadow: 0 4px 12px rgba(60,120,170,.08);
+    -webkit-overflow-scrolling: touch;
+  }
+  .nav {
+    flex: 0 0 auto; min-width: auto; width: auto; margin: 0;
+    flex-direction: column; align-items: flex-start; gap: 2px;
+    padding: 8px 12px; white-space: nowrap;
+  }
+  .nav em { padding: 0; background: none; }
+
+  .main { padding: 12px 14px 16px; }
+  .main h1 { font-size: 20px; margin: 0 0 4px; }
+  .hint { font-size: 12px; margin-bottom: 10px; }
+  .grid { grid-template-columns: 1fr; gap: 8px; }
+  .card { min-height: 64px; padding: 12px; align-items: center; }
+  .circle { width: 32px; height: 32px; flex: 0 0 32px; }
+  .x { display: block; }
+
+  .foot {
+    gap: 8px; padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+  }
+  .foot-label { display: none; }
+  .foot-input { min-width: 0; font-size: 16px; }
+  .shop-fab { padding: 10px 12px; }
+  .parent { left: auto; right: 12px; bottom: calc(80px + env(safe-area-inset-bottom)); }
 }
 </style>
