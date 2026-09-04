@@ -27,8 +27,6 @@ export const api = {
   openBox: () => j('/api/open_box', { method: 'POST' }),
   ledger: () => j('/api/ledger?limit=15'),
   setKidName: (name) => j('/api/kid-name', { method: 'POST', ...body({ name }) }),
-  customTask: (o) => j('/api/custom-task', { method: 'POST', ...body(o) }),
-  delCustom: (id) => j(`/api/tasks/${id}`, { method: 'DELETE' }),
   dailyHistory: (id) => j(`/api/daily/${id}/history`),
 
   // —— 家长端 ——

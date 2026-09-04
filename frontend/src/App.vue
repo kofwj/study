@@ -32,7 +32,6 @@ const rankMap = ref(null)
 const updateReady = ref(false)
 const celebrate = ref(null)
 const chartOpen = reactive({ open: false, task: null, history: [] })
-const customTitle = ref('')
 const renaming = ref(false)
 const renameVal = ref('')
 
@@ -237,26 +236,6 @@ async function saveName() {
   } catch (e) { showToast(e.message) }
 }
 
-async function addCustom() {
-  const title = customTitle.value.trim()
-  if (!title) return showToast('填一下任务名称')
-  const sid = activeTab.value === '今日推荐' ? '语文' : activeTab.value
-  try {
-    await api.customTask({ subject_id: sid, title, sunshine: 5 })
-    customTitle.value = ''
-    showToast('已添加自定义任务')
-    await refresh()
-  } catch (e) { showToast(e.message) }
-}
-
-async function delCustom(task) {
-  if (!confirm(`删除自定义任务「${task.title}」？`)) return
-  try {
-    await api.delCustom(task.id)
-    await refresh()
-  } catch (e) { showToast(e.message) }
-}
-
 const unitName = (id) => data.units.find(u => u.id === id)?.name || ''
 const bySubject = computed(() => {
   const m = {}
@@ -417,7 +396,6 @@ function reloadApp() { location.reload() }
             </h2>
             <div class="grid">
               <div v-for="t in u.tasks" :key="t.id" class="card" :class="{ done: t.done, past: t.past, locked: t.locked }">
-                <button v-if="t.custom" class="x" title="删除" @click="delCustom(t)">×</button>
                 <button class="circle" :class="{ ok: t.done || t.past }" @click="toggleTask(t)">{{ t.done || t.past ? '✓' : (t.locked ? '🔒' : '') }}</button>
                 <div class="card-body">
                   <div class="card-title">{{ t.title }}</div>
@@ -445,7 +423,7 @@ function reloadApp() { location.reload() }
           </div>
 
           <div v-if="!currentUnits.length && !data.daily.some(x => x.subject_id === activeTab)" class="empty">
-            这科还没任务，用下面「自定义任务」加一条，或等家长补目录。
+            这科还没任务，家长可以在家长端「任务」里补充。
           </div>
         </template>
       </main>
@@ -453,10 +431,7 @@ function reloadApp() { location.reload() }
 
     <!-- 底栏：自定义任务 + 商店 -->
     <footer class="foot">
-      <span class="foot-label">自定义</span>
-      <input v-model="customTitle" class="foot-input" placeholder="任务名，如：背《山居秋暝》"
-        @keyup.enter="addCustom" />
-      <button class="foot-add" @click="addCustom">添加</button>
+      <span style="flex:1"></span>
       <button class="shop-fab" @click="openShop">🛒 商店</button>
     </footer>
 

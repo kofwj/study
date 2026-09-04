@@ -438,7 +438,7 @@ class CustomTaskBody(BaseModel):
     sunshine: int = 5
 
 
-@app.post("/api/custom-task")
+@app.post("/api/custom-task", dependencies=[Depends(require_admin)])
 def custom_task(body: CustomTaskBody):
     title = (body.title or "").strip()[:40]
     if not title:
@@ -459,7 +459,7 @@ def custom_task(body: CustomTaskBody):
     return {"id": tid}
 
 
-@app.delete("/api/tasks/{tid}")
+@app.delete("/api/tasks/{tid}", dependencies=[Depends(require_admin)])
 def delete_task_kid(tid: str):
     c = get_conn()
     row = c.execute("SELECT custom FROM tasks WHERE id=?", (tid,)).fetchone()
