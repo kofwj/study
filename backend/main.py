@@ -170,9 +170,19 @@ ACHIEVEMENTS = [
     {"id": "cn10",     "icon": "📖", "name": "语文十卡", "desc": "完成 10 张语文卡", "target": 10},
     {"id": "ma10",     "icon": "➗", "name": "数学十卡", "desc": "完成 10 张数学卡", "target": 10},
     {"id": "en10",     "icon": "🔤", "name": "英语十卡", "desc": "完成 10 张英语卡", "target": 10},
+    {"id": "all100",   "icon": "🏅", "name": "百卡达成", "desc": "累计完成 100 张单元卡", "target": 100},
     {"id": "sport",    "icon": "🏃", "name": "运动健将", "desc": "每日运动打卡 10 次", "target": 10},
+    {"id": "daily30",  "icon": "📅", "name": "每日全勤", "desc": "每日任务累计打卡 30 次", "target": 30},
+    {"id": "go10",     "icon": "⚫", "name": "围棋小棋手", "desc": "围棋对弈打卡 10 次", "target": 10},
+    {"id": "calc10",   "icon": "🧮", "name": "口算达人", "desc": "每日口算打卡 10 次", "target": 10},
     {"id": "streak7",  "icon": "🔥", "name": "坚持一周", "desc": "连续坚持 7 天", "target": 7},
     {"id": "streak14", "icon": "🚀", "name": "坚持半月", "desc": "连续坚持 14 天", "target": 14},
+    {"id": "streak30", "icon": "🌕", "name": "坚持满月", "desc": "连续坚持 30 天", "target": 30},
+    {"id": "test100",  "icon": "💯", "name": "满分学霸", "desc": "单元测试考 100 分", "target": 100},
+    {"id": "shop1",    "icon": "🛒", "name": "初尝战果", "desc": "第一次兑换奖励", "target": 1},
+    {"id": "shop5",    "icon": "🎁", "name": "兑换小能手", "desc": "累计兑换 5 次", "target": 5},
+    {"id": "box5",     "icon": "🎰", "name": "盲盒收藏家", "desc": "开 5 个连击盲盒", "target": 5},
+    {"id": "custom10", "icon": "✨", "name": "自律之星", "desc": "完成家长任务 10 次", "target": 10},
     {"id": "sun500",   "icon": "💰", "name": "阳光富翁", "desc": "累计获得 500 阳光", "target": 500},
     {"id": "sun2000",  "icon": "💎", "name": "阳光大佬", "desc": "累计获得 2000 阳光", "target": 2000},
     {"id": "sun5000",  "icon": "👑", "name": "阳光传说", "desc": "累计获得 5000 阳光", "target": 5000},
@@ -183,16 +193,28 @@ ACHIEVEMENTS = [
 def achievements():
     c = get_conn()
     total = c.execute("SELECT COUNT(*) FROM completions WHERE status='completed'").fetchone()[0]
+    unit_done = c.execute("SELECT COUNT(*) FROM completions WHERE status='completed' AND kind='unit'").fetchone()[0]
     sport = c.execute("SELECT COUNT(*) FROM completions WHERE status='completed' AND kind='daily'").fetchone()[0]
+    go_n = c.execute("SELECT COUNT(*) FROM completions WHERE status='completed' AND kind='daily' AND task_id='go-play'").fetchone()[0]
+    calc_n = c.execute("SELECT COUNT(*) FROM completions WHERE status='completed' AND kind='daily' AND task_id='ma-calc'").fetchone()[0]
+    custom_n = c.execute(
+        "SELECT COUNT(*) FROM completions c JOIN tasks t ON t.id=c.task_id "
+        "WHERE c.status='completed' AND COALESCE(t.custom,0)=1").fetchone()[0]
+    shop_n = c.execute("SELECT COUNT(*) FROM redemptions WHERE status IN ('done','delivered')").fetchone()[0]
+    best_test = c.execute("SELECT COALESCE(MAX(score),0) FROM tests").fetchone()[0]
+    box_n = int(db.get_setting(c, "box_opened", "0"))
     s = streak(c)
     e = earned(c)
     done_by_subj = {r[0]: r[1] for r in c.execute(
         "SELECT t.subject_id, COUNT(*) FROM completions c JOIN tasks t ON t.id=c.task_id "
         "WHERE c.status='completed' GROUP BY t.subject_id").fetchall()}
     cur = {
-        "first": total, "sport": sport, "streak7": s, "streak14": s,
+        "first": total, "all100": unit_done,
+        "sport": sport, "daily30": sport, "go10": go_n, "calc10": calc_n,
+        "streak7": s, "streak14": s, "streak30": s,
         "cn10": done_by_subj.get("语文", 0), "ma10": done_by_subj.get("数学", 0), "en10": done_by_subj.get("英语", 0),
-        "sun500": e, "sun2000": e, "sun5000": e,
+        "test100": best_test, "shop1": shop_n, "shop5": shop_n, "box5": box_n,
+        "custom10": custom_n, "sun500": e, "sun2000": e, "sun5000": e,
     }
     out = []
     for a in ACHIEVEMENTS:
