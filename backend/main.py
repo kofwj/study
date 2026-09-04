@@ -657,8 +657,6 @@ def daily_delete(did: str):
 
 # ---------------- 周报（家长端） -------------
 
-WEEKDAY_CN = "一二三四五六日"
-
 
 @app.get("/api/admin/weekly", dependencies=[Depends(require_admin)])
 def weekly():
@@ -668,10 +666,10 @@ def weekly():
     days = []
     for i in range(7):
         d = (monday + timedelta(days=i)).isoformat()
-        earned = c.execute("SELECT COALESCE(SUM(delta),0) FROM ledger WHERE date=? AND delta>0", (d,)).fetchone()[0]
-        spent = c.execute(
+        day_earned = c.execute("SELECT COALESCE(SUM(delta),0) FROM ledger WHERE date=? AND delta>0", (d,)).fetchone()[0]
+        day_spent = c.execute(
             "SELECT COALESCE(SUM(-delta),0) FROM ledger WHERE date=? AND reason='redeem' AND delta<0", (d,)).fetchone()[0]
-        days.append({"date": d, "weekday": WEEKDAY_CN[i], "earned": earned, "spent": spent})
+        days.append({"date": d, "weekday": WEEKDAYS[i], "earned": day_earned, "spent": day_spent})
     w_start, w_end = days[0]["date"], days[6]["date"]
     net = c.execute(
         "SELECT COALESCE(SUM(delta),0) FROM ledger WHERE date BETWEEN ? AND ?", (w_start, w_end)).fetchone()[0]
