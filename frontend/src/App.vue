@@ -389,23 +389,6 @@ function reloadApp() { location.reload() }
           <h1>{{ ICONS[activeTab] || '📒' }} {{ activeTab }}</h1>
           <p class="hint">完成一项 +5 ☀️，再点一次会扣回。</p>
 
-          <div class="unit" v-if="data.daily.some(x => x.subject_id === activeTab)">
-            <h2><i></i> 每日打卡</h2>
-            <div class="grid">
-              <div v-for="d in data.daily.filter(x => x.subject_id === activeTab)" :key="d.id"
-                class="card" :class="{ done: d.done_today }">
-                <button class="circle" :class="{ ok: d.done_today }"
-                  @click="d.done_today ? cancelDaily(d) : openDaily(d)">{{ d.done_today ? '✓' : '' }}</button>
-                <div class="card-body">
-                  <div class="card-title">{{ d.name }}</div>
-                  <div v-if="d.note" class="card-detail">{{ d.note }}</div>
-                  <div class="plus">+{{ d.sunshine }} ☀️</div>
-                </div>
-                <button class="trend" @click="openChart(d)" title="看趋势">📈</button>
-              </div>
-            </div>
-          </div>
-
           <div v-for="u in currentUnits" :key="u.id" class="unit">
             <h2>
               <i></i> {{ u.name }}
@@ -421,6 +404,23 @@ function reloadApp() { location.reload() }
                   <div v-if="t.detail" class="card-detail">{{ t.detail }}</div>
                   <div class="plus">{{ t.past ? '已学过' : (t.locked ? '未解锁' : ('+' + t.sunshine + ' ☀️')) }}</div>
                 </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="unit" v-if="data.daily.some(x => x.subject_id === activeTab)">
+            <h2><i></i> 每日打卡</h2>
+            <div class="grid">
+              <div v-for="d in data.daily.filter(x => x.subject_id === activeTab)" :key="d.id"
+                class="card" :class="{ done: d.done_today }">
+                <button class="circle" :class="{ ok: d.done_today }"
+                  @click="d.done_today ? cancelDaily(d) : openDaily(d)">{{ d.done_today ? '✓' : '' }}</button>
+                <div class="card-body">
+                  <div class="card-title">{{ d.name }}</div>
+                  <div v-if="d.note" class="card-detail">{{ d.note }}</div>
+                  <div class="plus">+{{ d.sunshine }} ☀️</div>
+                </div>
+                <button class="trend" @click="openChart(d)" title="看趋势">📈</button>
               </div>
             </div>
           </div>
