@@ -40,10 +40,11 @@ cd ../backend && ./.venv/bin/uvicorn main:app --port 8000
 ### 首次部署
 
 ```bash
-cd /opt                      # 或你习惯的目录
-sudo git clone git@github.com:kofwj/study.git sunshine
+# 用有 GitHub SSH 访问的普通用户（如 kofwj），别用 root（root 无 GitHub 密钥）
+ssh -T git@github.com                 # 先验证：应回 Hi kofwj!
+cd ~ && git clone git@github.com:kofwj/study.git sunshine
 cd sunshine
-sudo docker compose up -d --build
+docker compose up -d --build          # kofwj 不在 docker 组则加 sudo
 curl -s http://127.0.0.1:9000/api/health   # 应回 {"ok":true}
 ```
 
