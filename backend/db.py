@@ -48,7 +48,7 @@ CREATE TABLE IF NOT EXISTS tasks (
   id TEXT PRIMARY KEY, subject_id TEXT, unit_id TEXT, action TEXT, title TEXT, detail TEXT DEFAULT '', sunshine INTEGER, sort INTEGER, custom INTEGER DEFAULT 0);
 CREATE TABLE IF NOT EXISTS daily_tasks (
   id TEXT PRIMARY KEY, subject_id TEXT, name TEXT, sunshine INTEGER, frequency TEXT,
-  bonus_type TEXT, bonus_per_metric INTEGER);
+  bonus_type TEXT, bonus_per_metric INTEGER, note TEXT DEFAULT '');
 CREATE TABLE IF NOT EXISTS daily_metrics (
   task_id TEXT, id TEXT, label TEXT, unit TEXT, direction TEXT, note TEXT, PRIMARY KEY (task_id, id));
 CREATE TABLE IF NOT EXISTS rewards (
@@ -114,10 +114,10 @@ def seed(conn):
                      (t["id"], t["subject"], t["unit_id"], t["action"], t["title"], t.get("detail", ""), t["sunshine"], t["sort"]))
     for d in data["daily_tasks"]:
         br = d.get("bonus_rule") or {}
-        conn.execute("INSERT OR REPLACE INTO daily_tasks(id,subject_id,name,sunshine,frequency,bonus_type,bonus_per_metric) "
-                     "VALUES(?,?,?,?,?,?,?)",
+        conn.execute("INSERT OR REPLACE INTO daily_tasks(id,subject_id,name,sunshine,frequency,bonus_type,bonus_per_metric,note) "
+                     "VALUES(?,?,?,?,?,?,?,?)",
                      (d["id"], d["subject"], d["name"], d["sunshine"], d["frequency"],
-                      br.get("type"), br.get("per_metric")))
+                      br.get("type"), br.get("per_metric"), d.get("note", "")))
         for m in d.get("metrics", []):
             conn.execute("INSERT OR REPLACE INTO daily_metrics(task_id,id,label,unit,direction,note) "
                          "VALUES(?,?,?,?,?,?)",
@@ -148,10 +148,10 @@ def apply_curriculum(conn):
                      (t["id"], t["subject"], t["unit_id"], t["action"], t["title"], t.get("detail", ""), t["sunshine"], t["sort"]))
     for d in data.get("daily_tasks", []):
         br = d.get("bonus_rule") or {}
-        conn.execute("INSERT OR REPLACE INTO daily_tasks(id,subject_id,name,sunshine,frequency,bonus_type,bonus_per_metric) "
-                     "VALUES(?,?,?,?,?,?,?)",
+        conn.execute("INSERT OR REPLACE INTO daily_tasks(id,subject_id,name,sunshine,frequency,bonus_type,bonus_per_metric,note) "
+                     "VALUES(?,?,?,?,?,?,?,?)",
                      (d["id"], d["subject"], d["name"], d["sunshine"], d["frequency"],
-                      br.get("type"), br.get("per_metric")))
+                      br.get("type"), br.get("per_metric"), d.get("note", "")))
         conn.execute("DELETE FROM daily_metrics WHERE task_id=?", (d["id"],))
         for m in d.get("metrics", []):
             conn.execute("INSERT OR REPLACE INTO daily_metrics(task_id,id,label,unit,direction,note) "
@@ -205,6 +205,10 @@ def init_db():
         pass
     try:
         conn.execute("ALTER TABLE tests ADD COLUMN unit_id TEXT")
+    except sqlite3.OperationalError:
+        pass
+    try:
+        conn.execute("ALTER TABLE daily_tasks ADD COLUMN note TEXT DEFAULT ''")
     except sqlite3.OperationalError:
         pass
     migrate_task_ids(conn)

@@ -376,6 +376,7 @@ function reloadApp() { location.reload() }
               <button v-else class="circle" :class="{ ok: t.done }" @click="toggleTask(t)">{{ t.done ? '✓' : '' }}</button>
               <div class="card-body">
                 <div class="card-title">{{ t.frequency === 'daily' ? t.name : t.title }}</div>
+                <div v-if="t.note" class="card-detail">{{ t.note }}</div>
                 <div v-if="t.detail" class="card-detail">{{ t.detail }}</div>
                 <div class="plus">{{ t.subject_id || '体育' }} · +{{ t.sunshine || 5 }} ☀️</div>
               </div>
@@ -416,6 +417,7 @@ function reloadApp() { location.reload() }
                   @click="d.done_today ? cancelDaily(d) : openDaily(d)">{{ d.done_today ? '✓' : '' }}</button>
                 <div class="card-body">
                   <div class="card-title">{{ d.name }}</div>
+                  <div v-if="d.note" class="card-detail">{{ d.note }}</div>
                   <div class="plus">+{{ d.sunshine }} ☀️</div>
                 </div>
                 <button class="trend" @click="openChart(d)" title="看趋势">📈</button>

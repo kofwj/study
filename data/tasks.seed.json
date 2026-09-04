@@ -17,7 +17,7 @@
     "综合",
     "围棋"
   ],
-  "curriculum_ver": "2026-g5s1-v7",
+  "curriculum_ver": "2026-g5s1-v8",
   "units": [
     {
       "id": "g5s1-cn-1",
@@ -1346,6 +1346,85 @@
   ],
   "daily_tasks": [
     {
+      "id": "cn-read",
+      "subject": "语文",
+      "name": "课外阅读 20 分钟",
+      "sunshine": 5,
+      "frequency": "daily",
+      "bonus_rule": {
+        "type": "personal_best",
+        "per_metric": 0,
+        "note": ""
+      },
+      "metrics": []
+    },
+    {
+      "id": "cn-pen",
+      "subject": "语文",
+      "name": "练字一页",
+      "sunshine": 5,
+      "frequency": "daily",
+      "bonus_rule": {
+        "type": "personal_best",
+        "per_metric": 0,
+        "note": ""
+      },
+      "metrics": []
+    },
+    {
+      "id": "cn-diary",
+      "subject": "语文",
+      "name": "小练笔/日记",
+      "sunshine": 5,
+      "frequency": "daily",
+      "bonus_rule": {
+        "type": "personal_best",
+        "per_metric": 0,
+        "note": ""
+      },
+      "note": "写一篇不少于 250 字的小练笔或日记",
+      "metrics": []
+    },
+    {
+      "id": "ma-calc",
+      "subject": "数学",
+      "name": "每日口算",
+      "sunshine": 5,
+      "frequency": "daily",
+      "bonus_rule": {
+        "type": "personal_best",
+        "per_metric": 3,
+        "note": "破个人纪录才叠加"
+      },
+      "metrics": [
+        {
+          "id": "time",
+          "label": "用时",
+          "unit": "分钟",
+          "direction": "lower_better"
+        },
+        {
+          "id": "acc",
+          "label": "正确率",
+          "unit": "%",
+          "direction": "higher_better"
+        }
+      ]
+    },
+    {
+      "id": "en-phonics",
+      "subject": "英语",
+      "name": "自然拼读学习",
+      "sunshine": 5,
+      "frequency": "daily",
+      "bonus_rule": {
+        "type": "personal_best",
+        "per_metric": 0,
+        "note": ""
+      },
+      "metrics": []
+    },
+    {
       "id": "pe-jump-rope",
       "subject": "体育",
       "name": "跳绳打卡",
@@ -1415,84 +1494,6 @@
       "id": "pe-eye",
       "subject": "体育",
       "name": "做一遍眼保健操",
-      "sunshine": 5,
-      "frequency": "daily",
-      "bonus_rule": {
-        "type": "personal_best",
-        "per_metric": 0,
-        "note": ""
-      },
-      "metrics": []
-    },
-    {
-      "id": "cn-read",
-      "subject": "语文",
-      "name": "课外阅读 20 分钟",
-      "sunshine": 5,
-      "frequency": "daily",
-      "bonus_rule": {
-        "type": "personal_best",
-        "per_metric": 0,
-        "note": ""
-      },
-      "metrics": []
-    },
-    {
-      "id": "cn-pen",
-      "subject": "语文",
-      "name": "练字一页",
-      "sunshine": 5,
-      "frequency": "daily",
-      "bonus_rule": {
-        "type": "personal_best",
-        "per_metric": 0,
-        "note": ""
-      },
-      "metrics": []
-    },
-    {
-      "id": "cn-diary",
-      "subject": "语文",
-      "name": "小练笔/日记（≥250字）",
-      "sunshine": 5,
-      "frequency": "daily",
-      "bonus_rule": {
-        "type": "personal_best",
-        "per_metric": 0,
-        "note": ""
-      },
-      "metrics": []
-    },
-    {
-      "id": "ma-calc",
-      "subject": "数学",
-      "name": "每日口算",
-      "sunshine": 5,
-      "frequency": "daily",
-      "bonus_rule": {
-        "type": "personal_best",
-        "per_metric": 3,
-        "note": "破个人纪录才叠加"
-      },
-      "metrics": [
-        {
-          "id": "time",
-          "label": "用时",
-          "unit": "分钟",
-          "direction": "lower_better"
-        },
-        {
-          "id": "acc",
-          "label": "正确率",
-          "unit": "%",
-          "direction": "higher_better"
-        }
-      ]
-    },
-    {
-      "id": "en-phonics",
-      "subject": "英语",
-      "name": "自然拼读学习",
       "sunshine": 5,
       "frequency": "daily",
       "bonus_rule": {
