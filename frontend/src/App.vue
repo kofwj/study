@@ -668,7 +668,7 @@ body {
 .unit-score.green { background: #eaf8ee; color: #2e8b57; }
 .unit-score.blue { background: #e8f2fb; color: #2f7db8; }
 .unit-score.gray { background: #f2f7fb; color: #9db8c8; }
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 260px)); gap: 12px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
 .card {
   position: relative; background: #fff; border-radius: 16px; padding: 16px 14px 14px 14px;
   display: flex; gap: 10px; align-items: flex-start; min-height: 86px;
