@@ -79,6 +79,11 @@ def streak(c):
 
 # ---------------- 状态 ----------------
 
+@app.get("/api/health")
+def health():
+    return {"ok": True}
+
+
 @app.get("/api/overview")
 def overview():
     return level_info(get_conn())

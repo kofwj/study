@@ -1,0 +1,17 @@
+services:
+  sunshine:
+    build: .
+    container_name: sunshine-workbench
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:9000:8000"   # 只绑本机，由 Cloudflare Tunnel 转发，不暴露公网
+    environment:
+      - SUNSHINE_DB=/data/sunshine.db
+    volumes:
+      - ./data:/data            # SQLite 持久化到宿主机 data/ 目录
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s

@@ -35,6 +35,43 @@ cd ../backend && ./.venv/bin/uvicorn main:app --port 8000
 # 访问 http://localhost:8000
 ```
 
+## 部署到 VPS（Docker + Cloudflare Tunnel）
+
+### 首次部署
+
+```bash
+cd /opt                      # 或你习惯的目录
+sudo git clone <你的仓库地址> sunshine
+cd sunshine
+sudo docker compose up -d --build
+curl -s http://127.0.0.1:9000/api/health   # 应回 {"ok":true}
+```
+
+> 容器只绑 `127.0.0.1:9000`，不对外开放端口。
+
+### Cloudflare Tunnel（零信任面板）
+
+1. Cloudflare Zero Trust → Networks → Tunnels → 选你已有的隧道
+2. Public Hostnames → Add a public hostname
+3. 子域名（如 `sunshine`）+ 你的域名 → Service 填 `http://localhost:9000`
+4. 保存，浏览器开 `https://sunshine.你的域名` 即可
+
+### 日常更新（拉代码后重新构建，前端烘焙进镜像必须 build）
+
+```bash
+cd /opt/sunshine
+python3 scripts/backup_db.py
+./scripts/deploy_vps.sh
+```
+
+> 若 UI 没变：`docker compose build --no-cache && docker compose up -d`，用户侧强刷新（Ctrl/Cmd+Shift+R）。
+
+### 数据与备份
+
+- SQLite 挂在 `./data/sunshine.db`（宿主 repo 的 data/ 目录）
+- 备份：`docker compose exec -T sunshine python3 /app/scripts/backup_db.py` 或宿主机 `python3 scripts/backup_db.py`
+- 备份落在 `data/backups/`，只留最近 10 份
+
 ## 目录
 
 - `PLAN.md` —— 设计思路与数据模型
@@ -63,4 +100,3 @@ cd ../backend && ./.venv/bin/uvicorn main:app --port 8000
 
 - PWA 安装 + 桌面优化
 - 其余 4 科（科学/道法/音美/综合）目录录入
-- Docker + Cloudflare Tunnel 部署到 VPS
