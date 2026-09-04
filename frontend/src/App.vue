@@ -21,6 +21,7 @@ const err = ref('')
 const toast = ref('')
 const shopOpen = ref(false)
 const myRedeems = ref([])
+const celebrate = ref(null)
 const customTitle = ref('')
 const renaming = ref(false)
 const renameVal = ref('')
@@ -57,7 +58,14 @@ function exitAdmin() {
 async function refresh() {
   try {
     const [t, r] = await Promise.all([api.tasks(), api.rewards()])
+    const prevId = data.level && data.level.level_id
+    const prevEarned = data.level && (data.level.earned || 0)
     Object.assign(data, t)
+    // 升级检测：等级变了且累计阳光增加了才庆祝（取消扣回导致的降级不庆祝）
+    if (prevId && t.level.level_id !== prevId && t.level.earned >= prevEarned) {
+      celebrate.value = { icon: t.level.level_icon || '⭐', name: t.level.level }
+      setTimeout(() => (celebrate.value = null), 2800)
+    }
     rewards.value = r
     err.value = ''
   } catch (e) {
@@ -402,6 +410,18 @@ onMounted(async () => {
       </div>
     </div>
     <p v-if="err" class="err">{{ err }}</p>
+
+    <!-- 升级庆祝 -->
+    <div v-if="celebrate" class="celebrate">
+      <div class="confetti">
+        <span v-for="i in 14" :key="i" :style="{ left: (i * 7.1) + '%', animationDelay: (i * 0.09) + 's' }">✦</span>
+      </div>
+      <div class="celebrate-card">
+        <div class="celebrate-icon">{{ celebrate.icon }}</div>
+        <div class="celebrate-title">🎉 升级啦！</div>
+        <div class="celebrate-name">{{ celebrate.icon }} {{ celebrate.name }}</div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -534,6 +554,18 @@ body {
 .shop-modal input, .metric input { width: 100%; padding: 10px 12px; border: 1px solid #d7e6f0; border-radius: 10px; font-size: 15px; }
 .parent { position: fixed; left: 16px; bottom: 86px; border: none; background: none; color: #7aa0b8; cursor: pointer; z-index: 5; }
 .err { color: #c62828; text-align: center; }
+
+/* 升级庆祝 */
+.celebrate { position: fixed; inset: 0; z-index: 40; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+.celebrate-card { position: relative; z-index: 2; background: #fff; border-radius: 24px; padding: 32px 44px; text-align: center; box-shadow: 0 20px 60px rgba(20,50,80,.25); animation: pop .5s cubic-bezier(.2,1.6,.4,1) both; }
+.celebrate-icon { font-size: 64px; animation: bounce 1s ease-in-out infinite; }
+.celebrate-title { font-size: 22px; font-weight: 800; color: #f5a623; margin-top: 8px; }
+.celebrate-name { font-size: 18px; font-weight: 700; color: #1f3b55; margin-top: 6px; }
+.confetti { position: absolute; inset: 0; z-index: 1; overflow: hidden; }
+.confetti span { position: absolute; top: -40px; font-size: 24px; color: #ffc107; animation: fall 2.6s linear forwards; }
+@keyframes pop { from { transform: scale(.4); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@keyframes bounce { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+@keyframes fall { to { transform: translateY(110vh) rotate(720deg); opacity: 0; } }
 
 @media (max-width: 900px) {
   .desk { padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
