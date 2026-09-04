@@ -46,6 +46,16 @@ function showToast(msg) {
   clearTimeout(toastTimer)
   toastTimer = setTimeout(() => (toast.value = ''), 2800)
 }
+// 打卡飘出 +N 阳光
+const floaters = ref([])
+let floaterId = 0
+function flyPlus(x, y, text) {
+  const id = ++floaterId
+  floaters.value.push({ id, text, x, y })
+  setTimeout(() => {
+    floaters.value = floaters.value.filter(f => f.id !== id)
+  }, 1000)
+}
 function scoreClass(s) {
   if (s >= 95) return 'gold'
   if (s >= 90) return 'green'
@@ -99,7 +109,7 @@ async function checkin() {
   } catch (e) { showToast(e.message) }
 }
 
-async function toggleTask(task) {
+async function toggleTask(task, event) {
   if (task.past) {
     showToast('这课已经学过了，不加阳光')
     return
@@ -114,6 +124,7 @@ async function toggleTask(task) {
       showToast('已取消，扣回阳光')
     } else {
       const r = await api.complete(task.id)
+      if (event) flyPlus(event.clientX, event.clientY, `+${r.delta} ☀️`)
       showToast(`太棒了！完成【${task.title}】+${r.delta} ☀️` + milestoneTxt(r.milestone))
     }
     await refresh()
@@ -167,7 +178,7 @@ function openDaily(task) {
   for (const m of task.metrics) dailyDialog.vals[m.id] = ''
   dailyDialog.open = true
 }
-async function submitDaily() {
+async function submitDaily(event) {
   const metrics = {}
   for (const m of dailyDialog.task.metrics) {
     const v = Number(dailyDialog.vals[m.id])
@@ -175,6 +186,7 @@ async function submitDaily() {
   }
   try {
     const r = await api.complete(dailyDialog.task.id, metrics)
+    if (event) flyPlus(event.clientX, event.clientY, `+${r.delta} ☀️`)
     showToast((r.bonus > 0 ? `完成 +${r.delta} ☀️（破纪录 +${r.bonus}！）` : `完成【${dailyDialog.task.name}】+${r.delta} ☀️`) + milestoneTxt(r.milestone))
     dailyDialog.open = false
     await refresh()
@@ -373,7 +385,7 @@ function reloadApp() { location.reload() }
           <div class="grid">
             <div v-for="t in recommend" :key="t.id || t.name" class="card" :class="{ done: t.done }">
               <button v-if="t.frequency === 'daily'" class="circle" @click="openDaily(t)">○</button>
-              <button v-else class="circle" :class="{ ok: t.done }" @click="toggleTask(t)">{{ t.done ? '✓' : '' }}</button>
+              <button v-else class="circle" :class="{ ok: t.done }" @click="toggleTask(t, $event)">{{ t.done ? '✓' : '' }}</button>
               <div class="card-body">
                 <div class="card-title">{{ t.frequency === 'daily' ? t.name : t.title }}</div>
                 <div v-if="t.note" class="card-detail">{{ t.note }}</div>
@@ -415,7 +427,7 @@ function reloadApp() { location.reload() }
             </h2>
             <div class="grid">
               <div v-for="t in u.tasks" :key="t.id" class="card" :class="{ done: t.done, past: t.past, locked: t.locked }">
-                <button class="circle" :class="{ ok: t.done || t.past }" @click="toggleTask(t)">{{ t.done || t.past ? '✓' : (t.locked ? '🔒' : '') }}</button>
+                <button class="circle" :class="{ ok: t.done || t.past }" @click="toggleTask(t, $event)">{{ t.done || t.past ? '✓' : (t.locked ? '🔒' : '') }}</button>
                 <div class="card-body">
                   <div class="card-title">{{ t.title }}</div>
                   <div v-if="t.detail" class="card-detail">{{ t.detail }}</div>
@@ -474,7 +486,7 @@ function reloadApp() { location.reload() }
           <label>{{ m.label }}（{{ m.unit }}）</label>
           <input v-model.number="dailyDialog.vals[m.id]" type="number" inputmode="decimal" :placeholder="m.unit" />
         </div>
-        <button class="do big" @click="submitDaily">打卡，赚阳光 ☀️</button>
+        <button class="do big" @click="submitDaily($event)">打卡，赚阳光 ☀️</button>
         <button class="ghost" @click="dailyDialog.open = false">取消</button>
       </div>
     </div>
@@ -533,6 +545,9 @@ function reloadApp() { location.reload() }
       </div>
     </div>
     <p v-if="err" class="err">{{ err }}</p>
+
+    <!-- +N 阳光飞出 -->
+    <div v-for="f in floaters" :key="f.id" class="floater" :style="{ left: f.x + 'px', top: f.y + 'px' }">{{ f.text }}</div>
 
     <!-- 升级庆祝 -->
     <div v-if="celebrate" class="celebrate">
@@ -748,6 +763,18 @@ body {
 
 /* 升级庆祝 */
 .celebrate { position: fixed; inset: 0; z-index: 40; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+.floater {
+  position: fixed; z-index: 60; pointer-events: none;
+  font-size: 22px; font-weight: 900; color: #f5a623;
+  transform: translate(-50%, -50%); white-space: nowrap;
+  text-shadow: 0 1px 3px rgba(0,0,0,.18);
+  animation: flyup 1s ease-out forwards;
+}
+@keyframes flyup {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(.5); }
+  15% { opacity: 1; transform: translate(-50%, -70%) scale(1.15); }
+  100% { opacity: 0; transform: translate(-50%, -180%) scale(.85); }
+}
 .celebrate-card { position: relative; z-index: 2; background: #fff; border-radius: 24px; padding: 32px 44px; text-align: center; box-shadow: 0 20px 60px rgba(20,50,80,.25); animation: pop .5s cubic-bezier(.2,1.6,.4,1) both; }
 .celebrate-icon { font-size: 64px; animation: bounce 1s ease-in-out infinite; }
 .celebrate-title { font-size: 22px; font-weight: 800; color: #f5a623; margin-top: 8px; }
