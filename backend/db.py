@@ -23,17 +23,21 @@ REWARDS = [
 
 # 等级（累计获得阳光阈值，消费不掉级）
 # 参照 Duolingo/ClassDojo：前期密集升级给即时反馈，后期门槛递增；emoji 递进形象
-RANKS_VER = "v2"
+RANKS_VER = "v3"
 ALL_SUBJECTS = ["语文", "数学", "英语", "科学", "道法", "体育", "音美", "综合"]
 
+# 满级 5000 = 约一学期坚持（日产出 ~60），共 10 档，前期密度后期递增
 RANKS = [
-    {"id": "r1", "name": "阳光萌新",   "min_sunshine": 0,    "icon": "🌱"},
-    {"id": "r2", "name": "阳光小苗",   "min_sunshine": 20,   "icon": "🌿"},
-    {"id": "r3", "name": "阳光小能手", "min_sunshine": 60,   "icon": "🌼"},
-    {"id": "r4", "name": "阳光达人",   "min_sunshine": 150,  "icon": "⭐"},
-    {"id": "r5", "name": "阳光之星",   "min_sunshine": 300,  "icon": "🔥"},
-    {"id": "r6", "name": "阳光学霸",   "min_sunshine": 600,  "icon": "🏆"},
-    {"id": "r7", "name": "传奇学神",   "min_sunshine": 1200, "icon": "👑"},
+    {"id": "r1",  "name": "阳光萌新",   "min_sunshine": 0,    "icon": "🌱"},
+    {"id": "r2",  "name": "阳光小苗",   "min_sunshine": 50,   "icon": "🌿"},
+    {"id": "r3",  "name": "阳光小能手", "min_sunshine": 150,  "icon": "🌼"},
+    {"id": "r4",  "name": "阳光达人",   "min_sunshine": 350,  "icon": "⭐"},
+    {"id": "r5",  "name": "阳光之星",   "min_sunshine": 700,  "icon": "🔥"},
+    {"id": "r6",  "name": "阳光学霸",   "min_sunshine": 1200, "icon": "🏆"},
+    {"id": "r7",  "name": "阳光大师",   "min_sunshine": 2000, "icon": "🥇"},
+    {"id": "r8",  "name": "阳光传说",   "min_sunshine": 3000, "icon": "💎"},
+    {"id": "r9",  "name": "阳光战神",   "min_sunshine": 4000, "icon": "🚀"},
+    {"id": "r10", "name": "传奇学神",   "min_sunshine": 5000, "icon": "👑"},
 ]
 
 SCHEMA = """
