@@ -7,7 +7,8 @@ createApp(App).mount('#app')
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js').then((reg) => {
-      // 每 30 分钟主动检查一次更新
+      // 打开后立即检查一次，之后每 30 分钟检查一次更新
+      reg.update().catch(() => {})
       setInterval(() => { try { reg.update() } catch {} }, 30 * 60 * 1000)
       reg.addEventListener('updatefound', () => {
         const w = reg.installing

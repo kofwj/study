@@ -960,4 +960,8 @@ def daily_history(task_id: str):
 
 _DIST = db.BASE.parent / "frontend" / "dist"
 if (_DIST / "index.html").exists():
+    @app.get("/sw.js", include_in_schema=False)
+    def _sw_js():
+        from fastapi.responses import FileResponse
+        return FileResponse(str(_DIST / "sw.js"), headers={"Cache-Control": "no-cache"})
     app.mount("/", StaticFiles(directory=str(_DIST), html=True), name="static")
