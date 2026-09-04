@@ -333,6 +333,7 @@ onMounted(async () => {
                 <div class="card-title">{{ t.frequency === 'daily' ? t.name : t.title }}</div>
                 <div class="plus">{{ t.subject_id || '体育' }} · +{{ t.sunshine || 5 }} ☀️</div>
               </div>
+              <button v-if="t.frequency === 'daily'" class="trend" @click="openChart(t)" title="看趋势">📈</button>
             </div>
           </div>
         </template>
