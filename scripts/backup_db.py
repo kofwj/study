@@ -16,7 +16,7 @@ backup_dir = src.parent / "backups"
 backup_dir.mkdir(exist_ok=True)
 dst = backup_dir / f"sunshine_{time.strftime('%Y%m%d_%H%M%S')}.db"
 
-s = sqlite3.connect(src)
+s = sqlite3.connect(f"file:{src.resolve()}?mode=ro", uri=True)  # 只读打开，兼容 root 所有的 DB 文件
 d = sqlite3.connect(dst)
 with d:
     s.backup(d)

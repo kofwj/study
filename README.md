@@ -44,7 +44,8 @@ cd ../backend && ./.venv/bin/uvicorn main:app --port 8000
 ssh -T git@github.com                 # 先验证：应回 Hi kofwj!
 cd ~ && git clone git@github.com:kofwj/study.git sunshine
 cd sunshine
-docker compose up -d --build          # kofwj 不在 docker 组则加 sudo
+sudo usermod -aG docker kofwj && exit   # 加入 docker 组（重登生效），之后无需 sudo
+docker compose up -d --build
 curl -s http://127.0.0.1:9000/api/health   # 应回 {"ok":true}
 ```
 
@@ -70,8 +71,7 @@ python3 scripts/backup_db.py
 ### 数据与备份
 
 - SQLite 挂在 `./data/sunshine.db`（宿主 repo 的 data/ 目录）
-- 备份：`docker compose exec -T sunshine python3 /app/scripts/backup_db.py` 或宿主机 `python3 scripts/backup_db.py`
-- 备份落在 `data/backups/`，只留最近 10 份
+- 备份：宿主机 `python3 scripts/backup_db.py`（只读热备份，落在 `data/backups/`，只留最近 10 份）
 
 ## 目录
 
