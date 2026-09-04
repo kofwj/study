@@ -153,6 +153,17 @@ def apply_curriculum(conn):
     set_setting(conn, "curriculum_ver", ver)
 
 
+def migrate_task_ids(conn):
+    """把旧（无学期前缀）单元任务/游标 id 归一为 g5s1-*，保证跨学期不撞旧完成记录（幂等）。"""
+    for p in ("cn-", "ma-", "en-"):
+        conn.execute(
+            "UPDATE completions SET task_id='g5s1-'||task_id "
+            "WHERE task_id LIKE ? AND task_id NOT LIKE 'g5s1-%'", (p + "%",))
+    conn.execute(
+        "UPDATE settings SET value='g5s1-'||value WHERE key LIKE 'cursor_%' "
+        "AND value != '' AND value NOT LIKE 'g5s1-%'")
+
+
 def init_db():
     conn = connect()
     conn.executescript(SCHEMA)
@@ -181,6 +192,7 @@ def init_db():
         conn.execute("ALTER TABLE ranks ADD COLUMN icon TEXT DEFAULT ''")
     except sqlite3.OperationalError:
         pass
+    migrate_task_ids(conn)
     if conn.execute("SELECT COUNT(*) FROM subjects").fetchone()[0] == 0:
         seed(conn)
     else:
@@ -189,8 +201,8 @@ def init_db():
         conn.execute("INSERT OR IGNORE INTO subjects(id,name) VALUES(?,?)", (s, s))
     conn.execute("INSERT OR IGNORE INTO settings(key,value) VALUES('admin_pin','8888')")
     conn.execute("INSERT OR IGNORE INTO settings(key,value) VALUES('kid_name','乐乐')")
-    # 语文已学到《珍珠鸟》（cn-1-5），推荐从这里往后，前面不加阳光
-    conn.execute("INSERT OR IGNORE INTO settings(key,value) VALUES('cursor_语文','cn-1-5')")
+    # 语文已学到《珍珠鸟》（g5s1-cn-1-5），推荐从这里往后，前面不加阳光
+    conn.execute("INSERT OR IGNORE INTO settings(key,value) VALUES('cursor_语文','g5s1-cn-1-5')")
     if get_setting(conn, "ranks_ver", "") != RANKS_VER:
         seed_ranks(conn)
     conn.commit()

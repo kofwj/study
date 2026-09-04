@@ -201,7 +201,8 @@ SUBJ_ID = {"语文": "cn", "数学": "ma", "英语": "en"}
 
 
 def pack(subj, seq, name, items):
-    uid = f"{SUBJ_ID[subj]}-{seq}"
+    # 任务/单元 id 带学期前缀，确保跨学期不撞旧 completion（五上=g5s1）
+    uid = f"{TERM['id']}-{SUBJ_ID[subj]}-{seq}"
     unit = {"id": uid, "subject": subj, "term_id": TERM["id"], "seq": seq, "name": name}
     tasks = []
     for i, (action, title) in enumerate(items, 1):
@@ -230,7 +231,7 @@ def main():
     units, tasks = build()
     os.makedirs("data", exist_ok=True)
     with open("data/tasks.seed.json", "w", encoding="utf-8") as f:
-        json.dump({"term": TERM, "subjects": SUBJECTS, "curriculum_ver": "2026-g5s1-v2",
+        json.dump({"term": TERM, "subjects": SUBJECTS, "curriculum_ver": "2026-g5s1-v3",
                    "units": units, "tasks": tasks, "daily_tasks": DAILY_TASKS},
                   f, ensure_ascii=False, indent=2)
     lines = ["# 2026 新教材任务卡", "",

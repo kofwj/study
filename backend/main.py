@@ -6,6 +6,7 @@
 """
 import json
 import uuid
+from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
 
 from typing import Optional
@@ -16,16 +17,21 @@ from pydantic import BaseModel
 
 import db
 
-app = FastAPI(title="阳光学习工作台")
+
+@asynccontextmanager
+async def lifespan(app):
+    db.init_db()  # 启动时建库/迁移一次，请求路径不再重复初始化
+    yield
+
+
+app = FastAPI(title="阳光学习工作台", lifespan=lifespan)
 # 前端由 StaticFiles 同源托管，无需跨域；删掉 CORS 避免任何外部站点能调用接口
 
 CHECKIN_SUN = 5  # 每日签到领 5 阳光
 
 
 def get_conn():
-    db.init_db()
-    conn = db.connect()
-    return conn
+    return db.connect()
 
 
 def earned(c):
