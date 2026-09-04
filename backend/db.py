@@ -22,6 +22,8 @@ REWARDS = [
 ]
 
 # 等级（累计获得阳光阈值，消费不掉级）
+ALL_SUBJECTS = ["语文", "数学", "英语", "科学", "道法", "体育", "音美", "综合"]
+
 RANKS = [
     {"id": "r1", "name": "阳光萌新",   "min_sunshine": 0},
     {"id": "r2", "name": "阳光小能手", "min_sunshine": 50},
@@ -36,7 +38,7 @@ CREATE TABLE IF NOT EXISTS subjects (id TEXT PRIMARY KEY, name TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS terms (id TEXT PRIMARY KEY, label TEXT, grade TEXT, term TEXT, version TEXT);
 CREATE TABLE IF NOT EXISTS units (id TEXT PRIMARY KEY, subject_id TEXT, term_id TEXT, seq INTEGER, name TEXT);
 CREATE TABLE IF NOT EXISTS tasks (
-  id TEXT PRIMARY KEY, subject_id TEXT, unit_id TEXT, action TEXT, title TEXT, sunshine INTEGER, sort INTEGER);
+  id TEXT PRIMARY KEY, subject_id TEXT, unit_id TEXT, action TEXT, title TEXT, sunshine INTEGER, sort INTEGER, custom INTEGER DEFAULT 0);
 CREATE TABLE IF NOT EXISTS daily_tasks (
   id TEXT PRIMARY KEY, subject_id TEXT, name TEXT, sunshine INTEGER, frequency TEXT,
   bonus_type TEXT, bonus_per_metric INTEGER);
@@ -81,14 +83,14 @@ def seed(conn):
     conn.execute("DELETE FROM terms")
     conn.execute("INSERT INTO terms(id,label,grade,term,version) VALUES(?,?,?,?,?)",
                  (term["id"], term["label"], term["grade"], term["term"], term["version"]))
-    for s in data["subjects"]:
+    for s in ALL_SUBJECTS:
         conn.execute("INSERT OR REPLACE INTO subjects(id,name) VALUES(?,?)", (s, s))
     for u in data["units"]:
         conn.execute("INSERT OR REPLACE INTO units(id,subject_id,term_id,seq,name) VALUES(?,?,?,?,?)",
                      (u["id"], u["subject"], u["term_id"], u["seq"], u["name"]))
     for t in data["tasks"]:
-        conn.execute("INSERT OR REPLACE INTO tasks(id,subject_id,unit_id,action,title,sunshine,sort) "
-                     "VALUES(?,?,?,?,?,?,?)",
+        conn.execute("INSERT OR REPLACE INTO tasks(id,subject_id,unit_id,action,title,sunshine,sort,custom) "
+                     "VALUES(?,?,?,?,?,?,?,0)",
                      (t["id"], t["subject"], t["unit_id"], t["action"], t["title"], t["sunshine"], t["sort"]))
     for d in data["daily_tasks"]:
         br = d.get("bonus_rule") or {}
@@ -114,10 +116,17 @@ def seed(conn):
 def init_db():
     conn = connect()
     conn.executescript(SCHEMA)
+    try:
+        conn.execute("ALTER TABLE tasks ADD COLUMN custom INTEGER DEFAULT 0")
+    except sqlite3.OperationalError:
+        pass
     # 只以「科目是否存在」判断首次初始化，避免家长删光任务后重启被重置
     if conn.execute("SELECT COUNT(*) FROM subjects").fetchone()[0] == 0:
         seed(conn)
+    for s in ALL_SUBJECTS:
+        conn.execute("INSERT OR IGNORE INTO subjects(id,name) VALUES(?,?)", (s, s))
     conn.execute("INSERT OR IGNORE INTO settings(key,value) VALUES('admin_pin','8888')")
+    conn.execute("INSERT OR IGNORE INTO settings(key,value) VALUES('kid_name','乐乐')")
     conn.commit()
     conn.close()
 

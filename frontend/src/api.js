@@ -21,6 +21,9 @@ export const api = {
   rewards: () => j('/api/rewards'),
   redeem: (reward_id) => j('/api/rewards/redeem', { method: 'POST', ...body({ reward_id }) }),
   ledger: () => j('/api/ledger?limit=15'),
+  setKidName: (name) => j('/api/kid-name', { method: 'POST', ...body({ name }) }),
+  customTask: (o) => j('/api/custom-task', { method: 'POST', ...body(o) }),
+  delCustom: (id) => j(`/api/tasks/${id}`, { method: 'DELETE' }),
 
   // —— 家长端 ——
   admin: {

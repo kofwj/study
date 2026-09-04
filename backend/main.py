@@ -95,6 +95,7 @@ def tasks():
     out = {
         "level": level_info(c),
         "streak": streak(c),
+        "kid_name": db.get_setting(c, "kid_name", "乐乐"),
         "today_checkin": c.execute(
             "SELECT 1 FROM checkins WHERE date=?", (db.today(),)).fetchone() is not None,
         "subjects": [dict(r) for r in c.execute("SELECT * FROM subjects").fetchall()],
@@ -216,6 +217,61 @@ def complete(body: CompleteBody):
         c.commit()
         return {"delta": delta, "bonus": bonus, "bonus_detail": detail, "level": level_info(c)}
     raise HTTPException(404, "没找到这个任务")
+
+
+class KidNameBody(BaseModel):
+    name: str
+
+
+@app.post("/api/kid-name")
+def set_kid_name(body: KidNameBody):
+    name = (body.name or "").strip()[:12]
+    if not name:
+        raise HTTPException(400, "名字不能为空")
+    c = get_conn()
+    db.set_setting(c, "kid_name", name)
+    c.commit()
+    return {"name": name}
+
+
+class CustomTaskBody(BaseModel):
+    subject_id: str
+    title: str
+    sunshine: int = 5
+
+
+@app.post("/api/custom-task")
+def custom_task(body: CustomTaskBody):
+    title = (body.title or "").strip()[:40]
+    if not title:
+        raise HTTPException(400, "填一下任务名称")
+    c = get_conn()
+    if not c.execute("SELECT 1 FROM subjects WHERE id=?", (body.subject_id,)).fetchone():
+        raise HTTPException(404, "没有这个学科")
+    unit = c.execute("SELECT id FROM units WHERE subject_id=? ORDER BY seq LIMIT 1",
+                     (body.subject_id,)).fetchone()
+    unit_id = unit["id"] if unit else f"custom-{body.subject_id}"
+    if not unit:
+        c.execute("INSERT OR IGNORE INTO units(id,subject_id,term_id,seq,name) VALUES(?,?,?,?,?)",
+                  (unit_id, body.subject_id, "g5s1", 99, "自定义"))
+    tid = uuid.uuid4().hex[:8]
+    c.execute("INSERT INTO tasks(id,subject_id,unit_id,action,title,sunshine,sort,custom) VALUES(?,?,?,?,?,?,99,1)",
+              (tid, body.subject_id, unit_id, "自定义", title, body.sunshine or 5))
+    c.commit()
+    return {"id": tid}
+
+
+@app.delete("/api/tasks/{tid}")
+def delete_task_kid(tid: str):
+    c = get_conn()
+    row = c.execute("SELECT custom FROM tasks WHERE id=?", (tid,)).fetchone()
+    if not row:
+        raise HTTPException(404, "没找到这个任务")
+    if not row["custom"]:
+        raise HTTPException(403, "系统任务请在家长端删除")
+    c.execute("DELETE FROM tasks WHERE id=?", (tid,))
+    c.commit()
+    return {"ok": True}
 
 
 @app.post("/api/cancel")
