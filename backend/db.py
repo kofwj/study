@@ -218,6 +218,7 @@ def init_db():
     conn.execute("INSERT OR IGNORE INTO settings(key,value) VALUES('kid_name','乐乐')")
     # 语文已学到《珍珠鸟》（g5s1-cn-1-5），推荐从这里往后，前面不加阳光
     conn.execute("INSERT OR IGNORE INTO settings(key,value) VALUES('cursor_语文','g5s1-cn-1-5')")
+    conn.execute("INSERT OR IGNORE INTO settings(key,value) VALUES('progress_lock','1')")
     if get_setting(conn, "ranks_ver", "") != RANKS_VER:
         seed_ranks(conn)
     conn.commit()

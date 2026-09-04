@@ -97,6 +97,31 @@ def is_past(c, task_id, subject_id):
     return ids.index(task_id) < ids.index(cur)
 
 
+def locked_task_ids(c):
+    """进度锁（默认开）：每科只有「当前单元」可打卡，之后的单元锁定，防提前刷后面的课。"""
+    if db.get_setting(c, "progress_lock", "1") != "1":
+        return set()
+    tseq = {r["id"]: r["seq"] for r in c.execute(
+        "SELECT t.id, COALESCE(u.seq,0) seq FROM tasks t LEFT JOIN units u ON u.id=t.unit_id").fetchall()}
+    custom_ids = {r["id"] for r in c.execute("SELECT id FROM tasks WHERE custom=1").fetchall()}
+    locked = set()
+    for sid in {r[0] for r in c.execute("SELECT DISTINCT subject_id FROM tasks").fetchall()}:
+        ids = subject_order(c, sid)
+        cur_seq = None
+        for tid in ids:
+            if tid in custom_ids:
+                continue
+            done = c.execute("SELECT 1 FROM completions WHERE task_id=? AND status='completed'",
+                            (tid,)).fetchone() is not None
+            if done or is_past(c, tid, sid):
+                continue
+            cur_seq = tseq.get(tid, 0)
+            break
+        if cur_seq is not None:
+            locked |= {tid for tid in ids if tid not in custom_ids and tseq.get(tid, 0) > cur_seq}
+    return locked
+
+
 def streak(c):
     # 连击 = 连续几天有「任何学习活动」（签到 / 完成任务 / 每日打卡 / 兑换成功）
     dates = {r["date"] for r in c.execute("SELECT DISTINCT date FROM checkins").fetchall()}
@@ -253,8 +278,11 @@ def tasks():
         "ORDER BY t.subject_id, COALESCE(u.seq,99), t.sort").fetchall()
     done_ids = {r["task_id"] for r in c.execute(
         "SELECT DISTINCT task_id FROM completions WHERE status='completed'").fetchall()}
+    out["progress_lock"] = db.get_setting(c, "progress_lock", "1")
+    locked_ids = locked_task_ids(c)
     out["tasks"] = [{**dict(t), "done": t["id"] in done_ids,
-                     "past": is_past(c, t["id"], t["subject_id"])} for t in tasks_rows]
+                     "past": is_past(c, t["id"], t["subject_id"]),
+                     "locked": t["id"] in locked_ids} for t in tasks_rows]
     # 每日任务 + 今日状态 + 历史最好
     dts = c.execute("SELECT * FROM daily_tasks").fetchall()
     daily = []
@@ -350,6 +378,9 @@ def complete(body: CompleteBody):
         if is_past(c, tid, row["subject_id"]):
             c.close()
             raise HTTPException(409, "这课已经学过了，不加阳光")
+        if tid in locked_task_ids(c):
+            c.close()
+            raise HTTPException(409, "这课还没学到，先把前面的学完哦")
         delta = row["sunshine"]
         cur = c.execute("INSERT OR IGNORE INTO completions(task_id,date,status,sunshine,metrics,kind,created_at) "
                         "VALUES(?,?,?,?,?,?,?)",
@@ -545,6 +576,18 @@ def set_cursor(b: CursorBody):
     c = get_conn()
     db.set_setting(c, "cursor_" + b.subject_id, b.task_id)
     c.commit()
+    return {"ok": True}
+
+
+class LockBody(BaseModel):
+    on: bool = True
+
+
+@app.post("/api/admin/progress-lock", dependencies=[Depends(require_admin)])
+def set_progress_lock(b: LockBody):
+    c = get_conn()
+    db.set_setting(c, "progress_lock", "1" if b.on else "0")
+    c.commit(); c.close()
     return {"ok": True}
 
 

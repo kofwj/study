@@ -105,6 +105,10 @@ async function toggleTask(task) {
     showToast('这课已经学过了，不加阳光')
     return
   }
+  if (task.locked) {
+    showToast('🔒 还没学到这课，先把前面的学完')
+    return
+  }
   try {
     if (task.done) {
       await api.cancel(task.id)
@@ -412,13 +416,13 @@ function reloadApp() { location.reload() }
               </span>
             </h2>
             <div class="grid">
-              <div v-for="t in u.tasks" :key="t.id" class="card" :class="{ done: t.done, past: t.past }">
+              <div v-for="t in u.tasks" :key="t.id" class="card" :class="{ done: t.done, past: t.past, locked: t.locked }">
                 <button v-if="t.custom" class="x" title="删除" @click="delCustom(t)">×</button>
-                <button class="circle" :class="{ ok: t.done || t.past }" @click="toggleTask(t)">{{ t.done || t.past ? '✓' : '' }}</button>
+                <button class="circle" :class="{ ok: t.done || t.past }" @click="toggleTask(t)">{{ t.done || t.past ? '✓' : (t.locked ? '🔒' : '') }}</button>
                 <div class="card-body">
                   <div class="card-title">{{ t.title }}</div>
                   <div v-if="t.detail" class="card-detail">{{ t.detail }}</div>
-                  <div class="plus">{{ t.past ? '已学过' : ('+' + t.sunshine + ' ☀️') }}</div>
+                  <div class="plus">{{ t.past ? '已学过' : (t.locked ? '未解锁' : ('+' + t.sunshine + ' ☀️')) }}</div>
                 </div>
               </div>
             </div>
@@ -704,6 +708,7 @@ body {
 .card-title { font-size: 14px; line-height: 1.45; font-weight: 600; }
 .card-detail { margin-top: 4px; font-size: 12px; line-height: 1.5; color: #7aa0b8; }
 .plus { margin-top: 8px; color: #f5a623; font-weight: 800; font-size: 13px; }
+.card.locked { opacity: .45; }
 .x {
   position: absolute; top: 6px; right: 8px; border: none; background: none; color: #b7c9d6;
   cursor: pointer; font-size: 16px; display: none;

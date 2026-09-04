@@ -11,6 +11,7 @@ const units = ref([])
 const tasks = ref([])
 const daily = ref([])
 const cursors = ref({})
+const progressLock = ref(true)
 const redemptions = ref([])
 const tests = ref([])
 const newTest = reactive({ subject_id: '', unit_id: '', score: '', note: '' })
@@ -44,6 +45,7 @@ async function load() {
   tasks.value = t.tasks
   daily.value = t.daily
   cursors.value = t.cursors || {}
+  progressLock.value = t.progress_lock === '1'
   redemptions.value = rd
   weekly.value = wk
   tests.value = ts
@@ -151,6 +153,14 @@ async function setCursor(subj, taskId) {
     await api.admin.setCursor({ subject_id: subj, task_id: taskId })
     cursors.value = { ...cursors.value, [subj]: taskId }
     showToast('已更新「已学到」')
+  } catch (e) { showToast(e.message) }
+}
+
+async function toggleLock() {
+  try {
+    await api.admin.setProgressLock(!progressLock.value)
+    progressLock.value = !progressLock.value
+    showToast(progressLock.value ? '进度锁已开：只能打当前单元' : '进度锁已关：可自由打卡')
   } catch (e) { showToast(e.message) }
 }
 
@@ -362,6 +372,12 @@ onMounted(load)
           <option v-for="t in (tasksBySubject[s] || [])" :key="t.id" :value="t.id">{{ t.title }}</option>
         </select>
       </div>
+      <div class="lock-row" style="margin-top:14px">
+        <span class="badge">进度锁</span>
+        <span style="flex:1">只让打「当前单元」</span>
+        <button :class="['toggle', { on: progressLock }]" @click="toggleLock">{{ progressLock ? '开' : '关' }}</button>
+      </div>
+      <p class="lead" style="margin-top:8px">开启后，每科只有正在学的那个单元能打卡，后面的课自动锁住（灰显 🔒），防没学就打卡刷阳光。</p>
     </section>
 
     <!-- 单元测试成绩 -->
@@ -427,6 +443,9 @@ onMounted(load)
 .a-card { background: #fff; border-radius: 16px; padding: 18px; margin-bottom: 14px; box-shadow: 0 4px 14px rgba(60,120,170,.07); border: 1px solid #e8f3fa; }
 .a-card h3 { margin: 0 0 6px; font-size: 16px; color: #1f3b55; }
 .lead { color: #7aa0b8; font-size: 12px; margin: 0 0 14px; }
+.lock-row { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #4a6780; font-weight: 700; }
+.toggle { border: none; background: #dbe6ee; color: #6b8aa1; padding: 7px 16px; border-radius: 16px; font-weight: 800; cursor: pointer; font-family: inherit; }
+.toggle.on { background: #ffb800; color: #fff; }
 .dim { color: #7aa0b8; font-size: 12px; }
 .a-item { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 8px 0; border-bottom: 1px solid #eef6fb; }
 .a-item.add { border-top: 1px dashed #d3e8f5; margin-top: 8px; padding-top: 12px; }
