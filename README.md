@@ -49,13 +49,13 @@ docker compose up -d --build
 curl -s http://127.0.0.1:9000/api/health   # 应回 {"ok":true}
 ```
 
-> 容器只绑 `127.0.0.1:9000`，不对外开放端口。
+> 端口绑 `0.0.0.0:9000`（仅内网可达，App 无公网暴露；管理端有 PIN 保护）。
 
 ### Cloudflare Tunnel（零信任面板）
 
 1. Cloudflare Zero Trust → Networks → Tunnels → 选你已有的隧道
 2. Public Hostnames → Add a public hostname
-3. Hostname 填 `study.anemy.org` → Service 填 `http://localhost:9000`
+3. Hostname 填 `study.anemy.org` → Service 填 `http://192.168.100.5:9000`（cloudflared 与 App 不同机时，填 App 的内网 IP）
 4. 保存，浏览器开 `https://study.anemy.org` 即可
 
 ### 日常更新（拉代码后重新构建，前端烘焙进镜像必须 build）

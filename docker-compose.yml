@@ -4,7 +4,7 @@ services:
     container_name: sunshine-workbench
     restart: unless-stopped
     ports:
-      - "127.0.0.1:9000:8000"   # 只绑本机，由 Cloudflare Tunnel 转发，不暴露公网
+      - "0.0.0.0:9000:8000"   # 监听所有接口(仅内网)，供另一台机器上的 cloudflared 经内网访问
     environment:
       - SUNSHINE_DB=/data/sunshine.db
     volumes:
