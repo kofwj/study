@@ -111,6 +111,36 @@ def seed(conn):
     for i, r in enumerate(RANKS):
         conn.execute("INSERT INTO ranks(id,name,min_sunshine,sort) VALUES(?,?,?,?)",
                      (r["id"], r["name"], r["min_sunshine"], i))
+    set_setting(conn, "curriculum_ver", data.get("curriculum_ver", ""))
+
+
+def apply_curriculum(conn):
+    """已有库：只刷新系统任务/单元，保留自定义任务和流水。"""
+    data = json.loads(SEED_JSON.read_text(encoding="utf-8"))
+    ver = data.get("curriculum_ver", "")
+    if get_setting(conn, "curriculum_ver", "") == ver:
+        return
+    conn.execute("DELETE FROM tasks WHERE COALESCE(custom,0)=0")
+    conn.execute("DELETE FROM units WHERE id NOT IN (SELECT DISTINCT unit_id FROM tasks)")
+    for u in data["units"]:
+        conn.execute("INSERT OR REPLACE INTO units(id,subject_id,term_id,seq,name) VALUES(?,?,?,?,?)",
+                     (u["id"], u["subject"], u["term_id"], u["seq"], u["name"]))
+    for t in data["tasks"]:
+        conn.execute("INSERT OR REPLACE INTO tasks(id,subject_id,unit_id,action,title,sunshine,sort,custom) "
+                     "VALUES(?,?,?,?,?,?,?,0)",
+                     (t["id"], t["subject"], t["unit_id"], t["action"], t["title"], t["sunshine"], t["sort"]))
+    for d in data.get("daily_tasks", []):
+        br = d.get("bonus_rule") or {}
+        conn.execute("INSERT OR REPLACE INTO daily_tasks(id,subject_id,name,sunshine,frequency,bonus_type,bonus_per_metric) "
+                     "VALUES(?,?,?,?,?,?,?)",
+                     (d["id"], d["subject"], d["name"], d["sunshine"], d["frequency"],
+                      br.get("type"), br.get("per_metric")))
+        conn.execute("DELETE FROM daily_metrics WHERE task_id=?", (d["id"],))
+        for m in d.get("metrics", []):
+            conn.execute("INSERT OR REPLACE INTO daily_metrics(task_id,id,label,unit,direction,note) "
+                         "VALUES(?,?,?,?,?,?)",
+                         (d["id"], m["id"], m["label"], m["unit"], m["direction"], m.get("note")))
+    set_setting(conn, "curriculum_ver", ver)
 
 
 def init_db():
@@ -120,9 +150,10 @@ def init_db():
         conn.execute("ALTER TABLE tasks ADD COLUMN custom INTEGER DEFAULT 0")
     except sqlite3.OperationalError:
         pass
-    # 只以「科目是否存在」判断首次初始化，避免家长删光任务后重启被重置
     if conn.execute("SELECT COUNT(*) FROM subjects").fetchone()[0] == 0:
         seed(conn)
+    else:
+        apply_curriculum(conn)
     for s in ALL_SUBJECTS:
         conn.execute("INSERT OR IGNORE INTO subjects(id,name) VALUES(?,?)", (s, s))
     conn.execute("INSERT OR IGNORE INTO settings(key,value) VALUES('admin_pin','8888')")
