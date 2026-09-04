@@ -29,6 +29,7 @@ const boxOpen = ref(false)
 const boxResult = ref(null)
 const rankMapOpen = ref(false)
 const rankMap = ref(null)
+const updateReady = ref(false)
 const celebrate = ref(null)
 const chartOpen = reactive({ open: false, task: null, history: [] })
 const customTitle = ref('')
@@ -308,13 +309,19 @@ const activeTab = ref('今日推荐')
 const currentUnits = computed(() => bySubject.value[activeTab.value]?.units || [])
 
 onMounted(async () => {
+  window.addEventListener('sw-update', () => { updateReady.value = true })
   await refresh()
 })
+function reloadApp() { location.reload() }
 </script>
 
 <template>
   <Admin v-if="isAdmin" @exit="exitAdmin" />
   <div v-else class="desk">
+    <div v-if="updateReady" class="update-bar">
+      🔄 有新版本，点我刷新
+      <button @click="reloadApp">立即刷新</button>
+    </div>
     <!-- 蓝顶栏 -->
     <header class="topbar">
       <div class="who">
@@ -612,6 +619,8 @@ body {
   background: #eef6fb;
   color: #1f3b55;
 }
+.update-bar { background: #ff9800; color: #fff; padding: 9px 22px; display: flex; justify-content: center; align-items: center; gap: 12px; font-weight: 700; font-size: 14px; position: sticky; top: 0; z-index: 30; }
+.update-bar button { border: none; background: #fff; color: #e65100; border-radius: 16px; padding: 5px 14px; font-weight: 800; cursor: pointer; font-family: inherit; }
 .desk { min-height: 100vh; padding-bottom: 78px; }
 
 .topbar {

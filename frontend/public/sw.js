@@ -1,5 +1,7 @@
 // 阳光学习工作台 service worker：静态资源离线缓存，API 一律走网络（保证数据新鲜）
-const CACHE = 'sunshine-v1'
+// __BUILD__ 由 vite 构建时替换为时间戳，使每次发版都会更新 SW 并提示刷新
+const BUILD = '__BUILD__'
+const CACHE = 'sunshine-' + BUILD
 const PRECACHE = ['/', '/manifest.webmanifest']
 
 self.addEventListener('install', (e) => {
