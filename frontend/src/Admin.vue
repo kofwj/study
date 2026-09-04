@@ -12,13 +12,17 @@ const tasks = ref([])
 const daily = ref([])
 const cursors = ref({})
 const redemptions = ref([])
+const weekly = ref({ days: [], by_subject: [], total_earned: 0, total_spent: 0, net: 0, balance: 0, earned_all: 0, streak: 0, checkins: 0, week_start: '', week_end: '' })
 const toast = ref('')
+
+const maxDayEarn = computed(() => Math.max(1, ...(weekly.value.days || []).map((d) => d.earned)))
+const maxSubj = computed(() => Math.max(1, ...(weekly.value.by_subject || []).map((s) => s.count)))
 
 function showToast(m) { toast.value = m; setTimeout(() => (toast.value = ''), 2200) }
 function unitName(id) { return units.value.find(u => u.id === id)?.name || id }
 
 async function load() {
-  const [r, rk, t, rd] = await Promise.all([api.rewards(), api.admin.ranks(), api.tasks(), api.admin.redemptions()])
+  const [r, rk, t, rd, wk] = await Promise.all([api.rewards(), api.admin.ranks(), api.tasks(), api.admin.redemptions(), api.admin.weekly()])
   rewards.value = r
   ranks.value = rk
   subjects.value = t.subjects
@@ -27,6 +31,7 @@ async function load() {
   daily.value = t.daily
   cursors.value = t.cursors || {}
   redemptions.value = rd
+  weekly.value = wk
 }
 
 // —— 商店 ——
@@ -136,6 +141,7 @@ onMounted(load)
     </header>
 
     <div class="a-tabs">
+      <button :class="{ on: tab === 'weekly' }" @click="tab = 'weekly'">周报</button>
       <button :class="{ on: tab === 'shop' }" @click="tab = 'shop'">商店</button>
       <button :class="{ on: tab === 'approve' }" @click="tab = 'approve'">审批</button>
       <button :class="{ on: tab === 'rank' }" @click="tab = 'rank'">等级</button>
@@ -143,6 +149,40 @@ onMounted(load)
       <button :class="{ on: tab === 'cursor' }" @click="tab = 'cursor'">已学到</button>
       <button :class="{ on: tab === 'pin' }" @click="tab = 'pin'">密码</button>
     </div>
+
+    <!-- 周报 -->
+    <section v-if="tab === 'weekly'" class="a-card">
+      <h3>📊 周报</h3>
+      <p class="dim">{{ weekly.week_start }} ~ {{ weekly.week_end }}（本周一到周日）</p>
+      <div class="w-summary">
+        <div class="w-box"><span>本周赚</span><b>+{{ weekly.total_earned }}</b></div>
+        <div class="w-box"><span>兑换花</span><b>-{{ weekly.total_spent }}</b></div>
+        <div class="w-box"><span>净增</span><b>{{ weekly.net }}</b></div>
+        <div class="w-box"><span>余额</span><b>{{ weekly.balance }}</b></div>
+        <div class="w-box"><span>连击</span><b>{{ weekly.streak }} 天</b></div>
+        <div class="w-box"><span>本周签到</span><b>{{ weekly.checkins }} 天</b></div>
+      </div>
+
+      <h4 class="w-h">每天赚到的阳光</h4>
+      <div class="w-chart">
+        <div v-for="d in weekly.days" :key="d.date" class="w-bar-col">
+          <div class="w-bar" :style="{ height: (d.earned / maxDayEarn * 100) + '%' }">
+            <i v-if="d.earned">{{ d.earned }}</i>
+          </div>
+          <span>周{{ d.weekday }}</span>
+        </div>
+      </div>
+
+      <h4 class="w-h">本周各科完成</h4>
+      <div v-if="!weekly.by_subject.length" class="dim">本周还没完成任务。</div>
+      <div v-else class="w-subj">
+        <div v-for="s in weekly.by_subject" :key="s.name" class="w-subj-row">
+          <span class="w-subj-name">{{ s.name }}</span>
+          <div class="w-subj-track"><i :style="{ width: (s.count / maxSubj * 100) + '%' }"></i></div>
+          <span class="w-subj-num">{{ s.count }} 次 · +{{ s.sun }}</span>
+        </div>
+      </div>
+    </section>
 
     <!-- 商店 -->
     <section v-if="tab === 'shop'" class="a-card">
@@ -306,4 +346,19 @@ onMounted(load)
 .ghost-s { background: none; border: none; color: #b8860b; font-size: 12px; cursor: pointer; }
 .daily .d-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; width: 100%; padding: 4px 0; }
 .toast { position: fixed; left: 50%; bottom: 30px; transform: translateX(-50%); background: rgba(60,45,10,.9); color: #fff; padding: 10px 18px; border-radius: 22px; font-size: 14px; z-index: 20; }
+.w-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.w-box { background: #fdf6e3; border-radius: 12px; padding: 10px 6px; text-align: center; }
+.w-box span { display: block; font-size: 11px; color: #b7a26b; margin-bottom: 4px; }
+.w-box b { font-size: 19px; color: #6d5a2b; }
+.w-h { margin: 18px 0 8px; font-size: 14px; color: #6d5a2b; }
+.w-chart { display: flex; align-items: flex-end; gap: 8px; height: 140px; padding-top: 20px; }
+.w-bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5px; height: 100%; justify-content: flex-end; }
+.w-bar { width: 100%; max-width: 34px; background: #ffb800; border-radius: 6px 6px 0 0; position: relative; min-height: 2px; }
+.w-bar i { position: absolute; top: -20px; left: 0; width: 100%; text-align: center; font-size: 11px; color: #c07b00; font-style: normal; font-weight: 700; }
+.w-bar-col span { font-size: 11px; color: #8a7444; }
+.w-subj-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
+.w-subj-name { width: 48px; font-weight: 700; color: #6d5a2b; flex: none; }
+.w-subj-track { flex: 1; background: #f2e7c8; border-radius: 6px; height: 12px; overflow: hidden; }
+.w-subj-track i { display: block; height: 100%; background: linear-gradient(90deg,#ffc107,#ffb800); border-radius: 6px; }
+.w-subj-num { flex: none; font-size: 12px; color: #8a7444; }
 </style>

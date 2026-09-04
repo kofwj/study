@@ -35,6 +35,7 @@ export const api = {
     updateReward: (id, o) => j(`/api/admin/rewards/${id}`, { method: 'PUT', ...body(o) }, true),
     delReward: (id) => j(`/api/admin/rewards/${id}`, { method: 'DELETE' }, true),
     redemptions: () => j('/api/admin/redemptions', {}, true),
+    weekly: () => j('/api/admin/weekly', {}, true),
     approveRedeem: (id) => j(`/api/admin/redemptions/${id}/approve`, { method: 'POST' }, true),
     rejectRedeem: (id) => j(`/api/admin/redemptions/${id}/reject`, { method: 'POST' }, true),
     createRank: (o) => j('/api/admin/ranks', { method: 'POST', ...body(o) }, true),

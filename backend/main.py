@@ -655,6 +655,55 @@ def daily_delete(did: str):
     return {"ok": True}
 
 
+# ---------------- 周报（家长端） -------------
+
+WEEKDAY_CN = "一二三四五六日"
+
+
+@app.get("/api/admin/weekly", dependencies=[Depends(require_admin)])
+def weekly():
+    c = get_conn()
+    today = datetime.now().date()
+    monday = today - timedelta(days=today.weekday())
+    days = []
+    for i in range(7):
+        d = (monday + timedelta(days=i)).isoformat()
+        earned = c.execute("SELECT COALESCE(SUM(delta),0) FROM ledger WHERE date=? AND delta>0", (d,)).fetchone()[0]
+        spent = c.execute(
+            "SELECT COALESCE(SUM(-delta),0) FROM ledger WHERE date=? AND reason='redeem' AND delta<0", (d,)).fetchone()[0]
+        days.append({"date": d, "weekday": WEEKDAY_CN[i], "earned": earned, "spent": spent})
+    w_start, w_end = days[0]["date"], days[6]["date"]
+    net = c.execute(
+        "SELECT COALESCE(SUM(delta),0) FROM ledger WHERE date BETWEEN ? AND ?", (w_start, w_end)).fetchone()[0]
+    # 单元任务 + 每日任务（跳绳等）都计入学科完成
+    by_subject = c.execute(
+        "SELECT name, SUM(cnt) cnt, SUM(sun) sun FROM ("
+        "  SELECT s.name name, COUNT(*) cnt, COALESCE(SUM(c.sunshine),0) sun "
+        "  FROM completions c JOIN tasks t ON t.id=c.task_id JOIN subjects s ON s.id=t.subject_id "
+        "  WHERE c.status='completed' AND c.date BETWEEN ? AND ? GROUP BY s.name "
+        "  UNION ALL "
+        "  SELECT s.name, COUNT(*), COALESCE(SUM(c.sunshine),0) "
+        "  FROM completions c JOIN daily_tasks t ON t.id=c.task_id JOIN subjects s ON s.id=t.subject_id "
+        "  WHERE c.status='completed' AND c.date BETWEEN ? AND ? GROUP BY s.name "
+        ") GROUP BY name ORDER BY cnt DESC", (w_start, w_end, w_start, w_end)).fetchall()
+    checkins = c.execute(
+        "SELECT COUNT(DISTINCT date) FROM checkins WHERE date BETWEEN ? AND ?", (w_start, w_end)).fetchone()[0]
+    out = {
+        "week_start": w_start, "week_end": w_end,
+        "days": days,
+        "total_earned": sum(x["earned"] for x in days),
+        "total_spent": sum(x["spent"] for x in days),
+        "net": net,
+        "balance": balance(c),
+        "earned_all": earned(c),
+        "streak": streak(c),
+        "checkins": checkins,
+        "by_subject": [dict(r) for r in by_subject],
+    }
+    c.close()
+    return out
+
+
 # ---------------- 静态前端（构建后由本后端直接托管） ----------------
 
 _DIST = db.BASE.parent / "frontend" / "dist"
