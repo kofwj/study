@@ -14,6 +14,7 @@ const data = reactive({
   units: [],
   tasks: [],
   daily: [],
+  unit_scores: {},
 })
 const rewards = ref([])
 const loading = ref(true)
@@ -44,6 +45,12 @@ function showToast(msg) {
   toast.value = msg
   clearTimeout(toastTimer)
   toastTimer = setTimeout(() => (toast.value = ''), 2800)
+}
+function scoreClass(s) {
+  if (s >= 95) return 'gold'
+  if (s >= 90) return 'green'
+  if (s >= 85) return 'blue'
+  return 'gray'
 }
 
 const isAdmin = ref(false)
@@ -391,7 +398,12 @@ onMounted(async () => {
           <p class="hint">完成一项 +5 ☀️，再点一次会扣回。自定义任务点卡片右上角可删。</p>
 
           <div v-for="u in currentUnits" :key="u.id" class="unit">
-            <h2><i></i> {{ u.name }}</h2>
+            <h2>
+              <i></i> {{ u.name }}
+              <span v-if="data.unit_scores[u.id]" class="unit-score" :class="scoreClass(data.unit_scores[u.id].score)">
+                🎯 {{ data.unit_scores[u.id].score }} 分
+              </span>
+            </h2>
             <div class="grid">
               <div v-for="t in u.tasks" :key="t.id" class="card" :class="{ done: t.done, past: t.past }">
                 <button v-if="t.custom" class="x" title="删除" @click="delCustom(t)">×</button>
@@ -661,6 +673,11 @@ body {
   margin: 0 0 10px; font-size: 16px; color: #1f7bb8; display: flex; align-items: center; gap: 8px;
 }
 .unit h2 i { width: 4px; height: 16px; background: #3aa4e0; border-radius: 2px; display: inline-block; }
+.unit-score { font-size: 11px; padding: 2px 9px; border-radius: 10px; font-weight: 800; margin-left: 4px; white-space: nowrap; }
+.unit-score.gold { background: #fff3d6; color: #c07b00; }
+.unit-score.green { background: #eaf8ee; color: #2e8b57; }
+.unit-score.blue { background: #e8f2fb; color: #2f7db8; }
+.unit-score.gray { background: #f2f7fb; color: #9db8c8; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 260px)); gap: 12px; }
 .card {
   position: relative; background: #fff; border-radius: 16px; padding: 16px 14px 14px 14px;

@@ -13,7 +13,7 @@ const daily = ref([])
 const cursors = ref({})
 const redemptions = ref([])
 const tests = ref([])
-const newTest = reactive({ subject_id: '', score: '', note: '' })
+const newTest = reactive({ subject_id: '', unit_id: '', score: '', note: '' })
 const TEST_BANDS = [[100, 30], [95, 20], [90, 15], [85, 10], [0, 5]]
 const weekly = ref({ days: [], weeks: [], by_subject: [], total_earned: 0, total_spent: 0, net: 0, balance: 0, earned_all: 0, streak: 0, checkins: 0, week_start: '', week_end: '' })
 const toast = ref('')
@@ -79,9 +79,9 @@ async function addTest() {
   const sc = Number(newTest.score)
   if (sc < 0 || sc > 100) return showToast('分数要在 0~100')
   try {
-    const r = await api.admin.createTest({ subject_id: newTest.subject_id, score: sc, note: newTest.note })
+    const r = await api.admin.createTest({ subject_id: newTest.subject_id, unit_id: newTest.unit_id, score: sc, note: newTest.note })
     showToast(`已发 +${r.sunshine} 阳光`)
-    Object.assign(newTest, { subject_id: '', score: '', note: '' })
+    Object.assign(newTest, { subject_id: '', unit_id: '', score: '', note: '' })
     await load()
   } catch (e) { showToast(e.message) }
 }
@@ -372,12 +372,16 @@ onMounted(load)
         <span v-for="[th, sun] in TEST_BANDS" :key="th" class="band">{{ th === 0 ? '85 以下' : th + ' 分' }} → +{{ sun }} 阳光</span>
       </div>
       <div class="a-item add">
-        <select v-model="newTest.subject_id">
+        <select v-model="newTest.subject_id" @change="newTest.unit_id = ''">
           <option value="" disabled>科目</option>
           <option v-for="s in subjects" :key="s.id" :value="s.id">{{ s.name }}</option>
         </select>
+        <select v-model="newTest.unit_id">
+          <option value="">选单元（可选）</option>
+          <option v-for="u in units.filter(x => x.subject_id === newTest.subject_id)" :key="u.id" :value="u.id">{{ u.name }}</option>
+        </select>
         <input v-model="newTest.score" type="number" placeholder="分数 0~100" class="w-num" />
-        <input v-model="newTest.note" placeholder="第几单元（如：第一单元）" class="w-name" />
+        <input v-model="newTest.note" placeholder="备注（如：期中）" class="w-cat" />
         <button class="ok" @click="addTest">录成绩</button>
       </div>
       <div v-if="!tests.length" class="dim">还没录过测试成绩。</div>

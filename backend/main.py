@@ -240,6 +240,13 @@ def tasks():
         "units": [{"id": r["id"], "name": r["name"], "subject_id": r["subject_id"]}
                   for r in c.execute("SELECT id, name, subject_id FROM units").fetchall()],
     }
+    # 单元测试成绩（unit_id → 最近一次分），孩子端单元旁展示
+    unit_scores = {}
+    for r in c.execute("SELECT unit_id, score, date FROM tests WHERE unit_id IS NOT NULL "
+                       "ORDER BY date DESC, id DESC").fetchall():
+        if r["unit_id"] not in unit_scores:
+            unit_scores[r["unit_id"]] = {"score": r["score"], "date": r["date"]}
+    out["unit_scores"] = unit_scores
     # 单元任务 + 完成状态
     tasks_rows = c.execute(
         "SELECT t.* FROM tasks t LEFT JOIN units u ON u.id=t.unit_id "
@@ -668,6 +675,7 @@ class TestIn(BaseModel):
     subject_id: str
     score: int
     note: str = ""
+    unit_id: str = ""
 
 
 @app.post("/api/admin/tests", dependencies=[Depends(require_admin)])
@@ -676,10 +684,14 @@ def test_create(b: TestIn):
         raise HTTPException(400, "分数要在 0~100 之间")
     sun = score_sunshine(b.score)
     c = get_conn()
-    cur = c.execute("INSERT INTO tests(subject_id,score,sunshine,note,date,created_at) VALUES(?,?,?,?,?,?)",
-                    (b.subject_id, b.score, sun, (b.note or "").strip()[:40], db.today(), db.now()))
-    db.insert_ledger(c, db.today(), sun, "test", f"test-{cur.lastrowid}",
-                     f"{b.subject_id}测试 {b.score} 分")
+    unit_name = ""
+    if b.unit_id:
+        u = c.execute("SELECT name FROM units WHERE id=?", (b.unit_id,)).fetchone()
+        unit_name = u["name"] if u else ""
+    cur = c.execute("INSERT INTO tests(subject_id,unit_id,score,sunshine,note,date,created_at) VALUES(?,?,?,?,?,?,?)",
+                    (b.subject_id, b.unit_id or None, b.score, sun, (b.note or "").strip()[:40], db.today(), db.now()))
+    label = unit_name or b.note or b.subject_id
+    db.insert_ledger(c, db.today(), sun, "test", f"test-{cur.lastrowid}", f"{label} 测试 {b.score} 分")
     c.commit()
     res = {"id": cur.lastrowid, "sunshine": sun, "level": level_info(c)}
     c.close()

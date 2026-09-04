@@ -69,7 +69,7 @@ CREATE TABLE IF NOT EXISTS redemptions (
   status TEXT, created_at TEXT);
 CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT);
 CREATE TABLE IF NOT EXISTS tests (
-  id INTEGER PRIMARY KEY AUTOINCREMENT, subject_id TEXT, score INTEGER, sunshine INTEGER,
+  id INTEGER PRIMARY KEY AUTOINCREMENT, subject_id TEXT, unit_id TEXT, score INTEGER, sunshine INTEGER,
   note TEXT, date TEXT, created_at TEXT);
 """
 
@@ -201,6 +201,10 @@ def init_db():
     # 等级体系：加 icon 列；版本号变化时重排默认等级（只覆盖一次，之后尊重家长改动）
     try:
         conn.execute("ALTER TABLE ranks ADD COLUMN icon TEXT DEFAULT ''")
+    except sqlite3.OperationalError:
+        pass
+    try:
+        conn.execute("ALTER TABLE tests ADD COLUMN unit_id TEXT")
     except sqlite3.OperationalError:
         pass
     migrate_task_ids(conn)
