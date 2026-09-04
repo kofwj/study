@@ -3,7 +3,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { api } from './api.js'
 
 const emit = defineEmits(['exit'])
-const tab = ref('shop')
+const tab = ref('weekly')
 const rewards = ref([])
 const ranks = ref([])
 const subjects = ref([])
@@ -12,11 +12,22 @@ const tasks = ref([])
 const daily = ref([])
 const cursors = ref({})
 const redemptions = ref([])
-const weekly = ref({ days: [], by_subject: [], total_earned: 0, total_spent: 0, net: 0, balance: 0, earned_all: 0, streak: 0, checkins: 0, week_start: '', week_end: '' })
+const weekly = ref({ days: [], weeks: [], by_subject: [], total_earned: 0, total_spent: 0, net: 0, balance: 0, earned_all: 0, streak: 0, checkins: 0, week_start: '', week_end: '' })
 const toast = ref('')
 
 const maxDayEarn = computed(() => Math.max(1, ...(weekly.value.days || []).map((d) => d.earned)))
 const maxSubj = computed(() => Math.max(1, ...(weekly.value.by_subject || []).map((s) => s.count)))
+const maxWeek = computed(() => Math.max(1, ...(weekly.value.weeks || []).map((w) => w.earned)))
+const weekPoints = computed(() => {
+  const ws = weekly.value.weeks || []
+  if (!ws.length) return ''
+  const W = 288, H = 80, pad = 14
+  return ws.map((w, i) => {
+    const x = ws.length === 1 ? pad : pad + i * (W - 2 * pad) / (ws.length - 1)
+    const y = H - pad - (w.earned / maxWeek.value) * (H - 2 * pad)
+    return `${x.toFixed(1)},${y.toFixed(1)}`
+  }).join(' ')
+})
 
 function showToast(m) { toast.value = m; setTimeout(() => (toast.value = ''), 2200) }
 function unitName(id) { return units.value.find(u => u.id === id)?.name || id }
@@ -53,6 +64,10 @@ async function approveRedeem(id) {
 async function rejectRedeem(id) {
   if (!confirm('拒绝这条申请？')) return
   try { await api.admin.rejectRedeem(id); showToast('已拒绝'); await load() }
+  catch (e) { showToast(e.message) }
+}
+async function deliverRedeem(id) {
+  try { await api.admin.deliverRedeem(id); showToast('已标记兑现'); await load() }
   catch (e) { showToast(e.message) }
 }
 
@@ -110,7 +125,7 @@ async function saveDaily(d) {
 }
 async function delDaily(id) { if (!confirm('删除这个每日任务？')) return; await api.admin.delDaily(id); await load() }
 
-// —— 密码 ——
+// —— 密码 / 游标 ——
 const pinForm = reactive({ cur: '', next: '' })
 async function setCursor(subj, taskId) {
   try {
@@ -136,7 +151,10 @@ onMounted(load)
 <template>
   <div class="admin">
     <header class="a-head">
-      <span class="a-title">🛠️ 家长管理</span>
+      <div>
+        <div class="a-title">🛠️ 家长管理</div>
+        <div class="a-sub">给孩子配置奖励、等级与任务</div>
+      </div>
       <button class="a-exit" @click="emit('exit')">← 回到孩子端</button>
     </header>
 
@@ -152,15 +170,25 @@ onMounted(load)
 
     <!-- 周报 -->
     <section v-if="tab === 'weekly'" class="a-card">
-      <h3>📊 周报</h3>
-      <p class="dim">{{ weekly.week_start }} ~ {{ weekly.week_end }}（本周一到周日）</p>
+      <h3>📊 本周周报</h3>
+      <p class="lead">{{ weekly.week_start }} ~ {{ weekly.week_end }}（周一到周日）</p>
       <div class="w-summary">
         <div class="w-box"><span>本周赚</span><b>+{{ weekly.total_earned }}</b></div>
         <div class="w-box"><span>兑换花</span><b>-{{ weekly.total_spent }}</b></div>
         <div class="w-box"><span>净增</span><b>{{ weekly.net }}</b></div>
-        <div class="w-box"><span>余额</span><b>{{ weekly.balance }}</b></div>
+        <div class="w-box"><span>当前余额</span><b>{{ weekly.balance }}</b></div>
         <div class="w-box"><span>连击</span><b>{{ weekly.streak }} 天</b></div>
         <div class="w-box"><span>本周签到</span><b>{{ weekly.checkins }} 天</b></div>
+      </div>
+
+      <h4 class="w-h">近 4 周阳光趋势</h4>
+      <div class="w-trend">
+        <svg viewBox="0 0 288 80" class="w-trend-svg" preserveAspectRatio="none">
+          <polyline :points="weekPoints" fill="none" stroke="#3aa4e0" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        <div class="w-trend-labels">
+          <span v-for="w in weekly.weeks" :key="w.week_start">{{ w.label }}<i>+{{ w.earned }}</i></span>
+        </div>
       </div>
 
       <h4 class="w-h">每天赚到的阳光</h4>
@@ -187,6 +215,7 @@ onMounted(load)
     <!-- 商店 -->
     <section v-if="tab === 'shop'" class="a-card">
       <h3>兑换商店</h3>
+      <p class="lead">孩子会用阳光兑换这些，改价格实时生效。</p>
       <div class="a-item" v-for="r in rewards" :key="r.id">
         <input v-model="r.name" class="w-name" />
         <input v-model.number="r.price" type="number" class="w-num" /> ☀️
@@ -204,24 +233,31 @@ onMounted(load)
 
     <!-- 审批 -->
     <section v-if="tab === 'approve'" class="a-card">
-      <h3>兑换审批（需家长同意的奖励）</h3>
-      <p class="dim">孩子申请「游乐场/心愿礼物」这类奖励会先到这里，你同意后才会扣阳光。</p>
+      <h3>兑换审批与兑现</h3>
+      <p class="lead">需家长同意的奖励先到「待同意」；同意后扣阳光，实际给了奖励再点「标记已兑现」。</p>
       <div v-if="!redemptions.length" class="dim">还没有任何兑换记录。</div>
       <div class="a-item" v-for="rd in redemptions" :key="rd.id">
         <span class="badge">{{ rd.name }}</span>
         <span class="dim">{{ rd.date }} · -{{ rd.price }} ☀️</span>
         <template v-if="rd.status === 'pending'">
+          <span class="st pending">待同意</span>
           <button class="ok" @click="approveRedeem(rd.id)">同意</button>
           <button class="del" @click="rejectRedeem(rd.id)">拒绝</button>
         </template>
-        <span v-else class="badge daily">{{ rd.status === 'done' ? '已兑换' : rd.status }}</span>
+        <template v-else-if="rd.status === 'done'">
+          <span class="st done">已扣阳光</span>
+          <button class="ok ghost-o" @click="deliverRedeem(rd.id)">标记已兑现</button>
+        </template>
+        <span v-else class="st delivered">已兑现 ✓</span>
       </div>
     </section>
 
     <!-- 等级 -->
     <section v-if="tab === 'rank'" class="a-card">
       <h3>成长等级（按累计获得阳光）</h3>
+      <p class="lead">等级看「累计获得」，消费不会掉级。</p>
       <div class="a-item" v-for="r in ranks" :key="r.id">
+        <span class="rank-icon">{{ r.icon || '⭐' }}</span>
         <input v-model="r.name" class="w-name" />
         <span class="dim">≥</span>
         <input v-model.number="r.min_sunshine" type="number" class="w-num" /> 阳光
@@ -229,6 +265,7 @@ onMounted(load)
         <button class="del" @click="delRank(r.id)">删</button>
       </div>
       <div class="a-item add">
+        <span class="rank-icon">⭐</span>
         <input v-model="newRank.name" placeholder="等级名（如：阳光萌新）" class="w-name" />
         <span class="dim">≥</span>
         <input v-model.number="newRank.min_sunshine" type="number" placeholder="0" class="w-num" />
@@ -265,7 +302,7 @@ onMounted(load)
         <button class="ok" @click="addTask">＋新增</button>
       </div>
 
-      <h3 style="margin-top:20px">每日任务（循环打卡）</h3>
+      <h3 style="margin-top:24px">每日任务（循环打卡）</h3>
       <div class="a-item daily" v-for="d in daily" :key="d.id">
         <div class="d-row">
           <span class="badge daily">每天</span>
@@ -296,7 +333,8 @@ onMounted(load)
 
     <!-- 已学到 -->
     <section v-if="tab === 'cursor'" class="a-card">
-      <h3>已学到哪一课（推荐从这里往后，前面不加阳光）</h3>
+      <h3>已学到哪一课</h3>
+      <p class="lead">推荐从这里往后，前面的课标灰「已学过」，不再计阳光。</p>
       <div class="a-item" v-for="s in ['语文','数学','英语']" :key="s">
         <span class="badge">{{ s }}</span>
         <select :value="cursors[s] || ''" @change="setCursor(s, $event.target.value)">
@@ -304,7 +342,6 @@ onMounted(load)
           <option v-for="t in (tasksBySubject[s] || [])" :key="t.id" :value="t.id">{{ t.title }}</option>
         </select>
       </div>
-      <p class="dim">语文默认已学到《珍珠鸟》。开学中途接入时把锚点拨到当前课。</p>
     </section>
 
     <!-- 密码 -->
@@ -322,43 +359,68 @@ onMounted(load)
 </template>
 
 <style scoped>
-.admin { max-width: 720px; margin: 0 auto; padding: 14px; font-family: system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; color: #4a3b1f; }
-.a-head { display: flex; justify-content: space-between; align-items: center; }
-.a-title { font-size: 18px; font-weight: 800; color: #6d4c00; }
-.a-exit { background: none; border: 1px solid #e4d5b4; border-radius: 20px; padding: 6px 14px; color: #8a7444; cursor: pointer; }
-.a-tabs { display: flex; gap: 8px; margin: 14px 0; }
-.a-tabs button { padding: 8px 16px; border: 1px solid #f0e0bb; background: #fff; border-radius: 20px; color: #8a7444; cursor: pointer; }
-.a-tabs button.on { background: #ffb800; border-color: #ffb800; color: #fff; font-weight: 700; }
-.a-card { background: #fff; border-radius: 16px; padding: 16px; margin-bottom: 14px; }
-.a-card h3 { margin: 0 0 12px; font-size: 15px; color: #6d5a2b; }
-.a-item { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding: 7px 0; border-bottom: 1px solid #f7ecd4; }
-.a-item.add { border-top: 1px dashed #e8dfc8; margin-top: 8px; padding-top: 10px; }
-.a-subject-h { font-weight: 700; color: #6d5a2b; margin-top: 6px; }
-.a-item input, .a-item select { border: 1px solid #e4d5b4; border-radius: 8px; padding: 6px 8px; font-size: 13px; }
+.admin { max-width: 780px; margin: 0 auto; padding: 14px; font-family: system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; color: #1f3b55; }
+.a-head {
+  background: linear-gradient(180deg, #4db6ea 0%, #3aa4e0 100%);
+  color: #fff; border-radius: 20px; padding: 16px 20px;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.a-title { font-size: 20px; font-weight: 800; }
+.a-sub { font-size: 12px; opacity: .85; margin-top: 4px; }
+.a-exit { background: rgba(255,255,255,.22); border: none; color: #fff; border-radius: 20px; padding: 9px 16px; font-weight: 700; cursor: pointer; font-family: inherit; }
+.a-tabs { display: flex; gap: 8px; margin: 14px 0; overflow-x: auto; padding-bottom: 4px; }
+.a-tabs button {
+  flex: 0 0 auto; padding: 9px 16px; border: 1px solid #d3e8f5; background: #fff; border-radius: 22px;
+  color: #4a6780; cursor: pointer; font-weight: 700; font-size: 13px; font-family: inherit;
+}
+.a-tabs button.on { background: #3aa4e0; border-color: #3aa4e0; color: #fff; }
+.a-card { background: #fff; border-radius: 16px; padding: 18px; margin-bottom: 14px; box-shadow: 0 4px 14px rgba(60,120,170,.07); border: 1px solid #e8f3fa; }
+.a-card h3 { margin: 0 0 6px; font-size: 16px; color: #1f3b55; }
+.lead { color: #7aa0b8; font-size: 12px; margin: 0 0 14px; }
+.dim { color: #7aa0b8; font-size: 12px; }
+.a-item { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 8px 0; border-bottom: 1px solid #eef6fb; }
+.a-item.add { border-top: 1px dashed #d3e8f5; margin-top: 8px; padding-top: 12px; }
+.a-subject-h { font-weight: 800; color: #2f7db8; margin-top: 8px; font-size: 14px; }
+.a-item input, .a-item select { border: 1px solid #d3e8f5; border-radius: 8px; padding: 7px 9px; font-size: 13px; color: #1f3b55; font-family: inherit; }
+.a-item input:focus, .a-item select:focus { outline: none; border-color: #3aa4e0; }
 .w-name { flex: 1; min-width: 120px; }
 .w-num { width: 70px; }
 .w-cat { width: 90px; }
-.badge { font-size: 10px; padding: 2px 7px; border-radius: 9px; background: #eef4ff; color: #4a6db0; white-space: nowrap; }
-.badge.daily { background: #fff0d6; color: #c07b00; }
-.dim { color: #b7a26b; font-size: 12px; }
-.ok { padding: 6px 12px; border: none; border-radius: 16px; background: #ffb800; color: #fff; font-weight: 700; cursor: pointer; }
-.del { padding: 5px 9px; border: none; border-radius: 14px; background: #fbe3e3; color: #c62828; cursor: pointer; }
-.ghost-s { background: none; border: none; color: #b8860b; font-size: 12px; cursor: pointer; }
-.daily .d-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; width: 100%; padding: 4px 0; }
-.toast { position: fixed; left: 50%; bottom: 30px; transform: translateX(-50%); background: rgba(60,45,10,.9); color: #fff; padding: 10px 18px; border-radius: 22px; font-size: 14px; z-index: 20; }
+.badge { font-size: 11px; padding: 3px 8px; border-radius: 10px; background: #e8f2fb; color: #2f7db8; white-space: nowrap; font-weight: 700; }
+.badge.daily { background: #fff3d6; color: #c07b00; }
+.rank-icon { font-size: 18px; }
+.st { font-size: 11px; padding: 3px 9px; border-radius: 10px; font-weight: 700; white-space: nowrap; }
+.st.pending { background: #fff3d6; color: #c07b00; }
+.st.done { background: #e8f2fb; color: #2f7db8; }
+.st.delivered { background: #eaf8ee; color: #2e8b57; }
+.ok { padding: 7px 14px; border: none; border-radius: 16px; background: #ffb800; color: #fff; font-weight: 700; cursor: pointer; font-family: inherit; }
+.ok.ghost-o { background: #3aa4e0; }
+.del { padding: 6px 10px; border: none; border-radius: 14px; background: #fbe3e3; color: #c62828; cursor: pointer; font-family: inherit; }
+.ghost-s { background: none; border: none; color: #2f7db8; font-size: 12px; cursor: pointer; font-family: inherit; }
+.daily .d-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; width: 100%; padding: 4px 0; }
+.toast { position: fixed; left: 50%; bottom: 30px; transform: translateX(-50%); background: rgba(31,59,85,.92); color: #fff; padding: 10px 18px; border-radius: 22px; font-size: 14px; z-index: 20; }
+
 .w-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-.w-box { background: #fdf6e3; border-radius: 12px; padding: 10px 6px; text-align: center; }
-.w-box span { display: block; font-size: 11px; color: #b7a26b; margin-bottom: 4px; }
-.w-box b { font-size: 19px; color: #6d5a2b; }
-.w-h { margin: 18px 0 8px; font-size: 14px; color: #6d5a2b; }
+.w-box { background: #f4fafd; border: 1px solid #e8f3fa; border-radius: 12px; padding: 12px 6px; text-align: center; }
+.w-box span { display: block; font-size: 11px; color: #7aa0b8; margin-bottom: 4px; }
+.w-box b { font-size: 20px; color: #1f3b55; }
+.w-h { margin: 20px 0 10px; font-size: 14px; color: #1f3b55; }
+.w-trend { margin-bottom: 4px; }
+.w-trend-svg { width: 100%; height: 90px; }
+.w-trend-labels { display: flex; justify-content: space-between; font-size: 11px; color: #7aa0b8; margin-top: 6px; }
+.w-trend-labels i { font-style: normal; color: #2f7db8; font-weight: 700; margin-left: 3px; }
 .w-chart { display: flex; align-items: flex-end; gap: 8px; height: 140px; padding-top: 20px; }
 .w-bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5px; height: 100%; justify-content: flex-end; }
 .w-bar { width: 100%; max-width: 34px; background: #ffb800; border-radius: 6px 6px 0 0; position: relative; min-height: 2px; }
 .w-bar i { position: absolute; top: -20px; left: 0; width: 100%; text-align: center; font-size: 11px; color: #c07b00; font-style: normal; font-weight: 700; }
-.w-bar-col span { font-size: 11px; color: #8a7444; }
+.w-bar-col span { font-size: 11px; color: #4a6780; }
 .w-subj-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
-.w-subj-name { width: 48px; font-weight: 700; color: #6d5a2b; flex: none; }
-.w-subj-track { flex: 1; background: #f2e7c8; border-radius: 6px; height: 12px; overflow: hidden; }
-.w-subj-track i { display: block; height: 100%; background: linear-gradient(90deg,#ffc107,#ffb800); border-radius: 6px; }
-.w-subj-num { flex: none; font-size: 12px; color: #8a7444; }
+.w-subj-name { width: 48px; font-weight: 700; color: #1f3b55; flex: none; }
+.w-subj-track { flex: 1; background: #e8f3fa; border-radius: 6px; height: 12px; overflow: hidden; }
+.w-subj-track i { display: block; height: 100%; background: linear-gradient(90deg,#4db6ea,#3aa4e0); border-radius: 6px; }
+.w-subj-num { flex: none; font-size: 12px; color: #4a6780; }
+
+@media (max-width: 560px) {
+  .w-summary { grid-template-columns: repeat(2, 1fr); }
+}
 </style>

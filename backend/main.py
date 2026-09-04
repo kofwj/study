@@ -102,13 +102,68 @@ def streak(c):
     dates |= {r["date"] for r in c.execute(
         "SELECT DISTINCT date FROM completions WHERE status='completed'").fetchall()}
     dates |= {r["date"] for r in c.execute(
-        "SELECT DISTINCT date FROM redemptions WHERE status='done'").fetchall()}
+        "SELECT DISTINCT date FROM redemptions WHERE status IN ('done','delivered')").fetchall()}
     d = datetime.now().date()
     n = 0
     while d.isoformat() in dates:
         n += 1
         d -= timedelta(days=1)
     return n
+
+
+# 连续坚持里程碑（一次性奖励，防通胀）：第 7/14/30 天各发一次
+MILESTONES = [(7, 20), (14, 50), (30, 100)]
+
+
+def maybe_milestone(c):
+    """连击达 7/14/30 天各发一次一次性阳光（用 settings 标记，绝不重复）。返回 [(天数, 奖励)]。"""
+    s = streak(c)
+    got = []
+    for days, bonus in MILESTONES:
+        key = f"milestone_{days}"
+        if s >= days and not db.get_setting(c, key, ""):
+            db.set_setting(c, key, db.today())
+            db.insert_ledger(c, db.today(), bonus, "milestone", key, f"连续坚持 {days} 天")
+            got.append((days, bonus))
+    return got
+
+
+# 成就徽章（孩子端「成就墙」）
+ACHIEVEMENTS = [
+    {"id": "first",    "icon": "🌱", "name": "初来乍到", "desc": "完成第 1 张任务卡", "target": 1},
+    {"id": "cn10",     "icon": "📖", "name": "语文十卡", "desc": "完成 10 张语文卡", "target": 10},
+    {"id": "ma10",     "icon": "➗", "name": "数学十卡", "desc": "完成 10 张数学卡", "target": 10},
+    {"id": "en10",     "icon": "🔤", "name": "英语十卡", "desc": "完成 10 张英语卡", "target": 10},
+    {"id": "sport",    "icon": "🏃", "name": "运动健将", "desc": "每日运动打卡 10 次", "target": 10},
+    {"id": "streak7",  "icon": "🔥", "name": "坚持一周", "desc": "连续坚持 7 天", "target": 7},
+    {"id": "streak14", "icon": "🚀", "name": "坚持半月", "desc": "连续坚持 14 天", "target": 14},
+    {"id": "sun500",   "icon": "💰", "name": "阳光富翁", "desc": "累计获得 500 阳光", "target": 500},
+    {"id": "sun2000",  "icon": "💎", "name": "阳光大佬", "desc": "累计获得 2000 阳光", "target": 2000},
+    {"id": "sun5000",  "icon": "👑", "name": "阳光传说", "desc": "累计获得 5000 阳光", "target": 5000},
+]
+
+
+@app.get("/api/achievements")
+def achievements():
+    c = get_conn()
+    total = c.execute("SELECT COUNT(*) FROM completions WHERE status='completed'").fetchone()[0]
+    sport = c.execute("SELECT COUNT(*) FROM completions WHERE status='completed' AND kind='daily'").fetchone()[0]
+    s = streak(c)
+    e = earned(c)
+    done_by_subj = {r[0]: r[1] for r in c.execute(
+        "SELECT t.subject_id, COUNT(*) FROM completions c JOIN tasks t ON t.id=c.task_id "
+        "WHERE c.status='completed' GROUP BY t.subject_id").fetchall()}
+    cur = {
+        "first": total, "sport": sport, "streak7": s, "streak14": s,
+        "cn10": done_by_subj.get("语文", 0), "ma10": done_by_subj.get("数学", 0), "en10": done_by_subj.get("英语", 0),
+        "sun500": e, "sun2000": e, "sun5000": e,
+    }
+    out = []
+    for a in ACHIEVEMENTS:
+        v = cur[a["id"]]
+        out.append({**a, "current": v, "earned": v >= a["target"]})
+    c.close()
+    return out
 
 
 # ---------------- 状态 ----------------
@@ -191,8 +246,9 @@ def checkin():
     if cur.rowcount == 0:
         c.close()
         raise HTTPException(409, "今天已经签到过啦")
+    m = maybe_milestone(c)
     c.commit()
-    res = {"delta": 0, "level": level_info(c), "streak": streak(c)}
+    res = {"delta": 0, "milestone": m, "level": level_info(c), "streak": streak(c)}
     c.close()
     return res
 
@@ -249,8 +305,9 @@ def complete(body: CompleteBody):
             c.close()
             raise HTTPException(409, "这项已经完成过啦")
         db.insert_ledger(c, t, delta, "task", f"cmp-{cur.lastrowid}", row["title"])
+        m = maybe_milestone(c)
         c.commit()
-        res = {"delta": delta, "bonus": 0, "level": level_info(c)}
+        res = {"delta": delta, "bonus": 0, "milestone": m, "level": level_info(c)}
         c.close()
         return res
     d = c.execute("SELECT * FROM daily_tasks WHERE id=?", (tid,)).fetchone()
@@ -266,8 +323,9 @@ def complete(body: CompleteBody):
             raise HTTPException(409, "今天这项已完成过啦")
         db.insert_ledger(c, t, delta, "daily", f"cmp-{cur.lastrowid}",
                          d["name"] + ("（破纪录 +%d）" % bonus if bonus else ""))
+        m = maybe_milestone(c)
         c.commit()
-        res = {"delta": delta, "bonus": bonus, "bonus_detail": detail, "level": level_info(c)}
+        res = {"delta": delta, "bonus": bonus, "bonus_detail": detail, "milestone": m, "level": level_info(c)}
         c.close()
         return res
     c.close()
@@ -386,8 +444,9 @@ def redeem(body: RedeemBody):
     cur = c.execute("INSERT INTO redemptions(reward_id,date,price,status,created_at) VALUES(?,?,?,?,?)",
               (r["id"], db.today(), r["price"], "done", db.now()))
     db.insert_ledger(c, db.today(), -r["price"], "redeem", f"red-{cur.lastrowid}", r["name"])
+    m = maybe_milestone(c)
     c.commit()
-    res = {"delta": -r["price"], "reward": r["name"], "level": level_info(c)}
+    res = {"delta": -r["price"], "reward": r["name"], "milestone": m, "level": level_info(c)}
     c.close()
     return res
 
@@ -516,6 +575,7 @@ def redemption_approve(rid: str):
     c.execute("UPDATE redemptions SET status='done' WHERE id=?", (rid,))
     rw = c.execute("SELECT name FROM rewards WHERE id=?", (rd["reward_id"],)).fetchone()
     db.insert_ledger(c, db.today(), -rd["price"], "redeem", f"red-{rid}", rw["name"] if rw else "兑换")
+    maybe_milestone(c)
     c.commit(); c.close()
     return {"ok": True}
 
@@ -529,6 +589,20 @@ def redemption_reject(rid: str):
     if rd["status"] != "pending":
         c.close(); raise HTTPException(409, "这条已处理过")
     c.execute("DELETE FROM redemptions WHERE id=?", (rid,))
+    c.commit(); c.close()
+    return {"ok": True}
+
+
+@app.post("/api/admin/redemptions/{rid}/deliver", dependencies=[Depends(require_admin)])
+def redemption_deliver(rid: str):
+    """家长标记「奖励已实际兑现」：done → delivered（阳光已在批准时扣除）。"""
+    c = get_conn()
+    rd = c.execute("SELECT status FROM redemptions WHERE id=?", (rid,)).fetchone()
+    if not rd:
+        c.close(); raise HTTPException(404, "没找到这条兑换")
+    if rd["status"] != "done":
+        c.close(); raise HTTPException(409, "先同意后才能标记兑现")
+    c.execute("UPDATE redemptions SET status='delivered' WHERE id=?", (rid,))
     c.commit(); c.close()
     return {"ok": True}
 
@@ -691,6 +765,14 @@ def weekly():
         ") GROUP BY name ORDER BY cnt DESC", (w_start, w_end, w_start, w_end)).fetchall()
     checkins = c.execute(
         "SELECT COUNT(DISTINCT date) FROM checkins WHERE date BETWEEN ? AND ?", (w_start, w_end)).fetchone()[0]
+    weeks = []
+    for i in range(3, -1, -1):
+        wm = monday - timedelta(weeks=i)
+        we = wm + timedelta(days=6)
+        wk_earned = c.execute(
+            "SELECT COALESCE(SUM(delta),0) FROM ledger WHERE date BETWEEN ? AND ? AND delta>0",
+            (wm.isoformat(), we.isoformat())).fetchone()[0]
+        weeks.append({"label": f"{wm.month}/{wm.day}", "earned": wk_earned, "week_start": wm.isoformat()})
     out = {
         "week_start": w_start, "week_end": w_end,
         "days": days,
@@ -701,6 +783,7 @@ def weekly():
         "earned_all": earned(c),
         "streak": streak(c),
         "checkins": checkins,
+        "weeks": weeks,
         "by_subject": [dict(r) for r in by_subject],
     }
     c.close()

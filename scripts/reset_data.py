@@ -18,6 +18,7 @@ TABLES = ["ledger", "completions", "checkins", "daily_metrics", "redemptions"]
 c = sqlite3.connect(src)
 for t in TABLES:
     c.execute(f"DELETE FROM {t}")
+c.execute("DELETE FROM settings WHERE key LIKE 'milestone_%'")  # 连击里程碑标记也重置
 c.commit()
 c.close()
-print("已清空:", ", ".join(TABLES))
+print("已清空:", ", ".join(TABLES), "+ 里程碑标记")

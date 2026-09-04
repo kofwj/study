@@ -21,6 +21,8 @@ const err = ref('')
 const toast = ref('')
 const shopOpen = ref(false)
 const myRedeems = ref([])
+const achievements = ref([])
+const achOpen = ref(false)
 const celebrate = ref(null)
 const chartOpen = reactive({ open: false, task: null, history: [] })
 const customTitle = ref('')
@@ -79,7 +81,7 @@ async function refresh() {
 async function checkin() {
   try {
     const r = await api.checkin()
-    showToast('已签到，开始学习吧！')
+    showToast('已签到，开始学习吧！' + milestoneTxt(r.milestone))
     await refresh()
   } catch (e) { showToast(e.message) }
 }
@@ -95,7 +97,7 @@ async function toggleTask(task) {
       showToast('已取消，扣回阳光')
     } else {
       const r = await api.complete(task.id)
-      showToast(`太棒了！完成【${task.title}】+${r.delta} ☀️`)
+      showToast(`太棒了！完成【${task.title}】+${r.delta} ☀️` + milestoneTxt(r.milestone))
     }
     await refresh()
   } catch (e) { showToast(e.message) }
@@ -155,7 +157,7 @@ async function submitDaily() {
   }
   try {
     const r = await api.complete(dailyDialog.task.id, metrics)
-    showToast(r.bonus > 0 ? `完成 +${r.delta} ☀️（破纪录 +${r.bonus}！）` : `完成【${dailyDialog.task.name}】+${r.delta} ☀️`)
+    showToast((r.bonus > 0 ? `完成 +${r.delta} ☀️（破纪录 +${r.bonus}！）` : `完成【${dailyDialog.task.name}】+${r.delta} ☀️`) + milestoneTxt(r.milestone))
     dailyDialog.open = false
     await refresh()
   } catch (e) { showToast(e.message) }
@@ -183,7 +185,12 @@ async function openShop() {
   shopOpen.value = true
   try { myRedeems.value = await api.redemptions() } catch {}
 }
-const STATUS_TXT = { pending: '等家长同意', done: '已兑换' }
+const STATUS_TXT = { pending: '等家长同意', done: '已兑换', delivered: '已兑现' }
+const milestoneTxt = (m) => (m && m.length) ? m.map(([d, b]) => ` 🎉 连续 ${d} 天 +${b} ☀️`).join('') : ''
+async function openAch() {
+  achOpen.value = true
+  try { achievements.value = await api.achievements() } catch {}
+}
 
 async function saveName() {
   const n = renameVal.value.trim()
@@ -301,6 +308,7 @@ onMounted(async () => {
         <span class="pill sun"><i></i> {{ data.level.balance }}</span>
         <span class="pill fire">🔥 连续打卡 {{ data.streak }} 天</span>
         <span class="pill star">{{ data.level.level_icon || '⭐' }} {{ data.level.level }}</span>
+        <button class="pill ach" @click="openAch">🎖️ 成就</button>
       </div>
       <div class="next">
         <span v-if="data.level.next">
@@ -511,6 +519,21 @@ onMounted(async () => {
         <div class="celebrate-name">{{ celebrate.icon }} {{ celebrate.name }}</div>
       </div>
     </div>
+
+    <!-- 成就墙 -->
+    <div v-if="achOpen" class="mask" @click.self="achOpen = false">
+      <div class="shop-modal ach-modal">
+        <h3>🎖️ 我的成就</h3>
+        <div class="ach-grid">
+          <div v-for="a in achievements" :key="a.id" class="ach-cell" :class="{ on: a.earned }">
+            <div class="ach-icon">{{ a.icon }}</div>
+            <div class="ach-name">{{ a.name }}</div>
+            <div class="ach-prog">{{ Math.min(a.current, a.target) }}/{{ a.target }}</div>
+          </div>
+        </div>
+        <button class="ghost" @click="achOpen = false">关闭</button>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -666,6 +689,15 @@ body {
 .celebrate-icon { font-size: 64px; animation: bounce 1s ease-in-out infinite; }
 .celebrate-title { font-size: 22px; font-weight: 800; color: #f5a623; margin-top: 8px; }
 .celebrate-name { font-size: 18px; font-weight: 700; color: #1f3b55; margin-top: 6px; }
+.pill.ach { cursor: pointer; border: none; font-family: inherit; }
+.ach-modal { max-width: 460px; }
+.ach-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); gap: 10px; margin: 14px 0; }
+.ach-cell { background: #f2f7fb; border-radius: 14px; padding: 12px 6px; text-align: center; opacity: .5; }
+.ach-cell.on { opacity: 1; background: #fff6e0; border: 1px solid #ffd98a; }
+.ach-icon { font-size: 30px; }
+.ach-name { font-size: 12px; font-weight: 700; color: #4a6780; margin-top: 4px; }
+.ach-prog { font-size: 11px; color: #7aa0b8; margin-top: 2px; }
+.ach-cell.on .ach-prog { color: #c07b00; }
 .confetti { position: absolute; inset: 0; z-index: 1; overflow: hidden; }
 .confetti span { position: absolute; top: -40px; font-size: 24px; color: #ffc107; animation: fall 2.6s linear forwards; }
 @keyframes pop { from { transform: scale(.4); opacity: 0; } to { transform: scale(1); opacity: 1; } }
