@@ -6,7 +6,7 @@ from collections import Counter
 TERM = {"id": "g5s1", "label": "五年级上", "grade": "五年级", "term": "上",
         "version": "江苏南通 · 2026秋新教材"}
 SUN = 5
-SUBJECTS = ["语文", "数学", "英语", "科学", "道法", "体育", "音美", "综合"]
+SUBJECTS = ["语文", "数学", "英语", "科学", "道法", "体育", "音美", "综合", "围棋"]
 
 # 动作类型 → 「怎么做」提示（卡片展开展示）
 HINT = {
@@ -78,6 +78,13 @@ DAILY_TASKS = [
      "sunshine": SUN, "frequency": "daily",
      "bonus_rule": {"type": "personal_best", "per_metric": 0, "note": ""},
      "metrics": []},
+    {"id": "go-play", "subject": "围棋", "name": "围棋对弈",
+     "sunshine": SUN, "frequency": "daily",
+     "bonus_rule": {"type": "personal_best", "per_metric": 0, "note": "记胜负，不发破纪录阳光"},
+     "metrics": [
+         {"id": "win", "label": "赢了几局", "unit": "局", "direction": "higher_better"},
+         {"id": "lose", "label": "输了几局", "unit": "局", "direction": "higher_better"},
+     ]},
 ]
 
 # 语文：单元名 + 具体课文任务（2026 部编六三制实物目录）
@@ -293,7 +300,7 @@ def main():
     units, tasks = build()
     os.makedirs("data", exist_ok=True)
     with open("data/tasks.seed.json", "w", encoding="utf-8") as f:
-        json.dump({"term": TERM, "subjects": SUBJECTS, "curriculum_ver": "2026-g5s1-v5",
+        json.dump({"term": TERM, "subjects": SUBJECTS, "curriculum_ver": "2026-g5s1-v6",
                    "units": units, "tasks": tasks, "daily_tasks": DAILY_TASKS},
                   f, ensure_ascii=False, indent=2)
     lines = ["# 2026 新教材任务卡", "",

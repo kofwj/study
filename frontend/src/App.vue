@@ -144,7 +144,8 @@ function lineFor(m) {
     return { x: +x.toFixed(1), y: +y.toFixed(1), v, best: v === bestVal }
   })
   const bestY = dots.find(p => p.best).y
-  return { pts: dots.map(p => `${p.x},${p.y}`).join(' '), dots, min, max, bestY }
+  return { pts: dots.map(p => `${p.x},${p.y}`).join(' '), dots, min, max, bestY,
+           sum: vals.reduce((a, b) => a + b, 0), count: n }
 }
 // 无数值维度任务（眼保健操/阅读/练字）：近 14 天打卡日历
 const chartDays = computed(() => {
@@ -281,7 +282,7 @@ const subjectProgress = computed(() => {
   }
   return m
 })
-const SUBJECT_ORDER = ['语文', '数学', '英语', '科学', '道法', '体育', '音美', '综合']
+const SUBJECT_ORDER = ['语文', '数学', '英语', '科学', '道法', '体育', '音美', '综合', '围棋']
 const orderedSubjects = computed(() => {
   // 只显示有内容的学科（单元任务或每日任务），空的（科学/道法/音美/综合）先隐藏，补目录后自动出现
   const list = data.subjects.filter(s => (subjectProgress.value[s.id] || {}).total > 0)
@@ -497,7 +498,7 @@ function reloadApp() { location.reload() }
                 <title>{{ p.v }}{{ m.unit }}</title>
               </circle>
             </svg>
-            <div class="chart-pb">🏅 个人纪录：{{ chartOpen.task.pb?.[m.id] ?? '—' }} {{ m.unit }} · 共 {{ lineFor(m).dots.length }} 次</div>
+            <div class="chart-pb">🏅 个人纪录 {{ chartOpen.task.pb?.[m.id] ?? '—' }} {{ m.unit }} · 📊 累计 {{ lineFor(m).sum }} {{ m.unit }} · 共 {{ lineFor(m).count }} 次</div>
           </div>
         </template>
 

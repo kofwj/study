@@ -14,9 +14,10 @@
     "道法",
     "体育",
     "音美",
-    "综合"
+    "综合",
+    "围棋"
   ],
-  "curriculum_ver": "2026-g5s1-v5",
+  "curriculum_ver": "2026-g5s1-v6",
   "units": [
     {
       "id": "g5s1-cn-1",
@@ -1487,6 +1488,32 @@
         "note": ""
       },
       "metrics": []
+    },
+    {
+      "id": "go-play",
+      "subject": "围棋",
+      "name": "围棋对弈",
+      "sunshine": 5,
+      "frequency": "daily",
+      "bonus_rule": {
+        "type": "personal_best",
+        "per_metric": 0,
+        "note": "记胜负，不发破纪录阳光"
+      },
+      "metrics": [
+        {
+          "id": "win",
+          "label": "赢了几局",
+          "unit": "局",
+          "direction": "higher_better"
+        },
+        {
+          "id": "lose",
+          "label": "输了几局",
+          "unit": "局",
+          "direction": "higher_better"
+        }
+      ]
     }
   ]
 }
