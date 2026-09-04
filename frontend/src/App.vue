@@ -431,6 +431,7 @@ function reloadApp() { location.reload() }
 
     <!-- 底栏：自定义任务 + 商店 -->
     <footer class="foot">
+      <button class="parent" @click="pinForm.open = true">👤 家长</button>
       <span style="flex:1"></span>
       <button class="shop-fab" @click="openShop">🛒 商店</button>
     </footer>
@@ -520,8 +521,6 @@ function reloadApp() { location.reload() }
       </div>
     </div>
 
-    <!-- 家长 -->
-    <button class="parent" @click="pinForm.open = true">👤 家长</button>
     <div v-if="pinForm.open" class="mask" @click.self="pinForm.open = false">
       <div class="shop-modal">
         <h3>家长密码</h3>
@@ -741,7 +740,7 @@ body {
 .cal-cell.today { border-color: #ff9800; }
 .cal-legend { font-size: 11px; color: #9db8c8; margin-top: 8px; }
 .shop-modal input, .metric input { width: 100%; padding: 10px 12px; border: 1px solid #d7e6f0; border-radius: 10px; font-size: 15px; }
-.parent { position: fixed; left: 16px; bottom: 86px; border: none; background: none; color: #7aa0b8; cursor: pointer; z-index: 5; }
+.parent { border: none; background: none; color: #8aa9be; font-size: 13px; font-weight: 700; cursor: pointer; padding: 10px 4px; white-space: nowrap; }
 .err { color: #c62828; text-align: center; }
 
 /* 升级庆祝 */
@@ -836,6 +835,5 @@ body {
   .foot-label { display: none; }
   .foot-input { min-width: 0; font-size: 16px; }
   .shop-fab { padding: 10px 12px; }
-  .parent { left: auto; right: 12px; bottom: calc(80px + env(safe-area-inset-bottom)); }
 }
 </style>
