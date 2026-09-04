@@ -67,6 +67,17 @@ DAILY_TASKS = [
      "sunshine": SUN, "frequency": "daily",
      "bonus_rule": {"type": "personal_best", "per_metric": 0, "note": ""},
      "metrics": []},
+    {"id": "ma-calc", "subject": "数学", "name": "每日口算",
+     "sunshine": SUN, "frequency": "daily",
+     "bonus_rule": {"type": "personal_best", "per_metric": 3, "note": "破个人纪录才叠加"},
+     "metrics": [
+         {"id": "time", "label": "用时", "unit": "分钟", "direction": "lower_better"},
+         {"id": "acc", "label": "正确率", "unit": "%", "direction": "higher_better"},
+     ]},
+    {"id": "en-phonics", "subject": "英语", "name": "自然拼读学习",
+     "sunshine": SUN, "frequency": "daily",
+     "bonus_rule": {"type": "personal_best", "per_metric": 0, "note": ""},
+     "metrics": []},
 ]
 
 # 语文：单元名 + 具体课文任务（2026 部编六三制实物目录）
@@ -282,7 +293,7 @@ def main():
     units, tasks = build()
     os.makedirs("data", exist_ok=True)
     with open("data/tasks.seed.json", "w", encoding="utf-8") as f:
-        json.dump({"term": TERM, "subjects": SUBJECTS, "curriculum_ver": "2026-g5s1-v4",
+        json.dump({"term": TERM, "subjects": SUBJECTS, "curriculum_ver": "2026-g5s1-v5",
                    "units": units, "tasks": tasks, "daily_tasks": DAILY_TASKS},
                   f, ensure_ascii=False, indent=2)
     lines = ["# 2026 新教材任务卡", "",
