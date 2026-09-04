@@ -250,7 +250,8 @@ const subjectProgress = computed(() => {
 })
 const SUBJECT_ORDER = ['语文', '数学', '英语', '科学', '道法', '体育', '音美', '综合']
 const orderedSubjects = computed(() => {
-  const list = [...data.subjects]
+  // 只显示有内容的学科（单元任务或每日任务），空的（科学/道法/音美/综合）先隐藏，补目录后自动出现
+  const list = data.subjects.filter(s => (subjectProgress.value[s.id] || {}).total > 0)
   list.sort((a, b) => SUBJECT_ORDER.indexOf(a.id) - SUBJECT_ORDER.indexOf(b.id))
   return list
 })
