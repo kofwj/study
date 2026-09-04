@@ -57,8 +57,9 @@ def level_info(c):
         progress = 100.0
     return {
         "earned": e, "balance": balance(c),
-        "level": cur["name"], "level_id": cur["id"],
+        "level": cur["name"], "level_id": cur["id"], "level_icon": cur["icon"] or "⭐",
         "next": nxt["name"] if nxt else None,
+        "next_icon": (nxt["icon"] or "⭐") if nxt else None,
         "next_need": nxt["min_sunshine"] if nxt else None,
         "progress": progress,
     }

@@ -252,11 +252,14 @@ onMounted(async () => {
       <div class="pills">
         <span class="pill sun"><i></i> {{ data.level.balance }}</span>
         <span class="pill fire">🔥 连续打卡 {{ data.streak }} 天</span>
-        <span class="pill star">⭐ {{ data.level.level }}</span>
+        <span class="pill star">{{ data.level.level_icon || '⭐' }} {{ data.level.level }}</span>
       </div>
       <div class="next">
-        下一级 {{ data.level.next || '满级' }}
-        <span v-if="data.level.next">（{{ data.level.earned }}/{{ data.level.next_need }} ☀️）</span>
+        <span v-if="data.level.next">
+          {{ data.level.level_icon || '⭐' }} {{ data.level.level }}
+          · 再得 {{ data.level.next_need - data.level.earned }} ☀️ 升级 {{ data.level.next_icon || '⭐' }} {{ data.level.next }}
+        </span>
+        <span v-else>{{ data.level.level_icon || '👑' }} 已是最高等级！</span>
         <div class="next-bar"><i :style="{ width: data.level.progress + '%' }"></i></div>
       </div>
     </header>

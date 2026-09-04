@@ -22,15 +22,18 @@ REWARDS = [
 ]
 
 # 等级（累计获得阳光阈值，消费不掉级）
+# 参照 Duolingo/ClassDojo：前期密集升级给即时反馈，后期门槛递增；emoji 递进形象
+RANKS_VER = "v2"
 ALL_SUBJECTS = ["语文", "数学", "英语", "科学", "道法", "体育", "音美", "综合"]
 
 RANKS = [
-    {"id": "r1", "name": "阳光萌新",   "min_sunshine": 0},
-    {"id": "r2", "name": "阳光小能手", "min_sunshine": 50},
-    {"id": "r3", "name": "阳光达人",   "min_sunshine": 150},
-    {"id": "r4", "name": "阳光之星",   "min_sunshine": 300},
-    {"id": "r5", "name": "阳光学霸",   "min_sunshine": 500},
-    {"id": "r6", "name": "传奇学神",   "min_sunshine": 1000},
+    {"id": "r1", "name": "阳光萌新",   "min_sunshine": 0,    "icon": "🌱"},
+    {"id": "r2", "name": "阳光小苗",   "min_sunshine": 20,   "icon": "🌿"},
+    {"id": "r3", "name": "阳光小能手", "min_sunshine": 60,   "icon": "🌼"},
+    {"id": "r4", "name": "阳光达人",   "min_sunshine": 150,  "icon": "⭐"},
+    {"id": "r5", "name": "阳光之星",   "min_sunshine": 300,  "icon": "🔥"},
+    {"id": "r6", "name": "阳光学霸",   "min_sunshine": 600,  "icon": "🏆"},
+    {"id": "r7", "name": "传奇学神",   "min_sunshine": 1200, "icon": "👑"},
 ]
 
 SCHEMA = """
@@ -47,7 +50,7 @@ CREATE TABLE IF NOT EXISTS daily_metrics (
 CREATE TABLE IF NOT EXISTS rewards (
   id TEXT PRIMARY KEY, name TEXT, price INTEGER, category TEXT, need_approval INTEGER);
 CREATE TABLE IF NOT EXISTS ranks (
-  id TEXT PRIMARY KEY, name TEXT, min_sunshine INTEGER, sort INTEGER);
+  id TEXT PRIMARY KEY, name TEXT, min_sunshine INTEGER, sort INTEGER, icon TEXT DEFAULT '');
 CREATE TABLE IF NOT EXISTS checkins (
   id INTEGER PRIMARY KEY AUTOINCREMENT, date TEXT NOT NULL, sunshine INTEGER, created_at TEXT);
 CREATE TABLE IF NOT EXISTS completions (
@@ -76,6 +79,15 @@ def connect():
     c = sqlite3.connect(DB_PATH)
     c.row_factory = sqlite3.Row
     return c
+
+
+def seed_ranks(conn):
+    """重写默认等级（含图标）+ 记录版本号；版本不变时不再覆盖，尊重家长后续改动。"""
+    conn.execute("DELETE FROM ranks")
+    for i, r in enumerate(RANKS):
+        conn.execute("INSERT INTO ranks(id,name,min_sunshine,sort,icon) VALUES(?,?,?,?,?)",
+                     (r["id"], r["name"], r["min_sunshine"], i, r.get("icon", "")))
+    set_setting(conn, "ranks_ver", RANKS_VER)
 
 
 def seed(conn):
@@ -108,10 +120,7 @@ def seed(conn):
         for r in REWARDS:
             conn.execute("INSERT INTO rewards(id,name,price,category,need_approval) VALUES(?,?,?,?,?)",
                          (r["id"], r["name"], r["price"], r["category"], r["need_approval"]))
-    conn.execute("DELETE FROM ranks")
-    for i, r in enumerate(RANKS):
-        conn.execute("INSERT INTO ranks(id,name,min_sunshine,sort) VALUES(?,?,?,?)",
-                     (r["id"], r["name"], r["min_sunshine"], i))
+    seed_ranks(conn)
     set_setting(conn, "curriculum_ver", data.get("curriculum_ver", ""))
 
 
@@ -167,6 +176,11 @@ def init_db():
         except sqlite3.OperationalError as e:
             # 已有重复 completed 数据时建索引可能失败，仅告警不中断
             print("[sunshine] index warn:", e)
+    # 等级体系：加 icon 列；版本号变化时重排默认等级（只覆盖一次，之后尊重家长改动）
+    try:
+        conn.execute("ALTER TABLE ranks ADD COLUMN icon TEXT DEFAULT ''")
+    except sqlite3.OperationalError:
+        pass
     if conn.execute("SELECT COUNT(*) FROM subjects").fetchone()[0] == 0:
         seed(conn)
     else:
@@ -177,6 +191,8 @@ def init_db():
     conn.execute("INSERT OR IGNORE INTO settings(key,value) VALUES('kid_name','乐乐')")
     # 语文已学到《珍珠鸟》（cn-1-5），推荐从这里往后，前面不加阳光
     conn.execute("INSERT OR IGNORE INTO settings(key,value) VALUES('cursor_语文','cn-1-5')")
+    if get_setting(conn, "ranks_ver", "") != RANKS_VER:
+        seed_ranks(conn)
     conn.commit()
     conn.close()
 
