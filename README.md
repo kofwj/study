@@ -104,7 +104,7 @@ ssh -o BatchMode=yes root@192.168.100.5 \
 - `CONTENT.md` —— 教材版本 + 目录
 - `data/tasks.seed.json` —— 任务卡种子（机器读）；`data/tasks_review.md`（人读）
 - `scripts/gen_tasks.py` —— 任务卡生成器。下学期改 UNITS 重跑即可
-- `backend/`（`db.py` 存储+种子，`main.py` 接口）、`frontend/`（Vue3 单页）
+- `backend/`（`db.py` 存储+种子，`main.py` 接口）、`frontend/`（Vue3 单页）、`android/`（平板 WebView 壳，见 OPS 第七节）
 
 ## 关键规则（已在代码落定）
 

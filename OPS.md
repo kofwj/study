@@ -83,7 +83,15 @@ print(c.execute(\"SELECT COALESCE(SUM(delta),0) FROM ledger\").fetchone())
 
 常用表：`ledger`(流水) / `completions`(完成) / `checkins`(签到) / `redemptions`(兑换) / `tests`(测试) / `settings`(键值配置，含 PIN、游标、版本号)。
 
-## 七、本地开发
+## 七、安卓平板 APK（绕开 Chrome）
+
+壳是 `android/` 里一个 WebView，打开 `https://study.anemy.org/`，不走 Chrome。改前端不用重打 APK。
+
+1. 推到 GitHub 后等 Actions「Android APK」跑完，下载 artifact `sunshine-apk`（`app-debug.apk`）
+2. 拷到平板，允许安装未知应用（或管控白名单加 `org.anemy.sunshine`）
+3. 给这个 App 联网权限，**不要开 Chrome**
+
+## 八、本地开发
 
 ```bash
 # 后端 http://localhost:8000
