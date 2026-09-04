@@ -154,11 +154,19 @@ async function delCustom(task) {
 }
 
 const unitName = (id) => data.units.find(u => u.id === id)?.name || ''
-const incompleteTasks = computed(() => data.tasks.filter(t => !t.done))
 const recommend = computed(() => {
-  const d = data.daily.filter(d => !d.done_today)
-  const u = incompleteTasks.value.slice(0, 9)
-  return [...d, ...u]
+  // 跳绳（今天没打）+ 语数英各取未完成前 3 条，避免某一科占满
+  const out = data.daily.filter(d => !d.done_today)
+  const by = {}
+  for (const t of data.tasks) {
+    if (t.done) continue
+    if (!by[t.subject_id]) by[t.subject_id] = []
+    by[t.subject_id].push(t)
+  }
+  for (const subj of ['语文', '数学', '英语']) {
+    out.push(...(by[subj] || []).slice(0, 3))
+  }
+  return out
 })
 const bySubject = computed(() => {
   const m = {}
@@ -272,7 +280,7 @@ onMounted(async () => {
               <button v-else class="circle" :class="{ ok: t.done }" @click="toggleTask(t)">{{ t.done ? '✓' : '' }}</button>
               <div class="card-body">
                 <div class="card-title">{{ t.frequency === 'daily' ? t.name : t.title }}</div>
-                <div class="plus">+{{ t.sunshine || 5 }} ☀️</div>
+                <div class="plus">{{ t.subject_id || '体育' }} · +{{ t.sunshine || 5 }} ☀️</div>
               </div>
             </div>
           </div>

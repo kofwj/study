@@ -103,7 +103,9 @@ def tasks():
                   for r in c.execute("SELECT id, name, subject_id FROM units").fetchall()],
     }
     # 单元任务 + 完成状态
-    tasks_rows = c.execute("SELECT * FROM tasks ORDER BY subject_id, sort").fetchall()
+    tasks_rows = c.execute(
+        "SELECT t.* FROM tasks t LEFT JOIN units u ON u.id=t.unit_id "
+        "ORDER BY t.subject_id, COALESCE(u.seq,99), t.sort").fetchall()
     done_ids = {r["task_id"] for r in c.execute(
         "SELECT DISTINCT task_id FROM completions WHERE status='completed'").fetchall()}
     out["tasks"] = [{**dict(t), "done": t["id"] in done_ids} for t in tasks_rows]
