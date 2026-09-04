@@ -22,7 +22,7 @@ let toastTimer = null
 function showToast(msg) {
   toast.value = msg
   clearTimeout(toastTimer)
-  toastTimer = setTimeout(() => (toast.value = ''), 2500)
+  toastTimer = setTimeout(() => (toast.value = ''), 2600)
 }
 
 // —— 家长入口 ——
@@ -72,7 +72,7 @@ async function toggleTask(task) {
       showToast('已取消，扣回阳光')
     } else {
       const r = await api.complete(task.id)
-      showToast(`完成 +${r.delta} 阳光 ☀️`)
+      showToast(`太棒了！完成「${task.title}」+${r.delta} ☀️`)
     }
     await refresh()
   } catch (e) { showToast(e.message) }
@@ -127,7 +127,6 @@ const recommend = computed(() => {
 const bySubject = computed(() => {
   const m = {}
   for (const s of data.subjects) m[s.id] = { name: s.name, units: [] }
-  // unit tasks grouped
   const seen = new Set()
   for (const t of data.tasks) {
     const subj = data.subjects.find(s => s.id === t.subject_id)
@@ -143,118 +142,136 @@ const bySubject = computed(() => {
   }
   return m
 })
+const subjectProgress = computed(() => {
+  const m = {}
+  for (const s of data.subjects) m[s.id] = { done: 0, total: 0 }
+  for (const t of data.tasks) {
+    const p = m[t.subject_id]
+    if (!p) continue
+    p.total++
+    if (t.done) p.done++
+  }
+  for (const d of data.daily) {
+    const p = m[d.subject_id]
+    if (!p) continue
+    p.total++
+    if (d.done_today) p.done++
+  }
+  return m
+})
 const activeTab = ref('')
 
 onMounted(async () => {
   await refresh()
   if (data.subjects.length) activeTab.value = data.subjects[0].id
 })
-
-function pickValue(daily, id) {
-  return daily.today_metrics?.[id] ?? ''
-}
 </script>
 
 <template>
   <Admin v-if="isAdmin" @exit="exitAdmin" />
-  <div v-else class="wrap">
-    <!-- 顶栏 -->
-    <header class="top">
-      <div class="level">
-        <div class="lv-line">
-          <span class="lv-name">{{ data.level.level }}</span>
-          <span v-if="data.level.next" class="lv-next">→ {{ data.level.next }}</span>
+  <div v-else class="app">
+
+    <!-- 顶部问候 + 等级 -->
+    <header class="hero">
+      <div class="hero-top">
+        <div class="hero-left">
+          <div class="greet">你好呀，五年级的小主人！</div>
+          <div class="sun">☀️ <b>{{ data.level.balance }}</b><span>阳光</span></div>
         </div>
-        <div class="bar"><i :style="{ width: data.level.progress + '%' }"></i></div>
-        <div class="lv-meta">
-          <span>累计 {{ data.level.earned }} ☀️</span>
-          <span v-if="data.level.next" class="dim">还差 {{ data.level.next_need - data.level.earned }} 升级</span>
+        <div class="hero-chips">
+          <span class="chip streak">🔥 连续 {{ data.streak }} 天</span>
+          <span class="chip rank">{{ data.level.level }}</span>
         </div>
       </div>
-      <div class="right">
-        <div class="balance">☀️ {{ data.level.balance }}</div>
-        <div class="streak">🔥 连续 {{ data.streak }} 天</div>
+      <div class="rank-bar"><i :style="{ width: data.level.progress + '%' }"></i></div>
+      <div class="rank-meta">
+        <span>累计获得 {{ data.level.earned }} ☀️</span>
+        <span v-if="data.level.next" class="next">下一级「{{ data.level.next }}」还差 {{ data.level.next_need - data.level.earned }}</span>
+        <span v-else class="next">已到最高等级 🎉</span>
       </div>
+      <button class="checkin" :disabled="data.today_checkin" @click="checkin">
+        {{ data.today_checkin ? '今日已签到 ✅' : '🌞 每日打卡领阳光 +5' }}
+      </button>
     </header>
 
-    <!-- 签到 -->
-    <button class="checkin-btn" :disabled="data.today_checkin" @click="checkin">
-      {{ data.today_checkin ? '今日已签到 ✅' : '🌞 每日签到领阳光' }}
-    </button>
+    <!-- 学科切换 -->
+    <nav class="subjects">
+      <button v-for="s in data.subjects" :key="s.id"
+        :class="{ on: activeTab === s.id }" @click="activeTab = s.id">
+        <span class="sn">{{ s.name }}</span>
+        <span class="sp">{{ subjectProgress[s.id]?.done }}/{{ subjectProgress[s.id]?.total }}</span>
+      </button>
+    </nav>
 
     <!-- 今日推荐 -->
-    <section class="card">
-      <h2>⭐ 今日推荐</h2>
-      <p v-if="!recommend.length" class="dim">今天都完成啦，太棒了！</p>
-      <div v-for="t in recommend" :key="t.id || t.name" class="row">
-        <div class="t-info">
-          <span class="badge" :class="t.frequency === 'daily' ? 'daily' : ''">{{ t.frequency === 'daily' ? '每天' : t.action }}</span>
-          <span class="t-title">{{ t.frequency === 'daily' ? t.name : t.title }}</span>
+    <section class="sec">
+      <h2 class="sec-h">⭐ 今日推荐 <span class="sec-sub">今天先做这些</span></h2>
+      <div v-if="!recommend.length" class="empty">🎉 今天都完成啦，太棒了！</div>
+      <div v-for="t in recommend" :key="t.id || t.name" class="task-card">
+        <div class="tc-left">
+          <span class="badge" :class="{ daily: t.frequency === 'daily' }">{{ t.frequency === 'daily' ? '每天' : t.action }}</span>
+          <span class="tc-title">{{ t.frequency === 'daily' ? t.name : t.title }}</span>
         </div>
-        <div class="t-actions">
+        <div class="tc-right">
           <span v-if="t.frequency === 'daily' && t.pb && Object.values(t.pb).some(v => v !== null)" class="pb">纪录 {{ Object.values(t.pb).filter(v => v !== null).join(' / ') }}</span>
           <button v-if="t.frequency === 'daily'" class="do" @click="openDaily(t)">去打卡</button>
-          <button v-else class="do" @click="toggleTask(t)">完成 +{{ t.sunshine }}</button>
+          <button v-else class="do" @click="toggleTask(t)">+{{ t.sunshine }}</button>
         </div>
       </div>
     </section>
 
-    <!-- 学科任务 -->
-    <section class="card">
-      <div class="tabs">
-        <button v-for="s in data.subjects" :key="s.id"
-          :class="{ active: activeTab === s.id }" @click="activeTab = s.id">{{ s.name }}</button>
-      </div>
-      <div v-if="bySubject[activeTab]" class="units">
-        <div v-for="u in bySubject[activeTab].units" :key="u.id" class="unit">
-          <div class="unit-h">{{ u.name }} <span class="dim">({{ u.tasks.filter(t => !t.done).length }}/{{ u.tasks.length }} 未完成)</span></div>
-          <div v-for="t in u.tasks" :key="t.id" class="row" :class="{ done: t.done }">
-            <div class="t-info">
-              <span class="badge">{{ t.action }}</span>
-              <span class="t-title">{{ t.title }}</span>
-            </div>
-            <button class="do" @click="toggleTask(t)">{{ t.done ? '取消' : '+5' }}</button>
+    <!-- 当前学科任务 -->
+    <section class="sec" v-if="bySubject[activeTab]">
+      <h2 class="sec-h"><span class="emoji">{{ activeTab === '语文' ? '📚' : activeTab === '数学' ? '🔢' : activeTab === '英语' ? '🔤' : activeTab === '体育' ? '🏃' : '📒' }}</span> {{ activeTab }} <span class="sec-sub">按单元完成</span></h2>
+      <div v-for="u in bySubject[activeTab].units" :key="u.id" class="unit-block" v-show="u.tasks.length">
+        <div class="unit-h">{{ u.name }} <span class="unit-cnt">{{ u.tasks.filter(t => !t.done).length }}/{{ u.tasks.length }} 未完成</span></div>
+        <div v-for="t in u.tasks" :key="t.id" class="task-card" :class="{ done: t.done }">
+          <div class="tc-left">
+            <span class="badge">{{ t.action }}</span>
+            <span class="tc-title">{{ t.title }}</span>
           </div>
+          <button class="do" :class="{ ghosty: t.done }" @click="toggleTask(t)">{{ t.done ? '取消' : '+5' }}</button>
         </div>
-        <!-- 体育每日卡 -->
-        <div class="unit" v-if="data.daily.some(x => x.subject_id === activeTab)">
-          <div class="unit-h">每日打卡</div>
-          <div v-for="d in data.daily.filter(x => x.subject_id === activeTab)" :key="d.id" class="row" :class="{ done: d.done_today }">
-            <div class="t-info">
-              <span class="badge daily">每天</span>
-              <span class="t-title">{{ d.name }}</span>
-            </div>
-            <div class="t-actions">
-              <span v-if="d.pb && Object.values(d.pb).some(v => v !== null)" class="pb">纪录 {{ Object.values(d.pb).filter(v => v !== null).join(' / ') }}</span>
-              <button class="do" v-if="!d.done_today" @click="openDaily(d)">去打卡</button>
-              <button class="do" v-else @click="cancelDaily(d)">取消</button>
-            </div>
+      </div>
+      <div class="unit-block" v-if="data.daily.some(x => x.subject_id === activeTab)">
+        <div class="unit-h">每日打卡</div>
+        <div v-for="d in data.daily.filter(x => x.subject_id === activeTab)" :key="d.id" class="task-card" :class="{ done: d.done_today }">
+          <div class="tc-left">
+            <span class="badge daily">每天</span>
+            <span class="tc-title">{{ d.name }}</span>
+          </div>
+          <div class="tc-right">
+            <span v-if="d.pb && Object.values(d.pb).some(v => v !== null)" class="pb">纪录 {{ Object.values(d.pb).filter(v => v !== null).join(' / ') }}</span>
+            <button class="do" v-if="!d.done_today" @click="openDaily(d)">去打卡</button>
+            <button class="do ghosty" v-else @click="cancelDaily(d)">取消</button>
           </div>
         </div>
       </div>
     </section>
 
     <!-- 商店 -->
-    <section class="card">
-      <h2>🛒 阳光兑换商店</h2>
+    <section class="sec">
+      <h2 class="sec-h">🛒 阳光兑换商店 <span class="sec-sub">明码标价，自己算性价比</span></h2>
       <div class="shop">
         <div v-for="r in rewards" :key="r.id" class="shop-item">
           <div class="shop-name">{{ r.name }}</div>
           <div class="shop-price">☀️ {{ r.price }}</div>
-          <button class="do" :class="{ disabled: data.level.balance < r.price }" @click="redeem(r)">兑换</button>
+          <button class="do" :class="{ ghosty: data.level.balance < r.price }" @click="redeem(r)">兑换</button>
         </div>
       </div>
     </section>
 
     <!-- 流水 -->
-    <section class="card">
-      <h2>📜 最近流水</h2>
+    <section class="sec">
+      <h2 class="sec-h">📜 最近动态</h2>
       <div v-for="l in ledger" :key="l.id" class="ledger">
-        <span class="note">{{ l.note }}</span>
-        <span class="delta" :class="l.delta > 0 ? 'pos' : 'neg'">{{ l.delta > 0 ? '+' : '' }}{{ l.delta }}</span>
+        <span class="lg-note">{{ l.note }}</span>
+        <span class="lg-delta" :class="l.delta > 0 ? 'pos' : 'neg'">{{ l.delta > 0 ? '+' : '' }}{{ l.delta }}</span>
       </div>
-      <p v-if="!ledger.length" class="dim">还没有记录</p>
+      <p v-if="!ledger.length" class="dim empty">还没有记录，先签到或完成一项任务吧</p>
     </section>
+
+    <button class="parent-btn" @click="pinForm.open = true">👤 家长</button>
 
     <!-- 每日任务弹窗 -->
     <div v-if="dailyDialog.open" class="mask" @click.self="dailyDialog.open = false">
@@ -269,12 +286,6 @@ function pickValue(daily, id) {
       </div>
     </div>
 
-    <!-- 家长入口 -->
-    <button class="parent-btn" @click="pinForm.open = true">👤 家长</button>
-
-    <div v-if="toast" class="toast">{{ toast }}</div>
-    <p v-if="err" class="err">{{ err }}</p>
-
     <!-- 家长密码弹窗 -->
     <div v-if="pinForm.open" class="mask" @click.self="pinForm.open = false">
       <div class="modal">
@@ -284,85 +295,136 @@ function pickValue(daily, id) {
         <button class="ghost" @click="pinForm.open = false">取消</button>
       </div>
     </div>
+
+    <div v-if="toast" class="toast">{{ toast }}</div>
+    <p v-if="err" class="err">{{ err }}</p>
   </div>
 </template>
 
 <style>
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+:root {
+  --bg: #faf5ec;
+  --card: #ffffff;
+  --ink: #3a2e1b;
+  --muted: #97886a;
+  --line: #f1e8d6;
+  --sun: #ffb300;
+  --sun-deep: #f5921e;
+  --ok: #43a047;
+}
 body {
-  margin: 0; font-family: system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
-  background: #fff7e6; color: #4a3b1f;
+  margin: 0;
+  font-family: ui-rounded, system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
 }
-.wrap { max-width: 720px; margin: 0 auto; padding: 14px 14px 40px; }
+.app { max-width: 760px; margin: 0 auto; padding: 16px 14px 40px; }
 
-.top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
-.level { flex: 1; }
-.lv-line { display: flex; align-items: baseline; gap: 8px; }
-.lv-name { font-size: 20px; font-weight: 700; color: #b8860b; }
-.lv-next { font-size: 12px; color: #b0975c; }
-.bar { height: 8px; background: #f2e3c0; border-radius: 6px; overflow: hidden; margin: 6px 0; }
-.bar i { display: block; height: 100%; background: linear-gradient(90deg,#ffb800,#ff8a00); border-radius: 6px; transition: width .4s; }
-.lv-meta { font-size: 12px; color: #8a7444; display: flex; gap: 10px; }
-.right { text-align: right; }
-.balance { font-size: 26px; font-weight: 800; color: #ff8a00; }
-.streak { font-size: 12px; color: #8a7444; }
-
-.checkin-btn {
-  width: 100%; margin: 14px 0; padding: 14px; font-size: 16px; font-weight: 700;
-  background: linear-gradient(135deg,#ffd54f,#ffb300); color: #6d4c00; border: none;
-  border-radius: 14px; cursor: pointer;
+/* 顶部 */
+.hero {
+  background: linear-gradient(160deg, #ffe9b3 0%, #ffd66b 55%, #ffc345 100%);
+  border-radius: 24px; padding: 20px 20px 18px; color: #5b3d08;
+  box-shadow: 0 8px 24px rgba(240, 160, 20, .25);
 }
-.checkin-btn:disabled { background: #e8dfc8; color: #9a8a63; cursor: default; }
+.hero-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.greet { font-size: 14px; opacity: .85; margin-bottom: 4px; }
+.sun { font-size: 15px; }
+.sun b { font-size: 34px; font-weight: 900; letter-spacing: -1px; margin-right: 4px; }
+.sun span { font-size: 13px; opacity: .8; }
+.hero-chips { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
+.chip { background: rgba(255,255,255,.55); border-radius: 20px; padding: 5px 12px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.chip.streak { color: #d4491f; }
+.chip.rank { background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+.rank-bar { height: 10px; background: rgba(255,255,255,.5); border-radius: 8px; overflow: hidden; margin: 14px 0 8px; }
+.rank-bar i { display: block; height: 100%; background: linear-gradient(90deg, #ff8a00, #ffb300); border-radius: 8px; transition: width .5s ease; }
+.rank-meta { display: flex; justify-content: space-between; font-size: 12px; opacity: .85; }
+.checkin {
+  width: 100%; margin-top: 14px; padding: 14px; font-size: 16px; font-weight: 800;
+  background: #fff; color: #6d4c00; border: none; border-radius: 16px; cursor: pointer;
+  box-shadow: 0 4px 14px rgba(120, 80, 0, .15); transition: transform .1s;
+}
+.checkin:active { transform: scale(.98); }
+.checkin:disabled { background: rgba(255,255,255,.6); color: #a08a5a; box-shadow: none; cursor: default; }
 
-.card { background: #fff; border-radius: 16px; padding: 16px; margin-bottom: 14px; box-shadow: 0 2px 10px rgba(180,130,20,.06); }
-.card h2 { margin: 0 0 12px; font-size: 16px; color: #4a3b1f; }
+/* 学科 */
+.subjects { display: flex; gap: 8px; overflow-x: auto; padding: 14px 2px; -webkit-overflow-scrolling: touch; }
+.subjects button {
+  flex: 0 0 auto; min-width: 64px; padding: 8px 12px; border: none; border-radius: 16px;
+  background: var(--card); color: var(--muted); cursor: pointer; box-shadow: 0 1px 4px rgba(120,100,40,.08);
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+}
+.subjects button .sn { font-size: 14px; font-weight: 700; }
+.subjects button .sp { font-size: 11px; opacity: .7; }
+.subjects button.on { background: var(--sun); color: #fff; box-shadow: 0 4px 12px rgba(255,179,0,.35); }
+.subjects button.on .sp { opacity: .9; }
 
-.tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
-.tabs button { padding: 7px 14px; border: 1px solid #f0e0bb; background: #fff; border-radius: 20px; color: #8a7444; cursor: pointer; font-size: 14px; }
-.tabs button.active { background: #ffb800; border-color: #ffb800; color: #fff; font-weight: 700; }
+/* 区块 */
+.sec { background: var(--card); border-radius: 20px; padding: 16px; margin-bottom: 14px; box-shadow: 0 2px 12px rgba(140,105,30,.06); }
+.sec-h { margin: 0 0 12px; font-size: 16px; font-weight: 800; display: flex; align-items: baseline; gap: 8px; }
+.sec-h .emoji { font-size: 18px; }
+.sec-sub { font-size: 12px; font-weight: 400; color: var(--muted); }
+.empty { text-align: center; color: var(--muted); padding: 18px 0; font-size: 14px; }
 
-.unit { margin-bottom: 14px; }
-.unit-h { font-weight: 700; font-size: 14px; margin-bottom: 6px; color: #6d5a2b; }
-.row { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 9px 0; border-bottom: 1px solid #f7ecd4; }
-.row.done { opacity: .55; }
-.t-info { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
-.t-title { font-size: 14px; }
-.badge { font-size: 11px; padding: 2px 8px; border-radius: 10px; background: #eef4ff; color: #4a6db0; white-space: nowrap; }
+/* 任务卡 */
+.unit-h { font-weight: 800; font-size: 13px; color: #6d5a2b; margin: 14px 0 8px; display: flex; justify-content: space-between; align-items: center; }
+.unit-cnt { font-weight: 400; color: var(--muted); font-size: 11px; }
+.task-card {
+  display: flex; justify-content: space-between; align-items: center; gap: 10px;
+  padding: 11px 12px; margin-bottom: 6px; border: 1px solid var(--line); border-radius: 14px;
+  background: #fff; transition: all .15s;
+}
+.task-card:hover { border-color: #e8d5a5; box-shadow: 0 3px 10px rgba(200,150,30,.08); }
+.task-card.done { opacity: .55; }
+.task-card.done .tc-title { text-decoration: line-through; }
+.tc-left { display: flex; align-items: center; gap: 9px; flex: 1; min-width: 0; }
+.tc-title { font-size: 14px; line-height: 1.4; }
+.badge { font-size: 11px; padding: 3px 9px; border-radius: 10px; background: #eef4ff; color: #4a6db0; white-space: nowrap; font-weight: 600; }
 .badge.daily { background: #fff0d6; color: #c07b00; }
-.pb { font-size: 11px; color: #b0975c; }
-.t-actions { display: flex; align-items: center; gap: 8px; }
+.tc-right { display: flex; align-items: center; gap: 8px; }
+.pb { font-size: 11px; color: #b0975c; white-space: nowrap; }
+
 .do {
-  padding: 7px 14px; border: none; border-radius: 20px; background: #ffb800; color: #fff;
-  font-weight: 700; cursor: pointer; font-size: 13px; white-space: nowrap;
+  padding: 7px 15px; border: none; border-radius: 20px; background: var(--sun); color: #fff;
+  font-weight: 800; cursor: pointer; font-size: 13px; white-space: nowrap; transition: transform .1s;
 }
-.do:active { transform: scale(.96); }
-.do.disabled { background: #e0d6be; cursor: not-allowed; }
-.do.big { width: 100%; padding: 13px; font-size: 16px; }
+.do:active { transform: scale(.95); }
+.do.ghosty { background: #ece3cf; color: #9a8a63; }
 
+/* 商店 */
 .shop { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
-.shop-item { background: #fffaf0; border: 1px solid #f5e6c4; border-radius: 12px; padding: 12px; text-align: center; }
-.shop-name { font-weight: 600; font-size: 14px; margin-bottom: 4px; }
-.shop-price { color: #ff8a00; font-weight: 700; margin-bottom: 8px; }
+.shop-item { background: #fffbf2; border: 1px solid #f5e6c4; border-radius: 14px; padding: 14px 12px; text-align: center; }
+.shop-name { font-weight: 700; font-size: 14px; margin-bottom: 4px; }
+.shop-price { color: var(--sun-deep); font-weight: 800; margin-bottom: 10px; }
 
-.ledger { display: flex; justify-content: space-between; padding: 6px 0; font-size: 13px; border-bottom: 1px dashed #f2e6cd; }
-.ledger .note { color: #6d5a2b; }
-.delta.pos { color: #2e7d32; font-weight: 700; }
-.delta.neg { color: #c62828; font-weight: 700; }
+/* 流水 */
+.ledger { display: flex; justify-content: space-between; padding: 8px 0; font-size: 13px; border-bottom: 1px dashed #f2e6cd; }
+.lg-note { color: #6d5a2b; }
+.lg-delta.pos { color: var(--ok); font-weight: 800; }
+.lg-delta.neg { color: #d4491f; font-weight: 800; }
 
 .dim { color: #b7a26b; font-size: 13px; }
-.parent-btn { float: right; margin: 14px 0; background: none; border: 1px solid #e4d5b4; border-radius: 20px; padding: 6px 14px; color: #8a7444; cursor: pointer; }
+.parent-btn { display: block; margin: 6px auto 0; background: none; border: none; color: #b7a26b; cursor: pointer; font-size: 13px; }
 .err { color: #c62828; text-align: center; }
 
+/* 弹窗 */
 .mask { position: fixed; inset: 0; background: rgba(0,0,0,.4); display: flex; align-items: center; justify-content: center; z-index: 10; }
-.modal { background: #fff; border-radius: 16px; padding: 20px; width: 90%; max-width: 360px; }
-.modal h3 { margin: 0 0 14px; }
+.modal { background: #fff; border-radius: 20px; padding: 22px; width: 90%; max-width: 360px; }
+.modal h3 { margin: 0 0 16px; }
 .metric { margin-bottom: 12px; }
-.metric label { display: block; font-size: 13px; color: #6d5a2b; margin-bottom: 4px; }
-.metric input { width: 100%; padding: 10px 12px; border: 1px solid #e4d5b4; border-radius: 10px; font-size: 16px; }
+.metric label { display: block; font-size: 13px; color: #6d5a2b; margin-bottom: 5px; }
+.metric input, .modal input { width: 100%; padding: 11px 13px; border: 1px solid #e4d5b4; border-radius: 12px; font-size: 16px; }
+.metric input:focus, .modal input:focus { outline: none; border-color: var(--sun); }
 .ghost { width: 100%; margin-top: 10px; padding: 10px; background: none; border: none; color: #9a8a63; cursor: pointer; }
+.do.big { width: 100%; margin-top: 6px; padding: 13px; font-size: 16px; }
 
+/* 提示 */
 .toast {
-  position: fixed; left: 50%; bottom: 30px; transform: translateX(-50%);
-  background: rgba(60,45,10,.9); color: #fff; padding: 10px 18px; border-radius: 22px; font-size: 14px; z-index: 20;
+  position: fixed; left: 50%; bottom: 34px; transform: translateX(-50%);
+  background: rgba(58,46,27,.92); color: #fff; padding: 11px 20px; border-radius: 24px; font-size: 14px; z-index: 30;
+  box-shadow: 0 6px 20px rgba(0,0,0,.2);
+  animation: rise .22s ease;
 }
+@keyframes rise { from { opacity: 0; transform: translate(-50%, 10px); } to { opacity: 1; transform: translate(-50%, 0); } }
 </style>
