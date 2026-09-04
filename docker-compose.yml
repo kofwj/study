@@ -7,6 +7,7 @@ services:
       - "0.0.0.0:9000:8000"   # 监听所有接口(仅内网)，供另一台机器上的 cloudflared 经内网访问
     environment:
       - SUNSHINE_DB=/data/sunshine.db
+      - TZ=Asia/Shanghai
     volumes:
       - ./data:/data            # SQLite 持久化到宿主机 data/ 目录
     healthcheck:

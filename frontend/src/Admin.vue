@@ -10,6 +10,7 @@ const subjects = ref([])
 const units = ref([])
 const tasks = ref([])
 const daily = ref([])
+const cursors = ref({})
 const toast = ref('')
 
 function showToast(m) { toast.value = m; setTimeout(() => (toast.value = ''), 2200) }
@@ -23,6 +24,7 @@ async function load() {
   units.value = t.units
   tasks.value = t.tasks
   daily.value = t.daily
+  cursors.value = t.cursors || {}
 }
 
 // —— 商店 ——
@@ -92,6 +94,14 @@ async function delDaily(id) { if (!confirm('删除这个每日任务？')) retur
 
 // —— 密码 ——
 const pinForm = reactive({ cur: '', next: '' })
+async function setCursor(subj, taskId) {
+  try {
+    await api.admin.setCursor({ subject_id: subj, task_id: taskId })
+    cursors.value = { ...cursors.value, [subj]: taskId }
+    showToast('已更新「已学到」')
+  } catch (e) { showToast(e.message) }
+}
+
 async function changePin() {
   if (!pinForm.next) return showToast('填新密码')
   try {
@@ -116,6 +126,7 @@ onMounted(load)
       <button :class="{ on: tab === 'shop' }" @click="tab = 'shop'">商店</button>
       <button :class="{ on: tab === 'rank' }" @click="tab = 'rank'">等级</button>
       <button :class="{ on: tab === 'task' }" @click="tab = 'task'">任务</button>
+      <button :class="{ on: tab === 'cursor' }" @click="tab = 'cursor'">已学到</button>
       <button :class="{ on: tab === 'pin' }" @click="tab = 'pin'">密码</button>
     </div>
 
@@ -211,6 +222,19 @@ onMounted(load)
         <input v-model.number="newDaily.bonus_per_metric" type="number" class="w-num" />
         <button class="ok" @click="addDaily">＋新增</button>
       </div>
+    </section>
+
+    <!-- 已学到 -->
+    <section v-if="tab === 'cursor'" class="a-card">
+      <h3>已学到哪一课（推荐从这里往后，前面不加阳光）</h3>
+      <div class="a-item" v-for="s in ['语文','数学','英语']" :key="s">
+        <span class="badge">{{ s }}</span>
+        <select :value="cursors[s] || ''" @change="setCursor(s, $event.target.value)">
+          <option value="">从头开始</option>
+          <option v-for="t in (tasksBySubject[s] || [])" :key="t.id" :value="t.id">{{ t.title }}</option>
+        </select>
+      </div>
+      <p class="dim">语文默认已学到《珍珠鸟》。开学中途接入时把锚点拨到当前课。</p>
     </section>
 
     <!-- 密码 -->

@@ -67,6 +67,31 @@ def level_info(c):
     }
 
 
+WEEKDAYS = "一二三四五六日"
+
+
+def today_label():
+    d = datetime.now()
+    return "%d年%d月%d日 星期%s" % (d.year, d.month, d.day, WEEKDAYS[d.weekday()])
+
+
+def subject_order(c, subject_id):
+    rows = c.execute(
+        "SELECT t.id FROM tasks t LEFT JOIN units u ON u.id=t.unit_id "
+        "WHERE t.subject_id=? ORDER BY COALESCE(u.seq,99), t.sort", (subject_id,)).fetchall()
+    return [r["id"] for r in rows]
+
+
+def is_past(c, task_id, subject_id):
+    cur = db.get_setting(c, "cursor_" + subject_id, "")
+    if not cur:
+        return False
+    ids = subject_order(c, subject_id)
+    if task_id not in ids or cur not in ids:
+        return False
+    return ids.index(task_id) < ids.index(cur)
+
+
 def streak(c):
     rows = {r["date"] for r in c.execute("SELECT DISTINCT date FROM checkins").fetchall()}
     d = datetime.now().date()
@@ -96,6 +121,9 @@ def tasks():
         "level": level_info(c),
         "streak": streak(c),
         "kid_name": db.get_setting(c, "kid_name", "乐乐"),
+        "today": today_label(),
+        "cursors": {r["key"][7:]: r["value"] for r in c.execute(
+            "SELECT key,value FROM settings WHERE key LIKE 'cursor_%'").fetchall()},
         "today_checkin": c.execute(
             "SELECT 1 FROM checkins WHERE date=?", (db.today(),)).fetchone() is not None,
         "subjects": [dict(r) for r in c.execute("SELECT * FROM subjects").fetchall()],
@@ -108,7 +136,8 @@ def tasks():
         "ORDER BY t.subject_id, COALESCE(u.seq,99), t.sort").fetchall()
     done_ids = {r["task_id"] for r in c.execute(
         "SELECT DISTINCT task_id FROM completions WHERE status='completed'").fetchall()}
-    out["tasks"] = [{**dict(t), "done": t["id"] in done_ids} for t in tasks_rows]
+    out["tasks"] = [{**dict(t), "done": t["id"] in done_ids,
+                     "past": is_past(c, t["id"], t["subject_id"])} for t in tasks_rows]
     # 每日任务 + 今日状态 + 历史最好
     dts = c.execute("SELECT * FROM daily_tasks").fetchall()
     daily = []
@@ -197,6 +226,8 @@ def complete(body: CompleteBody):
     tid = body.task_id
     row = c.execute("SELECT * FROM tasks WHERE id=?", (tid,)).fetchone()
     if row:
+        if is_past(c, tid, row["subject_id"]):
+            raise HTTPException(409, "这课已经学过了，不加阳光")
         if c.execute("SELECT 1 FROM completions WHERE task_id=? AND status='completed'", (tid,)).fetchone():
             raise HTTPException(409, "这项已经完成过啦")
         delta = row["sunshine"]
@@ -339,6 +370,19 @@ def require_admin(x_admin_pin: Optional[str] = Header(None)):
         c.close()
     if not ok:
         raise HTTPException(401, "家长密码不对")
+
+
+class CursorBody(BaseModel):
+    subject_id: str
+    task_id: str
+
+
+@app.post("/api/admin/cursor", dependencies=[Depends(require_admin)])
+def set_cursor(b: CursorBody):
+    c = get_conn()
+    db.set_setting(c, "cursor_" + b.subject_id, b.task_id)
+    c.commit()
+    return {"ok": True}
 
 
 class PinBody(BaseModel):

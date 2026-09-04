@@ -7,6 +7,8 @@ const data = reactive({
   level: { earned: 0, balance: 0, level: '阳光萌新', next: null, next_need: 0, progress: 0 },
   streak: 0,
   kid_name: '乐乐',
+  today: '',
+  cursors: {},
   today_checkin: false,
   subjects: [],
   units: [],
@@ -73,6 +75,10 @@ async function checkin() {
 }
 
 async function toggleTask(task) {
+  if (task.past) {
+    showToast('这课已经学过了，不加阳光')
+    return
+  }
   try {
     if (task.done) {
       await api.cancel(task.id)
@@ -176,8 +182,8 @@ const recommend = computed(() => {
   const out = data.daily.filter(d => !d.done_today)
   for (const subj of ['语文', '数学', '英语']) {
     const units = (bySubject.value[subj] && bySubject.value[subj].units) || []
-    const cur = units.find(u => u.tasks.some(t => !t.done))
-    if (cur) out.push(...cur.tasks.filter(t => !t.done).slice(0, 2))
+    const cur = units.find(u => u.tasks.some(t => !t.done && !t.past))
+    if (cur) out.push(...cur.tasks.filter(t => !t.done && !t.past).slice(0, 2))
   }
   return out
 })
@@ -188,7 +194,7 @@ const subjectProgress = computed(() => {
     const p = m[t.subject_id]
     if (!p) continue
     p.total++
-    if (t.done) p.done++
+    if (t.done || t.past) p.done++
   }
   for (const d of data.daily) {
     const p = m[d.subject_id]
@@ -220,7 +226,7 @@ onMounted(async () => {
       <div class="who">
         <div class="avatar">😊</div>
         <div>
-          <div class="hello">你好呀，五年级的小主人！</div>
+          <div class="hello">{{ data.today || '今天' }} · 你好呀，五年级的小主人！</div>
           <div class="name-row">
             <template v-if="!renaming">
               <b class="kid">{{ data.kid_name }}</b>
@@ -290,12 +296,12 @@ onMounted(async () => {
           <div v-for="u in currentUnits" :key="u.id" class="unit">
             <h2><i></i> {{ u.name }}</h2>
             <div class="grid">
-              <div v-for="t in u.tasks" :key="t.id" class="card" :class="{ done: t.done }">
+              <div v-for="t in u.tasks" :key="t.id" class="card" :class="{ done: t.done, past: t.past }">
                 <button v-if="t.custom" class="x" title="删除" @click="delCustom(t)">×</button>
-                <button class="circle" :class="{ ok: t.done }" @click="toggleTask(t)">{{ t.done ? '✓' : '' }}</button>
+                <button class="circle" :class="{ ok: t.done || t.past }" @click="toggleTask(t)">{{ t.done || t.past ? '✓' : '' }}</button>
                 <div class="card-body">
                   <div class="card-title">{{ t.title }}</div>
-                  <div class="plus">+{{ t.sunshine }} ☀️</div>
+                  <div class="plus">{{ t.past ? '已学过' : ('+' + t.sunshine + ' ☀️') }}</div>
                 </div>
               </div>
             </div>
@@ -451,6 +457,7 @@ body {
   box-shadow: 0 4px 14px rgba(60,120,170,.07); border: 1px solid #e8f3fa;
 }
 .card.done { background: #eaf8ee; border-color: #cfead6; }
+.card.past { opacity: .55; }
 .circle {
   width: 28px; height: 28px; border-radius: 50%; border: 2px solid #c5d8e6; background: #fff;
   flex: 0 0 28px; cursor: pointer; color: #fff; font-weight: 800;
