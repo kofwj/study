@@ -402,6 +402,7 @@ body {
 .avatar {
   width: 46px; height: 46px; border-radius: 50%; background: #fff;
   display: flex; align-items: center; justify-content: center; font-size: 26px;
+  flex: 0 0 46px; aspect-ratio: 1; overflow: hidden;
 }
 .hello { font-size: 12px; opacity: .92; }
 .kid { font-size: 20px; }
@@ -451,7 +452,7 @@ body {
   margin: 0 0 10px; font-size: 16px; color: #1f7bb8; display: flex; align-items: center; gap: 8px;
 }
 .unit h2 i { width: 4px; height: 16px; background: #3aa4e0; border-radius: 2px; display: inline-block; }
-.grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
 .card {
   position: relative; background: #fff; border-radius: 16px; padding: 16px 14px 14px 14px;
   display: flex; gap: 10px; align-items: flex-start; min-height: 86px;
@@ -518,7 +519,7 @@ body {
   }
   .who { width: 100%; min-width: 0; }
   .who > div { min-width: 0; flex: 1; }
-  .avatar { width: 40px; height: 40px; font-size: 22px; flex: 0 0 40px; }
+  .avatar { width: 40px; height: 40px; font-size: 22px; flex: 0 0 40px; aspect-ratio: 1; }
   .kid { font-size: 18px; white-space: nowrap; }
   .hello { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .greet-long { display: none; }
@@ -551,7 +552,7 @@ body {
   .main h1 { font-size: 20px; margin: 0 0 4px; }
   .hint { font-size: 12px; margin-bottom: 10px; }
   .grid { grid-template-columns: 1fr; gap: 8px; }
-  .card { min-height: 64px; padding: 12px; align-items: center; }
+  .card { min-height: 64px; padding: 12px; align-items: center; max-width: none; }
   .circle { width: 32px; height: 32px; flex: 0 0 32px; }
   .x { display: block; }
 
