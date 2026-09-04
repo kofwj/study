@@ -23,6 +23,11 @@ const shopOpen = ref(false)
 const myRedeems = ref([])
 const achievements = ref([])
 const achOpen = ref(false)
+const boxes = ref({ avail: 0, opened: 0, earned: 0, streak: 0 })
+const boxOpen = ref(false)
+const boxResult = ref(null)
+const rankMapOpen = ref(false)
+const rankMap = ref(null)
 const celebrate = ref(null)
 const chartOpen = reactive({ open: false, task: null, history: [] })
 const customTitle = ref('')
@@ -60,7 +65,7 @@ function exitAdmin() {
 
 async function refresh() {
   try {
-    const [t, r] = await Promise.all([api.tasks(), api.rewards()])
+    const [t, r, bx] = await Promise.all([api.tasks(), api.rewards(), api.boxes()])
     const prevId = data.level && data.level.level_id
     const prevEarned = data.level && (data.level.earned || 0)
     Object.assign(data, t)
@@ -70,6 +75,7 @@ async function refresh() {
       setTimeout(() => (celebrate.value = null), 2800)
     }
     rewards.value = r
+    boxes.value = bx
     err.value = ''
   } catch (e) {
     err.value = e.message
@@ -191,6 +197,23 @@ async function openAch() {
   achOpen.value = true
   try { achievements.value = await api.achievements() } catch {}
 }
+async function openBox() {
+  if (boxes.value.avail <= 0) {
+    const need = (boxes.value.earned + 1) * 3 - boxes.value.streak
+    showToast(`再连续打卡 ${Math.max(1, need)} 天解锁下一个宝箱！`)
+    return
+  }
+  try {
+    const r = await api.openBox()
+    boxResult.value = r.delta
+    boxOpen.value = true
+    await refresh()
+  } catch (e) { showToast(e.message) }
+}
+async function openRankMap() {
+  rankMapOpen.value = true
+  try { rankMap.value = await api.ranks() } catch {}
+}
 
 async function saveName() {
   const n = renameVal.value.trim()
@@ -307,8 +330,11 @@ onMounted(async () => {
       <div class="pills">
         <span class="pill sun"><i></i> {{ data.level.balance }}</span>
         <span class="pill fire">🔥 连续打卡 {{ data.streak }} 天</span>
-        <span class="pill star">{{ data.level.level_icon || '⭐' }} {{ data.level.level }}</span>
+        <button class="pill star" @click="openRankMap">{{ data.level.level_icon || '⭐' }} {{ data.level.level }}</button>
         <button class="pill ach" @click="openAch">🎖️ 成就</button>
+        <button class="pill box" :class="{ ready: boxes.avail > 0 }" @click="openBox">
+          🎁 {{ boxes.avail > 0 ? '宝箱 ×' + boxes.avail : '宝箱' }}
+        </button>
       </div>
       <div class="next">
         <span v-if="data.level.next">
@@ -534,6 +560,35 @@ onMounted(async () => {
         <button class="ghost" @click="achOpen = false">关闭</button>
       </div>
     </div>
+
+    <!-- 连击宝箱 -->
+    <div v-if="boxOpen" class="mask" @click.self="boxOpen = false">
+      <div class="shop-modal box-modal">
+        <h3>🎁 连击宝箱</h3>
+        <div class="box-result">
+          <div class="box-icon">🎁</div>
+          <div class="box-gain">+{{ boxResult }} ☀️</div>
+          <div class="box-tip">太棒了，坚持打卡的奖励！</div>
+        </div>
+        <button class="do big" @click="boxOpen = false">收下奖励 🎉</button>
+      </div>
+    </div>
+
+    <!-- 成长地图 -->
+    <div v-if="rankMapOpen" class="mask" @click.self="rankMapOpen = false">
+      <div class="shop-modal map-modal">
+        <h3>🗺️ 我的成长之路</h3>
+        <div class="map-list">
+          <div v-for="r in (rankMap?.ranks || [])" :key="r.id" class="map-node"
+            :class="{ done: r.min_sunshine <= (rankMap?.earned || 0), cur: r.id === (rankMap?.current) }">
+            <span class="map-icon">{{ r.icon || '⭐' }}</span>
+            <span class="map-name">{{ r.name }}</span>
+            <span class="map-th">{{ r.min_sunshine }} ☀️</span>
+          </div>
+        </div>
+        <button class="ghost" @click="rankMapOpen = false">关闭</button>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -690,6 +745,23 @@ body {
 .celebrate-title { font-size: 22px; font-weight: 800; color: #f5a623; margin-top: 8px; }
 .celebrate-name { font-size: 18px; font-weight: 700; color: #1f3b55; margin-top: 6px; }
 .pill.ach { cursor: pointer; border: none; font-family: inherit; }
+.pill.star, .pill.box { cursor: pointer; border: none; font-family: inherit; }
+.pill.box.ready { animation: boxpulse 1.1s ease-in-out infinite; }
+@keyframes boxpulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.12); } }
+.box-modal { max-width: 380px; text-align: center; }
+.box-result { padding: 16px 0 8px; }
+.box-icon { font-size: 64px; animation: bounce 1s ease-in-out infinite; }
+.box-gain { font-size: 28px; font-weight: 800; color: #f5a623; margin-top: 6px; }
+.box-tip { font-size: 13px; color: #7aa0b8; margin-top: 4px; }
+.map-modal { max-width: 480px; }
+.map-list { display: flex; flex-direction: column; gap: 6px; margin: 14px 0; max-height: 60vh; overflow-y: auto; }
+.map-node { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 12px; background: #f2f7fb; opacity: .55; }
+.map-node.done { opacity: 1; background: #eaf8ee; }
+.map-node.cur { opacity: 1; background: #fff6e0; border: 2px solid #ffd98a; }
+.map-icon { font-size: 24px; }
+.map-name { font-weight: 700; color: #1f3b55; flex: 1; }
+.map-th { font-size: 12px; color: #7aa0b8; }
+.map-node.cur .map-th { color: #c07b00; }
 .ach-modal { max-width: 460px; }
 .ach-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); gap: 10px; margin: 14px 0; }
 .ach-cell { background: #f2f7fb; border-radius: 14px; padding: 12px 6px; text-align: center; opacity: .5; }

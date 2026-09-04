@@ -5,6 +5,7 @@
 「点错取消」= 一条负 delta 流水 + completion 置 cancelled，不删历史。
 """
 import json
+import random
 import uuid
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
@@ -164,6 +165,51 @@ def achievements():
         out.append({**a, "current": v, "earned": v >= a["target"]})
     c.close()
     return out
+
+
+# 连击宝箱：连续打卡每 3 天解锁一个，随机 +3~+10（期望 ≈ 每天 +2，防通胀）
+BOX_INTERVAL = 3
+
+
+@app.get("/api/boxes")
+def boxes():
+    c = get_conn()
+    s = streak(c)
+    opened = int(db.get_setting(c, "box_opened", "0"))
+    earned = s // BOX_INTERVAL
+    c.close()
+    return {"avail": max(0, earned - opened), "opened": opened, "earned": earned, "streak": s}
+
+
+@app.post("/api/open_box")
+def open_box():
+    c = get_conn()
+    s = streak(c)
+    opened = int(db.get_setting(c, "box_opened", "0"))
+    if s // BOX_INTERVAL <= opened:
+        c.close()
+        raise HTTPException(409, "还没有可开的宝箱，再坚持坚持吧！")
+    bonus = random.randint(3, 10)
+    db.set_setting(c, "box_opened", str(opened + 1))
+    db.insert_ledger(c, db.today(), bonus, "box", f"box-{opened + 1}", "连击宝箱")
+    c.commit()
+    res = {"delta": bonus, "streak": streak(c), "level": level_info(c)}
+    c.close()
+    return res
+
+
+@app.get("/api/ranks")
+def ranks_public():
+    """成长路径地图用：返回全部等级 + 当前累计阳光。"""
+    c = get_conn()
+    ranks = [dict(r) for r in c.execute("SELECT * FROM ranks ORDER BY min_sunshine").fetchall()]
+    e = earned(c)
+    current = ranks[0]["id"]
+    for r in ranks:
+        if r["min_sunshine"] <= e:
+            current = r["id"]
+    c.close()
+    return {"ranks": ranks, "earned": e, "current": current}
 
 
 # ---------------- 状态 ----------------
