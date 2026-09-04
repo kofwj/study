@@ -8,6 +8,32 @@ TERM = {"id": "g5s1", "label": "五年级上", "grade": "五年级", "term": "�
 SUN = 5
 SUBJECTS = ["语文", "数学", "英语", "科学", "道法", "体育", "音美", "综合"]
 
+# 动作类型 → 「怎么做」提示（卡片展开展示）
+HINT = {
+    "通读": "读一遍，铅笔圈出生字词，查字典标注读音和意思",
+    "朗读": "有感情地朗读，注意停顿和重音",
+    "略读": "快速浏览知道大意，能说出课文讲了什么",
+    "阅读": "读一遍圈出生字，能复述主要内容",
+    "听写": "看一遍后合书默写，错字订正三遍",
+    "背诵": "先熟读三遍再试背，能完整背出才算过关",
+    "口语": "先列个提纲，再对家人完整说一遍",
+    "习作": "先列提纲（写什么、分几段），写完读一遍改错",
+    "例文": "读两遍，圈出写得好的句子",
+    "读书": "读一个故事，能复述大概内容",
+    "摘抄": "抄 3-5 个喜欢的句子，注明出处",
+    "预习": "看课本例题，不懂的地方标问号，课上重点听",
+    "练习": "独立完成不翻答案，做完自己对照检查一遍",
+    "口算": "限时做，错题标记出来重算",
+    "实践": "动手做，做完拍个照或记下结果",
+    "复习": "翻本单元笔记和错题，能复述学了什么",
+    "单词": "遮中文背英文、遮英文写中文，错词反复过",
+    "拼读": "按发音规则拼读每个词，读三遍",
+    "跟读": "跟音频逐句模仿语音语调，读两遍以上",
+    "语法": "先看例句再做练习，错题弄懂为什么",
+    "任务": "用英语完成，能用本单元句型说 3 句以上",
+    "项目": "按课本 Project 要求完成，完成后展示给家长",
+}
+
 DAILY_TASKS = [
     {"id": "pe-jump-rope", "subject": "体育", "name": "跳绳打卡",
      "sunshine": SUN, "frequency": "daily",
@@ -17,6 +43,30 @@ DAILY_TASKS = [
          {"id": "t100", "label": "100下用时", "unit": "秒", "direction": "lower_better"},
          {"id": "n1m", "label": "1分钟跳多少个", "unit": "个", "direction": "higher_better"},
      ]},
+    {"id": "pe-situp", "subject": "体育", "name": "1分钟仰卧起坐",
+     "sunshine": SUN, "frequency": "daily",
+     "bonus_rule": {"type": "personal_best", "per_metric": 3, "note": "破个人纪录才叠加"},
+     "metrics": [
+         {"id": "cnt", "label": "1分钟做多少个", "unit": "个", "direction": "higher_better"},
+     ]},
+    {"id": "pe-bend", "subject": "体育", "name": "坐位体前屈",
+     "sunshine": SUN, "frequency": "daily",
+     "bonus_rule": {"type": "personal_best", "per_metric": 3, "note": "破个人纪录才叠加"},
+     "metrics": [
+         {"id": "cm", "label": "手指过脚尖多远", "unit": "厘米", "direction": "higher_better"},
+     ]},
+    {"id": "pe-eye", "subject": "体育", "name": "做一遍眼保健操",
+     "sunshine": SUN, "frequency": "daily",
+     "bonus_rule": {"type": "personal_best", "per_metric": 0, "note": ""},
+     "metrics": []},
+    {"id": "cn-read", "subject": "语文", "name": "课外阅读 20 分钟",
+     "sunshine": SUN, "frequency": "daily",
+     "bonus_rule": {"type": "personal_best", "per_metric": 0, "note": ""},
+     "metrics": []},
+    {"id": "cn-pen", "subject": "语文", "name": "练字一页",
+     "sunshine": SUN, "frequency": "daily",
+     "bonus_rule": {"type": "personal_best", "per_metric": 0, "note": ""},
+     "metrics": []},
 ]
 
 # 语文：单元名 + 具体课文任务（2026 部编六三制实物目录）
@@ -208,7 +258,8 @@ def pack(subj, seq, name, items):
     for i, (action, title) in enumerate(items, 1):
         tasks.append({
             "id": f"{uid}-{i}", "subject": subj, "unit_id": uid,
-            "action": action, "title": title, "sunshine": SUN, "sort": i,
+            "action": action, "title": title, "detail": HINT.get(action, ""),
+            "sunshine": SUN, "sort": i,
         })
     return unit, tasks
 
@@ -231,7 +282,7 @@ def main():
     units, tasks = build()
     os.makedirs("data", exist_ok=True)
     with open("data/tasks.seed.json", "w", encoding="utf-8") as f:
-        json.dump({"term": TERM, "subjects": SUBJECTS, "curriculum_ver": "2026-g5s1-v3",
+        json.dump({"term": TERM, "subjects": SUBJECTS, "curriculum_ver": "2026-g5s1-v4",
                    "units": units, "tasks": tasks, "daily_tasks": DAILY_TASKS},
                   f, ensure_ascii=False, indent=2)
     lines = ["# 2026 新教材任务卡", "",
@@ -242,10 +293,10 @@ def main():
         by.setdefault(t["subject"], []).append(t)
     for subj in ["语文", "数学", "英语"]:
         lines.append(f"## {subj}（{len(by[subj])} 卡）")
-        lines.append("| 单元 | 动作 | 标题 |")
-        lines.append("|---|---|---|")
+        lines.append("| 单元 | 动作 | 标题 | 怎么做 |")
+        lines.append("|---|---|---|---|")
         for t in by[subj]:
-            lines.append(f"| {umap[t['unit_id']]['name']} | {t['action']} | {t['title']} |")
+            lines.append(f"| {umap[t['unit_id']]['name']} | {t['action']} | {t['title']} | {t['detail']} |")
         lines.append("")
     with open("data/tasks_review.md", "w", encoding="utf-8") as f:
         f.write("\n".join(lines))

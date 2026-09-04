@@ -331,6 +331,7 @@ onMounted(async () => {
               <button v-else class="circle" :class="{ ok: t.done }" @click="toggleTask(t)">{{ t.done ? '✓' : '' }}</button>
               <div class="card-body">
                 <div class="card-title">{{ t.frequency === 'daily' ? t.name : t.title }}</div>
+                <div v-if="t.detail" class="card-detail">{{ t.detail }}</div>
                 <div class="plus">{{ t.subject_id || '体育' }} · +{{ t.sunshine || 5 }} ☀️</div>
               </div>
               <button v-if="t.frequency === 'daily'" class="trend" @click="openChart(t)" title="看趋势">📈</button>
@@ -350,6 +351,7 @@ onMounted(async () => {
                 <button class="circle" :class="{ ok: t.done || t.past }" @click="toggleTask(t)">{{ t.done || t.past ? '✓' : '' }}</button>
                 <div class="card-body">
                   <div class="card-title">{{ t.title }}</div>
+                  <div v-if="t.detail" class="card-detail">{{ t.detail }}</div>
                   <div class="plus">{{ t.past ? '已学过' : ('+' + t.sunshine + ' ☀️') }}</div>
                 </div>
               </div>
@@ -561,6 +563,7 @@ body {
 .circle.ok { background: #3cb371; border-color: #3cb371; }
 .card-body { flex: 1; min-width: 0; }
 .card-title { font-size: 14px; line-height: 1.45; font-weight: 600; }
+.card-detail { margin-top: 4px; font-size: 12px; line-height: 1.5; color: #7aa0b8; }
 .plus { margin-top: 8px; color: #f5a623; font-weight: 800; font-size: 13px; }
 .x {
   position: absolute; top: 6px; right: 8px; border: none; background: none; color: #b7c9d6;
