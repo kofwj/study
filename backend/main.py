@@ -466,7 +466,8 @@ def tasks():
                      "past": is_past(c, t["id"], t["subject_id"]),
                      "locked": t["id"] in locked_ids} for t in tasks_rows]
     # 每日任务 + 今日状态 + 历史最好
-    dts = c.execute("SELECT * FROM daily_tasks").fetchall()
+    dts = c.execute(
+        "SELECT * FROM daily_tasks WHERE family_id IS NULL OR family_id=?", (_fam.get(),)).fetchall()
     daily = []
     for d in dts:
         dct = dict(d)
@@ -575,7 +576,8 @@ def complete(body: CompleteBody):
         res = {"delta": delta, "bonus": 0, "milestone": m, "level": level_info(c)}
         c.close()
         return res
-    d = c.execute("SELECT * FROM daily_tasks WHERE id=?", (tid,)).fetchone()
+    d = c.execute("SELECT * FROM daily_tasks WHERE id=? AND (family_id IS NULL OR family_id=?)",
+                  (tid, _fam.get())).fetchone()
     if d:
         bonus, detail = compute_daily_bonus(c, d, body.metrics)
         delta = d["sunshine"] + bonus
@@ -1086,11 +1088,25 @@ def reward_delete(rid: str):
 @app.get("/api/admin/redemptions", dependencies=[Depends(require_parent)])
 def redemptions_admin():
     c = get_conn()
-    rows = c.execute(
-        "SELECT rd.id, rd.date, rd.price, rd.status, rw.name FROM redemptions rd "
-        "LEFT JOIN rewards rw ON rw.id=rd.reward_id ORDER BY rd.id DESC LIMIT 50").fetchall()
+    fam = _fam.get()
+    roster = [r["id"] for r in c.execute(
+        "SELECT id FROM users WHERE family_id=? AND role='kid'", (fam,)).fetchall()]
+    pending, done = [], []
+    for kid in roster:
+        db.apply_scope(c, fam, kid)
+        pending.extend(c.execute(
+            "SELECT rd.id, rd.date, rd.price, rd.status, rw.name, rd.kid_id FROM redemptions rd "
+            "LEFT JOIN rewards rw ON rw.id=rd.reward_id WHERE rd.status='pending'").fetchall())
+        done.extend(c.execute(
+            "SELECT rd.id, rd.date, rd.price, rd.status, rw.name, rd.kid_id FROM redemptions rd "
+            "LEFT JOIN rewards rw ON rw.id=rd.reward_id WHERE rd.status!='pending' ORDER BY rd.id DESC LIMIT 50").fetchall())
+    db.apply_scope(c, fam, kid_id())
     c.close()
-    return [dict(r) for r in rows]
+    pend = [dict(r) for r in pending]
+    rest = [dict(r) for r in done]
+    rest.sort(key=lambda x: x.get("id") or 0, reverse=True)
+    pend.sort(key=lambda x: x.get("id") or 0, reverse=True)
+    return pend + rest[:50]
 
 
 @app.post("/api/admin/redemptions/{rid}/approve", dependencies=[Depends(require_parent)])
@@ -1297,9 +1313,9 @@ def _replace_metrics(c, did, metrics):
 def daily_create(b: DailyTaskIn):
     c = get_conn()
     did = uuid.uuid4().hex[:8]
-    c.execute("INSERT INTO daily_tasks(id,subject_id,name,sunshine,frequency,bonus_type,bonus_per_metric) "
-              "VALUES(?,?,?,?,'daily','personal_best',?)",
-              (did, b.subject_id, b.name, b.sunshine, b.bonus_per_metric))
+    c.execute("INSERT INTO daily_tasks(id,subject_id,name,sunshine,frequency,bonus_type,bonus_per_metric,family_id) "
+              "VALUES(?,?,?,?,'daily','personal_best',?,?)",
+              (did, b.subject_id, b.name, b.sunshine, b.bonus_per_metric, _fam.get()))
     _replace_metrics(c, did, b.metrics)
     c.commit(); c.close()
     return {"id": did}
@@ -1308,8 +1324,11 @@ def daily_create(b: DailyTaskIn):
 @app.put("/api/admin/daily/{did}", dependencies=[Depends(require_parent)])
 def daily_update(did: str, b: DailyTaskIn):
     c = get_conn()
-    c.execute("UPDATE daily_tasks SET subject_id=?, name=?, sunshine=?, bonus_per_metric=? WHERE id=?",
-              (b.subject_id, b.name, b.sunshine, b.bonus_per_metric, did))
+    row = c.execute("SELECT family_id FROM daily_tasks WHERE id=?", (did,)).fetchone()
+    if not row or not row["family_id"]:
+        c.close(); raise HTTPException(403, "系统每日任务不能改")
+    c.execute("UPDATE daily_tasks SET subject_id=?, name=?, sunshine=?, bonus_per_metric=? WHERE id=? AND family_id=?",
+              (b.subject_id, b.name, b.sunshine, b.bonus_per_metric, did, _fam.get()))
     _replace_metrics(c, did, b.metrics)
     c.commit(); c.close()
     return {"ok": True}
@@ -1318,8 +1337,11 @@ def daily_update(did: str, b: DailyTaskIn):
 @app.delete("/api/admin/daily/{did}", dependencies=[Depends(require_parent)])
 def daily_delete(did: str):
     c = get_conn()
+    row = c.execute("SELECT family_id FROM daily_tasks WHERE id=?", (did,)).fetchone()
+    if not row or not row["family_id"]:
+        c.close(); raise HTTPException(403, "系统每日任务不能删")
     c.execute("DELETE FROM daily_metrics WHERE task_id=?", (did,))
-    c.execute("DELETE FROM daily_tasks WHERE id=?", (did,))
+    c.execute("DELETE FROM daily_tasks WHERE id=? AND family_id=?", (did, _fam.get()))
     c.commit(); c.close()
     return {"ok": True}
 

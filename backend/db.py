@@ -27,7 +27,7 @@ REWARDS = [
 
 # 等级（累计获得阳光阈值，消费不掉级）
 # 参照 Duolingo/ClassDojo：前期密集升级给即时反馈，后期门槛递增；emoji 递进形象
-RANKS_VER = "v3"
+RANKS_VER = "v4"
 DEFAULT_FAMILY = "f-default"
 DEFAULT_KID = "kid-default"
 DEFAULT_PARENT = "parent-default"
@@ -35,16 +35,16 @@ ALL_SUBJECTS = ["语文", "数学", "英语", "科学", "道法", "体育", "音
 
 # 满级 5000 = 约一学期坚持（日产出 ~60），共 10 档，前期密度后期递增
 RANKS = [
-    {"id": "r1",  "name": "阳光萌新",   "min_sunshine": 0,    "icon": "🌱"},
-    {"id": "r2",  "name": "阳光小苗",   "min_sunshine": 50,   "icon": "🌿"},
-    {"id": "r3",  "name": "阳光小能手", "min_sunshine": 150,  "icon": "🌼"},
-    {"id": "r4",  "name": "阳光达人",   "min_sunshine": 350,  "icon": "⭐"},
-    {"id": "r5",  "name": "阳光之星",   "min_sunshine": 700,  "icon": "🔥"},
-    {"id": "r6",  "name": "阳光学霸",   "min_sunshine": 1200, "icon": "🏆"},
-    {"id": "r7",  "name": "阳光大师",   "min_sunshine": 2000, "icon": "🥇"},
-    {"id": "r8",  "name": "阳光传说",   "min_sunshine": 3000, "icon": "💎"},
-    {"id": "r9",  "name": "阳光战神",   "min_sunshine": 4000, "icon": "🚀"},
-    {"id": "r10", "name": "传奇学神",   "min_sunshine": 5000, "icon": "👑"},
+    {"id": "r1",  "name": "阳光萌新",   "min_sunshine": 0,    "icon": "sprout"},
+    {"id": "r2",  "name": "阳光小苗",   "min_sunshine": 50,   "icon": "leaf"},
+    {"id": "r3",  "name": "阳光小能手", "min_sunshine": 150,  "icon": "flower"},
+    {"id": "r4",  "name": "阳光达人",   "min_sunshine": 350,  "icon": "star"},
+    {"id": "r5",  "name": "阳光之星",   "min_sunshine": 700,  "icon": "flame"},
+    {"id": "r6",  "name": "阳光学霸",   "min_sunshine": 1200, "icon": "trophy"},
+    {"id": "r7",  "name": "阳光大师",   "min_sunshine": 2000, "icon": "medal"},
+    {"id": "r8",  "name": "阳光传说",   "min_sunshine": 3000, "icon": "gem"},
+    {"id": "r9",  "name": "阳光战神",   "min_sunshine": 4000, "icon": "rocket"},
+    {"id": "r10", "name": "传奇学神",   "min_sunshine": 5000, "icon": "crown"},
 ]
 
 
@@ -261,9 +261,11 @@ def initialize_family(conn, family_id):
 
 
 def seed_ranks(conn):
-    """重写默认等级（含图标）+ 记录版本号；版本不变时不再覆盖，尊重家长后续改动。"""
-    conn.execute("DELETE FROM ranks WHERE family_id=?", (DEFAULT_FAMILY,))
+    """缺档补上；已有档只把 emoji icon 改成代号，不覆盖家长改的名字/阈值。"""
     initialize_family(conn, DEFAULT_FAMILY)
+    emoji = {"🌱":"sprout","🌿":"leaf","🌼":"flower","⭐":"star","🔥":"flame","🏆":"trophy","🥇":"medal","💎":"gem","🚀":"rocket","👑":"crown"}
+    for e, code in emoji.items():
+        conn.execute("UPDATE ranks SET icon=? WHERE icon=?", (code, e))
     set_setting(conn, "ranks_ver", RANKS_VER)
 
 
@@ -566,6 +568,40 @@ def _migrate_010(conn):
     _add_column(conn, "invites", "used_at TEXT")
 
 
+def _migrate_011(conn):
+    _add_column(conn, "daily_tasks", "family_id TEXT")  # NULL=系统共享只读
+    if not conn.pg:
+        return
+    conn.execute("ALTER TABLE daily_tasks ENABLE ROW LEVEL SECURITY")
+    conn.execute("ALTER TABLE daily_tasks FORCE ROW LEVEL SECURITY")
+    conn.execute("DROP POLICY IF EXISTS iso ON daily_tasks")
+    conn.execute(
+        "CREATE POLICY iso ON daily_tasks USING ("
+        "family_id IS NULL OR family_id = current_setting('app.family_id', true)) "
+        "WITH CHECK (family_id IS NULL OR family_id = current_setting('app.family_id', true))")
+    conn.execute("ALTER TABLE profiles ENABLE ROW LEVEL SECURITY")
+    conn.execute("ALTER TABLE profiles FORCE ROW LEVEL SECURITY")
+    conn.execute("DROP POLICY IF EXISTS iso ON profiles")
+    conn.execute(
+        "CREATE POLICY iso ON profiles USING (family_id = current_setting('app.family_id', true)) "
+        "WITH CHECK (family_id = current_setting('app.family_id', true))")
+
+
+def _migrate_012(conn):
+    if not conn.pg:
+        return
+    conn.execute("ALTER TABLE daily_metrics ENABLE ROW LEVEL SECURITY")
+    conn.execute("ALTER TABLE daily_metrics FORCE ROW LEVEL SECURITY")
+    conn.execute("DROP POLICY IF EXISTS iso ON daily_metrics")
+    conn.execute(
+        "CREATE POLICY iso ON daily_metrics USING (EXISTS ("
+        "  SELECT 1 FROM daily_tasks dt WHERE dt.id = daily_metrics.task_id AND "
+        "  (dt.family_id IS NULL OR dt.family_id = current_setting('app.family_id', true)))) "
+        "WITH CHECK (EXISTS ("
+        "  SELECT 1 FROM daily_tasks dt WHERE dt.id = daily_metrics.task_id AND "
+        "  (dt.family_id IS NULL OR dt.family_id = current_setting('app.family_id', true))))")
+
+
 MIGRATIONS = (
     ("001_identity", _migrate_001),
     ("002_kid_id", _migrate_002),
@@ -577,6 +613,8 @@ MIGRATIONS = (
     ("008_invites_rls", _migrate_008),
     ("009_invite_protect", _migrate_009),
     ("010_invite_usage", _migrate_010),
+    ("011_daily_family", _migrate_011),
+    ("012_daily_metrics_rls", _migrate_012),
 )
 
 
@@ -586,7 +624,7 @@ def apply_migrations(conn):
     for mid, fn in MIGRATIONS:
         if conn.execute("SELECT 1 FROM schema_migrations WHERE id=?", (mid,)).fetchone():
             continue
-        if mid in ("003_rls", "006_users_rls", "008_invites_rls") and not conn.pg:
+        if mid in ("003_rls", "006_users_rls", "008_invites_rls", "012_daily_metrics_rls") and not conn.pg:
             continue  # RLS 只在 PG 生效，SQLite 不记账
         fn(conn)
         conn.execute("INSERT INTO schema_migrations(id,applied_at) VALUES(?,?)", (mid, now()))

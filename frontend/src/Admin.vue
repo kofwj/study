@@ -324,7 +324,7 @@ onMounted(load)
       <main class="a-main">
 
     <!-- 周报 -->
-    <section v-if="section === 'weekly'" class="a-card">
+    <section v-if="section === 'weekly'" class="a-card enter">
       <h3><BarChart3 class="ico" :size="16" /> 本周周报</h3>
       <p class="lead">{{ weekly.week_start }} ~ {{ weekly.week_end }}（周一到周日）</p>
       <div v-if="(weekly.kids || []).length" class="w-kids">
@@ -345,7 +345,7 @@ onMounted(load)
       <h4 class="w-h">近 4 周阳光趋势</h4>
       <div class="w-trend">
         <svg viewBox="0 0 288 80" class="w-trend-svg" preserveAspectRatio="none">
-          <polyline :points="weekPoints" fill="none" stroke="#3aa4e0" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+          <polyline :points="weekPoints" fill="none" stroke="var(--brand)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
         </svg>
         <div class="w-trend-labels">
           <span v-for="w in weekly.weeks" :key="w.week_start">{{ w.label }}<i>+{{ w.earned }}</i></span>
@@ -374,7 +374,7 @@ onMounted(load)
     </section>
 
     <!-- 商店 -->
-    <section v-if="section === 'shop'" class="a-card">
+    <section v-if="section === 'shop'" class="a-card enter">
       <h3>兑换商店</h3>
       <p class="lead">孩子会用阳光兑换这些，改价格实时生效。</p>
       <div class="a-item" v-for="r in rewards" :key="r.id">
@@ -393,7 +393,7 @@ onMounted(load)
     </section>
 
     <!-- 审批 -->
-    <section v-if="section === 'approve'" class="a-card">
+    <section v-if="section === 'approve'" class="a-card enter">
       <h3>兑换审批与兑现</h3>
       <p class="lead">需家长同意的奖励先到「待同意」；同意后扣阳光，实际给了奖励再点「标记已兑现」。</p>
       <div v-if="!redemptions.length" class="dim">还没有任何兑换记录。</div>
@@ -414,7 +414,7 @@ onMounted(load)
     </section>
 
     <!-- 等级 -->
-    <section v-if="section === 'rank'" class="a-card">
+    <section v-if="section === 'rank'" class="a-card enter">
       <h3>成长等级（按累计获得阳光）</h3>
       <p class="lead">等级看「累计获得」，消费不会掉级。</p>
       <div class="a-item" v-for="r in ranks" :key="r.id">
@@ -435,7 +435,7 @@ onMounted(load)
     </section>
 
     <!-- 任务 -->
-    <section v-if="section === 'unit-task'" class="a-card">
+    <section v-if="section === 'unit-task'" class="a-card enter">
       <h3>单元任务</h3>
       <div v-for="(arr, sid) in tasksBySubject" :key="sid" class="a-subject">
         <div class="a-subject-h">{{ subjectName(sid) }}</div>
@@ -466,7 +466,7 @@ onMounted(load)
     </section>
 
     <!-- 每日任务 -->
-    <section v-if="section === 'daily'" class="a-card">
+    <section v-if="section === 'daily'" class="a-card enter">
       <h3>每日任务（循环打卡）</h3>
       <div class="a-item daily" v-for="d in daily" :key="d.id">
         <div class="d-row">
@@ -497,7 +497,7 @@ onMounted(load)
     </section>
 
     <!-- 已学到 -->
-    <section v-if="section === 'cursor'" class="a-card">
+    <section v-if="section === 'cursor'" class="a-card enter">
       <h3>已学到哪一课</h3>
       <p class="lead">推荐从这里往后，前面的课标灰「已学过」，不再计阳光。</p>
       <div class="a-item" v-for="s in ['语文','数学','英语']" :key="s">
@@ -516,7 +516,7 @@ onMounted(load)
     </section>
 
     <!-- 单元测试成绩 -->
-    <section v-if="section === 'test'" class="a-card">
+    <section v-if="section === 'test'" class="a-card enter">
       <h3>单元测试成绩奖励</h3>
       <p class="lead">孩子考完单元测试，你录入分数，按档自动发阳光（孩子不能自己录）。</p>
       <div class="band-box">
@@ -545,7 +545,7 @@ onMounted(load)
       </div>
     </section>
 
-    <section v-if="section === 'kids'" class="a-card">
+    <section v-if="section === 'kids'" class="a-card enter">
       <h3>管理孩子</h3>
       <div class="a-item" v-for="k in kids" :key="k.id">
         <span class="badge">{{ k.name }}</span>
@@ -569,7 +569,7 @@ onMounted(load)
     </section>
 
     <!-- 家长成员 -->
-    <section v-if="section === 'members'" class="a-card">
+    <section v-if="section === 'members'" class="a-card enter">
       <h3>家长成员</h3>
       <p class="lead">另一位家长共同管理，爷爷奶奶…当「观察员」只能看。</p>
       <div class="a-item" v-for="m in members" :key="m.id">
@@ -580,7 +580,7 @@ onMounted(load)
     </section>
 
     <!-- 邀请码 -->
-    <section v-if="section === 'invites'" class="a-card">
+    <section v-if="section === 'invites'" class="a-card enter">
       <h3>邀请码</h3>
       <label style="display:flex;gap:8px;align-items:center;margin:10px 0 4px;font-size:13px;cursor:pointer">
         <input type="checkbox" :checked="inviteProtect" @change="toggleProtect" />
@@ -601,7 +601,7 @@ onMounted(load)
     </section>
 
     <!-- 密码 -->
-    <section v-if="section === 'pin'" class="a-card">
+    <section v-if="section === 'pin'" class="a-card enter">
       <h3>修改家长密码</h3>
       <div class="a-item">
         <input v-model="pinForm.next" type="password" placeholder="新密码（至少 4 位）" class="w-name" />
@@ -617,79 +617,79 @@ onMounted(load)
 </template>
 
 <style scoped>
-.admin { max-width: 780px; margin: 0 auto; padding: 14px; padding-top: calc(14px + env(safe-area-inset-top)); font-family: system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; color: #1f3b55; }
+.admin { max-width: 780px; margin: 0 auto; padding: 14px; padding-top: calc(14px + env(safe-area-inset-top)); font-family: system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; color: var(--ink); }
 .a-head {
-  background: linear-gradient(180deg, #4db6ea 0%, #3aa4e0 100%);
+  background: linear-gradient(180deg, var(--brand) 0%, var(--brand) 100%);
   color: #fff; border-radius: 20px; padding: 16px 20px;
   display: flex; justify-content: space-between; align-items: center;
 }
 .a-title { font-size: 20px; font-weight: 800; }
 .a-sub { font-size: 12px; opacity: .85; margin-top: 4px; }
 .a-term { display: block; margin-top: 8px; font-size: 12px; }
-.a-term select { margin-left: 6px; padding: 4px 8px; border-radius: 8px; border: 1px solid #cfe4f2; background: #fff; color: #1f3b55; }
+.a-term select { margin-left: 6px; padding: 4px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
 .a-exit { background: rgba(255,255,255,.22); border: none; color: #fff; border-radius: 20px; padding: 9px 16px; font-weight: 700; cursor: pointer; font-family: inherit; }
 .a-body { display: flex; gap: 16px; align-items: flex-start; }
-.a-side { width: 164px; flex: none; background: #fff; border-radius: 16px; padding: 10px 8px; box-shadow: 0 4px 14px rgba(60,120,170,.07); border: 1px solid #e8f3fa; position: sticky; top: calc(8px + env(safe-area-inset-top)); }
-.a-group { font-size: 11px; color: #9ab6c9; font-weight: 800; padding: 10px 10px 4px; letter-spacing: .5px; }
-.a-nav { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 10px; border: none; background: none; border-radius: 10px; color: #4a6780; font-weight: 700; font-size: 13px; cursor: pointer; text-align: left; font-family: inherit; }
-.a-nav:hover { background: #f2f9fd; }
-.a-nav.on { background: #3aa4e0; color: #fff; }
+.a-side { width: 164px; flex: none; background: var(--surface); border-radius: 16px; padding: 10px 8px; box-shadow: 0 4px 14px rgba(60,120,170,.07); border: 1px solid var(--line); position: sticky; top: calc(8px + env(safe-area-inset-top)); }
+.a-group { font-size: 11px; color: var(--ink-3); font-weight: 800; padding: 10px 10px 4px; letter-spacing: .5px; }
+.a-nav { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 10px; border: none; background: none; border-radius: 10px; color: var(--ink-2); font-weight: 700; font-size: 13px; cursor: pointer; text-align: left; font-family: inherit; }
+.a-nav:hover { background: var(--surface-2); }
+.a-nav.on { background: var(--brand); color: #fff; }
 .a-nav-ico { width: 18px; text-align: center; }
 .a-main { flex: 1; min-width: 0; }
-.a-card { background: #fff; border-radius: 16px; padding: 18px; margin-bottom: 14px; box-shadow: 0 4px 14px rgba(60,120,170,.07); border: 1px solid #e8f3fa; }
-.a-card h3 { margin: 0 0 6px; font-size: 16px; color: #1f3b55; }
-.lead { color: #7aa0b8; font-size: 12px; margin: 0 0 14px; }
-.lock-row { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #4a6780; font-weight: 700; }
-.toggle { border: none; background: #dbe6ee; color: #6b8aa1; padding: 7px 16px; border-radius: 16px; font-weight: 800; cursor: pointer; font-family: inherit; }
-.toggle.on { background: #ffb800; color: #fff; }
-.dim { color: #7aa0b8; font-size: 12px; }
-.a-item { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 8px 0; border-bottom: 1px solid #eef6fb; }
-.a-item.add { border-top: 1px dashed #d3e8f5; margin-top: 8px; padding-top: 12px; }
-.a-subject-h { font-weight: 800; color: #2f7db8; margin-top: 8px; font-size: 14px; }
-.a-item input, .a-item select { border: 1px solid #d3e8f5; border-radius: 8px; padding: 7px 9px; font-size: 13px; color: #1f3b55; font-family: inherit; }
-.a-item input:focus, .a-item select:focus { outline: none; border-color: #3aa4e0; }
+.a-card { background: var(--surface); border-radius: 16px; padding: 18px; margin-bottom: 14px; box-shadow: 0 4px 14px rgba(60,120,170,.07); border: 1px solid var(--line); }
+.a-card h3 { margin: 0 0 6px; font-size: 16px; color: var(--ink); }
+.lead { color: var(--ink-3); font-size: 12px; margin: 0 0 14px; }
+.lock-row { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-2); font-weight: 700; }
+.toggle { border: none; background: var(--surface-2); color: var(--ink-2); padding: 7px 16px; border-radius: 16px; font-weight: 800; cursor: pointer; font-family: inherit; }
+.toggle.on { background: var(--accent); color: #fff; }
+.dim { color: var(--ink-3); font-size: 12px; }
+.a-item { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 8px 0; border-bottom: 1px solid var(--surface-2); }
+.a-item.add { border-top: 1px dashed var(--line); margin-top: 8px; padding-top: 12px; }
+.a-subject-h { font-weight: 800; color: var(--brand-deep); margin-top: 8px; font-size: 14px; }
+.a-item input, .a-item select { border: 1px solid var(--line); border-radius: 8px; padding: 7px 9px; font-size: 13px; color: var(--ink); font-family: inherit; }
+.a-item input:focus, .a-item select:focus { outline: none; border-color: var(--brand); }
 .w-name { flex: 1; min-width: 120px; }
 .w-num { width: 70px; }
 .w-cat { width: 90px; }
-.badge { font-size: 11px; padding: 3px 8px; border-radius: 10px; background: #e8f2fb; color: #2f7db8; white-space: nowrap; font-weight: 700; }
-.badge.daily { background: #fff3d6; color: #c07b00; }
+.badge { font-size: 11px; padding: 3px 8px; border-radius: 10px; background: var(--surface-2); color: var(--brand-deep); white-space: nowrap; font-weight: 700; }
+.badge.daily { background: var(--warm); color: var(--accent-ink); }
 .rank-icon { font-size: 18px; }
 .st { font-size: 11px; padding: 3px 9px; border-radius: 10px; font-weight: 700; white-space: nowrap; }
-.st.pending { background: #fff3d6; color: #c07b00; }
-.st.done { background: #e8f2fb; color: #2f7db8; }
-.st.delivered { background: #eaf8ee; color: #2e8b57; }
-.ok { padding: 7px 14px; border: none; border-radius: 16px; background: #ffb800; color: #fff; font-weight: 700; cursor: pointer; font-family: inherit; }
-.ok.ghost-o { background: #3aa4e0; }
-.del { padding: 6px 10px; border: none; border-radius: 14px; background: #fbe3e3; color: #c62828; cursor: pointer; font-family: inherit; }
-.ghost-s { background: none; border: none; color: #2f7db8; font-size: 12px; cursor: pointer; font-family: inherit; }
+.st.pending { background: var(--warm); color: var(--accent-ink); }
+.st.done { background: var(--surface-2); color: var(--brand-deep); }
+.st.delivered { background: var(--ok-bg); color: var(--ok); }
+.ok { padding: 7px 14px; border: none; border-radius: 16px; background: var(--accent); color: #fff; font-weight: 700; cursor: pointer; font-family: inherit; }
+.ok.ghost-o { background: var(--brand); }
+.del { padding: 6px 10px; border: none; border-radius: 14px; background: var(--danger-bg); color: var(--danger); cursor: pointer; font-family: inherit; }
+.ghost-s { background: none; border: none; color: var(--brand-deep); font-size: 12px; cursor: pointer; font-family: inherit; }
 .daily .d-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; width: 100%; padding: 4px 0; }
 .toast { position: fixed; left: 50%; bottom: 30px; transform: translateX(-50%); background: rgba(31,59,85,.92); color: #fff; padding: 10px 18px; border-radius: 22px; font-size: 14px; z-index: 20; }
 
 .w-kids { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 12px; }
 .w-kids .w-box { cursor: pointer; }
-.w-kids .w-box.on { outline: 2px solid #ffb800; }
+.w-kids .w-box.on { outline: 2px solid var(--accent); }
 .w-kids .w-box i { display: block; font-style: normal; font-size: 11px; }
 .w-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-.w-box { background: #f4fafd; border: 1px solid #e8f3fa; border-radius: 12px; padding: 12px 6px; text-align: center; }
-.w-box span { display: block; font-size: 11px; color: #7aa0b8; margin-bottom: 4px; }
-.w-box b { font-size: 20px; color: #1f3b55; }
-.w-h { margin: 20px 0 10px; font-size: 14px; color: #1f3b55; }
+.w-box { background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px; padding: 12px 6px; text-align: center; }
+.w-box span { display: block; font-size: 11px; color: var(--ink-3); margin-bottom: 4px; }
+.w-box b { font-size: 20px; color: var(--ink); }
+.w-h { margin: 20px 0 10px; font-size: 14px; color: var(--ink); }
 .w-trend { margin-bottom: 4px; }
 .w-trend-svg { width: 100%; height: 90px; }
-.w-trend-labels { display: flex; justify-content: space-between; font-size: 11px; color: #7aa0b8; margin-top: 6px; }
-.w-trend-labels i { font-style: normal; color: #2f7db8; font-weight: 700; margin-left: 3px; }
+.w-trend-labels { display: flex; justify-content: space-between; font-size: 11px; color: var(--ink-3); margin-top: 6px; }
+.w-trend-labels i { font-style: normal; color: var(--brand-deep); font-weight: 700; margin-left: 3px; }
 .w-chart { display: flex; align-items: flex-end; gap: 8px; height: 140px; padding-top: 20px; }
 .w-bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5px; height: 100%; justify-content: flex-end; }
-.w-bar { width: 100%; max-width: 34px; background: #ffb800; border-radius: 6px 6px 0 0; position: relative; min-height: 2px; }
-.w-bar i { position: absolute; top: -20px; left: 0; width: 100%; text-align: center; font-size: 11px; color: #c07b00; font-style: normal; font-weight: 700; }
-.w-bar-col span { font-size: 11px; color: #4a6780; }
+.w-bar { width: 100%; max-width: 34px; background: var(--accent); border-radius: 6px 6px 0 0; position: relative; min-height: 2px; }
+.w-bar i { position: absolute; top: -20px; left: 0; width: 100%; text-align: center; font-size: 11px; color: var(--accent-ink); font-style: normal; font-weight: 700; }
+.w-bar-col span { font-size: 11px; color: var(--ink-2); }
 .w-subj-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
-.w-subj-name { width: 48px; font-weight: 700; color: #1f3b55; flex: none; }
-.w-subj-track { flex: 1; background: #e8f3fa; border-radius: 6px; height: 12px; overflow: hidden; }
-.w-subj-track i { display: block; height: 100%; background: linear-gradient(90deg,#4db6ea,#3aa4e0); border-radius: 6px; }
-.w-subj-num { flex: none; font-size: 12px; color: #4a6780; }
+.w-subj-name { width: 48px; font-weight: 700; color: var(--ink); flex: none; }
+.w-subj-track { flex: 1; background: var(--line); border-radius: 6px; height: 12px; overflow: hidden; }
+.w-subj-track i { display: block; height: 100%; background: linear-gradient(90deg,var(--brand),var(--brand)); border-radius: 6px; }
+.w-subj-num { flex: none; font-size: 12px; color: var(--ink-2); }
 .band-box { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 14px; }
-.band { font-size: 12px; padding: 4px 10px; border-radius: 12px; background: #fff3d6; color: #c07b00; font-weight: 700; }
+.band { font-size: 12px; padding: 4px 10px; border-radius: 12px; background: var(--warm); color: var(--accent-ink); font-weight: 700; }
 
 @media (max-width: 760px) {
   .a-body { flex-direction: column; }

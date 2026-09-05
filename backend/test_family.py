@@ -32,6 +32,11 @@ def main_fn():
         assert r.status_code == 200
         names_b = {x["name"] for x in b.get("/api/rewards").json()}
         assert "A家奖" not in names_b
+        r = a.post("/api/admin/daily", json={"subject_id": "体育", "name": "A家跳绳", "sunshine": 3})
+        assert r.status_code == 200, r.text
+        a_daily = {d["name"] for d in a.get("/api/tasks").json()["daily"]}
+        b_daily = {d["name"] for d in b.get("/api/tasks").json()["daily"]}
+        assert "A家跳绳" in a_daily and "A家跳绳" not in b_daily
         kids_b = b.get("/api/admin/kids").json()
         assert all(k["account"] != "ale" for k in kids_b)
 

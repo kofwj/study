@@ -16,6 +16,8 @@ export const SUBJECT_ICONS = {
 }
 
 const RANK_ICONS = {
+    sprout: Sprout, leaf: Leaf, flower: Flower, star: Star, flame: Flame,
+    trophy: Trophy, medal: Medal, gem: Gem, rocket: Rocket, crown: Crown,
     '🌱': Sprout, '🌿': Leaf, '🌼': Flower, '⭐': Star, '🔥': Flame,
     '🏆': Trophy, '🥇': Medal, '💎': Gem, '🚀': Rocket, '👑': Crown,
 }

@@ -235,6 +235,7 @@ def require_parent(user=Depends(get_current_user)):
 - 用户**单家庭单账号**（默认）：`users` 留 `family_id` 单列；一人管多家（memberships 连接表）以后再上。
 - `users` 上 RLS（`family_id = 当前家庭`）；登录 + 会话 token 校验走**特权路径**（登录时无 family 上下文，须按 account/id 反查），其余业务查询强制走 `sunshine_app` + RLS。
 - **不做「删整个家庭」入口**：只删成员/娃（users/profiles 硬删 + revoked，ledger 流水保留）。整家删除不可逆，危险区，YAGNI。
+- **`families` 是目录表，无 RLS**：本身没有 family 维度。不要加「列出全部家庭」的端点。
 
 **硬骨头（上一步没想的）**
 0. **`users` 上 RLS（或 login 走独立路径）**：P1 后 `pin_hash/account` 是真敏感数据，`sunshine_app` 现在能 `SELECT * FROM users`。单家庭可忍，多家庭前必须挡住。

@@ -16,6 +16,9 @@
   --brand: #2fa6de;         /* 天蓝（品牌辅助） */
   --brand-deep: #1f7fb0;
   --ok: #2e9e63;            /* 成功/兑现 */
+  --ok-bg: #eaf8ee;
+  --warm: #fff3d6;          /* 琥珀浅底 */
+  --warm-2: #fff6e0;
   --danger: #d2514f;        /* 删除/拒绝 */
   --danger-bg: #fbe9e7;
 
@@ -56,15 +59,24 @@ button {
   transition: transform .18s var(--ease), box-shadow .18s var(--ease), opacity .18s var(--ease);
 }
 button:active:not(:disabled) { transform: scale(.97); }
+@media (hover: hover) {
+  button:hover:not(:disabled) { transform: translateY(-1px); }
+}
 button:focus-visible, input:focus-visible, select:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
+}
+@keyframes enter {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
 }
 
 /* 内联图标：与文字基线对齐的统一尺寸 */
 .ico { display: inline-block; vertical-align: -.14em; flex: none; }
 .sun { color: var(--accent); }
 
+.enter { animation: enter .45s var(--ease) both; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+  .enter { animation: none; }
 }
