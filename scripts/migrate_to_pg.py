@@ -89,12 +89,16 @@ try:
     app_url = os.environ.get("DATABASE_APP_URL") or url.replace("://sunshine:", "://sunshine_app:", 1)
     os.environ["DATABASE_APP_URL"] = app_url
     app = db.connect(admin=False)
+    who = app.execute("SELECT current_user").fetchone()[0]
+    if who != "sunshine_app":
+        app.close()
+        sys.exit(f"APP 登录身份是 {who}，必须是 sunshine_app")
     db.apply_scope(app, kid_id="kid-other")
     n = app.execute("SELECT COUNT(*) FROM ledger").fetchone()[0]
     app.close()
     if n != 0:
         sys.exit(f"RLS 没挡住：kid-other 看到 {n} 条 ledger")
-    print("RLS ok: kid-other 看到 0 条 ledger")
+    print("RLS ok: user=sunshine_app kid-other 看到 0 条 ledger")
     print("校验通过", {k: fp_src[k] for k in fp_src if k != "settings"})
     print("settings 键", sorted(fp_src["settings"]))
     print("未切流量。compose 打开 DATABASE_URL + DATABASE_APP_URL 并 --profile postgres 才切。")

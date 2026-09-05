@@ -2,6 +2,9 @@
 # 一键部署/更新：备份 → 拉代码 → 重新构建（前端烘焙进镜像 → 必须 build）→ 起容器 → 健康检查
 set -euo pipefail
 cd "$(dirname "$0")/.."
+set -a
+[ -f .env ] && . ./.env
+set +a
 
 # 备份（只读热备份，留最近 10 份）。升级前必须，清库重灌才有后悔药
 python3 scripts/backup_db.py

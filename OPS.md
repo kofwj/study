@@ -52,7 +52,7 @@ SQLite → Postgres（**不切流量**，只校验）：
 ```bash
 DATABASE_URL=postgresql://sunshine:sunshine@127.0.0.1:5432/sunshine python3 scripts/migrate_to_pg.py
 ```
-通过后再打开 compose 的 `DATABASE_URL`（迁移用 superuser）和 `DATABASE_APP_URL`（请求用 sunshine_app，否则 RLS 对 superuser 无效）。切流当天必须在真实 PG 上冒烟：APP 登录 / RLS / pg_dump / 序列。
+通过后把 `DATABASE_URL` + `DATABASE_APP_URL` + `COMPOSE_PROFILES=postgres` 写进 VPS `.env`（不进 git），再 `docker compose up -d`。请求必须走 `sunshine_app`，`sunshine` 是 superuser 会绕过 RLS。
 
 ## 三、日常更新（备份 → 拉代码 → 重新构建 → 起容器）
 

@@ -25,9 +25,13 @@ services:
     environment:
       - SUNSHINE_DB=/data/sunshine.db
       - TZ=Asia/Shanghai
-      # 切流：compose --profile postgres up，并取消下面两行。APP 必须是 sunshine_app（非 superuser）
-      # - DATABASE_URL=postgresql://sunshine:${POSTGRES_PASSWORD:-sunshine}@postgres:5432/sunshine
-      # - DATABASE_APP_URL=postgresql://sunshine_app:sunshine@postgres:5432/sunshine
+      # 空=SQLite。VPS .env 设 DATABASE_URL + DATABASE_APP_URL + COMPOSE_PROFILES=postgres 才切 PG
+      - DATABASE_URL=${DATABASE_URL:-}
+      - DATABASE_APP_URL=${DATABASE_APP_URL:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+        required: false
     volumes:
       - ./data:/data            # SQLite 持久化到宿主机 data/ 目录
     healthcheck:

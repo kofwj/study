@@ -27,9 +27,10 @@ if url.startswith("postgres"):
     try:
         subprocess.check_call(["pg_dump", "-Fc", "-d", url, "-f", str(dst)])
     except FileNotFoundError:
-        print("本机无 pg_dump，改用容器：")
-        print("  docker exec sunshine-postgres pg_dump -Fc -U sunshine sunshine >", dst)
-        sys.exit(1)
+        with open(dst, "wb") as f:
+            subprocess.check_call(
+                ["docker", "exec", "sunshine-postgres", "pg_dump", "-Fc", "-U", "sunshine", "sunshine"],
+                stdout=f)
     print("已备份:", dst)
     keep("sunshine_*.dump")
     sys.exit(0)

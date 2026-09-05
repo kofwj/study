@@ -437,6 +437,7 @@ DO $$ BEGIN
   END IF;
 END $$;
 """)
+    conn.execute("GRANT CONNECT ON DATABASE sunshine TO sunshine_app")
     conn.execute("GRANT USAGE ON SCHEMA public TO sunshine_app")
     conn.execute("GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO sunshine_app")
     conn.execute("GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO sunshine_app")
