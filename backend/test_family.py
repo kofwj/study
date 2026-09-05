@@ -49,11 +49,17 @@ def main_fn():
             r = o.post("/api/auth/join", json={"account": "oma", "pin": "4444", "code": code_o, "name": "奶奶"})
             assert r.status_code == 200 and r.json()["role"] == "observer"
             assert o.get("/api/admin/weekly").status_code == 403
+            assert o.post("/api/checkin").status_code == 403
         mid = next(m["id"] for m in a.get("/api/admin/members").json() if m["account"] == "carol")
         assert a.delete("/api/admin/members/" + mid).status_code == 200
         with TestClient(main.app) as c2:
             r = c2.post("/api/auth/login", json={"account": "carol", "pin": "3333"})
             assert r.status_code == 401
+        # 邀请码保护：开=一次性，用一次作废
+        assert a.put("/api/admin/family/invite_protect", json={"enabled": True}).status_code == 200
+        code1 = a.post("/api/admin/invite").json()["code"]
+        assert b.post("/api/auth/join", json={"account": "dave", "pin": "5555", "code": code1, "name": "戴夫"}).status_code == 200
+        assert b.post("/api/auth/join", json={"account": "erin", "pin": "6666", "code": code1, "name": "二用"}).status_code != 200
         print("family ok")
 
 

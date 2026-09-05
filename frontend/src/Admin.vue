@@ -5,6 +5,7 @@ import { api, setSelectedKid } from './api.js'
 const emit = defineEmits(['exit', 'switched'])
 const kids = ref([])
 const members = ref([])
+const inviteProtect = ref(false)
 const selectedKid = ref('')
 const newKid = reactive({ name: '', account: '', pin: '', term_id: 'g5s1' })
 const tab = ref('weekly')
@@ -43,9 +44,10 @@ function showToast(m) { toast.value = m; setTimeout(() => (toast.value = ''), 22
 function unitName(id) { return units.value.find(u => u.id === id)?.name || id }
 
 async function load() {
-  const [ks, ms] = await Promise.all([api.admin.kids(), api.admin.members()])
+  const [ks, ms, fam] = await Promise.all([api.admin.kids(), api.admin.members(), api.admin.family()])
   kids.value = ks
   members.value = ms
+  inviteProtect.value = !!fam.invite_protect
   if (!selectedKid.value && ks.length) {
     selectedKid.value = ks[0].id
     setSelectedKid(ks[0].id)
@@ -230,6 +232,13 @@ async function makeInvite(role) {
     const r = await api.admin.invite(role)
     showToast((role === 'observer' ? '观察员码 ' : '家长码 ') + r.code)
   } catch (e) { showToast(e.message) }
+}
+async function toggleProtect(e) {
+  try {
+    await api.admin.setInviteProtect(e.target.checked)
+    inviteProtect.value = e.target.checked
+    showToast(e.target.checked ? '邀请码保护已开（一次性 + 24h）' : '邀请码保护已关（常驻复用）')
+  } catch (err) { showToast(err.message); e.target.checked = inviteProtect.value }
 }
 async function delMember(m) {
   if (!confirm('删除「' + m.name + '」？立刻失效。')) return
@@ -515,6 +524,10 @@ onMounted(load)
         <span class="dim">{{ m.account }} · {{ m.role }}</span>
         <button class="del" @click="delMember(m)">删</button>
       </div>
+      <label style="display:flex;gap:8px;align-items:center;margin:10px 0 4px;font-size:13px;cursor:pointer">
+        <input type="checkbox" :checked="inviteProtect" @change="toggleProtect" />
+        <span>邀请码保护（开 = 一次性 + 24h 限时）</span>
+      </label>
       <p class="dim" style="margin-top:8px">
         <button class="ok" @click="makeInvite('parent')">家长邀请码</button>
         <button class="ok" @click="makeInvite('observer')">观察员码</button>

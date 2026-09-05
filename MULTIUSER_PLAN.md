@@ -234,13 +234,14 @@ def require_parent(user=Depends(get_current_user)):
 - 账号**全局唯一**（`ux_users_account` 保持）：像用户名，先到先得，登录只填一个账号。
 - 用户**单家庭单账号**（默认）：`users` 留 `family_id` 单列；一人管多家（memberships 连接表）以后再上。
 - `users` 上 RLS（`family_id = 当前家庭`）；登录 + 会话 token 校验走**特权路径**（登录时无 family 上下文，须按 account/id 反查），其余业务查询强制走 `sunshine_app` + RLS。
+- **不做「删整个家庭」入口**：只删成员/娃（users/profiles 硬删 + revoked，ledger 流水保留）。整家删除不可逆，危险区，YAGNI。
 
 **硬骨头（上一步没想的）**
 0. **`users` 上 RLS（或 login 走独立路径）**：P1 后 `pin_hash/account` 是真敏感数据，`sunshine_app` 现在能 `SELECT * FROM users`。单家庭可忍，多家庭前必须挡住。
 1. **Postgres 迁移/RLS 是 P0 的事，别塞回 P3**：本阶段只做「多家庭隔离」，数据库已 Postgres+RLS 就位。
 2. **`curriculum_ver` 全局重灌逻辑要按家庭拆**：现在 `apply_curriculum` 用全局 `settings.curriculum_ver` 决定是否重灌；一旦「每家庭独立课程版本」（第 7 节第 10 条）成立，版本号要变成 `family_curriculum_ver(family_id)`、重灌按家庭触发——否则 A 家一换教材，B 家的系统任务也被删了重插。
 3. **课程共享、家庭配置不共享**：`terms/units/tasks(教材)/daily_tasks` 全局共享（正确）；`rewards/ranks/custom/ledger/completions/redemptions/tests/kid_settings` 全要 `family_id`（或由 `kid→family` 反查）在 **SQL 层强制**。任何一处漏 `AND family_id=?` 就是跨租户数据泄漏，不能只靠前端藏。
-4. **成员权限要回收语义**：parent（全权）/observer（只读）；删成员、删家庭时，该成员名下数据归属怎么处理（软删 / 级联 / 移交给首家长）——不定义就是孤儿数据。P2 `kids_delete` 已硬删 users/profiles，ledger 等活动行故意留着（流水账不删），本阶段定软删还是级联。
+4. **成员权限要回收语义**：parent（全权）/observer（只读）。**已定**：删成员/娃 = 硬删 users/profiles + revoked（立刻失效）；ledger/completions 流水不删。不做删整个家庭。
 5. **会话里的 family 是权威**：所有 `kid_id → family_id` 解析从服务端 `users` 表来，不读前端传的 `family_id` 参数。
 
 **步骤**

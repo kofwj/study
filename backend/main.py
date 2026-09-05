@@ -137,6 +137,8 @@ async def auth_mw(request: Request, call_next):
     u = _user_from_request(request)
     if not u:
         return JSONResponse({"detail": "未登录"}, 401)
+    if u["role"] == "observer" and request.method not in ("GET", "HEAD", "OPTIONS"):
+        return JSONResponse({"detail": "观察员只能看"}, 403)
     c0 = db.connect()
     db.apply_scope(c0, u["family_id"], None)
     try:
@@ -882,11 +884,24 @@ def auth_join(b: JoinBody, request: Request):
     code = (b.code or "").strip().upper()
     if len(account) < 2 or len(pin) < 4 or not code:
         raise HTTPException(400, "账号、密码、邀请码都要填")
+    ip = _client_ip(request)
+    _rate_ok("ip:" + ip)
+    _rate_ok("join:" + code)
     c = db.connect(admin=True)
     try:
         inv = c.execute("SELECT * FROM invites WHERE code=?", (code,)).fetchone()
         if not inv:
+            now = time.time()
+            _fails.setdefault("ip:" + ip, []).append(now)
+            _fails.setdefault("join:" + code, []).append(now)
             raise HTTPException(404, "邀请码不对")
+        expires = inv["expires_at"]
+        max_uses = int(inv["max_uses"] or 0)
+        used = int(inv["used_count"] or 0)
+        if expires and expires < db.now():
+            raise HTTPException(410, "邀请码已过期")
+        if max_uses and used >= max_uses:
+            raise HTTPException(410, "邀请码已被用掉")
         if c.execute("SELECT 1 FROM users WHERE account=?", (account,)).fetchone():
             raise HTTPException(409, "这个账号已经有了")
         uid = "parent-" + uuid.uuid4().hex[:8]
@@ -895,6 +910,10 @@ def auth_join(b: JoinBody, request: Request):
             "INSERT INTO users(id,family_id,role,name,avatar,pin_hash,term_id,account,created_at,force_pin_change) VALUES(?,?,?,?,?,?,?,?,?,?)",
             (uid, inv["family_id"], role, (b.name or "家长").strip()[:12], "", db.hash_pin(pin), None, account, db.now(), ""))
         c.execute("INSERT INTO profiles(user_id,family_id) VALUES(?,?) ON CONFLICT DO NOTHING", (uid, inv["family_id"]))
+        if max_uses:
+            c.execute("UPDATE invites SET used_count = used_count + 1 WHERE code=?", (code,))
+            if used + 1 >= max_uses:
+                c.execute("DELETE FROM invites WHERE code=?", (code,))
         c.commit()
         user = {"id": uid, "family_id": inv["family_id"], "role": role, "term_id": None}
     finally:
@@ -913,10 +932,37 @@ def invite_create(request: Request, b: InviteIn = InviteIn()):
     u = request.state.user
     code = uuid.uuid4().hex[:8].upper()
     c = get_conn()
-    c.execute("INSERT INTO invites(code,family_id,role,created_at) VALUES(?,?,?,?)",
-              (code, u["family_id"], role, db.now()))
+    prot = c.execute("SELECT invite_protect FROM families WHERE id=?", (u["family_id"],)).fetchone()
+    protect = int(prot["invite_protect"] or 0) if prot else 0
+    max_uses = 1 if protect else 0
+    expires_at = (datetime.now() + timedelta(hours=24)).isoformat(timespec="seconds") if protect else None
+    c.execute("INSERT INTO invites(code,family_id,role,created_at,max_uses,expires_at) VALUES(?,?,?,?,?,?)",
+              (code, u["family_id"], role, db.now(), max_uses, expires_at))
     c.commit(); c.close()
-    return {"code": code, "role": role}
+    return {"code": code, "role": role, "protect": bool(protect)}
+
+
+class InviteProtectIn(BaseModel):
+    enabled: bool
+
+
+@app.get("/api/admin/family", dependencies=[Depends(require_parent)])
+def family_info(request: Request):
+    u = request.state.user
+    c = get_conn()
+    row = c.execute("SELECT id, name, invite_protect FROM families WHERE id=?", (u["family_id"],)).fetchone()
+    c.close()
+    return {"name": row["name"], "invite_protect": int(row["invite_protect"] or 0)}
+
+
+@app.put("/api/admin/family/invite_protect", dependencies=[Depends(require_parent)])
+def family_invite_protect(b: InviteProtectIn, request: Request):
+    u = request.state.user
+    val = 1 if b.enabled else 0
+    c = get_conn()
+    c.execute("UPDATE families SET invite_protect=? WHERE id=?", (val, u["family_id"]))
+    c.commit(); c.close()
+    return {"invite_protect": val}
 
 
 @app.get("/api/admin/members", dependencies=[Depends(require_parent)])

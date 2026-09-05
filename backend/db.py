@@ -543,6 +543,24 @@ CREATE TABLE IF NOT EXISTS invites (
         conn.execute("GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO sunshine_app")
 
 
+def _migrate_008(conn):
+    if not conn.pg:
+        return
+    conn.execute("ALTER TABLE invites ENABLE ROW LEVEL SECURITY")
+    conn.execute("ALTER TABLE invites FORCE ROW LEVEL SECURITY")
+    conn.execute("DROP POLICY IF EXISTS iso ON invites")
+    conn.execute(
+        "CREATE POLICY iso ON invites USING (family_id = current_setting('app.family_id', true)) "
+        "WITH CHECK (family_id = current_setting('app.family_id', true))")
+
+
+def _migrate_009(conn):
+    _add_column(conn, "families", "invite_protect INTEGER DEFAULT 0")
+    _add_column(conn, "invites", "max_uses INTEGER DEFAULT 0")
+    _add_column(conn, "invites", "expires_at TEXT")
+    _add_column(conn, "invites", "used_count INTEGER DEFAULT 0")
+
+
 MIGRATIONS = (
     ("001_identity", _migrate_001),
     ("002_kid_id", _migrate_002),
@@ -551,6 +569,8 @@ MIGRATIONS = (
     ("005_force_pin", _migrate_005),
     ("006_users_rls", _migrate_006),
     ("007_invites", _migrate_007),
+    ("008_invites_rls", _migrate_008),
+    ("009_invite_protect", _migrate_009),
 )
 
 
@@ -560,7 +580,7 @@ def apply_migrations(conn):
     for mid, fn in MIGRATIONS:
         if conn.execute("SELECT 1 FROM schema_migrations WHERE id=?", (mid,)).fetchone():
             continue
-        if mid in ("003_rls", "006_users_rls") and not conn.pg:
+        if mid in ("003_rls", "006_users_rls", "008_invites_rls") and not conn.pg:
             continue  # RLS 只在 PG 生效，SQLite 不记账
         fn(conn)
         conn.execute("INSERT INTO schema_migrations(id,applied_at) VALUES(?,?)", (mid, now()))
