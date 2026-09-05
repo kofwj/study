@@ -437,62 +437,111 @@ onMounted(load)
     <!-- 任务 -->
     <section v-if="section === 'unit-task'" class="a-card enter">
       <h3>单元任务</h3>
-      <div v-for="(arr, sid) in tasksBySubject" :key="sid" class="a-subject">
-        <div class="a-subject-h">{{ subjectName(sid) }}</div>
-        <div class="a-item" v-for="t in arr" :key="t.id">
+      <p class="lead">按学科折叠；改「标题 / 动作 / 阳光」后点保存。</p>
+      <details v-for="(arr, sid) in tasksBySubject" :key="sid" class="subj">
+        <summary>{{ subjectName(sid) }}<em>{{ arr.length }} 项</em></summary>
+        <div class="task-row" v-for="t in arr" :key="t.id">
           <span class="badge">{{ unitName(t.unit_id) }}</span>
-          <input v-model="t.action" class="w-cat" />
-          <input v-model="t.title" class="w-name" />
-          <input v-model.number="t.sunshine" type="number" class="w-num" />
-          <button class="ok" @click="saveTask(t)">保存</button>
-          <button class="del" @click="delTask(t.id)">删</button>
+          <label class="fld grow"><span>标题</span><input v-model="t.title" /></label>
+          <label class="fld w84"><span>动作</span><input v-model="t.action" /></label>
+          <label class="fld w64"><span>阳光</span><input v-model.number="t.sunshine" type="number" /></label>
+          <div class="ops">
+            <button class="ok" @click="saveTask(t)">保存</button>
+            <button class="del" @click="delTask(t.id)">删</button>
+          </div>
         </div>
+      </details>
+      <div class="add-box">
+        <div class="add-title">新增单元任务（针对当前学期）</div>
+        <div class="frm-row">
+          <label class="fld"><span>科目</span>
+            <select v-model="newTask.subject_id" @change="pickSubject">
+              <option value="" disabled>选科目</option>
+              <option v-for="s in subjects" :key="s.id" :value="s.id">{{ s.name }}</option>
+            </select>
+          </label>
+          <label class="fld grow"><span>单元</span>
+            <select v-model="newTask.unit_id">
+              <option value="" disabled>选单元</option>
+              <option v-for="u in unitOptions" :key="u.id" :value="u.id">{{ u.name }}</option>
+            </select>
+          </label>
+        </div>
+        <div class="frm-row">
+          <label class="fld grow"><span>标题</span><input v-model="newTask.title" placeholder="如：背诵第3课" /></label>
+          <label class="fld w84"><span>动作</span><input v-model="newTask.action" placeholder="读 / 写 / 背" /></label>
+          <label class="fld w64"><span>阳光</span><input v-model.number="newTask.sunshine" type="number" /></label>
+        </div>
+        <button class="ok wide" @click="addTask">＋新增任务</button>
       </div>
-      <div class="a-item add">
-        <select v-model="newTask.subject_id" @change="pickSubject">
-          <option value="" disabled>科目</option>
-          <option v-for="s in subjects" :key="s.id" :value="s.id">{{ s.name }}</option>
-        </select>
-        <select v-model="newTask.unit_id">
-          <option value="" disabled>单元</option>
-          <option v-for="u in unitOptions" :key="u.id" :value="u.id">{{ u.name }}</option>
-        </select>
-        <input v-model="newTask.action" placeholder="动作" class="w-cat" />
-        <input v-model="newTask.title" placeholder="标题" class="w-name" />
-        <input v-model.number="newTask.sunshine" type="number" class="w-num" />
-        <button class="ok" @click="addTask">＋新增</button>
-      </div>
-
     </section>
 
     <!-- 每日任务 -->
     <section v-if="section === 'daily'" class="a-card enter">
       <h3>每日任务（循环打卡）</h3>
-      <div class="a-item daily" v-for="d in daily" :key="d.id">
-        <div class="d-row">
+      <p class="lead">系统内置任务只读；你自己建的可以改、可加「破纪录」指标。</p>
+      <div class="daily-card" v-for="d in daily" :key="d.id">
+        <div v-if="d.family_id == null" class="sys-row">
           <span class="badge daily">每天</span>
-          <input v-model="d.name" class="w-name" />
-          <input v-model.number="d.sunshine" type="number" class="w-num" /> 基础
-          <input v-model.number="d.bonus_per_metric" type="number" class="w-num" /> 破纪录/项
-          <button class="ok" @click="saveDaily(d)">保存</button>
-          <button class="del" @click="delDaily(d.id)">删</button>
+          <span class="sys-name">{{ d.name }}</span>
+          <span class="dim">+{{ d.sunshine }} 阳光 · 系统内置</span>
         </div>
-        <div class="d-row" v-for="(m, i) in d.metrics" :key="m.id">
-          <span class="dim">维度</span>
-          <input v-model="m.label" placeholder="名称" class="w-cat" />
-          <input v-model="m.unit" placeholder="单位" class="w-cat" />
-          <select v-model="m.direction">
-            <option v-for="[v, n] in DIRS" :key="v" :value="v">{{ n }}</option>
-          </select>
-          <button class="del" @click="d.metrics.splice(i, 1)">×</button>
-        </div>
-        <button class="ghost-s" @click="addMetric(d.metrics)">＋加维度</button>
+        <template v-else>
+          <div class="dc-head">
+            <span class="badge daily">每天</span>
+            <label class="fld grow"><span>名称</span><input v-model="d.name" /></label>
+            <label class="fld w84"><span>科目</span>
+              <select v-model="d.subject_id">
+                <option v-for="s in subjects" :key="s.id" :value="s.id">{{ s.name }}</option>
+              </select>
+            </label>
+            <label class="fld w64"><span>基础阳光</span><input v-model.number="d.sunshine" type="number" /></label>
+            <label class="fld w84"><span>破纪录 +</span><input v-model.number="d.bonus_per_metric" type="number" /></label>
+            <div class="ops">
+              <button class="ok" @click="saveDaily(d)">保存</button>
+              <button class="del" @click="delDaily(d.id)">删</button>
+            </div>
+          </div>
+          <div class="dc-metrics" v-if="d.metrics.length">
+            <div class="dc-m-head">破纪录指标</div>
+            <div class="m-row" v-for="(m, i) in d.metrics" :key="m.id">
+              <label class="fld grow"><span>名称</span><input v-model="m.label" placeholder="如：跳绳个数" /></label>
+              <label class="fld w84"><span>单位</span><input v-model="m.unit" placeholder="个" /></label>
+              <label class="fld w104"><span>方向</span>
+                <select v-model="m.direction">
+                  <option v-for="[v, n] in DIRS" :key="v" :value="v">{{ n }}</option>
+                </select>
+              </label>
+              <button class="del" @click="d.metrics.splice(i, 1)">×</button>
+            </div>
+          </div>
+          <button class="ghost-s" @click="addMetric(d.metrics)">＋加破纪录指标</button>
+        </template>
       </div>
-      <div class="a-item add daily">
-        <input v-model="newDaily.name" placeholder="任务名（如：跳绳打卡）" class="w-name" />
-        <input v-model.number="newDaily.sunshine" type="number" class="w-num" />
-        <input v-model.number="newDaily.bonus_per_metric" type="number" class="w-num" />
-        <button class="ok" @click="addDaily">＋新增</button>
+      <div class="add-box">
+        <div class="add-title">新增每日任务（你自己家的）</div>
+        <div class="frm-row">
+          <label class="fld w84"><span>科目</span>
+            <select v-model="newDaily.subject_id">
+              <option v-for="s in subjects" :key="s.id" :value="s.id">{{ s.name }}</option>
+            </select>
+          </label>
+          <label class="fld grow"><span>名称</span><input v-model="newDaily.name" placeholder="如：跳绳打卡" /></label>
+          <label class="fld w64"><span>基础阳光</span><input v-model.number="newDaily.sunshine" type="number" /></label>
+          <label class="fld w84"><span>破纪录 +</span><input v-model.number="newDaily.bonus_per_metric" type="number" /></label>
+        </div>
+        <div class="m-row" v-for="(m, i) in newDaily.metrics" :key="m.id">
+          <label class="fld grow"><span>指标名</span><input v-model="m.label" placeholder="如：跳绳个数" /></label>
+          <label class="fld w84"><span>单位</span><input v-model="m.unit" placeholder="个" /></label>
+          <label class="fld w104"><span>方向</span>
+            <select v-model="m.direction">
+              <option v-for="[v, n] in DIRS" :key="v" :value="v">{{ n }}</option>
+            </select>
+          </label>
+          <button class="del" @click="newDaily.metrics.splice(i, 1)">×</button>
+        </div>
+        <button class="ghost-s" @click="addMetric(newDaily.metrics)">＋加破纪录指标</button>
+        <div style="margin-top:10px"><button class="ok wide" @click="addDaily">＋新增任务</button></div>
       </div>
     </section>
 
@@ -690,6 +739,39 @@ onMounted(load)
 .w-subj-num { flex: none; font-size: 12px; color: var(--ink-2); }
 .band-box { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 14px; }
 .band { font-size: 12px; padding: 4px 10px; border-radius: 12px; background: var(--warm); color: var(--accent-ink); font-weight: 700; }
+
+/* —— 单元任务 / 每日任务 表单重排 —— */
+.fld { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.fld > span { font-size: 11px; color: var(--ink-3); font-weight: 700; }
+.fld input, .fld select { border: 1px solid var(--line); border-radius: 8px; padding: 6px 9px; font-size: 13px; color: var(--ink); background: var(--surface); font-family: inherit; width: 100%; }
+.fld input:focus, .fld select:focus { outline: none; border-color: var(--brand); }
+.grow { flex: 1 1 120px; }
+.w64 { width: 64px; flex: none; }
+.w84 { width: 84px; flex: none; }
+.w104 { width: 104px; flex: none; }
+.ops { display: flex; gap: 6px; align-items: center; flex: none; }
+
+details.subj { border: 1px solid var(--line); border-radius: 12px; margin-bottom: 8px; background: var(--surface); overflow: hidden; }
+details.subj summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 11px 14px; font-weight: 800; color: var(--brand-deep); font-size: 14px; }
+details.subj summary::-webkit-details-marker { display: none; }
+details.subj summary em { font-style: normal; font-size: 11px; color: var(--ink-3); background: var(--surface-2); padding: 1px 8px; border-radius: 10px; }
+details.subj summary::after { content: ''; margin-left: auto; width: 8px; height: 8px; border-right: 2px solid var(--ink-3); border-bottom: 2px solid var(--ink-3); transform: rotate(45deg); transition: transform .18s var(--ease); flex: none; }
+details.subj[open] summary::after { transform: rotate(-135deg); }
+.task-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 8px 14px; border-top: 1px solid var(--surface-2); }
+.task-row .badge { flex: none; }
+
+.daily-card { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin-bottom: 10px; background: var(--surface); }
+.dc-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.sys-row { display: flex; align-items: center; gap: 10px; }
+.sys-name { font-weight: 700; }
+.dc-metrics { margin-top: 12px; border-top: 1px dashed var(--line); padding-top: 10px; }
+.dc-m-head { font-size: 11px; color: var(--ink-3); font-weight: 800; margin-bottom: 8px; }
+.m-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+
+.add-box { margin-top: 14px; border: 1px dashed var(--line); border-radius: 12px; padding: 14px; background: var(--surface-2); }
+.add-title { font-size: 12px; font-weight: 800; color: var(--ink-2); margin-bottom: 10px; }
+.frm-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.ok.wide { width: 100%; }
 
 @media (max-width: 760px) {
   .a-body { flex-direction: column; }
