@@ -362,11 +362,13 @@ def apply_curriculum(conn):
 
 
 def migrate_task_ids(conn):
-    """把旧（无学期前缀）单元任务/游标 id 归一为 g5s1-*，保证跨学期不撞旧完成记录（幂等）。"""
+    """把旧（无学期前缀）单元任务/游标 id 归一为 g5s1-*，保证跨学期不撞旧完成记录（幂等）。
+    daily_tasks 的 id（cn-read/cn-pen/cn-diary/ma-calc/en-phonics 等）不带学期前缀，必须排除，否则会被误加 g5s1- 前缀。"""
     for p in ("cn-", "ma-", "en-"):
         conn.execute(
             "UPDATE completions SET task_id='g5s1-'||task_id "
-            "WHERE task_id LIKE ? AND task_id NOT LIKE ?", (p + "%", "g5s1-%"))
+            "WHERE task_id LIKE ? AND task_id NOT LIKE ? "
+            "AND task_id NOT IN (SELECT id FROM daily_tasks)", (p + "%", "g5s1-%"))
     conn.execute(
         "UPDATE settings SET value='g5s1-'||value WHERE key LIKE ? "
         "AND value != '' AND value NOT LIKE ?", ("cursor_%", "g5s1-%"))
