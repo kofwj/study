@@ -569,30 +569,6 @@ function reloadApp() {
       </div>
     </div>
 
-    <div v-else class="login-screen">
-      <div class="login-card">
-        <div class="login-logo"><Sun class="ico" :size="36" /></div>
-        <h1>阳光学习工作台</h1>
-        <p class="login-sub">孩子的每日学习打卡小助手</p>
-        <div class="login-tabs">
-          <button type="button" :class="{ on: pinForm.mode==='login' }" @click="pinForm.mode='login'">登录</button>
-          <button type="button" :class="{ on: pinForm.mode==='register' }" @click="pinForm.mode='register'">注册新家</button>
-          <button type="button" :class="{ on: pinForm.mode==='join' }" @click="pinForm.mode='join'">邀请码加入</button>
-        </div>
-        <input v-model="pinForm.account" placeholder="账号" autocomplete="username" />
-        <input v-model="pinForm.val" type="password" inputmode="numeric" placeholder="密码（4 位数字）" autocomplete="current-password" @keyup.enter="verifyPin" />
-        <input v-if="pinForm.mode!=='login'" v-model="pinForm.name" placeholder="你的名字" />
-        <input v-if="pinForm.mode==='register'" v-model="pinForm.family" placeholder="家庭名（如：乐乐的家）" />
-        <input v-if="pinForm.mode==='join'" v-model="pinForm.code" placeholder="邀请码" />
-        <button class="login-enter" @click="verifyPin">进入</button>
-        <p class="login-note">
-          <template v-if="pinForm.mode==='register'">注册就是为你家开一个独立空间，不需要邀请码。</template>
-          <template v-else-if="pinForm.mode==='join'">邀请码由家庭里已有的家长在设置页生成。</template>
-          <template v-else>孩子用小名账号登录打卡，家长用家长账号管理。</template>
-        </p>
-      </div>
-    </div>
-
     <div v-if="pinForm.open" class="mask">
       <div class="shop-modal enter">
         <h3>{{ pinForm.mode === 'register' ? '注册家庭' : (pinForm.mode === 'join' ? '加入家庭' : '登录') }}</h3>
@@ -669,6 +645,30 @@ function reloadApp() {
         </div>
         <button class="ghost" @click="rankMapOpen = false">关闭</button>
       </div>
+    </div>
+  </div>
+
+  <div v-else class="login-screen">
+    <div class="login-card">
+      <div class="login-logo"><Sun class="ico" :size="36" /></div>
+      <h1>阳光学习工作台</h1>
+      <p class="login-sub">孩子的每日学习打卡小助手</p>
+      <div class="login-tabs">
+        <button type="button" :class="{ on: pinForm.mode==='login' }" @click="pinForm.mode='login'">登录</button>
+        <button type="button" :class="{ on: pinForm.mode==='register' }" @click="pinForm.mode='register'">注册新家</button>
+        <button type="button" :class="{ on: pinForm.mode==='join' }" @click="pinForm.mode='join'">邀请码加入</button>
+      </div>
+      <input v-model="pinForm.account" placeholder="账号" autocomplete="username" />
+      <input v-model="pinForm.val" type="password" inputmode="numeric" placeholder="密码（4 位数字）" autocomplete="current-password" @keyup.enter="verifyPin" />
+      <input v-if="pinForm.mode!=='login'" v-model="pinForm.name" placeholder="你的名字" />
+      <input v-if="pinForm.mode==='register'" v-model="pinForm.family" placeholder="家庭名（如：乐乐的家）" />
+      <input v-if="pinForm.mode==='join'" v-model="pinForm.code" placeholder="邀请码" />
+      <button class="login-enter" @click="verifyPin">进入</button>
+      <p class="login-note">
+        <template v-if="pinForm.mode==='register'">注册就是为你家开一个独立空间，不需要邀请码。</template>
+        <template v-else-if="pinForm.mode==='join'">邀请码由家庭里已有的家长在设置页生成。</template>
+        <template v-else>孩子用小名账号登录打卡，家长用家长账号管理。</template>
+      </p>
     </div>
   </div>
 </template>
