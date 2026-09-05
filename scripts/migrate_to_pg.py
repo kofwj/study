@@ -93,7 +93,7 @@ try:
     if who != "sunshine_app":
         app.close()
         sys.exit(f"APP 登录身份是 {who}，必须是 sunshine_app")
-    db.apply_scope(app, kid_id="kid-other")
+    db.apply_scope(app, db.DEFAULT_FAMILY, "kid-other")
     n = app.execute("SELECT COUNT(*) FROM ledger").fetchone()[0]
     app.close()
     if n != 0:

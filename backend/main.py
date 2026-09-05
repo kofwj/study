@@ -4,19 +4,33 @@
 核心不变式：ledger 是唯一真相源；余额/累计/等级/连击全部由 ledger+日期推导。
 「点错取消」= 一条负 delta 流水 + completion 置 cancelled，不删历史。
 """
+import contextvars
 import json
 import random
+import time
 import uuid
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
 
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException, Depends, Header
+from fastapi import FastAPI, HTTPException, Depends, Request, Response
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 from pydantic import BaseModel
 
 import db
+
+_kid = contextvars.ContextVar("kid", default=db.DEFAULT_KID)
+_fam = contextvars.ContextVar("fam", default=db.DEFAULT_FAMILY)
+COOKIE_PARENT, COOKIE_KID = "pid", "sid"
+TOKEN_MAX_AGE = 7 * 24 * 3600
+_fails = {}
+
+
+def _serializer():
+    return URLSafeTimedSerializer(db.secret_key(), salt="sunshine-sid")
 
 
 @asynccontextmanager
@@ -32,21 +46,114 @@ app = FastAPI(title="阳光学习工作台", lifespan=lifespan)
 
 
 def get_conn():
-    return db.connect()
+    c = db.connect()
+    db.apply_scope(c, _fam.get(), _kid.get())
+    return c
+
+
+def kid_id():
+    return _kid.get()
+
+
+def insert_ledger(c, date, delta, reason, ref_id, note):
+    db.insert_ledger(c, date, delta, reason, ref_id, note, kid_id=kid_id())
 
 
 def active_term(c):
     return db.get_setting(c, "active_term", "g5s1")
 
 
-def require_admin(x_admin_pin: Optional[str] = Header(None)):
-    c = get_conn()
+def _client_ip(request: Request) -> str:
+    return (request.headers.get("cf-connecting-ip")
+            or (request.headers.get("x-forwarded-for") or "").split(",")[0].strip()
+            or (request.client.host if request.client else ""))
+
+
+def _rate_ok(key: str):
+    now = time.time()
+    xs = [t for t in _fails.get(key, []) if now - t < 600]
+    _fails[key] = xs
+    if len(xs) >= 5:
+        raise HTTPException(429, "试太多次了，过一会儿再试")
+
+
+def _cookie_secure(request: Request) -> bool:
+    return request.headers.get("x-forwarded-proto", request.url.scheme) == "https"
+
+
+def _set_auth_cookie(resp: Response, request: Request, name: str, payload: dict):
+    resp.set_cookie(
+        name, _serializer().dumps(payload),
+        max_age=TOKEN_MAX_AGE, httponly=True, samesite="lax",
+        secure=_cookie_secure(request), path="/")
+
+
+def _load_user(token: str):
     try:
-        ok = x_admin_pin == db.get_setting(c, "admin_pin", "8888")
+        data = _serializer().loads(token, max_age=TOKEN_MAX_AGE)
+    except (BadSignature, SignatureExpired):
+        return None
+    c = db.connect()  # users/revoked 无 RLS；勿走 get_conn（会套当前请求 scope）
+    try:
+        rev = c.execute("SELECT created_at FROM revoked WHERE jti=?", ("u:" + data.get("user_id", ""),)).fetchone()
+        try:
+            iat = float(data.get("iat") or 0)
+            rts = float(rev["created_at"]) if rev else 0
+        except (TypeError, ValueError):
+            iat, rts = 0, 0
+        if rts and rts >= iat:
+            return None
+        row = c.execute("SELECT * FROM users WHERE id=?", (data.get("user_id"),)).fetchone()
     finally:
         c.close()
-    if not ok:
-        raise HTTPException(401, "家长密码不对")
+    return dict(row) if row else None
+
+
+def _user_from_request(request: Request):
+    for name in (COOKIE_KID, COOKIE_PARENT):
+        raw = request.cookies.get(name)
+        if not raw:
+            continue
+        u = _load_user(raw)
+        if u:
+            return u
+    return None
+
+
+PUBLIC_API = {"/api/health", "/api/auth/login", "/api/auth/logout"}
+
+
+@app.middleware("http")
+async def auth_mw(request: Request, call_next):
+    path = request.url.path
+    if not path.startswith("/api/") or path in PUBLIC_API:
+        return await call_next(request)
+    u = _user_from_request(request)
+    if not u:
+        return JSONResponse({"detail": "未登录"}, 401)
+    kid = u["id"] if u["role"] == "kid" else (request.query_params.get("selected_kid") or db.DEFAULT_KID)
+    if u["role"] == "parent" and kid != db.DEFAULT_KID:
+        c = db.connect()
+        try:
+            row = c.execute("SELECT family_id FROM users WHERE id=? AND role='kid'", (kid,)).fetchone()
+        finally:
+            c.close()
+        if not row or row["family_id"] != u["family_id"]:
+            return JSONResponse({"detail": "未登录"}, 403)
+    tok_k, tok_f = _kid.set(kid), _fam.set(u["family_id"])
+    request.state.user = u
+    try:
+        return await call_next(request)
+    finally:
+        _kid.reset(tok_k)
+        _fam.reset(tok_f)
+
+
+def require_parent(request: Request):
+    u = getattr(request.state, "user", None)
+    if not u or u["role"] != "parent":
+        raise HTTPException(403, "需要家长账号")
+    return u
 
 
 def earned(c):
@@ -168,7 +275,7 @@ def maybe_milestone(c):
         key = f"milestone_{days}"
         if s >= days and not db.get_setting(c, key, ""):
             db.set_setting(c, key, db.today())
-            db.insert_ledger(c, db.today(), bonus, "milestone", key, f"连续坚持 {days} 天")
+            insert_ledger(c, db.today(), bonus, "milestone", key, f"连续坚持 {days} 天")
             got.append((days, bonus))
     return got
 
@@ -257,7 +364,7 @@ def open_box():
         raise HTTPException(409, "还没有可开的宝箱，再坚持坚持吧！")
     bonus = random.randint(3, 10)
     db.set_setting(c, "box_opened", str(opened + 1))
-    db.insert_ledger(c, db.today(), bonus, "box", f"box-{opened + 1}", "连击宝箱")
+    insert_ledger(c, db.today(), bonus, "box", f"box-{opened + 1}", "连击宝箱")
     c.commit()
     res = {"delta": bonus, "streak": streak(c), "level": level_info(c)}
     c.close()
@@ -372,7 +479,7 @@ def checkin():
     c = get_conn()
     t = db.today()
     if db.insert(c, "INSERT INTO checkins(date,sunshine,created_at,kid_id) VALUES(?,?,?,?) ON CONFLICT DO NOTHING",
-                 (t, 0, db.now(), db.DEFAULT_KID)) is None:
+                 (t, 0, db.now(), kid_id())) is None:
         c.close()
         raise HTTPException(409, "今天已经签到过啦")
     m = maybe_milestone(c)
@@ -432,11 +539,11 @@ def complete(body: CompleteBody):
         delta = row["sunshine"]
         cid = db.insert(c, "INSERT INTO completions(task_id,date,status,sunshine,metrics,kind,created_at,kid_id) "
                         "VALUES(?,?,?,?,?,?,?,?) ON CONFLICT DO NOTHING",
-                        (tid, t, "completed", delta, None, "unit", db.now(), db.DEFAULT_KID))
+                        (tid, t, "completed", delta, None, "unit", db.now(), kid_id()))
         if cid is None:
             c.close()
             raise HTTPException(409, "这项已经完成过啦")
-        db.insert_ledger(c, t, delta, "task", f"cmp-{cid}", row["title"])
+        insert_ledger(c, t, delta, "task", f"cmp-{cid}", row["title"])
         m = maybe_milestone(c)
         c.commit()
         res = {"delta": delta, "bonus": 0, "milestone": m, "level": level_info(c)}
@@ -449,11 +556,11 @@ def complete(body: CompleteBody):
         mj = json.dumps(body.metrics) if body.metrics else None
         cid = db.insert(c, "INSERT INTO completions(task_id,date,status,sunshine,metrics,kind,created_at,kid_id) "
                         "VALUES(?,?,?,?,?,?,?,?) ON CONFLICT DO NOTHING",
-                        (tid, t, "completed", delta, mj, "daily", db.now(), db.DEFAULT_KID))
+                        (tid, t, "completed", delta, mj, "daily", db.now(), kid_id()))
         if cid is None:
             c.close()
             raise HTTPException(409, "今天这项已完成过啦")
-        db.insert_ledger(c, t, delta, "daily", f"cmp-{cid}",
+        insert_ledger(c, t, delta, "daily", f"cmp-{cid}",
                          d["name"] + ("（破纪录 +%d）" % bonus if bonus else ""))
         m = maybe_milestone(c)
         c.commit()
@@ -486,7 +593,7 @@ class CustomTaskBody(BaseModel):
     sunshine: int = 5
 
 
-@app.post("/api/custom-task", dependencies=[Depends(require_admin)])
+@app.post("/api/custom-task", dependencies=[Depends(require_parent)])
 def custom_task(body: CustomTaskBody):
     title = (body.title or "").strip()[:40]
     if not title:
@@ -507,7 +614,7 @@ def custom_task(body: CustomTaskBody):
     return {"id": tid}
 
 
-@app.delete("/api/tasks/{tid}", dependencies=[Depends(require_admin)])
+@app.delete("/api/tasks/{tid}", dependencies=[Depends(require_parent)])
 def delete_task_kid(tid: str):
     c = get_conn()
     row = c.execute("SELECT custom FROM tasks WHERE id=?", (tid,)).fetchone()
@@ -536,7 +643,7 @@ def cancel(body: CompleteBody):
         raise HTTPException(404, "没有可取消的记录")
     c.execute("UPDATE completions SET status='cancelled' WHERE id=?", (comp["id"],))
     delta = -comp["sunshine"]
-    db.insert_ledger(c, t, delta, "cancel", f"cmp-{comp['id']}", "点错取消")
+    insert_ledger(c, t, delta, "cancel", f"cmp-{comp['id']}", "点错取消")
     c.commit()
     res = {"delta": delta, "level": level_info(c)}
     c.close()
@@ -565,7 +672,7 @@ def redeem(body: RedeemBody):
     # 需要家长同意的奖励：只挂起，不扣阳光，等家长端「审批」通过
     if r["need_approval"]:
         c.execute("INSERT INTO redemptions(reward_id,date,price,status,created_at,kid_id) VALUES(?,?,?,?,?,?)",
-                  (r["id"], db.today(), r["price"], "pending", db.now(), db.DEFAULT_KID))
+                  (r["id"], db.today(), r["price"], "pending", db.now(), kid_id()))
         c.commit()
         res = {"pending": True, "reward": r["name"], "level": level_info(c)}
         c.close()
@@ -574,8 +681,8 @@ def redeem(body: RedeemBody):
         c.close()
         raise HTTPException(409, "阳光不够哦，还差 %d" % (r["price"] - balance(c)))
     rid = db.insert(c, "INSERT INTO redemptions(reward_id,date,price,status,created_at,kid_id) VALUES(?,?,?,?,?,?)",
-                    (r["id"], db.today(), r["price"], "done", db.now(), db.DEFAULT_KID))
-    db.insert_ledger(c, db.today(), -r["price"], "redeem", f"red-{rid}", r["name"])
+                    (r["id"], db.today(), r["price"], "done", db.now(), kid_id()))
+    insert_ledger(c, db.today(), -r["price"], "redeem", f"red-{rid}", r["name"])
     m = maybe_milestone(c)
     c.commit()
     res = {"delta": -r["price"], "reward": r["name"], "milestone": m, "level": level_info(c)}
@@ -610,7 +717,7 @@ class CursorBody(BaseModel):
     task_id: str
 
 
-@app.post("/api/admin/cursor", dependencies=[Depends(require_admin)])
+@app.post("/api/admin/cursor", dependencies=[Depends(require_parent)])
 def set_cursor(b: CursorBody):
     c = get_conn()
     db.set_setting(c, "cursor_" + b.subject_id, b.task_id)
@@ -622,7 +729,7 @@ class LockBody(BaseModel):
     on: bool = True
 
 
-@app.post("/api/admin/progress-lock", dependencies=[Depends(require_admin)])
+@app.post("/api/admin/progress-lock", dependencies=[Depends(require_parent)])
 def set_progress_lock(b: LockBody):
     c = get_conn()
     db.set_setting(c, "progress_lock", "1" if b.on else "0")
@@ -634,7 +741,7 @@ class TermBody(BaseModel):
     term_id: str
 
 
-@app.post("/api/admin/term", dependencies=[Depends(require_admin)])
+@app.post("/api/admin/term", dependencies=[Depends(require_parent)])
 def set_active_term(b: TermBody):
     c = get_conn()
     if not c.execute("SELECT 1 FROM terms WHERE id=?", (b.term_id,)).fetchone():
@@ -645,26 +752,84 @@ def set_active_term(b: TermBody):
     return {"ok": True, "term_id": b.term_id}
 
 
+class LoginBody(BaseModel):
+    account: str
+    pin: str
+
+
 class PinBody(BaseModel):
     pin: str
 
 
-@app.post("/api/admin/verify")
-def admin_verify(b: PinBody):
-    c = get_conn()
-    ok = b.pin == db.get_setting(c, "admin_pin", "8888")
-    c.close()
+@app.post("/api/auth/login")
+def auth_login(b: LoginBody, request: Request):
+    account = (b.account or "").strip().lower()
+    ip = _client_ip(request)
+    _rate_ok("ip:" + ip)
+    _rate_ok("ac:" + account)
+    c = db.connect()
+    try:
+        u = c.execute("SELECT * FROM users WHERE account=?", (account,)).fetchone()
+        ok = bool(u) and db.verify_pin(b.pin, u["pin_hash"] or "")
+        force = bool(db.get_setting(c, "force_pin_change", "")) if ok else False
+        user = dict(u) if ok else None
+    finally:
+        c.close()
     if not ok:
-        raise HTTPException(401, "家长密码不对")
-    return {"ok": True}
+        now = time.time()
+        _fails.setdefault("ip:" + ip, []).append(now)
+        _fails.setdefault("ac:" + account, []).append(now)
+        raise HTTPException(401, "账号或密码不对")
+    payload = {
+        "user_id": user["id"], "family_id": user["family_id"], "role": user["role"],
+        "term_id": user["term_id"], "iat": time.time(),
+    }
+    resp = JSONResponse({
+        "ok": True, "role": user["role"], "name": user["name"], "account": user["account"],
+        "force_pin_change": force,
+    })
+    name = COOKIE_PARENT if user["role"] == "parent" else COOKIE_KID
+    _set_auth_cookie(resp, request, name, payload)
+    other = COOKIE_KID if name == COOKIE_PARENT else COOKIE_PARENT
+    resp.delete_cookie(other, path="/")
+    return resp
 
 
-@app.post("/api/admin/pin", dependencies=[Depends(require_admin)])
-def admin_change_pin(b: PinBody):
+@app.post("/api/auth/logout")
+def auth_logout(request: Request):
+    resp = JSONResponse({"ok": True})
+    resp.delete_cookie(COOKIE_PARENT, path="/")
+    resp.delete_cookie(COOKIE_KID, path="/")
+    return resp
+
+
+@app.get("/api/auth/me")
+def auth_me(request: Request):
+    u = getattr(request.state, "user", None)
     c = get_conn()
-    db.set_setting(c, "admin_pin", b.pin)
+    force = bool(db.get_setting(c, "force_pin_change", ""))
+    c.close()
+    return {"role": u["role"], "name": u["name"], "account": u["account"], "force_pin_change": force}
+
+
+@app.post("/api/admin/pin", dependencies=[Depends(require_parent)])
+def admin_change_pin(b: PinBody, request: Request):
+    pin = (b.pin or "").strip()
+    if len(pin) < 4:
+        raise HTTPException(400, "密码至少 4 位")
+    u = request.state.user
+    c = get_conn()
+    c.execute("UPDATE users SET pin_hash=? WHERE id=?", (db.hash_pin(pin), u["id"]))
+    # ponytail: created_at 存 unix 浮点串，和 token.iat 比；别改成 ISO
+    c.execute("INSERT INTO revoked(jti,created_at) VALUES(?,?) ON CONFLICT(jti) DO UPDATE SET created_at=excluded.created_at",
+              ("u:" + u["id"], str(time.time())))
+    db.set_setting(c, "force_pin_change", "")
     c.commit(); c.close()
-    return {"ok": True}
+    payload = {"user_id": u["id"], "family_id": u["family_id"], "role": u["role"],
+               "term_id": u.get("term_id"), "iat": time.time()}
+    resp = JSONResponse({"ok": True})
+    _set_auth_cookie(resp, request, COOKIE_PARENT, payload)
+    return resp
 
 
 # --- 商店 ---
@@ -674,7 +839,7 @@ class RewardIn(BaseModel):
     category: str = "其他"
 
 
-@app.post("/api/admin/rewards", dependencies=[Depends(require_admin)])
+@app.post("/api/admin/rewards", dependencies=[Depends(require_parent)])
 def reward_create(b: RewardIn):
     c = get_conn()
     rid = uuid.uuid4().hex[:8]
@@ -684,7 +849,7 @@ def reward_create(b: RewardIn):
     return {"id": rid}
 
 
-@app.put("/api/admin/rewards/{rid}", dependencies=[Depends(require_admin)])
+@app.put("/api/admin/rewards/{rid}", dependencies=[Depends(require_parent)])
 def reward_update(rid: str, b: RewardIn):
     c = get_conn()
     c.execute("UPDATE rewards SET name=?, price=?, category=? WHERE id=?",
@@ -693,7 +858,7 @@ def reward_update(rid: str, b: RewardIn):
     return {"ok": True}
 
 
-@app.delete("/api/admin/rewards/{rid}", dependencies=[Depends(require_admin)])
+@app.delete("/api/admin/rewards/{rid}", dependencies=[Depends(require_parent)])
 def reward_delete(rid: str):
     c = get_conn()
     c.execute("DELETE FROM rewards WHERE id=?", (rid,))
@@ -702,7 +867,7 @@ def reward_delete(rid: str):
 
 
 # --- 兑换审批 ---
-@app.get("/api/admin/redemptions", dependencies=[Depends(require_admin)])
+@app.get("/api/admin/redemptions", dependencies=[Depends(require_parent)])
 def redemptions_admin():
     c = get_conn()
     rows = c.execute(
@@ -712,7 +877,7 @@ def redemptions_admin():
     return [dict(r) for r in rows]
 
 
-@app.post("/api/admin/redemptions/{rid}/approve", dependencies=[Depends(require_admin)])
+@app.post("/api/admin/redemptions/{rid}/approve", dependencies=[Depends(require_parent)])
 def redemption_approve(rid: str):
     c = get_conn()
     rd = c.execute("SELECT * FROM redemptions WHERE id=?", (rid,)).fetchone()
@@ -724,13 +889,13 @@ def redemption_approve(rid: str):
         c.close(); raise HTTPException(409, "阳光不够，还差 %d" % (rd["price"] - balance(c)))
     c.execute("UPDATE redemptions SET status='done' WHERE id=?", (rid,))
     rw = c.execute("SELECT name FROM rewards WHERE id=?", (rd["reward_id"],)).fetchone()
-    db.insert_ledger(c, db.today(), -rd["price"], "redeem", f"red-{rid}", rw["name"] if rw else "兑换")
+    insert_ledger(c, db.today(), -rd["price"], "redeem", f"red-{rid}", rw["name"] if rw else "兑换")
     maybe_milestone(c)
     c.commit(); c.close()
     return {"ok": True}
 
 
-@app.post("/api/admin/redemptions/{rid}/reject", dependencies=[Depends(require_admin)])
+@app.post("/api/admin/redemptions/{rid}/reject", dependencies=[Depends(require_parent)])
 def redemption_reject(rid: str):
     c = get_conn()
     rd = c.execute("SELECT status FROM redemptions WHERE id=?", (rid,)).fetchone()
@@ -743,7 +908,7 @@ def redemption_reject(rid: str):
     return {"ok": True}
 
 
-@app.post("/api/admin/redemptions/{rid}/deliver", dependencies=[Depends(require_admin)])
+@app.post("/api/admin/redemptions/{rid}/deliver", dependencies=[Depends(require_parent)])
 def redemption_deliver(rid: str):
     """家长标记「奖励已实际兑现」：done → delivered（阳光已在批准时扣除）。"""
     c = get_conn()
@@ -775,7 +940,7 @@ class TestIn(BaseModel):
     unit_id: str = ""
 
 
-@app.post("/api/admin/tests", dependencies=[Depends(require_admin)])
+@app.post("/api/admin/tests", dependencies=[Depends(require_parent)])
 def test_create(b: TestIn):
     if not (0 <= b.score <= 100):
         raise HTTPException(400, "分数要在 0~100 之间")
@@ -786,16 +951,16 @@ def test_create(b: TestIn):
         u = c.execute("SELECT name FROM units WHERE id=?", (b.unit_id,)).fetchone()
         unit_name = u["name"] if u else ""
     tid = db.insert(c, "INSERT INTO tests(subject_id,unit_id,score,sunshine,note,date,created_at,kid_id) VALUES(?,?,?,?,?,?,?,?)",
-                    (b.subject_id, b.unit_id or None, b.score, sun, (b.note or "").strip()[:40], db.today(), db.now(), db.DEFAULT_KID))
+                    (b.subject_id, b.unit_id or None, b.score, sun, (b.note or "").strip()[:40], db.today(), db.now(), kid_id()))
     label = unit_name or b.note or b.subject_id
-    db.insert_ledger(c, db.today(), sun, "test", f"test-{tid}", f"{label} 测试 {b.score} 分")
+    insert_ledger(c, db.today(), sun, "test", f"test-{tid}", f"{label} 测试 {b.score} 分")
     c.commit()
     res = {"id": tid, "sunshine": sun, "level": level_info(c)}
     c.close()
     return res
 
 
-@app.get("/api/admin/tests", dependencies=[Depends(require_admin)])
+@app.get("/api/admin/tests", dependencies=[Depends(require_parent)])
 def tests_list():
     c = get_conn()
     rows = [dict(r) for r in c.execute("SELECT * FROM tests ORDER BY id DESC LIMIT 50").fetchall()]
@@ -803,14 +968,14 @@ def tests_list():
     return rows
 
 
-@app.delete("/api/admin/tests/{tid}", dependencies=[Depends(require_admin)])
+@app.delete("/api/admin/tests/{tid}", dependencies=[Depends(require_parent)])
 def test_delete(tid: str):
     c = get_conn()
     r = c.execute("SELECT * FROM tests WHERE id=?", (tid,)).fetchone()
     if not r:
         c.close(); raise HTTPException(404, "没找到这条测试")
     c.execute("DELETE FROM tests WHERE id=?", (tid,))
-    db.insert_ledger(c, db.today(), -r["sunshine"], "test_cancel", f"test-{tid}", "删除测试冲正")
+    insert_ledger(c, db.today(), -r["sunshine"], "test_cancel", f"test-{tid}", "删除测试冲正")
     c.commit(); c.close()
     return {"ok": True}
 
@@ -821,7 +986,7 @@ class RankIn(BaseModel):
     min_sunshine: int
 
 
-@app.get("/api/admin/ranks")
+@app.get("/api/admin/ranks", dependencies=[Depends(require_parent)])
 def ranks_admin():
     c = get_conn()
     rows = [dict(r) for r in c.execute("SELECT * FROM ranks ORDER BY min_sunshine").fetchall()]
@@ -829,7 +994,7 @@ def ranks_admin():
     return rows
 
 
-@app.post("/api/admin/ranks", dependencies=[Depends(require_admin)])
+@app.post("/api/admin/ranks", dependencies=[Depends(require_parent)])
 def rank_create(b: RankIn):
     c = get_conn()
     c.execute("INSERT INTO ranks(id,name,min_sunshine,sort,family_id) VALUES(?,?,?,?,?)",
@@ -838,7 +1003,7 @@ def rank_create(b: RankIn):
     return {"ok": True}
 
 
-@app.put("/api/admin/ranks/{rid}", dependencies=[Depends(require_admin)])
+@app.put("/api/admin/ranks/{rid}", dependencies=[Depends(require_parent)])
 def rank_update(rid: str, b: RankIn):
     c = get_conn()
     c.execute("UPDATE ranks SET name=?, min_sunshine=? WHERE id=?",
@@ -847,7 +1012,7 @@ def rank_update(rid: str, b: RankIn):
     return {"ok": True}
 
 
-@app.delete("/api/admin/ranks/{rid}", dependencies=[Depends(require_admin)])
+@app.delete("/api/admin/ranks/{rid}", dependencies=[Depends(require_parent)])
 def rank_delete(rid: str):
     c = get_conn()
     r = c.execute("SELECT min_sunshine FROM ranks WHERE id=?", (rid,)).fetchone()
@@ -868,7 +1033,7 @@ class TaskIn(BaseModel):
     sunshine: int = 5
 
 
-@app.post("/api/admin/tasks", dependencies=[Depends(require_admin)])
+@app.post("/api/admin/tasks", dependencies=[Depends(require_parent)])
 def task_create(b: TaskIn):
     c = get_conn()
     tid = uuid.uuid4().hex[:8]
@@ -878,7 +1043,7 @@ def task_create(b: TaskIn):
     return {"id": tid}
 
 
-@app.put("/api/admin/tasks/{tid}", dependencies=[Depends(require_admin)])
+@app.put("/api/admin/tasks/{tid}", dependencies=[Depends(require_parent)])
 def task_update(tid: str, b: TaskIn):
     c = get_conn()
     c.execute("UPDATE tasks SET subject_id=?, unit_id=?, action=?, title=?, sunshine=? WHERE id=?",
@@ -887,7 +1052,7 @@ def task_update(tid: str, b: TaskIn):
     return {"ok": True}
 
 
-@app.delete("/api/admin/tasks/{tid}", dependencies=[Depends(require_admin)])
+@app.delete("/api/admin/tasks/{tid}", dependencies=[Depends(require_parent)])
 def task_delete(tid: str):
     c = get_conn()
     c.execute("DELETE FROM tasks WHERE id=?", (tid,))
@@ -911,7 +1076,7 @@ def _replace_metrics(c, did, metrics):
                   (did, m.get("id"), m.get("label"), m.get("unit"), m.get("direction", "higher_better"), m.get("note", "")))
 
 
-@app.post("/api/admin/daily", dependencies=[Depends(require_admin)])
+@app.post("/api/admin/daily", dependencies=[Depends(require_parent)])
 def daily_create(b: DailyTaskIn):
     c = get_conn()
     did = uuid.uuid4().hex[:8]
@@ -923,7 +1088,7 @@ def daily_create(b: DailyTaskIn):
     return {"id": did}
 
 
-@app.put("/api/admin/daily/{did}", dependencies=[Depends(require_admin)])
+@app.put("/api/admin/daily/{did}", dependencies=[Depends(require_parent)])
 def daily_update(did: str, b: DailyTaskIn):
     c = get_conn()
     c.execute("UPDATE daily_tasks SET subject_id=?, name=?, sunshine=?, bonus_per_metric=? WHERE id=?",
@@ -933,7 +1098,7 @@ def daily_update(did: str, b: DailyTaskIn):
     return {"ok": True}
 
 
-@app.delete("/api/admin/daily/{did}", dependencies=[Depends(require_admin)])
+@app.delete("/api/admin/daily/{did}", dependencies=[Depends(require_parent)])
 def daily_delete(did: str):
     c = get_conn()
     c.execute("DELETE FROM daily_metrics WHERE task_id=?", (did,))
@@ -945,7 +1110,7 @@ def daily_delete(did: str):
 # ---------------- 周报（家长端） -------------
 
 
-@app.get("/api/admin/weekly", dependencies=[Depends(require_admin)])
+@app.get("/api/admin/weekly", dependencies=[Depends(require_parent)])
 def weekly():
     c = get_conn()
     today = datetime.now().date()

@@ -193,13 +193,15 @@ def require_parent(user=Depends(get_current_user)):
 4. 把现有 `require_admin`（比对 `x_admin_pin` 头）替换成 `require_parent`；替换全部 `dependencies=[Depends(require_admin)]`（约 18 个 admin 路由）。
 5. 把 P0 的 `DEFAULT_KID` 桩换成「每请求 `Depends` 设置 `SET LOCAL app.kid_id/app.family_id`，业务 SQL 靠 RLS 的 `current_setting()` 自动过滤」，不再逐函数穿 `kid_id`；少数走不了 RLS 的（如跨表聚合）统一过 `kid_scope()` 一个 choke point。
 
-**验收**：未登录访问 `/api/tasks` 返回 401；家长登录（默认账号 `parent`）后 admin 路由正常；`settings` 不再有明文 `admin_pin`；旧 `x_admin_pin` 头失效；连错 PIN 多次触发限流；重启后会话不掉（`SECRET_KEY` 持久）；改 PIN 后旧会话/旧设备 token 失效。
+**验收**：未登录访问 `/api/tasks` 返回 401；家长登录（默认账号 `parent`）后 admin 路由正常；`settings` 不再有明文 `admin_pin`；旧 `x_admin_pin` 头失效；连错 PIN 多次触发限流；重启后会话不掉（`SECRET_KEY` 持久）；改 PIN 后旧会话/旧设备 token 失效。部署当天在真实 PG 上再验：`sunshine_app` + `kid-other` 看 ledger=0。
 
 ### P2 多娃（单家庭）
 
 目标：一个家庭多个孩子，各看各的课、各有各的游标/盲盒/里程碑/成就/个人纪录。**P0 那三条 `kid_id` 维度唯一索引是前提**，少了它第二个娃任何卡都点不了、也签不了到。
 
 **硬骨头（上一步没想的）**
+0. **`kid_settings` 接线（P0 COPY 了、读写仍走 settings）**：`cursor_%`/`box_opened`/`milestone_%` 必须改 `get_kid_setting/set_kid_setting`，否则两娃游标/盲盒/里程碑串。
+0b. **娃 PIN 独立改接口**：P1 把娃 `pin_hash` 复制成家长 PIN，`/api/admin/pin` 只改家长；`force_pin_change` 是全局的。P2 拆 active/passive 时必须给娃单独改 PIN，并把 `force_pin_change` 改成 per-user。
 1. **唯一约束必须 kid 化（P0 已做）**：`complete()`/`checkin()` 靠「已完成」唯一约束判重复（PG 用 `ON CONFLICT DO NOTHING`），约束带 `kid_id` 后两娃才能各自完成同一张 `g5s1-cn-1-1` 且不串。这条漏了 P2 直接是坏的。
 2. **不止游标，这些推导全要按娃**：`earned/balance/level_info/streak`（P0 已带参）、`locked_task_ids` 查 `completions` 判「已解锁」、`is_past`、`/api/tasks` 的 `done_ids`、每日任务的个人纪录 `pb` 好成绩循环、`achievements()` 全部徽章计数。漏一处 =「哥哥打了卡，弟弟的课被判已完成」。
 3. **刚上线的「学期切换下拉」语义要变**：现在写的是全局 `settings.active_term`（全家一个学期）；多娃后应删掉这个全家开关，改成「在某娃的管理页改该娃的 `users.term_id`」。这是对上一个 commit 已上线功能的**破坏性变更**，要当变更点列出，不是新增。
@@ -224,6 +226,7 @@ def require_parent(user=Depends(get_current_user)):
 目标：不同家庭完全隔离；商店/等级/自定义任务按 `family_id`，课程仍走全局多学期目录。（Postgres+RLS 已在 P0 一次性就位，本阶段只做多家庭隔离。）
 
 **硬骨头（上一步没想的）**
+0. **`users` 上 RLS（或 login 走独立路径）**：P1 后 `pin_hash/account` 是真敏感数据，`sunshine_app` 现在能 `SELECT * FROM users`。单家庭可忍，多家庭前必须挡住。
 1. **Postgres 迁移/RLS 是 P0 的事，别塞回 P3**：本阶段只做「多家庭隔离」，数据库已 Postgres+RLS 就位。
 2. **`curriculum_ver` 全局重灌逻辑要按家庭拆**：现在 `apply_curriculum` 用全局 `settings.curriculum_ver` 决定是否重灌；一旦「每家庭独立课程版本」（第 7 节第 10 条）成立，版本号要变成 `family_curriculum_ver(family_id)`、重灌按家庭触发——否则 A 家一换教材，B 家的系统任务也被删了重插。
 3. **课程共享、家庭配置不共享**：`terms/units/tasks(教材)/daily_tasks` 全局共享（正确）；`rewards/ranks/custom/ledger/completions/redemptions/tests/kid_settings` 全要 `family_id`（或由 `kid→family` 反查）在 **SQL 层强制**。任何一处漏 `AND family_id=?` 就是跨租户数据泄漏，不能只靠前端藏。

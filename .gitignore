@@ -5,6 +5,8 @@ __pycache__/
 .venv/
 backend/sunshine.db
 .env
+.secret_key
+data/.secret_key
 .DS_Store
 # 参考截图/教材OCR实物图，不进仓库
 微信图片*

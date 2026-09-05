@@ -64,20 +64,37 @@ function scoreClass(s) {
 }
 
 const isAdmin = ref(false)
-const pinForm = reactive({ open: false, val: '' })
+const me = ref(null)
+const pinForm = reactive({ open: false, account: 'lele', val: '' })
 async function verifyPin() {
   try {
-    await api.admin.verify(pinForm.val)
-    sessionStorage.setItem('admin_pin', pinForm.val)
+    const r = await api.login(pinForm.account, pinForm.val)
+    me.value = r
     pinForm.open = false
     pinForm.val = ''
-    isAdmin.value = true
+    isAdmin.value = r.role === 'parent'
+    if (r.force_pin_change) showToast('请先改密码')
+    if (!isAdmin.value) await refresh()
   } catch (e) { showToast(e.message) }
 }
 function exitAdmin() {
   isAdmin.value = false
-  sessionStorage.removeItem('admin_pin')
   refresh()
+}
+async function openParent() {
+  if (me.value && me.value.role === 'parent') {
+    isAdmin.value = true
+    return
+  }
+  pinForm.account = 'parent'
+  pinForm.open = true
+}
+async function doLogout() {
+  await api.logout().catch(() => {})
+  me.value = null
+  isAdmin.value = false
+  pinForm.open = true
+  pinForm.account = 'lele'
 }
 
 async function refresh() {
@@ -95,6 +112,7 @@ async function refresh() {
     boxes.value = bx
     err.value = ''
   } catch (e) {
+    if (e.status === 401) { me.value = null; pinForm.open = true }
     err.value = e.message
   } finally {
     loading.value = false
@@ -306,7 +324,14 @@ const currentUnits = computed(() => bySubject.value[activeTab.value]?.units || [
 
 onMounted(async () => {
   window.addEventListener('sw-update', () => { updateReady.value = true })
-  await refresh()
+  try {
+    me.value = await api.me()
+    isAdmin.value = false
+    await refresh()
+  } catch (e) {
+    pinForm.open = true
+    loading.value = false
+  }
 })
 function reloadApp() {
   const u = new URL(location.href)
@@ -447,7 +472,8 @@ function reloadApp() {
 
     <!-- 底栏：自定义任务 + 商店 -->
     <footer class="foot">
-      <button class="parent" @click="pinForm.open = true">👤 家长</button>
+      <button class="parent" @click="openParent">👤 家长</button>
+      <button class="parent" @click="doLogout">退出</button>
       <span style="flex:1"></span>
       <button class="shop-fab" @click="openShop">🛒 商店</button>
     </footer>
@@ -537,12 +563,13 @@ function reloadApp() {
       </div>
     </div>
 
-    <div v-if="pinForm.open" class="mask" @click.self="pinForm.open = false">
+    <div v-if="pinForm.open" class="mask">
       <div class="shop-modal">
-        <h3>家长密码</h3>
-        <input v-model="pinForm.val" type="password" inputmode="numeric" placeholder="密码" @keyup.enter="verifyPin" />
-        <button class="do big" @click="verifyPin">进入管理</button>
-        <button class="ghost" @click="pinForm.open = false">取消</button>
+        <h3>登录</h3>
+        <input v-model="pinForm.account" placeholder="账号 parent / lele" autocomplete="username" />
+        <input v-model="pinForm.val" type="password" inputmode="numeric" placeholder="密码" autocomplete="current-password" @keyup.enter="verifyPin" />
+        <button class="do big" @click="verifyPin">进入</button>
+        <button v-if="me" class="ghost" @click="pinForm.open = false">取消</button>
       </div>
     </div>
     <p v-if="err" class="err">{{ err }}</p>

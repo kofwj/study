@@ -128,4 +128,4 @@ cd frontend && npm install && npm run dev
 
 ---
 
-**家长端 PIN 当前值：0129**（非默认 8888，需改回可 `reset` 或改代码里默认值）。
+**登录（P1）**：账号 `parent`（家长）/ `lele`（娃），密码沿用旧 PIN（当前 **0129**）。HttpOnly Cookie：家长 `pid`、娃 `sid`。公网 HTTPS 带 `Secure`；内网 `http://192.168.100.5:9000` 无 `Secure`。改密后旧会话失效。`SECRET_KEY` 在 `data/.secret_key`（不进 git）。

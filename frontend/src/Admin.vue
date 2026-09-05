@@ -180,7 +180,6 @@ async function changePin() {
   if (!pinForm.next) return showToast('填新密码')
   try {
     await api.admin.changePin(pinForm.next)
-    sessionStorage.setItem('admin_pin', pinForm.next)
     pinForm.cur = pinForm.next = ''
     showToast('密码已改')
   } catch (e) { showToast(e.message) }
@@ -431,10 +430,10 @@ onMounted(load)
     <section v-if="tab === 'pin'" class="a-card">
       <h3>修改家长密码</h3>
       <div class="a-item">
-        <input v-model="pinForm.next" type="password" placeholder="新密码（默认 8888）" class="w-name" />
+        <input v-model="pinForm.next" type="password" placeholder="新密码（至少 4 位）" class="w-name" />
         <button class="ok" @click="changePin">改密码</button>
       </div>
-      <p class="dim">孩子端看不到这里，需输入密码才能进入管理。</p>
+      <p class="dim">账号 parent；改密后旧设备要重新登录。首登请改掉迁移来的旧 PIN。</p>
     </section>
 
     <div v-if="toast" class="toast">{{ toast }}</div>

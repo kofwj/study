@@ -5,6 +5,8 @@
 流水账(ledger)是唯一真相源：余额=SUM(全部 delta)、累计获得=SUM(非 redeem delta)、
 等级/连击都由累计获得与日期推导，不单独硬存，保证「点错取消」公平可审计。
 """
+import hashlib
+import hmac
 import json
 import os
 import sqlite3
@@ -154,12 +156,48 @@ class _Conn:
         self._raw.close()
 
 
-def apply_scope(conn, family_id=None, kid_id=None):
+PBKDF2_ITERS = 600_000  # OWASP PBKDF2-SHA256
+
+
+def hash_pin(pin: str) -> str:
+    salt = os.urandom(16)
+    dk = hashlib.pbkdf2_hmac("sha256", pin.encode(), salt, PBKDF2_ITERS)
+    return f"pbkdf2${PBKDF2_ITERS}${salt.hex()}${dk.hex()}"
+
+
+def verify_pin(pin: str, stored: str) -> bool:
+    if not pin or not stored:
+        return False
+    try:
+        algo, iters, salt_hex, hash_hex = stored.split("$")
+        if algo != "pbkdf2":
+            return False
+        dk = hashlib.pbkdf2_hmac("sha256", pin.encode(), bytes.fromhex(salt_hex), int(iters))
+        return hmac.compare_digest(dk.hex(), hash_hex)
+    except (ValueError, TypeError):
+        return False
+
+
+def secret_key() -> str:
+    env = os.environ.get("SECRET_KEY")
+    if env:
+        return env
+    path = Path(os.environ.get("SUNSHINE_DB", BASE.parent / "data" / "sunshine.db")).parent / ".secret_key"
+    if path.exists():
+        return path.read_text().strip()
+    k = os.urandom(32).hex()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(k)
+    return k
+
+
+def apply_scope(conn, family_id, kid_id):
     # ponytail: session GUC（无连接池）；上池后改 SET LOCAL + 每请求复位
+    # 请求路径只许 get_conn() 调这里。db.connect() 不设 GUC：未设时 RLS 匹配空串，查活动表=0 行。
     if not conn.pg:
         return
-    conn.execute("SELECT set_config('app.family_id', ?, false)", (family_id or DEFAULT_FAMILY,))
-    conn.execute("SELECT set_config('app.kid_id', ?, false)", (kid_id or DEFAULT_KID,))
+    conn.execute("SELECT set_config('app.family_id', ?, false)", (family_id,))
+    conn.execute("SELECT set_config('app.kid_id', ?, false)", (kid_id,))
 
 
 def now() -> str:
@@ -180,10 +218,7 @@ def connect(admin=False):
             if not url:
                 raise RuntimeError("DATABASE_APP_URL required (login as sunshine_app; superuser bypasses RLS)")
         raw = psycopg.connect(url, row_factory=_pg_row_factory)
-        c = _Conn(raw, True)
-        if not admin:
-            apply_scope(c)
-        return c
+        return _Conn(raw, True)  # 不设 GUC。业务查询用 get_conn()；这里只碰无 RLS 表（users/settings）
     raw = sqlite3.connect(DB_PATH)
     raw.row_factory = sqlite3.Row
     return _Conn(raw, False)
@@ -383,7 +418,6 @@ def _migrate_002(conn):
             "INSERT INTO kid_settings(kid_id,key,value) VALUES(?,?,?) ON CONFLICT(kid_id, key) DO NOTHING",
             (DEFAULT_KID, r["key"], r["value"]))
     conn.commit()
-    apply_scope(conn)
     for idx in ("ux_cmp_unit", "ux_cmp_daily", "ux_chk_date"):
         conn.execute(f"DROP INDEX IF EXISTS {idx}")
     for ddl in (
@@ -397,7 +431,6 @@ def _migrate_002(conn):
             print("[sunshine] index warn:", e)
             if conn.pg:
                 conn._raw.rollback()
-                apply_scope(conn)
 
 
 def _migrate_003(conn):
@@ -445,17 +478,39 @@ END $$;
     conn.execute("ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO sunshine_app")
 
 
+def _migrate_004(conn):
+    _add_column(conn, "users", "account TEXT")
+    conn.execute("UPDATE users SET account='parent' WHERE id=? AND (account IS NULL OR account='')",
+                 (DEFAULT_PARENT,))
+    conn.execute("UPDATE users SET account='lele' WHERE id=? AND (account IS NULL OR account='')",
+                 (DEFAULT_KID,))
+    conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS ux_users_account ON users(account) WHERE account IS NOT NULL AND account != ''")
+    conn.executescript("CREATE TABLE IF NOT EXISTS revoked (jti TEXT PRIMARY KEY, created_at TEXT);")
+    pin = get_setting(conn, "admin_pin", "8888") or "8888"
+    row = conn.execute("SELECT pin_hash FROM users WHERE id=?", (DEFAULT_PARENT,)).fetchone()
+    if not (row and row["pin_hash"]):
+        conn.execute("UPDATE users SET pin_hash=? WHERE id=?", (hash_pin(pin), DEFAULT_PARENT))
+    kid = conn.execute("SELECT pin_hash FROM users WHERE id=?", (DEFAULT_KID,)).fetchone()
+    if not (kid and kid["pin_hash"]):
+        conn.execute("UPDATE users SET pin_hash=? WHERE id=?", (hash_pin(pin), DEFAULT_KID))  # P1 娃默认同 PIN，P2 再拆
+    conn.execute("DELETE FROM settings WHERE key='admin_pin'")
+    conn.execute("INSERT INTO settings(key,value) VALUES('force_pin_change','1') ON CONFLICT DO NOTHING")
+    if conn.pg:
+        conn.execute("GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO sunshine_app")
+        conn.execute("GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO sunshine_app")
+
+
 MIGRATIONS = (
     ("001_identity", _migrate_001),
     ("002_kid_id", _migrate_002),
     ("003_rls", _migrate_003),
+    ("004_auth", _migrate_004),
 )
 
 
 def apply_migrations(conn):
     conn.execute("CREATE TABLE IF NOT EXISTS schema_migrations (id TEXT PRIMARY KEY, applied_at TEXT)")
     conn.commit()
-    apply_scope(conn)
     for mid, fn in MIGRATIONS:
         if conn.execute("SELECT 1 FROM schema_migrations WHERE id=?", (mid,)).fetchone():
             continue
@@ -464,7 +519,6 @@ def apply_migrations(conn):
         fn(conn)
         conn.execute("INSERT INTO schema_migrations(id,applied_at) VALUES(?,?)", (mid, now()))
         conn.commit()
-        apply_scope(conn)
 
 
 def fingerprints(conn):
@@ -503,7 +557,6 @@ def init_db():
             except sqlite3.OperationalError:
                 pass
     conn.commit()
-    apply_scope(conn)
     conn.execute("UPDATE completions SET kind='daily' WHERE task_id IN (SELECT id FROM daily_tasks)")
     apply_migrations(conn)
     migrate_task_ids(conn)
@@ -513,7 +566,6 @@ def init_db():
         apply_curriculum(conn)
     for s in ALL_SUBJECTS:
         conn.execute("INSERT INTO subjects(id,name) VALUES(?,?) ON CONFLICT DO NOTHING", (s, s))
-    conn.execute("INSERT INTO settings(key,value) VALUES('admin_pin','8888') ON CONFLICT DO NOTHING")
     conn.execute("INSERT INTO settings(key,value) VALUES('kid_name','乐乐') ON CONFLICT DO NOTHING")
     # 语文已学到《珍珠鸟》（g5s1-cn-1-5），推荐从这里往后，前面不加阳光
     conn.execute("INSERT INTO settings(key,value) VALUES('cursor_语文','g5s1-cn-1-5') ON CONFLICT DO NOTHING")
