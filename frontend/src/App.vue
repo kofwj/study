@@ -822,7 +822,7 @@ body {
   }
   .who { width: 100%; min-width: 0; }
   .who > div { min-width: 0; flex: 1; }
-  .avatar { width: 40px; height: 40px; font-size: 22px; flex: 0 0 40px; aspect-ratio: 1; }
+  .who > .avatar { width: 40px; height: 40px; font-size: 22px; flex: 0 0 40px; aspect-ratio: 1; }
   .kid { font-size: 18px; white-space: nowrap; }
   .hello { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .greet-long { display: none; }
