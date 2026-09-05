@@ -377,18 +377,23 @@ onMounted(load)
     <section v-if="section === 'shop'" class="a-card enter">
       <h3>兑换商店</h3>
       <p class="lead">孩子会用阳光兑换这些，改价格实时生效。</p>
-      <div class="a-item" v-for="r in rewards" :key="r.id">
-        <input v-model="r.name" class="w-name" />
-        <input v-model.number="r.price" type="number" class="w-num" /> <Sun class="ico sun" :size="14" />
-        <input v-model="r.category" class="w-cat" />
-        <button class="ok" @click="saveReward(r)">保存</button>
-        <button class="del" @click="delReward(r.id)">删</button>
+      <div class="task-row" v-for="r in rewards" :key="r.id">
+        <label class="fld grow"><span>奖励名</span><input v-model="r.name" /></label>
+        <label class="fld w64"><span>阳光</span><input v-model.number="r.price" type="number" /></label>
+        <label class="fld w84"><span>分类</span><input v-model="r.category" /></label>
+        <div class="ops">
+          <button class="ok" @click="saveReward(r)">保存</button>
+          <button class="del" @click="delReward(r.id)">删</button>
+        </div>
       </div>
-      <div class="a-item add">
-        <input v-model="newReward.name" placeholder="奖励名（如：看动画30分钟）" class="w-name" />
-        <input v-model.number="newReward.price" type="number" placeholder="价格" class="w-num" />
-        <input v-model="newReward.category" placeholder="分类" class="w-cat" />
-        <button class="ok" @click="addReward">＋新增</button>
+      <div class="add-box">
+        <div class="add-title">新增奖励</div>
+        <div class="frm-row">
+          <label class="fld grow"><span>奖励名</span><input v-model="newReward.name" placeholder="如：看动画30分钟" /></label>
+          <label class="fld w64"><span>阳光</span><input v-model.number="newReward.price" type="number" placeholder="30" /></label>
+          <label class="fld w84"><span>分类</span><input v-model="newReward.category" placeholder="如：娱乐" /></label>
+        </div>
+        <button class="ok wide" @click="addReward">＋新增奖励</button>
       </div>
     </section>
 
@@ -421,20 +426,23 @@ onMounted(load)
     <section v-if="section === 'rank'" class="a-card enter">
       <h3>成长等级（按累计获得阳光）</h3>
       <p class="lead">等级看「累计获得」，消费不会掉级。</p>
-      <div class="a-item" v-for="r in ranks" :key="r.id">
-        <span class="rank-icon"><component :is="rankIcon(r.icon)" class="ico" :size="16" /></span>
-        <input v-model="r.name" class="w-name" />
-        <span class="dim">≥</span>
-        <input v-model.number="r.min_sunshine" type="number" class="w-num" /> 阳光
-        <button class="ok" @click="saveRank(r)">保存</button>
-        <button class="del" @click="delRank(r.id)">删</button>
+      <div class="task-row" v-for="r in ranks" :key="r.id">
+        <span class="rank-icon"><component :is="rankIcon(r.icon)" class="ico" :size="18" /></span>
+        <label class="fld grow"><span>等级名</span><input v-model="r.name" /></label>
+        <label class="fld w84"><span>累计阳光 ≥</span><input v-model.number="r.min_sunshine" type="number" /></label>
+        <div class="ops">
+          <button class="ok" @click="saveRank(r)">保存</button>
+          <button class="del" @click="delRank(r.id)">删</button>
+        </div>
       </div>
-      <div class="a-item add">
-        <span class="rank-icon"><Star class="ico" :size="16" /></span>
-        <input v-model="newRank.name" placeholder="等级名（如：阳光萌新）" class="w-name" />
-        <span class="dim">≥</span>
-        <input v-model.number="newRank.min_sunshine" type="number" placeholder="0" class="w-num" />
-        <button class="ok" @click="addRank">＋新增</button>
+      <div class="add-box">
+        <div class="add-title">新增等级</div>
+        <div class="frm-row">
+          <span class="rank-icon"><Star class="ico" :size="18" /></span>
+          <label class="fld grow"><span>等级名</span><input v-model="newRank.name" placeholder="如：阳光萌新" /></label>
+          <label class="fld w84"><span>累计阳光 ≥</span><input v-model.number="newRank.min_sunshine" type="number" placeholder="0" /></label>
+        </div>
+        <button class="ok wide" @click="addRank">＋新增等级</button>
       </div>
     </section>
 
