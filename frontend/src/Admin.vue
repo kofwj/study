@@ -9,7 +9,27 @@ const inviteProtect = ref(false)
 const invites = ref([])
 const selectedKid = ref('')
 const newKid = reactive({ name: '', account: '', pin: '', term_id: 'g5s1' })
-const tab = ref('weekly')
+const section = ref('weekly')
+const SECTIONS = [
+  { group: '概览', items: [{ id: 'weekly', icon: '📊', label: '周报' }] },
+  { group: '家庭', items: [
+    { id: 'kids', icon: '🧒', label: '孩子' },
+    { id: 'members', icon: '👨‍👩‍👧', label: '家长成员' },
+    { id: 'invites', icon: '🔑', label: '邀请码' },
+    { id: 'pin', icon: '🔐', label: '家长密码' },
+  ] },
+  { group: '奖励', items: [
+    { id: 'shop', icon: '🏪', label: '兑换商店' },
+    { id: 'rank', icon: '🏆', label: '成长等级' },
+    { id: 'approve', icon: '✅', label: '兑换审批' },
+  ] },
+  { group: '学习', items: [
+    { id: 'unit-task', icon: '📚', label: '单元任务' },
+    { id: 'daily', icon: '🔁', label: '每日任务' },
+    { id: 'cursor', icon: '📍', label: '已学到' },
+    { id: 'test', icon: '📝', label: '单元测试' },
+  ] },
+]
 const rewards = ref([])
 const ranks = ref([])
 const subjects = ref([])
@@ -290,20 +310,19 @@ onMounted(load)
       <button class="a-exit" @click="emit('exit')">← 回到孩子端</button>
     </header>
 
-    <div class="a-tabs">
-      <button :class="{ on: tab === 'weekly' }" @click="tab = 'weekly'">周报</button>
-      <button :class="{ on: tab === 'shop' }" @click="tab = 'shop'">商店</button>
-      <button :class="{ on: tab === 'approve' }" @click="tab = 'approve'">审批</button>
-      <button :class="{ on: tab === 'rank' }" @click="tab = 'rank'">等级</button>
-      <button :class="{ on: tab === 'task' }" @click="tab = 'task'">任务</button>
-      <button :class="{ on: tab === 'cursor' }" @click="tab = 'cursor'">已学到</button>
-      <button :class="{ on: tab === 'test' }" @click="tab = 'test'">测试</button>
-      <button :class="{ on: tab === 'kids' }" @click="tab = 'kids'">孩子</button>
-      <button :class="{ on: tab === 'pin' }" @click="tab = 'pin'">密码</button>
-    </div>
+    <div class="a-body">
+      <aside class="a-side">
+        <template v-for="g in SECTIONS" :key="g.group">
+          <div class="a-group">{{ g.group }}</div>
+          <button v-for="it in g.items" :key="it.id" :class="['a-nav', { on: section === it.id }]" @click="section = it.id">
+            <span class="a-nav-ico">{{ it.icon }}</span>{{ it.label }}
+          </button>
+        </template>
+      </aside>
+      <main class="a-main">
 
     <!-- 周报 -->
-    <section v-if="tab === 'weekly'" class="a-card">
+    <section v-if="section === 'weekly'" class="a-card">
       <h3>📊 本周周报</h3>
       <p class="lead">{{ weekly.week_start }} ~ {{ weekly.week_end }}（周一到周日）</p>
       <div v-if="(weekly.kids || []).length" class="w-kids">
@@ -353,7 +372,7 @@ onMounted(load)
     </section>
 
     <!-- 商店 -->
-    <section v-if="tab === 'shop'" class="a-card">
+    <section v-if="section === 'shop'" class="a-card">
       <h3>兑换商店</h3>
       <p class="lead">孩子会用阳光兑换这些，改价格实时生效。</p>
       <div class="a-item" v-for="r in rewards" :key="r.id">
@@ -372,7 +391,7 @@ onMounted(load)
     </section>
 
     <!-- 审批 -->
-    <section v-if="tab === 'approve'" class="a-card">
+    <section v-if="section === 'approve'" class="a-card">
       <h3>兑换审批与兑现</h3>
       <p class="lead">需家长同意的奖励先到「待同意」；同意后扣阳光，实际给了奖励再点「标记已兑现」。</p>
       <div v-if="!redemptions.length" class="dim">还没有任何兑换记录。</div>
@@ -393,7 +412,7 @@ onMounted(load)
     </section>
 
     <!-- 等级 -->
-    <section v-if="tab === 'rank'" class="a-card">
+    <section v-if="section === 'rank'" class="a-card">
       <h3>成长等级（按累计获得阳光）</h3>
       <p class="lead">等级看「累计获得」，消费不会掉级。</p>
       <div class="a-item" v-for="r in ranks" :key="r.id">
@@ -414,7 +433,7 @@ onMounted(load)
     </section>
 
     <!-- 任务 -->
-    <section v-if="tab === 'task'" class="a-card">
+    <section v-if="section === 'unit-task'" class="a-card">
       <h3>单元任务</h3>
       <div v-for="(arr, sid) in tasksBySubject" :key="sid" class="a-subject">
         <div class="a-subject-h">{{ subjectName(sid) }}</div>
@@ -442,7 +461,11 @@ onMounted(load)
         <button class="ok" @click="addTask">＋新增</button>
       </div>
 
-      <h3 style="margin-top:24px">每日任务（循环打卡）</h3>
+    </section>
+
+    <!-- 每日任务 -->
+    <section v-if="section === 'daily'" class="a-card">
+      <h3>每日任务（循环打卡）</h3>
       <div class="a-item daily" v-for="d in daily" :key="d.id">
         <div class="d-row">
           <span class="badge daily">每天</span>
@@ -472,7 +495,7 @@ onMounted(load)
     </section>
 
     <!-- 已学到 -->
-    <section v-if="tab === 'cursor'" class="a-card">
+    <section v-if="section === 'cursor'" class="a-card">
       <h3>已学到哪一课</h3>
       <p class="lead">推荐从这里往后，前面的课标灰「已学过」，不再计阳光。</p>
       <div class="a-item" v-for="s in ['语文','数学','英语']" :key="s">
@@ -491,7 +514,7 @@ onMounted(load)
     </section>
 
     <!-- 单元测试成绩 -->
-    <section v-if="tab === 'test'" class="a-card">
+    <section v-if="section === 'test'" class="a-card">
       <h3>单元测试成绩奖励</h3>
       <p class="lead">孩子考完单元测试，你录入分数，按档自动发阳光（孩子不能自己录）。</p>
       <div class="band-box">
@@ -520,7 +543,7 @@ onMounted(load)
       </div>
     </section>
 
-    <section v-if="tab === 'kids'" class="a-card">
+    <section v-if="section === 'kids'" class="a-card">
       <h3>管理孩子</h3>
       <div class="a-item" v-for="k in kids" :key="k.id">
         <span class="badge">{{ k.name }}</span>
@@ -541,12 +564,22 @@ onMounted(load)
         </select>
         <button class="ok" @click="addKid">添加</button>
       </div>
-      <h3 style="margin-top:18px">家长 / 观察员</h3>
+    </section>
+
+    <!-- 家长成员 -->
+    <section v-if="section === 'members'" class="a-card">
+      <h3>家长成员</h3>
+      <p class="lead">另一位家长共同管理，爷爷奶奶…当「观察员」只能看。</p>
       <div class="a-item" v-for="m in members" :key="m.id">
         <span class="badge">{{ m.name }}</span>
         <span class="dim">{{ m.account }} · {{ m.role }}</span>
         <button class="del" @click="delMember(m)">删</button>
       </div>
+    </section>
+
+    <!-- 邀请码 -->
+    <section v-if="section === 'invites'" class="a-card">
+      <h3>邀请码</h3>
       <label style="display:flex;gap:8px;align-items:center;margin:10px 0 4px;font-size:13px;cursor:pointer">
         <input type="checkbox" :checked="inviteProtect" @change="toggleProtect" />
         <span>邀请码保护（开 = 一次性 + 24h 限时）</span>
@@ -566,7 +599,7 @@ onMounted(load)
     </section>
 
     <!-- 密码 -->
-    <section v-if="tab === 'pin'" class="a-card">
+    <section v-if="section === 'pin'" class="a-card">
       <h3>修改家长密码</h3>
       <div class="a-item">
         <input v-model="pinForm.next" type="password" placeholder="新密码（至少 4 位）" class="w-name" />
@@ -574,6 +607,8 @@ onMounted(load)
       </div>
       <p class="dim">账号 parent；改密后旧设备要重新登录。首登请改掉迁移来的旧密码。</p>
     </section>
+      </main>
+    </div>
 
     <div v-if="toast" class="toast">{{ toast }}</div>
   </div>
@@ -591,12 +626,14 @@ onMounted(load)
 .a-term { display: block; margin-top: 8px; font-size: 12px; }
 .a-term select { margin-left: 6px; padding: 4px 8px; border-radius: 8px; border: 1px solid #cfe4f2; background: #fff; color: #1f3b55; }
 .a-exit { background: rgba(255,255,255,.22); border: none; color: #fff; border-radius: 20px; padding: 9px 16px; font-weight: 700; cursor: pointer; font-family: inherit; }
-.a-tabs { display: flex; gap: 8px; margin: 14px 0; overflow-x: auto; padding-bottom: 4px; }
-.a-tabs button {
-  flex: 0 0 auto; padding: 9px 16px; border: 1px solid #d3e8f5; background: #fff; border-radius: 22px;
-  color: #4a6780; cursor: pointer; font-weight: 700; font-size: 13px; font-family: inherit;
-}
-.a-tabs button.on { background: #3aa4e0; border-color: #3aa4e0; color: #fff; }
+.a-body { display: flex; gap: 16px; align-items: flex-start; }
+.a-side { width: 164px; flex: none; background: #fff; border-radius: 16px; padding: 10px 8px; box-shadow: 0 4px 14px rgba(60,120,170,.07); border: 1px solid #e8f3fa; position: sticky; top: calc(8px + env(safe-area-inset-top)); }
+.a-group { font-size: 11px; color: #9ab6c9; font-weight: 800; padding: 10px 10px 4px; letter-spacing: .5px; }
+.a-nav { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 10px; border: none; background: none; border-radius: 10px; color: #4a6780; font-weight: 700; font-size: 13px; cursor: pointer; text-align: left; font-family: inherit; }
+.a-nav:hover { background: #f2f9fd; }
+.a-nav.on { background: #3aa4e0; color: #fff; }
+.a-nav-ico { width: 18px; text-align: center; }
+.a-main { flex: 1; min-width: 0; }
 .a-card { background: #fff; border-radius: 16px; padding: 18px; margin-bottom: 14px; box-shadow: 0 4px 14px rgba(60,120,170,.07); border: 1px solid #e8f3fa; }
 .a-card h3 { margin: 0 0 6px; font-size: 16px; color: #1f3b55; }
 .lead { color: #7aa0b8; font-size: 12px; margin: 0 0 14px; }
@@ -652,6 +689,12 @@ onMounted(load)
 .band-box { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 14px; }
 .band { font-size: 12px; padding: 4px 10px; border-radius: 12px; background: #fff3d6; color: #c07b00; font-weight: 700; }
 
+@media (max-width: 760px) {
+  .a-body { flex-direction: column; }
+  .a-side { width: 100%; position: static; display: flex; gap: 6px; overflow-x: auto; padding: 8px; }
+  .a-group { display: none; }
+  .a-nav { flex: 0 0 auto; width: auto; white-space: nowrap; }
+}
 @media (max-width: 560px) {
   .w-summary { grid-template-columns: repeat(2, 1fr); }
 }
