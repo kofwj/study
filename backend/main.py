@@ -99,7 +99,7 @@ def _load_user(token: str):
         data = _serializer().loads(token, max_age=TOKEN_MAX_AGE)
     except (BadSignature, SignatureExpired):
         return None
-    c = db.connect()  # users/revoked 无 RLS；勿走 get_conn（会套当前请求 scope）
+    c = db.connect(admin=True)  # 登录前无 family 上下文；users 已 RLS，须特权反查
     try:
         rev = c.execute("SELECT created_at FROM revoked WHERE jti=?", ("u:" + data.get("user_id", ""),)).fetchone()
         try:
@@ -138,6 +138,7 @@ async def auth_mw(request: Request, call_next):
     if not u:
         return JSONResponse({"detail": "未登录"}, 401)
     c0 = db.connect()
+    db.apply_scope(c0, u["family_id"], None)
     try:
         if u["role"] == "kid":
             kid = u["id"]
@@ -652,7 +653,7 @@ def delete_task_kid(tid: str):
     if not row["custom"]:
         c.close()
         raise HTTPException(403, "系统任务请在家长端删除")
-    c.execute("DELETE FROM tasks WHERE id=?", (tid,))
+    c.execute("DELETE FROM tasks WHERE id=? AND COALESCE(custom,0)=1 AND family_id=?", (tid, _fam.get()))
     c.commit()
     c.close()
     return {"ok": True}
@@ -783,7 +784,7 @@ def auth_login(b: LoginBody, request: Request):
     ip = _client_ip(request)
     _rate_ok("ip:" + ip)
     _rate_ok("ac:" + account)
-    c = db.connect()
+    c = db.connect(admin=True)
     try:
         u = c.execute("SELECT * FROM users WHERE account=?", (account,)).fetchone()
         ok = bool(u) and db.verify_pin(b.pin, u["pin_hash"] or "")
@@ -865,8 +866,8 @@ def reward_create(b: RewardIn):
 @app.put("/api/admin/rewards/{rid}", dependencies=[Depends(require_parent)])
 def reward_update(rid: str, b: RewardIn):
     c = get_conn()
-    c.execute("UPDATE rewards SET name=?, price=?, category=? WHERE id=?",
-              (b.name, b.price, b.category, rid))
+    c.execute("UPDATE rewards SET name=?, price=?, category=? WHERE id=? AND family_id=?",
+              (b.name, b.price, b.category, rid, _fam.get()))
     c.commit(); c.close()
     return {"ok": True}
 
@@ -874,7 +875,7 @@ def reward_update(rid: str, b: RewardIn):
 @app.delete("/api/admin/rewards/{rid}", dependencies=[Depends(require_parent)])
 def reward_delete(rid: str):
     c = get_conn()
-    c.execute("DELETE FROM rewards WHERE id=?", (rid,))
+    c.execute("DELETE FROM rewards WHERE id=? AND family_id=?", (rid, _fam.get()))
     c.commit(); c.close()
     return {"ok": True}
 
@@ -1020,8 +1021,8 @@ def rank_create(b: RankIn):
 @app.put("/api/admin/ranks/{rid}", dependencies=[Depends(require_parent)])
 def rank_update(rid: str, b: RankIn):
     c = get_conn()
-    c.execute("UPDATE ranks SET name=?, min_sunshine=? WHERE id=?",
-              (b.name, b.min_sunshine, rid))
+    c.execute("UPDATE ranks SET name=?, min_sunshine=? WHERE id=? AND family_id=?",
+              (b.name, b.min_sunshine, rid, _fam.get()))
     c.commit(); c.close()
     return {"ok": True}
 
@@ -1029,11 +1030,11 @@ def rank_update(rid: str, b: RankIn):
 @app.delete("/api/admin/ranks/{rid}", dependencies=[Depends(require_parent)])
 def rank_delete(rid: str):
     c = get_conn()
-    r = c.execute("SELECT min_sunshine FROM ranks WHERE id=?", (rid,)).fetchone()
+    r = c.execute("SELECT min_sunshine FROM ranks WHERE id=? AND family_id=?", (rid, _fam.get())).fetchone()
     if r and r["min_sunshine"] == 0:
         c.close()
         raise HTTPException(400, "基础等级（0阳光）不能删")
-    c.execute("DELETE FROM ranks WHERE id=?", (rid,))
+    c.execute("DELETE FROM ranks WHERE id=? AND family_id=?", (rid, _fam.get()))
     c.commit(); c.close()
     return {"ok": True}
 
@@ -1051,8 +1052,8 @@ class TaskIn(BaseModel):
 def task_create(b: TaskIn):
     c = get_conn()
     tid = uuid.uuid4().hex[:8]
-    c.execute("INSERT INTO tasks(id,subject_id,unit_id,action,title,sunshine,sort) VALUES(?,?,?,?,?,?,99)",
-              (tid, b.subject_id, b.unit_id, b.action, b.title, b.sunshine))
+    c.execute("INSERT INTO tasks(id,subject_id,unit_id,action,title,sunshine,sort,custom,family_id) VALUES(?,?,?,?,?,?,99,1,?)",
+              (tid, b.subject_id, b.unit_id, b.action, b.title, b.sunshine, _fam.get()))
     c.commit(); c.close()
     return {"id": tid}
 
@@ -1060,8 +1061,8 @@ def task_create(b: TaskIn):
 @app.put("/api/admin/tasks/{tid}", dependencies=[Depends(require_parent)])
 def task_update(tid: str, b: TaskIn):
     c = get_conn()
-    c.execute("UPDATE tasks SET subject_id=?, unit_id=?, action=?, title=?, sunshine=? WHERE id=?",
-              (b.subject_id, b.unit_id, b.action, b.title, b.sunshine, tid))
+    c.execute("UPDATE tasks SET subject_id=?, unit_id=?, action=?, title=?, sunshine=? WHERE id=? AND COALESCE(custom,0)=1 AND family_id=?",
+              (b.subject_id, b.unit_id, b.action, b.title, b.sunshine, tid, _fam.get()))
     c.commit(); c.close()
     return {"ok": True}
 
@@ -1069,7 +1070,7 @@ def task_update(tid: str, b: TaskIn):
 @app.delete("/api/admin/tasks/{tid}", dependencies=[Depends(require_parent)])
 def task_delete(tid: str):
     c = get_conn()
-    c.execute("DELETE FROM tasks WHERE id=?", (tid,))
+    c.execute("DELETE FROM tasks WHERE id=? AND COALESCE(custom,0)=1 AND family_id=?", (tid, _fam.get()))
     c.commit(); c.close()
     return {"ok": True}
 
@@ -1204,7 +1205,7 @@ class KidIn(BaseModel):
 @app.get("/api/admin/kids", dependencies=[Depends(require_parent)])
 def kids_list(request: Request):
     u = request.state.user
-    c = db.connect()
+    c = get_conn()
     rows = c.execute(
         "SELECT id, name, account, term_id FROM users WHERE family_id=? AND role='kid' ORDER BY created_at",
         (u["family_id"],)).fetchall()
@@ -1222,10 +1223,15 @@ def kids_create(b: KidIn, request: Request):
     if len(pin) < 4:
         raise HTTPException(400, "密码至少 4 位")
     u = request.state.user
-    c = db.connect()
-    if c.execute("SELECT 1 FROM users WHERE account=?", (account,)).fetchone():
-        c.close()
+    # 账号全局唯一：RLS 只让看本家，这里走特权连接查全部家庭
+    pc = db.connect(admin=True)
+    try:
+        taken = pc.execute("SELECT 1 FROM users WHERE account=?", (account,)).fetchone()
+    finally:
+        pc.close()
+    if taken:
         raise HTTPException(409, "这个账号已经有了")
+    c = get_conn()
     if b.term_id and not c.execute("SELECT 1 FROM terms WHERE id=?", (b.term_id,)).fetchone():
         c.close()
         raise HTTPException(404, "没有这个学期")
@@ -1241,7 +1247,7 @@ def kids_create(b: KidIn, request: Request):
 @app.put("/api/admin/kids/{kid}", dependencies=[Depends(require_parent)])
 def kids_update(kid: str, b: KidIn, request: Request):
     u = request.state.user
-    c = db.connect()
+    c = get_conn()
     row = c.execute("SELECT * FROM users WHERE id=? AND role='kid'", (kid,)).fetchone()
     if not row or row["family_id"] != u["family_id"]:
         c.close(); raise HTTPException(404, "没找到这个孩子")
@@ -1263,7 +1269,7 @@ def kids_update(kid: str, b: KidIn, request: Request):
 @app.delete("/api/admin/kids/{kid}", dependencies=[Depends(require_parent)])
 def kids_delete(kid: str, request: Request):
     u = request.state.user
-    c = db.connect()
+    c = get_conn()
     row = c.execute("SELECT * FROM users WHERE id=? AND role='kid'", (kid,)).fetchone()
     if not row or row["family_id"] != u["family_id"]:
         c.close(); raise HTTPException(404, "没找到这个孩子")

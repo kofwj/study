@@ -196,8 +196,10 @@ def apply_scope(conn, family_id, kid_id):
     # 请求路径只许 get_conn() 调这里。db.connect() 不设 GUC：未设时 RLS 匹配空串，查活动表=0 行。
     if not conn.pg:
         return
-    conn.execute("SELECT set_config('app.family_id', ?, false)", (family_id,))
-    conn.execute("SELECT set_config('app.kid_id', ?, false)", (kid_id,))
+    if family_id:
+        conn.execute("SELECT set_config('app.family_id', ?, false)", (family_id,))
+    if kid_id:
+        conn.execute("SELECT set_config('app.kid_id', ?, false)", (kid_id,))
 
 
 def now() -> str:
@@ -511,12 +513,24 @@ def _migrate_005(conn):
         conn.execute("GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO sunshine_app")
 
 
+def _migrate_006(conn):
+    if not conn.pg:
+        return
+    conn.execute("ALTER TABLE users ENABLE ROW LEVEL SECURITY")
+    conn.execute("ALTER TABLE users FORCE ROW LEVEL SECURITY")
+    conn.execute("DROP POLICY IF EXISTS iso ON users")
+    conn.execute(
+        "CREATE POLICY iso ON users USING (family_id = current_setting('app.family_id', true)) "
+        "WITH CHECK (family_id = current_setting('app.family_id', true))")
+
+
 MIGRATIONS = (
     ("001_identity", _migrate_001),
     ("002_kid_id", _migrate_002),
     ("003_rls", _migrate_003),
     ("004_auth", _migrate_004),
     ("005_force_pin", _migrate_005),
+    ("006_users_rls", _migrate_006),
 )
 
 
@@ -526,8 +540,8 @@ def apply_migrations(conn):
     for mid, fn in MIGRATIONS:
         if conn.execute("SELECT 1 FROM schema_migrations WHERE id=?", (mid,)).fetchone():
             continue
-        if mid == "003_rls" and not conn.pg:
-            continue  # SQLite 不记账，换 PG 再跑
+        if mid in ("003_rls", "006_users_rls") and not conn.pg:
+            continue  # RLS 只在 PG 生效，SQLite 不记账
         fn(conn)
         conn.execute("INSERT INTO schema_migrations(id,applied_at) VALUES(?,?)", (mid, now()))
         conn.commit()
