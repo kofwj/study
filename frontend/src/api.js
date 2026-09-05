@@ -22,6 +22,8 @@ const body = (o) => (o ? { body: JSON.stringify(o) } : {})
 
 export const api = {
   login: (account, pin) => j('/api/auth/login', { method: 'POST', ...body({ account, pin }) }),
+  register: (o) => j('/api/auth/register', { method: 'POST', ...body(o) }),
+  join: (o) => j('/api/auth/join', { method: 'POST', ...body(o) }),
   logout: () => j('/api/auth/logout', { method: 'POST' }),
   me: () => j('/api/auth/me'),
 
@@ -66,6 +68,9 @@ export const api = {
     tests: () => j('/api/admin/tests'),
     createTest: (o) => j('/api/admin/tests', { method: 'POST', ...body(o) }),
     delTest: (id) => j(`/api/admin/tests/${id}`, { method: 'DELETE' }),
+    invite: (role) => j('/api/admin/invite', { method: 'POST', ...body({ role: role || 'parent' }) }),
+    members: () => j('/api/admin/members'),
+    delMember: (id) => j(`/api/admin/members/${id}`, { method: 'DELETE' }),
     kids: () => j('/api/admin/kids'),
     createKid: (o) => j('/api/admin/kids', { method: 'POST', ...body(o) }),
     updateKid: (id, o) => j(`/api/admin/kids/${id}`, { method: 'PUT', ...body(o) }),

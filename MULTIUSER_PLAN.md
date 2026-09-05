@@ -246,8 +246,8 @@ def require_parent(user=Depends(get_current_user)):
 **步骤**
 1. 隔离在 RLS 之上盖最后一层：`rewards/ranks/custom` 走 family 维度 RLS（P0 已建好），少数跨表聚合过 `family_scope()` 一个 choke point；`/api/admin/*` 从会话注入（不信任前端）。
 2. `POST /api/auth/register`（新家庭+首家长；「邀请码入场」：建家庭出码、成员输码加）；`initialize_family()` 为每个新家庭灌默认商店/等级（替代全局 seed）。
-3. 成员模型改 **memberships 连接表**（`user_id, family_id, role`）：一个用户可跨家庭/多角色，配合邀请码 + 角色回收（Cal.com/Dub 教训）；`parent/observer` 不再写死在 `users` 上。
-4. 每家庭课程版本 → `family_curriculum_ver(family_id)`，`apply_curriculum` 按家庭重灌。
+3. ~~成员模型改 memberships~~ **以后再上**（已定：单家庭单账号）。P3 用邀请码把家长/观察员写进同一 `users.family_id`；删家长立刻 `revoked`。
+4. ~~每家庭课程版本~~ **以后再上**（第 7 节第 10 条）。现在教材仍全局一份，`apply_curriculum` 不按家庭拆。
 
 **验收**：两家庭各建娃，A 改的商店/等级/自定义 B 不可见、流水互不可查；删 A 家一个家长后其权限即时失效、数据不孤儿；课程目录两边共享、各自绑学期；用 B 家会话伪造 `kid_id/family_id` 查 A 家返回空/403。
 

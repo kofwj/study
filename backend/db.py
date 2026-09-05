@@ -244,12 +244,26 @@ def load_seed():
     return data
 
 
+def initialize_family(conn, family_id):
+    """给新家庭灌默认商店/等级。已有行不覆盖。"""
+    n = conn.execute("SELECT COUNT(*) FROM rewards WHERE family_id=?", (family_id,)).fetchone()[0]
+    if n == 0:
+        for r in REWARDS:
+            conn.execute(
+                "INSERT INTO rewards(id,name,price,category,need_approval,family_id) VALUES(?,?,?,?,?,?)",
+                (family_id + "-" + r["id"], r["name"], r["price"], r["category"], r["need_approval"], family_id))
+    n = conn.execute("SELECT COUNT(*) FROM ranks WHERE family_id=?", (family_id,)).fetchone()[0]
+    if n == 0:
+        for i, r in enumerate(RANKS):
+            conn.execute(
+                "INSERT INTO ranks(id,name,min_sunshine,sort,icon,family_id) VALUES(?,?,?,?,?,?)",
+                (family_id + "-" + r["id"], r["name"], r["min_sunshine"], i, r.get("icon", ""), family_id))
+
+
 def seed_ranks(conn):
     """重写默认等级（含图标）+ 记录版本号；版本不变时不再覆盖，尊重家长后续改动。"""
-    conn.execute("DELETE FROM ranks")
-    for i, r in enumerate(RANKS):
-        conn.execute("INSERT INTO ranks(id,name,min_sunshine,sort,icon,family_id) VALUES(?,?,?,?,?,?)",
-                     (r["id"], r["name"], r["min_sunshine"], i, r.get("icon", ""), DEFAULT_FAMILY))
+    conn.execute("DELETE FROM ranks WHERE family_id=?", (DEFAULT_FAMILY,))
+    initialize_family(conn, DEFAULT_FAMILY)
     set_setting(conn, "ranks_ver", RANKS_VER)
 
 
@@ -293,11 +307,7 @@ def seed(conn):
                 "ON CONFLICT(task_id, id) DO UPDATE SET label=excluded.label, unit=excluded.unit, "
                 "direction=excluded.direction, note=excluded.note",
                 (d["id"], m["id"], m["label"], m["unit"], m["direction"], m.get("note")))
-    # rewards/ranks 只首次写入，避免覆盖家长改动
-    if conn.execute("SELECT COUNT(*) FROM rewards").fetchone()[0] == 0:
-        for r in REWARDS:
-            conn.execute("INSERT INTO rewards(id,name,price,category,need_approval,family_id) VALUES(?,?,?,?,?,?)",
-                         (r["id"], r["name"], r["price"], r["category"], r["need_approval"], DEFAULT_FAMILY))
+    initialize_family(conn, DEFAULT_FAMILY)
     seed_ranks(conn)
     set_setting(conn, "curriculum_ver", data.get("curriculum_ver", ""))
 
@@ -524,6 +534,15 @@ def _migrate_006(conn):
         "WITH CHECK (family_id = current_setting('app.family_id', true))")
 
 
+def _migrate_007(conn):
+    conn.executescript("""
+CREATE TABLE IF NOT EXISTS invites (
+  code TEXT PRIMARY KEY, family_id TEXT NOT NULL, role TEXT NOT NULL DEFAULT 'parent', created_at TEXT);
+""")
+    if conn.pg:
+        conn.execute("GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO sunshine_app")
+
+
 MIGRATIONS = (
     ("001_identity", _migrate_001),
     ("002_kid_id", _migrate_002),
@@ -531,6 +550,7 @@ MIGRATIONS = (
     ("004_auth", _migrate_004),
     ("005_force_pin", _migrate_005),
     ("006_users_rls", _migrate_006),
+    ("007_invites", _migrate_007),
 )
 
 

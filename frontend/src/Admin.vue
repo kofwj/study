@@ -4,6 +4,7 @@ import { api, setSelectedKid } from './api.js'
 
 const emit = defineEmits(['exit', 'switched'])
 const kids = ref([])
+const members = ref([])
 const selectedKid = ref('')
 const newKid = reactive({ name: '', account: '', pin: '', term_id: 'g5s1' })
 const tab = ref('weekly')
@@ -42,8 +43,9 @@ function showToast(m) { toast.value = m; setTimeout(() => (toast.value = ''), 22
 function unitName(id) { return units.value.find(u => u.id === id)?.name || id }
 
 async function load() {
-  const ks = await api.admin.kids()
+  const [ks, ms] = await Promise.all([api.admin.kids(), api.admin.members()])
   kids.value = ks
+  members.value = ms
   if (!selectedKid.value && ks.length) {
     selectedKid.value = ks[0].id
     setSelectedKid(ks[0].id)
@@ -221,6 +223,20 @@ async function changePin() {
     await api.admin.changePin(pinForm.next)
     pinForm.cur = pinForm.next = ''
     showToast('密码已改')
+  } catch (e) { showToast(e.message) }
+}
+async function makeInvite(role) {
+  try {
+    const r = await api.admin.invite(role)
+    showToast((role === 'observer' ? '观察员码 ' : '家长码 ') + r.code)
+  } catch (e) { showToast(e.message) }
+}
+async function delMember(m) {
+  if (!confirm('删除「' + m.name + '」？立刻失效。')) return
+  try {
+    await api.admin.delMember(m.id)
+    showToast('已删除')
+    await load()
   } catch (e) { showToast(e.message) }
 }
 
@@ -493,6 +509,16 @@ onMounted(load)
         </select>
         <button class="ok" @click="addKid">添加</button>
       </div>
+      <h3 style="margin-top:18px">家长 / 观察员</h3>
+      <div class="a-item" v-for="m in members" :key="m.id">
+        <span class="badge">{{ m.name }}</span>
+        <span class="dim">{{ m.account }} · {{ m.role }}</span>
+        <button class="del" @click="delMember(m)">删</button>
+      </div>
+      <p class="dim" style="margin-top:8px">
+        <button class="ok" @click="makeInvite('parent')">家长邀请码</button>
+        <button class="ok" @click="makeInvite('observer')">观察员码</button>
+      </p>
     </section>
 
     <!-- 密码 -->

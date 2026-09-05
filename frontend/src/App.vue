@@ -65,16 +65,24 @@ function scoreClass(s) {
 
 const isAdmin = ref(false)
 const me = ref(null)
-const pinForm = reactive({ open: false, account: 'lele', val: '' })
+const pinForm = reactive({ open: false, mode: 'login', account: 'lele', val: '', name: '', family: '我家', code: '' })
+async function afterLogin(r) {
+  me.value = r
+  pinForm.open = false
+  pinForm.val = ''
+  isAdmin.value = r.role === 'parent'
+  if (r.force_pin_change) showToast('请先改密码')
+  if (!isAdmin.value) await refresh()
+}
 async function verifyPin() {
   try {
-    const r = await api.login(pinForm.account, pinForm.val)
-    me.value = r
-    pinForm.open = false
-    pinForm.val = ''
-    isAdmin.value = r.role === 'parent'
-    if (r.force_pin_change) showToast('请先改密码')
-    if (!isAdmin.value) await refresh()
+    if (pinForm.mode === 'register') {
+      await afterLogin(await api.register({ account: pinForm.account, pin: pinForm.val, name: pinForm.name, family_name: pinForm.family }))
+    } else if (pinForm.mode === 'join') {
+      await afterLogin(await api.join({ account: pinForm.account, pin: pinForm.val, name: pinForm.name, code: pinForm.code }))
+    } else {
+      await afterLogin(await api.login(pinForm.account, pinForm.val))
+    }
   } catch (e) { showToast(e.message) }
 }
 function exitAdmin() {
@@ -548,10 +556,18 @@ function reloadApp() {
 
     <div v-if="pinForm.open" class="mask">
       <div class="shop-modal">
-        <h3>登录</h3>
-        <input v-model="pinForm.account" placeholder="账号 parent / lele" autocomplete="username" />
+        <h3>{{ pinForm.mode === 'register' ? '注册家庭' : (pinForm.mode === 'join' ? '加入家庭' : '登录') }}</h3>
+        <input v-model="pinForm.account" placeholder="账号" autocomplete="username" />
         <input v-model="pinForm.val" type="password" inputmode="numeric" placeholder="密码" autocomplete="current-password" @keyup.enter="verifyPin" />
+        <input v-if="pinForm.mode !== 'login'" v-model="pinForm.name" placeholder="你的名字" />
+        <input v-if="pinForm.mode === 'register'" v-model="pinForm.family" placeholder="家庭名" />
+        <input v-if="pinForm.mode === 'join'" v-model="pinForm.code" placeholder="邀请码" />
         <button class="do big" @click="verifyPin">进入</button>
+        <p class="dim" style="margin-top:8px">
+          <button class="ghost" @click="pinForm.mode = 'login'">登录</button>
+          <button class="ghost" @click="pinForm.mode = 'register'">注册</button>
+          <button class="ghost" @click="pinForm.mode = 'join'">邀请码</button>
+        </p>
         <button v-if="me" class="ghost" @click="pinForm.open = false">取消</button>
       </div>
     </div>

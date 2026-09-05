@@ -126,7 +126,7 @@ def _user_from_request(request: Request):
     return None
 
 
-PUBLIC_API = {"/api/health", "/api/auth/login", "/api/auth/logout"}
+PUBLIC_API = {"/api/health", "/api/auth/login", "/api/auth/logout", "/api/auth/register", "/api/auth/join"}
 
 
 @app.middleware("http")
@@ -156,7 +156,8 @@ async def auth_mw(request: Request, call_next):
     finally:
         c0.close()
     if not kid:
-        return JSONResponse({"detail": "没有孩子"}, 400)
+        if u["role"] != "parent" or not (path.startswith("/api/admin/") or path == "/api/auth/me"):
+            return JSONResponse({"detail": "没有孩子"}, 400)
     tok_k, tok_f = _kid.set(kid), _fam.set(u["family_id"])
     request.state.user = u
     try:
@@ -185,7 +186,7 @@ def balance(c, kid=None):
 
 def level_info(c):
     e = earned(c)
-    ranks = c.execute("SELECT * FROM ranks ORDER BY min_sunshine").fetchall()
+    ranks = c.execute("SELECT * FROM ranks WHERE family_id=? ORDER BY min_sunshine", (_fam.get(),)).fetchall()
     cur = ranks[0]
     nxt = None
     for r in ranks:
@@ -397,7 +398,7 @@ def open_box():
 def ranks_public():
     """成长路径地图用：返回全部等级 + 当前累计阳光。"""
     c = get_conn()
-    ranks = [dict(r) for r in c.execute("SELECT * FROM ranks ORDER BY min_sunshine").fetchall()]
+    ranks = [dict(r) for r in c.execute("SELECT * FROM ranks WHERE family_id=? ORDER BY min_sunshine", (_fam.get(),)).fetchall()]
     e = earned(c)
     current = ranks[0]["id"]
     for r in ranks:
@@ -684,7 +685,7 @@ def cancel(body: CompleteBody):
 @app.get("/api/rewards")
 def rewards():
     c = get_conn()
-    return [dict(r) for r in c.execute("SELECT * FROM rewards ORDER BY price").fetchall()]
+    return [dict(r) for r in c.execute("SELECT * FROM rewards WHERE family_id=? ORDER BY price", (_fam.get(),)).fetchall()]
 
 
 class RedeemBody(BaseModel):
@@ -694,7 +695,7 @@ class RedeemBody(BaseModel):
 @app.post("/api/rewards/redeem")
 def redeem(body: RedeemBody):
     c = get_conn()
-    r = c.execute("SELECT * FROM rewards WHERE id=?", (body.reward_id,)).fetchone()
+    r = c.execute("SELECT * FROM rewards WHERE id=? AND family_id=?", (body.reward_id, _fam.get())).fetchone()
     if not r:
         c.close()
         raise HTTPException(404, "没找到这个奖励")
@@ -818,6 +819,136 @@ def auth_logout(request: Request):
     resp.delete_cookie(COOKIE_PARENT, path="/")
     resp.delete_cookie(COOKIE_KID, path="/")
     return resp
+
+
+class RegisterBody(BaseModel):
+    account: str
+    pin: str
+    name: str = "家长"
+    family_name: str = "我家"
+
+
+class JoinBody(BaseModel):
+    account: str
+    pin: str
+    name: str = "家长"
+    code: str
+
+
+def _issue_parent(resp, request, user):
+    payload = {
+        "user_id": user["id"], "family_id": user["family_id"], "role": user["role"],
+        "term_id": user.get("term_id"), "iat": time.time(),
+    }
+    _set_auth_cookie(resp, request, COOKIE_PARENT, payload)
+    resp.delete_cookie(COOKIE_KID, path="/")
+    return resp
+
+
+@app.post("/api/auth/register")
+def auth_register(b: RegisterBody, request: Request):
+    account = (b.account or "").strip().lower()
+    pin = (b.pin or "").strip()
+    if len(account) < 2:
+        raise HTTPException(400, "账号至少 2 位")
+    if len(pin) < 4:
+        raise HTTPException(400, "密码至少 4 位")
+    ip = _client_ip(request)
+    _rate_ok("ip:" + ip)
+    c = db.connect(admin=True)
+    try:
+        if c.execute("SELECT 1 FROM users WHERE account=?", (account,)).fetchone():
+            raise HTTPException(409, "这个账号已经有了")
+        fid = "f-" + uuid.uuid4().hex[:8]
+        uid = "parent-" + uuid.uuid4().hex[:8]
+        c.execute("INSERT INTO families(id,name,created_at) VALUES(?,?,?)", (fid, (b.family_name or "我家").strip()[:20], db.now()))
+        c.execute(
+            "INSERT INTO users(id,family_id,role,name,avatar,pin_hash,term_id,account,created_at,force_pin_change) VALUES(?,?,?,?,?,?,?,?,?,?)",
+            (uid, fid, "parent", (b.name or "家长").strip()[:12], "", db.hash_pin(pin), None, account, db.now(), ""))
+        c.execute("INSERT INTO profiles(user_id,family_id) VALUES(?,?) ON CONFLICT DO NOTHING", (uid, fid))
+        db.initialize_family(c, fid)
+        c.commit()
+        user = {"id": uid, "family_id": fid, "role": "parent", "term_id": None}
+    finally:
+        c.close()
+    resp = JSONResponse({"ok": True, "role": "parent", "account": account, "force_pin_change": False})
+    return _issue_parent(resp, request, user)
+
+
+@app.post("/api/auth/join")
+def auth_join(b: JoinBody, request: Request):
+    account = (b.account or "").strip().lower()
+    pin = (b.pin or "").strip()
+    code = (b.code or "").strip().upper()
+    if len(account) < 2 or len(pin) < 4 or not code:
+        raise HTTPException(400, "账号、密码、邀请码都要填")
+    c = db.connect(admin=True)
+    try:
+        inv = c.execute("SELECT * FROM invites WHERE code=?", (code,)).fetchone()
+        if not inv:
+            raise HTTPException(404, "邀请码不对")
+        if c.execute("SELECT 1 FROM users WHERE account=?", (account,)).fetchone():
+            raise HTTPException(409, "这个账号已经有了")
+        uid = "parent-" + uuid.uuid4().hex[:8]
+        role = inv["role"] or "parent"
+        c.execute(
+            "INSERT INTO users(id,family_id,role,name,avatar,pin_hash,term_id,account,created_at,force_pin_change) VALUES(?,?,?,?,?,?,?,?,?,?)",
+            (uid, inv["family_id"], role, (b.name or "家长").strip()[:12], "", db.hash_pin(pin), None, account, db.now(), ""))
+        c.execute("INSERT INTO profiles(user_id,family_id) VALUES(?,?) ON CONFLICT DO NOTHING", (uid, inv["family_id"]))
+        c.commit()
+        user = {"id": uid, "family_id": inv["family_id"], "role": role, "term_id": None}
+    finally:
+        c.close()
+    resp = JSONResponse({"ok": True, "role": user["role"], "account": account, "force_pin_change": False})
+    return _issue_parent(resp, request, user)
+
+
+class InviteIn(BaseModel):
+    role: str = "parent"  # parent | observer
+
+
+@app.post("/api/admin/invite", dependencies=[Depends(require_parent)])
+def invite_create(request: Request, b: InviteIn = InviteIn()):
+    role = b.role if b.role in ("parent", "observer") else "parent"
+    u = request.state.user
+    code = uuid.uuid4().hex[:8].upper()
+    c = get_conn()
+    c.execute("INSERT INTO invites(code,family_id,role,created_at) VALUES(?,?,?,?)",
+              (code, u["family_id"], role, db.now()))
+    c.commit(); c.close()
+    return {"code": code, "role": role}
+
+
+@app.get("/api/admin/members", dependencies=[Depends(require_parent)])
+def members_list(request: Request):
+    u = request.state.user
+    c = get_conn()
+    rows = c.execute(
+        "SELECT id, name, account, role FROM users WHERE family_id=? AND role IN ('parent','observer') ORDER BY created_at",
+        (u["family_id"],)).fetchall()
+    c.close()
+    return [dict(r) for r in rows]
+
+
+@app.delete("/api/admin/members/{uid}", dependencies=[Depends(require_parent)])
+def members_delete(uid: str, request: Request):
+    u = request.state.user
+    if uid == u["id"]:
+        raise HTTPException(400, "不能删自己")
+    c = get_conn()
+    row = c.execute("SELECT * FROM users WHERE id=? AND family_id=?", (uid, u["family_id"])).fetchone()
+    if not row or row["role"] not in ("parent", "observer"):
+        c.close(); raise HTTPException(404, "没找到这个家长")
+    if row["role"] == "parent":
+        n = c.execute("SELECT COUNT(*) FROM users WHERE family_id=? AND role='parent'", (u["family_id"],)).fetchone()[0]
+        if n <= 1:
+            c.close(); raise HTTPException(400, "至少留一个家长")
+    c.execute("DELETE FROM users WHERE id=?", (uid,))
+    c.execute("DELETE FROM profiles WHERE user_id=?", (uid,))
+    c.execute("INSERT INTO revoked(jti,created_at) VALUES(?,?) ON CONFLICT(jti) DO UPDATE SET created_at=excluded.created_at",
+              ("u:" + uid, str(time.time())))
+    c.commit(); c.close()
+    return {"ok": True}
 
 
 @app.get("/api/auth/me")
@@ -1004,7 +1135,7 @@ class RankIn(BaseModel):
 @app.get("/api/admin/ranks", dependencies=[Depends(require_parent)])
 def ranks_admin():
     c = get_conn()
-    rows = [dict(r) for r in c.execute("SELECT * FROM ranks ORDER BY min_sunshine").fetchall()]
+    rows = [dict(r) for r in c.execute("SELECT * FROM ranks WHERE family_id=? ORDER BY min_sunshine", (_fam.get(),)).fetchall()]
     c.close()
     return rows
 
