@@ -510,7 +510,7 @@ onMounted(load)
 </template>
 
 <style scoped>
-.admin { max-width: 780px; margin: 0 auto; padding: 14px; font-family: system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; color: #1f3b55; }
+.admin { max-width: 780px; margin: 0 auto; padding: 14px; padding-top: calc(14px + env(safe-area-inset-top)); font-family: system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; color: #1f3b55; }
 .a-head {
   background: linear-gradient(180deg, #4db6ea 0%, #3aa4e0 100%);
   color: #fff; border-radius: 20px; padding: 16px 20px;

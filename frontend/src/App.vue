@@ -626,12 +626,13 @@ body {
   background: #eef6fb;
   color: #1f3b55;
 }
-.update-bar { width: 100%; border: none; background: #ff9800; color: #fff; padding: 9px 22px; display: flex; justify-content: center; align-items: center; font-weight: 700; font-size: 14px; font-family: inherit; position: sticky; top: 0; z-index: 30; cursor: pointer; }
+.update-bar { width: 100%; border: none; background: #ff9800; color: #fff; padding: 9px 22px; display: flex; justify-content: center; align-items: center; font-weight: 700; font-size: 14px; font-family: inherit; position: sticky; top: env(safe-area-inset-top); z-index: 30; cursor: pointer; }
 .desk { min-height: 100vh; padding-bottom: 78px; }
 
 .topbar {
   background: linear-gradient(180deg, #4db6ea 0%, #3aa4e0 100%);
   color: #fff; padding: 14px 22px 12px;
+  padding-top: calc(14px + env(safe-area-inset-top));
   display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
 }
 .who { display: flex; align-items: center; gap: 10px; min-width: 180px; }
@@ -829,6 +830,7 @@ body {
     align-items: stretch;
     gap: 10px;
     padding: 12px 14px 8px;
+    padding-top: calc(12px + env(safe-area-inset-top));
   }
   .who { width: 100%; min-width: 0; }
   .who > div { min-width: 0; flex: 1; }
@@ -848,7 +850,7 @@ body {
 
   .body { flex-direction: column; gap: 0; padding: 0; }
   .side {
-    position: sticky; top: 0; z-index: 6;
+    position: sticky; top: env(safe-area-inset-top); z-index: 6;
     width: 100%; flex: none; border-radius: 0;
     display: flex; gap: 6px; overflow-x: auto;
     padding: 8px 12px; box-shadow: 0 4px 12px rgba(60,120,170,.08);
