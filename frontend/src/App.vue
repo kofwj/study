@@ -64,14 +64,29 @@ function scoreClass(s) {
 const isAdmin = ref(false)
 const me = ref(null)
 const authed = ref(false)
+const mustChangePin = ref(false)
+const newPin = ref('')
+const newPin2 = ref('')
 const pinForm = reactive({ mode: 'login', account: 'lele', val: '', name: '', family: '我家', code: '' })
 async function afterLogin(r) {
   me.value = r
   pinForm.val = ''
   authed.value = true
   isAdmin.value = r.role === 'parent'
-  if (r.force_pin_change) showToast('请先改密码')
+  mustChangePin.value = !!(r.force_pin_change && r.role === 'parent')
   if (!isAdmin.value) await refresh()
+}
+async function doChangePin() {
+  const p = newPin.value.trim()
+  if (p.length < 8) { showToast('家长密码至少 8 位'); return }
+  if (p !== newPin2.value) { showToast('两次输入不一致'); return }
+  try {
+    await api.admin.changePin(p)
+    mustChangePin.value = false
+    newPin.value = ''; newPin2.value = ''
+    me.value = await api.me().catch(() => me.value)
+    showToast('密码已更新')
+  } catch (e) { showToast(e.message) }
 }
 async function verifyPin() {
   try {
@@ -342,6 +357,7 @@ onMounted(async () => {
     me.value = await api.me()
     authed.value = true
     isAdmin.value = me.value.role === 'parent'
+    mustChangePin.value = !!(me.value.force_pin_change && me.value.role === 'parent')
     if (!isAdmin.value) await refresh()
   } catch (e) {
     authed.value = false
@@ -356,7 +372,18 @@ function reloadApp() {
 </script>
 
 <template>
-  <Admin v-if="isAdmin" @exit="exitAdmin" @switched="refresh" />
+  <Admin v-if="isAdmin && !mustChangePin" @exit="exitAdmin" @switched="refresh" />
+  <div v-else-if="isAdmin && mustChangePin" class="login-screen">
+    <div class="login-card">
+      <div class="login-logo"><Lock class="ico" :size="36" /></div>
+      <h1>改一下家长密码</h1>
+      <p class="login-sub">家长密码现在至少 8 位，改完才能继续。</p>
+      <input v-model="newPin" type="password" placeholder="新密码（至少 8 位）" autocomplete="new-password" />
+      <input v-model="newPin2" type="password" placeholder="再输一遍确认" autocomplete="new-password" @keyup.enter="doChangePin" />
+      <button class="login-enter" @click="doChangePin">保存新密码</button>
+      <p v-if="toast" class="login-note" style="color: var(--danger)">{{ toast }}</p>
+    </div>
+  </div>
   <div v-else-if="authed" class="desk">
     <button v-if="updateReady" type="button" class="update-bar" @click="reloadApp"><RefreshCw class="ico" :size="15" /> 有新版本，点我刷新</button>
     <!-- 蓝顶栏 -->

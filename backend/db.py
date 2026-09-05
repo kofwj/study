@@ -604,6 +604,11 @@ def _migrate_012(conn):
         "  (dt.family_id IS NULL OR dt.family_id = current_setting('app.family_id', true))))")
 
 
+def _migrate_013(conn):
+    # 家长密码 ≥8 位上线：存量 parent 首登强制改密一次（密码存哈希，无法判断位数，统一强制）
+    conn.execute("UPDATE users SET force_pin_change='1' WHERE role='parent'")
+
+
 MIGRATIONS = (
     ("001_identity", _migrate_001),
     ("002_kid_id", _migrate_002),
@@ -617,6 +622,7 @@ MIGRATIONS = (
     ("010_invite_usage", _migrate_010),
     ("011_daily_family", _migrate_011),
     ("012_daily_metrics_rls", _migrate_012),
+    ("013_force_parent_pin", _migrate_013),
 )
 
 
