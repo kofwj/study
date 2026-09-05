@@ -1,6 +1,8 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { api, setSelectedKid } from './api.js'
+import { rankIcon } from './icons.js'
+import { BarChart3, Baby, Users, KeyRound, Lock, Store, Trophy, ClipboardCheck, BookOpen, RefreshCw, MapPinned, FileText, Settings, Sun, Star, Check, ArrowLeft } from 'lucide-vue-next'
 
 const emit = defineEmits(['exit', 'switched'])
 const kids = ref([])
@@ -11,23 +13,23 @@ const selectedKid = ref('')
 const newKid = reactive({ name: '', account: '', pin: '', term_id: 'g5s1' })
 const section = ref('weekly')
 const SECTIONS = [
-  { group: '概览', items: [{ id: 'weekly', icon: '📊', label: '周报' }] },
+  { group: '概览', items: [{ id: 'weekly', icon: BarChart3, label: '周报' }] },
   { group: '家庭', items: [
-    { id: 'kids', icon: '🧒', label: '孩子' },
-    { id: 'members', icon: '👨‍👩‍👧', label: '家长成员' },
-    { id: 'invites', icon: '🔑', label: '邀请码' },
-    { id: 'pin', icon: '🔐', label: '家长密码' },
+    { id: 'kids', icon: Baby, label: '孩子' },
+    { id: 'members', icon: Users, label: '家长成员' },
+    { id: 'invites', icon: KeyRound, label: '邀请码' },
+    { id: 'pin', icon: Lock, label: '家长密码' },
   ] },
   { group: '奖励', items: [
-    { id: 'shop', icon: '🏪', label: '兑换商店' },
-    { id: 'rank', icon: '🏆', label: '成长等级' },
-    { id: 'approve', icon: '✅', label: '兑换审批' },
+    { id: 'shop', icon: Store, label: '兑换商店' },
+    { id: 'rank', icon: Trophy, label: '成长等级' },
+    { id: 'approve', icon: ClipboardCheck, label: '兑换审批' },
   ] },
   { group: '学习', items: [
-    { id: 'unit-task', icon: '📚', label: '单元任务' },
-    { id: 'daily', icon: '🔁', label: '每日任务' },
-    { id: 'cursor', icon: '📍', label: '已学到' },
-    { id: 'test', icon: '📝', label: '单元测试' },
+    { id: 'unit-task', icon: BookOpen, label: '单元任务' },
+    { id: 'daily', icon: RefreshCw, label: '每日任务' },
+    { id: 'cursor', icon: MapPinned, label: '已学到' },
+    { id: 'test', icon: FileText, label: '单元测试' },
   ] },
 ]
 const rewards = ref([])
@@ -299,7 +301,7 @@ onMounted(load)
   <div class="admin">
     <header class="a-head">
       <div>
-        <div class="a-title">🛠️ 家长管理</div>
+        <div class="a-title"><Settings class="ico" :size="18" /> 家长管理</div>
         <div class="a-sub">给孩子配置奖励、等级与任务</div>
         <label class="a-term">看哪个娃
           <select v-model="selectedKid" @change="switchKid">
@@ -307,7 +309,7 @@ onMounted(load)
           </select>
         </label>
       </div>
-      <button class="a-exit" @click="emit('exit')">← 回到孩子端</button>
+      <button class="a-exit" @click="emit('exit')"><ArrowLeft class="ico" :size="14" /> 回到孩子端</button>
     </header>
 
     <div class="a-body">
@@ -315,7 +317,7 @@ onMounted(load)
         <template v-for="g in SECTIONS" :key="g.group">
           <div class="a-group">{{ g.group }}</div>
           <button v-for="it in g.items" :key="it.id" :class="['a-nav', { on: section === it.id }]" @click="section = it.id">
-            <span class="a-nav-ico">{{ it.icon }}</span>{{ it.label }}
+            <span class="a-nav-ico"><component :is="it.icon" :size="16" /></span>{{ it.label }}
           </button>
         </template>
       </aside>
@@ -323,7 +325,7 @@ onMounted(load)
 
     <!-- 周报 -->
     <section v-if="section === 'weekly'" class="a-card">
-      <h3>📊 本周周报</h3>
+      <h3><BarChart3 class="ico" :size="16" /> 本周周报</h3>
       <p class="lead">{{ weekly.week_start }} ~ {{ weekly.week_end }}（周一到周日）</p>
       <div v-if="(weekly.kids || []).length" class="w-kids">
         <div v-for="k in weekly.kids" :key="k.id" class="w-box" :class="{ on: k.current }" @click="pickKid(k.id)">
@@ -377,7 +379,7 @@ onMounted(load)
       <p class="lead">孩子会用阳光兑换这些，改价格实时生效。</p>
       <div class="a-item" v-for="r in rewards" :key="r.id">
         <input v-model="r.name" class="w-name" />
-        <input v-model.number="r.price" type="number" class="w-num" /> ☀️
+        <input v-model.number="r.price" type="number" class="w-num" /> <Sun class="ico sun" :size="14" />
         <input v-model="r.category" class="w-cat" />
         <button class="ok" @click="saveReward(r)">保存</button>
         <button class="del" @click="delReward(r.id)">删</button>
@@ -397,7 +399,7 @@ onMounted(load)
       <div v-if="!redemptions.length" class="dim">还没有任何兑换记录。</div>
       <div class="a-item" v-for="rd in redemptions" :key="rd.id">
         <span class="badge">{{ rd.name }}</span>
-        <span class="dim">{{ rd.date }} · -{{ rd.price }} ☀️</span>
+        <span class="dim">{{ rd.date }} · -{{ rd.price }} <Sun class="ico sun" :size="12" /></span>
         <template v-if="rd.status === 'pending'">
           <span class="st pending">待同意</span>
           <button class="ok" @click="approveRedeem(rd.id)">同意</button>
@@ -407,7 +409,7 @@ onMounted(load)
           <span class="st done">已扣阳光</span>
           <button class="ok ghost-o" @click="deliverRedeem(rd.id)">标记已兑现</button>
         </template>
-        <span v-else class="st delivered">已兑现 ✓</span>
+        <span v-else class="st delivered">已兑现 <Check class="ico" :size="12" /></span>
       </div>
     </section>
 
@@ -416,7 +418,7 @@ onMounted(load)
       <h3>成长等级（按累计获得阳光）</h3>
       <p class="lead">等级看「累计获得」，消费不会掉级。</p>
       <div class="a-item" v-for="r in ranks" :key="r.id">
-        <span class="rank-icon">{{ r.icon || '⭐' }}</span>
+        <span class="rank-icon"><component :is="rankIcon(r.icon)" class="ico" :size="16" /></span>
         <input v-model="r.name" class="w-name" />
         <span class="dim">≥</span>
         <input v-model.number="r.min_sunshine" type="number" class="w-num" /> 阳光
@@ -424,7 +426,7 @@ onMounted(load)
         <button class="del" @click="delRank(r.id)">删</button>
       </div>
       <div class="a-item add">
-        <span class="rank-icon">⭐</span>
+        <span class="rank-icon"><Star class="ico" :size="16" /></span>
         <input v-model="newRank.name" placeholder="等级名（如：阳光萌新）" class="w-name" />
         <span class="dim">≥</span>
         <input v-model.number="newRank.min_sunshine" type="number" placeholder="0" class="w-num" />
@@ -510,7 +512,7 @@ onMounted(load)
         <span style="flex:1">只让打「当前单元」</span>
         <button :class="['toggle', { on: progressLock }]" @click="toggleLock">{{ progressLock ? '开' : '关' }}</button>
       </div>
-      <p class="lead" style="margin-top:8px">开启后，每科只有正在学的那个单元能打卡，后面的课自动锁住（灰显 🔒），防没学就打卡刷阳光。</p>
+      <p class="lead" style="margin-top:8px">开启后，每科只有正在学的那个单元能打卡，后面的课自动锁住（灰显 <Lock class="ico" :size="12" />），防没学就打卡刷阳光。</p>
     </section>
 
     <!-- 单元测试成绩 -->
@@ -518,7 +520,7 @@ onMounted(load)
       <h3>单元测试成绩奖励</h3>
       <p class="lead">孩子考完单元测试，你录入分数，按档自动发阳光（孩子不能自己录）。</p>
       <div class="band-box">
-        <span v-for="[th, sun] in TEST_BANDS" :key="th" class="band">{{ th === 0 ? '85 以下' : th + ' 分' }} → +{{ sun }} 阳光</span>
+        <span v-for="[th, sun] in TEST_BANDS" :key="th" class="band">{{ th === 0 ? '85 以下' : th + ' 分' }} · +{{ sun }} 阳光</span>
       </div>
       <div class="a-item add">
         <select v-model="newTest.subject_id" @change="newTest.unit_id = ''">
@@ -538,7 +540,7 @@ onMounted(load)
         <span class="badge">{{ t.subject_id }}</span>
         <span class="badge daily">{{ t.score }} 分</span>
         <span class="dim" style="flex:1">{{ t.note || '—' }} · {{ t.date }}</span>
-        <span class="st delivered">+{{ t.sunshine }} ☀️</span>
+        <span class="st delivered">+{{ t.sunshine }} <Sun class="ico sun" :size="12" /></span>
         <button class="del" @click="delTest(t.id)">删</button>
       </div>
     </section>

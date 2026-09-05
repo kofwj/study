@@ -2,6 +2,8 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { api } from './api.js'
 import Admin from './Admin.vue'
+import { SUBJECT_ICONS as ICONS, rankIcon } from './icons.js'
+import { Sun, Lock, Gift, Check, TrendingUp, Target, User, ShoppingCart, ScrollText, Medal, BarChart3, Map, CalendarDays, RefreshCw, Smile, PartyPopper, Sparkles, BookOpen, Flame } from 'lucide-vue-next'
 
 const data = reactive({
   level: { earned: 0, balance: 0, level: '阳光萌新', next: null, next_need: 0, progress: 0 },
@@ -34,11 +36,6 @@ const celebrate = ref(null)
 const chartOpen = reactive({ open: false, task: null, history: [] })
 const renaming = ref(false)
 const renameVal = ref('')
-
-const ICONS = {
-  语文: '📖', 数学: '🔢', 英语: '🌍', 科学: '🔬',
-  道法: '💛', 体育: '⚽', 音美: '🎨', 综合: '✳️',
-}
 
 let toastTimer = null
 function showToast(msg) {
@@ -113,7 +110,7 @@ async function refresh() {
     Object.assign(data, t)
     // 升级检测：等级变了且累计阳光增加了才庆祝（取消扣回导致的降级不庆祝）
     if (prevId && t.level.level_id !== prevId && t.level.earned >= prevEarned) {
-      celebrate.value = { icon: t.level.level_icon || '⭐', name: t.level.level }
+      celebrate.value = { icon: t.level.level_icon || '', name: t.level.level }
       setTimeout(() => (celebrate.value = null), 2800)
     }
     rewards.value = r
@@ -141,7 +138,7 @@ async function toggleTask(task, event) {
     return
   }
   if (task.locked) {
-    showToast('🔒 还没学到这课，先把前面的学完')
+    showToast('还没学到这课，先把前面的学完')
     return
   }
   try {
@@ -150,8 +147,8 @@ async function toggleTask(task, event) {
       showToast('已取消，扣回阳光')
     } else {
       const r = await api.complete(task.id)
-      if (event) flyPlus(event.clientX, event.clientY, `+${r.delta} ☀️`)
-      showToast(`太棒了！完成【${task.title}】+${r.delta} ☀️` + milestoneTxt(r.milestone))
+      if (event) flyPlus(event.clientX, event.clientY, `+${r.delta} 阳光`)
+      showToast(`太棒了！完成【${task.title}】+${r.delta} 阳光` + milestoneTxt(r.milestone))
     }
     await refresh()
   } catch (e) { showToast(e.message) }
@@ -212,8 +209,8 @@ async function submitDaily(event) {
   }
   try {
     const r = await api.complete(dailyDialog.task.id, metrics)
-    if (event) flyPlus(event.clientX, event.clientY, `+${r.delta} ☀️`)
-    showToast((r.bonus > 0 ? `完成 +${r.delta} ☀️（破纪录 +${r.bonus}！）` : `完成【${dailyDialog.task.name}】+${r.delta} ☀️`) + milestoneTxt(r.milestone))
+    if (event) flyPlus(event.clientX, event.clientY, `+${r.delta} 阳光`)
+    showToast((r.bonus > 0 ? `完成 +${r.delta} 阳光（破纪录 +${r.bonus}！）` : `完成【${dailyDialog.task.name}】+${r.delta} 阳光`) + milestoneTxt(r.milestone))
     dailyDialog.open = false
     await refresh()
   } catch (e) { showToast(e.message) }
@@ -231,8 +228,8 @@ async function redeem(reward) {
   if (!needApproval && !confirm(`确定用 ${reward.price} 阳光兑换「${reward.name}」吗？`)) return
   try {
     const r = await api.redeem(reward.id)
-    if (r.pending) showToast(`已提交「${reward.name}」，等家长同意 ✅`)
-    else showToast(`兑换成功 🎁 -${reward.price} 阳光`)
+    if (r.pending) showToast(`已提交「${reward.name}」，等家长同意`)
+    else showToast(`兑换成功 -${reward.price} 阳光`)
     shopOpen.value = false
     await refresh()
   } catch (e) { showToast(e.message) }
@@ -242,7 +239,7 @@ async function openShop() {
   try { myRedeems.value = await api.redemptions() } catch {}
 }
 const STATUS_TXT = { pending: '等家长同意', done: '已兑换', delivered: '已兑现' }
-const milestoneTxt = (m) => (m && m.length) ? m.map(([d, b]) => ` 🎉 连续 ${d} 天 +${b} ☀️`).join('') : ''
+const milestoneTxt = (m) => (m && m.length) ? m.map(([d, b]) => ` · 连续 ${d} 天 +${b} 阳光`).join('') : ''
 async function openAch() {
   achOpen.value = true
   try { achievements.value = await api.achievements() } catch {}
@@ -341,11 +338,11 @@ function reloadApp() {
 <template>
   <Admin v-if="isAdmin" @exit="exitAdmin" @switched="refresh" />
   <div v-else class="desk">
-    <button v-if="updateReady" type="button" class="update-bar" @click="reloadApp">🔄 有新版本，点我刷新</button>
+    <button v-if="updateReady" type="button" class="update-bar" @click="reloadApp"><RefreshCw class="ico" :size="15" /> 有新版本，点我刷新</button>
     <!-- 蓝顶栏 -->
     <header class="topbar">
       <div class="who">
-        <div class="avatar">😊</div>
+        <div class="avatar"><Smile :size="26" /></div>
         <div>
           <div class="hello">{{ data.today || '今天' }}</div>
           <div class="hello greet-long">你好呀，五年级的小主人！</div>
@@ -356,26 +353,26 @@ function reloadApp() {
       </div>
       <div class="pills">
         <span class="pill sun"><i></i> {{ data.level.balance }}</span>
-        <span class="pill fire">🔥 连续打卡 {{ data.streak }} 天</span>
-        <button class="pill star" @click="openRankMap">{{ data.level.level_icon || '⭐' }} {{ data.level.level }}</button>
-        <button class="pill ach" @click="openAch">🎖️ 成就</button>
+        <span class="pill fire"><Flame class="ico" :size="15" /> 连续打卡 {{ data.streak }} 天</span>
+        <button class="pill star" @click="openRankMap"><component :is="rankIcon(data.level.level_icon)" class="ico" :size="15" /> {{ data.level.level }}</button>
+        <button class="pill ach" @click="openAch"><Medal class="ico" :size="15" /> 成就</button>
         <button class="pill box" :class="{ ready: boxes.avail > 0 }" @click="openBox">
-          🎁 {{ boxes.avail > 0 ? '宝箱 ×' + boxes.avail : '宝箱' }}
+          <Gift class="ico" :size="15" /> {{ boxes.avail > 0 ? '宝箱 ×' + boxes.avail : '宝箱' }}
         </button>
       </div>
       <div class="next">
         <span v-if="data.level.next">
-          {{ data.level.level_icon || '⭐' }} {{ data.level.level }}
-          · 再得 {{ data.level.next_need - data.level.earned }} ☀️ 升级 {{ data.level.next_icon || '⭐' }} {{ data.level.next }}
+          <component :is="rankIcon(data.level.level_icon)" class="ico" :size="14" /> {{ data.level.level }}
+          · 再得 {{ data.level.next_need - data.level.earned }} <Sun class="ico sun" :size="13" /> 升级 <component :is="rankIcon(data.level.next_icon)" class="ico" :size="14" /> {{ data.level.next }}
         </span>
-        <span v-else>{{ data.level.level_icon || '👑' }} 已是最高等级！</span>
+        <span v-else><component :is="rankIcon(data.level.level_icon)" class="ico" :size="14" /> 已是最高等级！</span>
         <div class="next-bar"><i :style="{ width: data.level.progress + '%' }"></i></div>
       </div>
     </header>
 
     <div class="cta-row">
       <button class="cta check" :disabled="data.today_checkin" @click="checkin">
-        📅 {{ data.today_checkin ? '今日已签到' : '每日签到' }}
+        <CalendarDays class="ico" :size="16" /> {{ data.today_checkin ? '今日已签到' : '每日签到' }}
       </button>
       <div v-if="toast" class="cta toast-bar">{{ toast }}</div>
     </div>
@@ -384,11 +381,11 @@ function reloadApp() {
       <!-- 左栏 -->
       <aside class="side">
         <button class="nav" :class="{ on: activeTab === '今日推荐' }" @click="activeTab = '今日推荐'">
-          <span>⭐ 今日推荐</span>
+          <span><Sparkles class="ico" :size="15" /> 今日推荐</span>
         </button>
         <button v-for="s in orderedSubjects" :key="s.id" class="nav"
           :class="{ on: activeTab === s.id }" @click="activeTab = s.id">
-          <span>{{ ICONS[s.id] || '📒' }} {{ s.name }}</span>
+          <span><component :is="ICONS[s.id] || BookOpen" class="ico" :size="15" /> {{ s.name }}</span>
           <em>{{ subjectProgress[s.id]?.done || 0 }}/{{ subjectProgress[s.id]?.total || 0 }}</em>
         </button>
       </aside>
@@ -396,27 +393,27 @@ function reloadApp() {
       <!-- 右栏 -->
       <main class="main">
         <template v-if="activeTab === '今日推荐'">
-          <h1>⭐ 今日推荐</h1>
-          <p class="hint">完成一项 +5 ☀️，取消勾选会扣回哦。</p>
-          <div v-if="!recommend.length" class="empty">🎉 今天都完成啦，太棒了！</div>
+          <h1><Sparkles class="ico" :size="20" /> 今日推荐</h1>
+          <p class="hint">完成一项 +5 <Sun class="ico sun" :size="13" />，取消勾选会扣回哦。</p>
+          <div v-if="!recommend.length" class="empty"><PartyPopper class="ico" :size="16" /> 今天都完成啦，太棒了！</div>
           <div class="grid">
             <div v-for="t in recommend" :key="t.id || t.name" class="card" :class="{ done: t.done }">
               <button v-if="t.frequency === 'daily'" class="circle" @click="openDaily(t)">○</button>
-              <button v-else class="circle" :class="{ ok: t.done }" @click="toggleTask(t, $event)">{{ t.done ? '✓' : '' }}</button>
+              <button v-else class="circle" :class="{ ok: t.done }" @click="toggleTask(t, $event)"><Check v-if="t.done" :size="15" /></button>
               <div class="card-body">
                 <div class="card-title">{{ t.frequency === 'daily' ? t.name : t.title }}</div>
                 <div v-if="t.note" class="card-detail">{{ t.note }}</div>
                 <div v-if="t.detail" class="card-detail">{{ t.detail }}</div>
-                <div class="plus">{{ t.subject_id || '体育' }} · +{{ t.sunshine || 5 }} ☀️</div>
+                <div class="plus">{{ t.subject_id || '体育' }} · +{{ t.sunshine || 5 }} <Sun class="ico sun" :size="12" /></div>
               </div>
-              <button v-if="t.frequency === 'daily'" class="trend" @click="openChart(t)" title="看趋势">📈</button>
+              <button v-if="t.frequency === 'daily'" class="trend" @click="openChart(t)" title="看趋势"><TrendingUp :size="15" /></button>
             </div>
           </div>
         </template>
 
         <template v-else>
-          <h1>{{ ICONS[activeTab] || '📒' }} {{ activeTab }}</h1>
-          <p class="hint">完成一项 +5 ☀️，再点一次会扣回。</p>
+          <h1><component :is="ICONS[activeTab] || BookOpen" class="ico" :size="20" /> {{ activeTab }}</h1>
+          <p class="hint">完成一项 +5 <Sun class="ico sun" :size="13" />，再点一次会扣回。</p>
 
           <div class="unit" v-if="data.daily.some(x => x.subject_id === activeTab)">
             <h2><i></i> 每日打卡</h2>
@@ -424,13 +421,13 @@ function reloadApp() {
               <div v-for="d in data.daily.filter(x => x.subject_id === activeTab)" :key="d.id"
                 class="card" :class="{ done: d.done_today }">
                 <button class="circle" :class="{ ok: d.done_today }"
-                  @click="d.done_today ? cancelDaily(d) : openDaily(d)">{{ d.done_today ? '✓' : '' }}</button>
+                  @click="d.done_today ? cancelDaily(d) : openDaily(d)"><Check v-if="d.done_today" :size="15" /></button>
                 <div class="card-body">
                   <div class="card-title">{{ d.name }}</div>
                   <div v-if="d.note" class="card-detail">{{ d.note }}</div>
-                  <div class="plus">+{{ d.sunshine }} ☀️</div>
+                  <div class="plus">+{{ d.sunshine }} <Sun class="ico sun" :size="12" /></div>
                 </div>
-                <button class="trend" @click="openChart(d)" title="看趋势">📈</button>
+                <button class="trend" @click="openChart(d)" title="看趋势"><TrendingUp :size="15" /></button>
               </div>
             </div>
           </div>
@@ -439,16 +436,16 @@ function reloadApp() {
             <h2>
               <i></i> {{ u.name }}
               <span v-if="data.unit_scores[u.id]" class="unit-score" :class="scoreClass(data.unit_scores[u.id].score)">
-                🎯 {{ data.unit_scores[u.id].score }} 分
+                <Target class="ico" :size="13" /> {{ data.unit_scores[u.id].score }} 分
               </span>
             </h2>
             <div class="grid">
               <div v-for="t in u.tasks" :key="t.id" class="card" :class="{ done: t.done, past: t.past, locked: t.locked }">
-                <button class="circle" :class="{ ok: t.done || t.past }" @click="toggleTask(t, $event)">{{ t.done || t.past ? '✓' : (t.locked ? '🔒' : '') }}</button>
+                <button class="circle" :class="{ ok: t.done || t.past }" @click="toggleTask(t, $event)"><Check v-if="t.done || t.past" :size="15" /><Lock v-else-if="t.locked" :size="14" /></button>
                 <div class="card-body">
                   <div class="card-title">{{ t.title }}</div>
                   <div v-if="t.detail" class="card-detail">{{ t.detail }}</div>
-                  <div class="plus">{{ t.past ? '已学过' : (t.locked ? '未解锁' : ('+' + t.sunshine + ' ☀️')) }}</div>
+                  <div class="plus"><template v-if="t.past">已学过</template><template v-else-if="t.locked">未解锁</template><template v-else>+{{ t.sunshine }} <Sun class="ico sun" :size="12" /></template></div>
                 </div>
               </div>
             </div>
@@ -463,21 +460,21 @@ function reloadApp() {
 
     <!-- 底栏：自定义任务 + 商店 -->
     <footer class="foot">
-      <button class="parent" @click="openParent">👤 家长</button>
+      <button class="parent" @click="openParent"><User class="ico" :size="15" /> 家长</button>
       <button class="parent" @click="doLogout">退出</button>
       <span style="flex:1"></span>
-      <button class="shop-fab" @click="openShop">🛒 商店</button>
+      <button class="shop-fab" @click="openShop"><ShoppingCart class="ico" :size="16" /> 商店</button>
     </footer>
 
     <!-- 商店抽屉 -->
     <div v-if="shopOpen" class="mask" @click.self="shopOpen = false">
       <div class="shop-modal">
-        <h3>🛒 阳光兑换商店</h3>
+        <h3><ShoppingCart class="ico" :size="18" /> 阳光兑换商店</h3>
         <div class="shop-list">
           <div v-for="r in rewards" :key="r.id" class="shop-item">
             <div>
               <div class="shop-name">{{ r.name }}<template v-if="r.need_approval"> · 需家长同意</template></div>
-              <div class="shop-price">☀️ {{ r.price }}</div>
+              <div class="shop-price"><Sun class="ico sun" :size="14" /> {{ r.price }}</div>
             </div>
             <button class="do" :disabled="data.level.balance < r.price" @click="redeem(r)">
               {{ r.need_approval ? '申请' : '兑换' }}
@@ -485,10 +482,10 @@ function reloadApp() {
           </div>
         </div>
         <div v-if="myRedeems.length" class="redeem-hist">
-          <h4>📜 兑换记录</h4>
+          <h4><ScrollText class="ico" :size="15" /> 兑换记录</h4>
           <div v-for="rd in myRedeems" :key="rd.id" class="redeem-row">
             <span>{{ rd.name }}</span>
-            <span class="dim-s">-{{ rd.price }} ☀️</span>
+            <span class="dim-s">-{{ rd.price }} <Sun class="ico sun" :size="12" /></span>
             <span :class="{ wait: rd.status === 'pending' }">{{ STATUS_TXT[rd.status] || rd.status }}</span>
           </div>
         </div>
@@ -504,7 +501,7 @@ function reloadApp() {
           <label>{{ m.label }}（{{ m.unit }}）</label>
           <input v-model.number="dailyDialog.vals[m.id]" type="number" inputmode="decimal" :placeholder="m.unit" />
         </div>
-        <button class="do big" @click="submitDaily($event)">打卡，赚阳光 ☀️</button>
+        <button class="do big" @click="submitDaily($event)">打卡，赚阳光 <Sun class="ico" :size="15" /></button>
         <button class="ghost" @click="dailyDialog.open = false">取消</button>
       </div>
     </div>
@@ -512,7 +509,7 @@ function reloadApp() {
     <!-- 跳绳趋势 -->
     <div v-if="chartOpen.open" class="mask" @click.self="chartOpen.open = false">
       <div class="shop-modal chart-modal">
-        <h3>📈 {{ chartOpen.task?.name }} 成长趋势</h3>
+        <h3><TrendingUp class="ico" :size="18" /> {{ chartOpen.task?.name }} 成长趋势</h3>
 
         <div v-if="!chartOpen.history.length" class="dim-s">还没打过卡，坚持一下吧！</div>
 
@@ -530,7 +527,7 @@ function reloadApp() {
                 <title>{{ p.v }}{{ m.unit }}</title>
               </circle>
             </svg>
-            <div class="chart-pb">🏅 个人纪录 {{ chartOpen.task.pb?.[m.id] ?? '—' }} {{ m.unit }} · 📊 累计 {{ lineFor(m).sum }} {{ m.unit }} · 共 {{ lineFor(m).count }} 次</div>
+            <div class="chart-pb"><Medal class="ico" :size="13" /> 个人纪录 {{ chartOpen.task.pb?.[m.id] ?? '—' }} {{ m.unit }} · <BarChart3 class="ico" :size="13" /> 累计 {{ lineFor(m).sum }} {{ m.unit }} · 共 {{ lineFor(m).count }} 次</div>
           </div>
         </template>
 
@@ -579,22 +576,22 @@ function reloadApp() {
     <!-- 升级庆祝 -->
     <div v-if="celebrate" class="celebrate">
       <div class="confetti">
-        <span v-for="i in 14" :key="i" :style="{ left: (i * 7.1) + '%', animationDelay: (i * 0.09) + 's' }">✦</span>
+        <span v-for="i in 14" :key="i" :style="{ left: (i * 7.1) + '%', animationDelay: (i * 0.09) + 's' }">•</span>
       </div>
       <div class="celebrate-card">
-        <div class="celebrate-icon">{{ celebrate.icon }}</div>
-        <div class="celebrate-title">🎉 升级啦！</div>
-        <div class="celebrate-name">{{ celebrate.icon }} {{ celebrate.name }}</div>
+        <div class="celebrate-icon"><component :is="rankIcon(celebrate.icon)" class="ico" :size="40" /></div>
+        <div class="celebrate-title"><PartyPopper class="ico" :size="16" /> 升级啦！</div>
+        <div class="celebrate-name"><component :is="rankIcon(celebrate.icon)" class="ico" :size="18" /> {{ celebrate.name }}</div>
       </div>
     </div>
 
     <!-- 成就墙 -->
     <div v-if="achOpen" class="mask" @click.self="achOpen = false">
       <div class="shop-modal ach-modal">
-        <h3>🎖️ 我的成就</h3>
+        <h3><Medal class="ico" :size="18" /> 我的成就</h3>
         <div class="ach-grid">
           <div v-for="a in achievements" :key="a.id" class="ach-cell" :class="{ on: a.earned }">
-            <div class="ach-icon">{{ a.icon }}</div>
+            <div class="ach-icon"><Sparkles class="ico" :size="20" /></div>
             <div class="ach-name">{{ a.name }}</div>
             <div class="ach-prog">{{ Math.min(a.current, a.target) }}/{{ a.target }}</div>
           </div>
@@ -606,26 +603,26 @@ function reloadApp() {
     <!-- 连击宝箱 -->
     <div v-if="boxOpen" class="mask" @click.self="boxOpen = false">
       <div class="shop-modal box-modal">
-        <h3>🎁 连击宝箱</h3>
+        <h3><Gift class="ico" :size="18" /> 连击宝箱</h3>
         <div class="box-result">
-          <div class="box-icon">🎁</div>
-          <div class="box-gain">+{{ boxResult }} ☀️</div>
+          <div class="box-icon"><Gift :size="34" /></div>
+          <div class="box-gain">+{{ boxResult }} <Sun class="ico sun" :size="16" /></div>
           <div class="box-tip">太棒了，坚持打卡的奖励！</div>
         </div>
-        <button class="do big" @click="boxOpen = false">收下奖励 🎉</button>
+        <button class="do big" @click="boxOpen = false">收下奖励</button>
       </div>
     </div>
 
     <!-- 成长地图 -->
     <div v-if="rankMapOpen" class="mask" @click.self="rankMapOpen = false">
       <div class="shop-modal map-modal">
-        <h3>🗺️ 我的成长之路</h3>
+        <h3><Map class="ico" :size="18" /> 我的成长之路</h3>
         <div class="map-list">
           <div v-for="r in (rankMap?.ranks || [])" :key="r.id" class="map-node"
             :class="{ done: r.min_sunshine <= (rankMap?.earned || 0), cur: r.id === (rankMap?.current) }">
-            <span class="map-icon">{{ r.icon || '⭐' }}</span>
+            <span class="map-icon"><component :is="rankIcon(r.icon)" class="ico" :size="18" /></span>
             <span class="map-name">{{ r.name }}</span>
-            <span class="map-th">{{ r.min_sunshine }} ☀️</span>
+            <span class="map-th">{{ r.min_sunshine }} <Sun class="ico sun" :size="12" /></span>
           </div>
         </div>
         <button class="ghost" @click="rankMapOpen = false">关闭</button>
