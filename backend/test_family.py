@@ -49,12 +49,6 @@ def main_fn():
             assert r.status_code == 200
             names_c = {x["name"] for x in c.get("/api/rewards").json()}
             assert "A家奖" in names_c
-        code_o = a.post("/api/admin/invite", json={"role": "observer"}).json()["code"]
-        with TestClient(main.app) as o:
-            r = o.post("/api/auth/join", json={"account": "oma", "pin": "oma88888", "code": code_o, "name": "奶奶"})
-            assert r.status_code == 200 and r.json()["role"] == "observer"
-            assert o.get("/api/admin/weekly").status_code == 403
-            assert o.post("/api/checkin").status_code == 403
         mid = next(m["id"] for m in a.get("/api/admin/members").json() if m["account"] == "carol")
         assert a.delete("/api/admin/members/" + mid).status_code == 200
         with TestClient(main.app) as c2:

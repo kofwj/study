@@ -252,9 +252,9 @@ async function changePin() {
   } catch (e) { showToast(e.message) }
 }
 async function refreshInvites() { invites.value = await api.admin.invites() }
-async function makeInvite(role) {
+async function makeInvite() {
   try {
-    const r = await api.admin.invite(role)
+    const r = await api.admin.invite()
     await refreshInvites()
     showToast('已生成 ' + r.code + '，点「复制」分享')
   } catch (e) { showToast(e.message) }
@@ -376,7 +376,7 @@ onMounted(load)
     <!-- 商店 -->
     <section v-if="section === 'shop'" class="a-card enter">
       <h3>兑换商店</h3>
-      <p class="lead">孩子会用阳光兑换这些，改价格实时生效。</p>
+      <p class="lead">孩子申请后，家里任意家长在「兑换审批」里同意才扣阳光。</p>
       <div class="task-row" v-for="r in rewards" :key="r.id">
         <label class="fld grow"><span>奖励名</span><input v-model="r.name" /></label>
         <label class="fld w64"><span>阳光</span><input v-model.number="r.price" type="number" /></label>
@@ -639,7 +639,7 @@ onMounted(load)
     <!-- 家长成员 -->
     <section v-if="section === 'members'" class="a-card enter">
       <h3>家长成员</h3>
-      <p class="lead">另一位家长共同管理，爷爷奶奶…当「观察员」只能看。</p>
+      <p class="lead">另一位家长用邀请码加入，共同管理。</p>
       <div class="a-item" v-for="m in members" :key="m.id">
         <span class="badge">{{ m.name }}</span>
         <span class="dim">{{ m.account }} · {{ m.role }}</span>
@@ -655,11 +655,10 @@ onMounted(load)
         <span>邀请码保护（开 = 一次性 + 24h 限时）</span>
       </label>
       <p class="dim" style="margin-top:8px">
-        <button class="ok" @click="makeInvite('parent')">家长邀请码</button>
-        <button class="ok" @click="makeInvite('observer')">观察员码</button>
+        <button class="ok" @click="makeInvite()">生成邀请码</button>
       </p>
       <div class="a-item" v-for="iv in invites" :key="iv.code" style="flex-wrap:wrap">
-        <span class="badge">{{ iv.role === 'observer' ? '观察员' : '家长' }}</span>
+        <span class="badge">家长</span>
         <code style="font-family:ui-monospace,monospace;font-weight:700;font-size:14px">{{ iv.code }}</code>
         <span class="dim">{{ inviteStatus(iv) }}</span>
         <button class="ok" @click="copyCode(iv.code)">复制</button>

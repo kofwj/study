@@ -137,8 +137,6 @@ async def auth_mw(request: Request, call_next):
     u = _user_from_request(request)
     if not u:
         return JSONResponse({"detail": "未登录"}, 401)
-    if u["role"] == "observer" and request.method not in ("GET", "HEAD", "OPTIONS"):
-        return JSONResponse({"detail": "观察员只能看"}, 403)
     c0 = db.connect()
     db.apply_scope(c0, u["family_id"], None)
     try:
@@ -713,23 +711,11 @@ def redeem(body: RedeemBody):
     if not r:
         c.close()
         raise HTTPException(404, "没找到这个奖励")
-    # 需要家长同意的奖励：只挂起，不扣阳光，等家长端「审批」通过
-    if r["need_approval"]:
-        c.execute("INSERT INTO redemptions(reward_id,date,price,status,created_at,kid_id) VALUES(?,?,?,?,?,?)",
-                  (r["id"], db.today(), r["price"], "pending", db.now(), kid_id()))
-        c.commit()
-        res = {"pending": True, "reward": r["name"], "level": level_info(c)}
-        c.close()
-        return res
-    if balance(c) < r["price"]:
-        c.close()
-        raise HTTPException(409, "阳光不够哦，还差 %d" % (r["price"] - balance(c)))
-    rid = db.insert(c, "INSERT INTO redemptions(reward_id,date,price,status,created_at,kid_id) VALUES(?,?,?,?,?,?)",
-                    (r["id"], db.today(), r["price"], "done", db.now(), kid_id()))
-    insert_ledger(c, db.today(), -r["price"], "redeem", f"red-{rid}", r["name"])
-    m = maybe_milestone(c)
+    # 一律先申请，家里任意家长批；阳光等同意再扣
+    c.execute("INSERT INTO redemptions(reward_id,date,price,status,created_at,kid_id) VALUES(?,?,?,?,?,?)",
+              (r["id"], db.today(), r["price"], "pending", db.now(), kid_id()))
     c.commit()
-    res = {"delta": -r["price"], "reward": r["name"], "milestone": m, "level": level_info(c)}
+    res = {"pending": True, "reward": r["name"], "level": level_info(c)}
     c.close()
     return res
 
@@ -917,7 +903,7 @@ def auth_join(b: JoinBody, request: Request):
         if c.execute("SELECT 1 FROM users WHERE account=?", (account,)).fetchone():
             raise HTTPException(409, "这个账号已经有了")
         uid = "parent-" + uuid.uuid4().hex[:8]
-        role = inv["role"] or "parent"
+        role = "parent"  # 观察员已下线，旧码也当家长
         c.execute(
             "INSERT INTO users(id,family_id,role,name,avatar,pin_hash,term_id,account,created_at,force_pin_change) VALUES(?,?,?,?,?,?,?,?,?,?)",
             (uid, inv["family_id"], role, (b.name or "家长").strip()[:12], "", db.hash_pin(pin), None, account, db.now(), ""))
@@ -932,13 +918,8 @@ def auth_join(b: JoinBody, request: Request):
     return _issue_parent(resp, request, user)
 
 
-class InviteIn(BaseModel):
-    role: str = "parent"  # parent | observer
-
-
 @app.post("/api/admin/invite", dependencies=[Depends(require_parent)])
-def invite_create(request: Request, b: InviteIn = InviteIn()):
-    role = b.role if b.role in ("parent", "observer") else "parent"
+def invite_create(request: Request):
     u = request.state.user
     code = uuid.uuid4().hex[:8].upper()
     c = get_conn()
@@ -947,9 +928,9 @@ def invite_create(request: Request, b: InviteIn = InviteIn()):
     max_uses = 1 if protect else 0
     expires_at = (datetime.now() + timedelta(hours=24)).isoformat(timespec="seconds") if protect else None
     c.execute("INSERT INTO invites(code,family_id,role,created_at,max_uses,expires_at) VALUES(?,?,?,?,?,?)",
-              (code, u["family_id"], role, db.now(), max_uses, expires_at))
+              (code, u["family_id"], "parent", db.now(), max_uses, expires_at))
     c.commit(); c.close()
-    return {"code": code, "role": role, "protect": bool(protect)}
+    return {"code": code, "role": "parent", "protect": bool(protect)}
 
 
 class InviteProtectIn(BaseModel):
@@ -1007,7 +988,7 @@ def members_list(request: Request):
     u = request.state.user
     c = get_conn()
     rows = c.execute(
-        "SELECT id, name, account, role FROM users WHERE family_id=? AND role IN ('parent','observer') ORDER BY created_at",
+        "SELECT id, name, account, role FROM users WHERE family_id=? AND role='parent' ORDER BY created_at",
         (u["family_id"],)).fetchall()
     c.close()
     return [dict(r) for r in rows]
@@ -1020,7 +1001,7 @@ def members_delete(uid: str, request: Request):
         raise HTTPException(400, "不能删自己")
     c = get_conn()
     row = c.execute("SELECT * FROM users WHERE id=? AND family_id=?", (uid, u["family_id"])).fetchone()
-    if not row or row["role"] not in ("parent", "observer"):
+    if not row or row["role"] != "parent":
         c.close(); raise HTTPException(404, "没找到这个家长")
     if row["role"] == "parent":
         n = c.execute("SELECT COUNT(*) FROM users WHERE family_id=? AND role='parent'", (u["family_id"],)).fetchone()[0]
@@ -1069,7 +1050,7 @@ class RewardIn(BaseModel):
 def reward_create(b: RewardIn):
     c = get_conn()
     rid = uuid.uuid4().hex[:8]
-    c.execute("INSERT INTO rewards(id,name,price,category,need_approval,family_id) VALUES(?,?,?,?,0,?)",
+    c.execute("INSERT INTO rewards(id,name,price,category,need_approval,family_id) VALUES(?,?,?,?,1,?)",
               (rid, b.name, b.price, b.category, _fam.get()))
     c.commit(); c.close()
     return {"id": rid}

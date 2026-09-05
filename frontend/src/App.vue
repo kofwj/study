@@ -247,12 +247,9 @@ async function cancelDaily(task) {
 }
 
 async function redeem(reward) {
-  const needApproval = !!reward.need_approval
-  if (!needApproval && !confirm(`确定用 ${reward.price} 阳光兑换「${reward.name}」吗？`)) return
   try {
     const r = await api.redeem(reward.id)
-    if (r.pending) showToast(`已提交「${reward.name}」，等家长同意`)
-    else showToast(`兑换成功 -${reward.price} 阳光`)
+    showToast(`已提交「${reward.name}」，等家长同意`)
     shopOpen.value = false
     await refresh()
   } catch (e) { showToast(e.message) }
@@ -520,12 +517,10 @@ function reloadApp() {
         <div class="shop-list">
           <div v-for="r in rewards" :key="r.id" class="shop-item">
             <div>
-              <div class="shop-name">{{ r.name }}<template v-if="r.need_approval"> · 需家长同意</template></div>
+              <div class="shop-name">{{ r.name }} · 需家长同意</div>
               <div class="shop-price"><Sun class="ico sun" :size="14" /> {{ r.price }}</div>
             </div>
-            <button class="do" :disabled="data.level.balance < r.price" @click="redeem(r)">
-              {{ r.need_approval ? '申请' : '兑换' }}
-            </button>
+            <button class="do" :disabled="data.level.balance < r.price" @click="redeem(r)">申请</button>
           </div>
         </div>
         <div v-if="myRedeems.length" class="redeem-hist">

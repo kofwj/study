@@ -20,7 +20,7 @@ SEED_MULTI = BASE.parent / "data" / "tasks.seed.multi.json"
 
 # 兑换商店（P0 内置示例，家长后续在管理端增删改）
 REWARDS = [
-    {"id": "tv30",  "name": "看动画30分钟",  "price": 30,  "category": "娱乐", "need_approval": 0},
+    {"id": "tv30",  "name": "看动画30分钟",  "price": 30,  "category": "娱乐", "need_approval": 1},
     {"id": "park",  "name": "周末去游乐场",  "price": 100, "category": "出行", "need_approval": 1},
     {"id": "wish",  "name": "心愿礼物",      "price": 200, "category": "礼物", "need_approval": 1},
 ]
@@ -607,6 +607,7 @@ def _migrate_012(conn):
 def _migrate_013(conn):
     # 家长密码 ≥8 位上线：存量 parent 首登强制改密一次（密码存哈希，无法判断位数，统一强制）
     conn.execute("UPDATE users SET force_pin_change='1' WHERE role='parent'")
+    conn.execute("UPDATE rewards SET need_approval=1 WHERE COALESCE(need_approval,0)=0")
 
 
 MIGRATIONS = (
