@@ -46,7 +46,13 @@ ssh -o BatchMode=yes root@192.168.100.5 \
   'su - kofwj -c "cd ~/sunshine && python3 scripts/backup_db.py"'
 ```
 
-备份落在 `~/sunshine/data/backups/`。
+备份落在 `~/sunshine/data/backups/`。设了 `DATABASE_URL` 时改走 `pg_dump -Fc`（需本机 `pg_dump` 或 `docker exec sunshine-postgres pg_dump ...`）。
+
+SQLite → Postgres（**不切流量**，只校验）：
+```bash
+DATABASE_URL=postgresql://sunshine:sunshine@127.0.0.1:5432/sunshine python3 scripts/migrate_to_pg.py
+```
+通过后再打开 compose 的 `DATABASE_URL`（迁移用 superuser）和 `DATABASE_APP_URL`（请求用 sunshine_app，否则 RLS 对 superuser 无效）。切流当天必须在真实 PG 上冒烟：APP 登录 / RLS / pg_dump / 序列。
 
 ## 三、日常更新（备份 → 拉代码 → 重新构建 → 起容器）
 

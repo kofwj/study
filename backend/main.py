@@ -304,14 +304,14 @@ def tasks():
         "term": dict(term_row) if term_row else {"id": term, "label": term},
         "terms": [dict(r) for r in c.execute("SELECT * FROM terms ORDER BY id").fetchall()],
         "cursors": {r["key"][7:]: r["value"] for r in c.execute(
-            "SELECT key,value FROM settings WHERE key LIKE 'cursor_%'").fetchall()},
+            "SELECT key,value FROM settings WHERE key LIKE ?", ("cursor_%",)).fetchall()},
         "today_checkin": c.execute(
             "SELECT 1 FROM checkins WHERE date=?", (db.today(),)).fetchone() is not None,
         "subjects": [dict(r) for r in c.execute("SELECT * FROM subjects").fetchall()],
         "units": [{"id": r["id"], "name": r["name"], "subject_id": r["subject_id"]}
                   for r in c.execute(
-                      "SELECT id, name, subject_id FROM units WHERE term_id=? OR id LIKE 'custom-%'",
-                      (term,)).fetchall()],
+                      "SELECT id, name, subject_id FROM units WHERE term_id=? OR id LIKE ?",
+                      (term, "custom-%")).fetchall()],
     }
     # 单元测试成绩（unit_id → 最近一次分），孩子端单元旁展示
     unit_scores = {}
@@ -371,9 +371,8 @@ def tasks():
 def checkin():
     c = get_conn()
     t = db.today()
-    cur = c.execute("INSERT OR IGNORE INTO checkins(date,sunshine,created_at) VALUES(?,?,?)",
-                    (t, 0, db.now()))
-    if cur.rowcount == 0:
+    if db.insert(c, "INSERT INTO checkins(date,sunshine,created_at,kid_id) VALUES(?,?,?,?) ON CONFLICT DO NOTHING",
+                 (t, 0, db.now(), db.DEFAULT_KID)) is None:
         c.close()
         raise HTTPException(409, "今天已经签到过啦")
     m = maybe_milestone(c)
@@ -431,13 +430,13 @@ def complete(body: CompleteBody):
             c.close()
             raise HTTPException(409, "这课还没学到，先把前面的学完哦")
         delta = row["sunshine"]
-        cur = c.execute("INSERT OR IGNORE INTO completions(task_id,date,status,sunshine,metrics,kind,created_at) "
-                        "VALUES(?,?,?,?,?,?,?)",
-                        (tid, t, "completed", delta, None, "unit", db.now()))
-        if cur.rowcount == 0:
+        cid = db.insert(c, "INSERT INTO completions(task_id,date,status,sunshine,metrics,kind,created_at,kid_id) "
+                        "VALUES(?,?,?,?,?,?,?,?) ON CONFLICT DO NOTHING",
+                        (tid, t, "completed", delta, None, "unit", db.now(), db.DEFAULT_KID))
+        if cid is None:
             c.close()
             raise HTTPException(409, "这项已经完成过啦")
-        db.insert_ledger(c, t, delta, "task", f"cmp-{cur.lastrowid}", row["title"])
+        db.insert_ledger(c, t, delta, "task", f"cmp-{cid}", row["title"])
         m = maybe_milestone(c)
         c.commit()
         res = {"delta": delta, "bonus": 0, "milestone": m, "level": level_info(c)}
@@ -448,13 +447,13 @@ def complete(body: CompleteBody):
         bonus, detail = compute_daily_bonus(c, d, body.metrics)
         delta = d["sunshine"] + bonus
         mj = json.dumps(body.metrics) if body.metrics else None
-        cur = c.execute("INSERT OR IGNORE INTO completions(task_id,date,status,sunshine,metrics,kind,created_at) "
-                        "VALUES(?,?,?,?,?,?,?)",
-                        (tid, t, "completed", delta, mj, "daily", db.now()))
-        if cur.rowcount == 0:
+        cid = db.insert(c, "INSERT INTO completions(task_id,date,status,sunshine,metrics,kind,created_at,kid_id) "
+                        "VALUES(?,?,?,?,?,?,?,?) ON CONFLICT DO NOTHING",
+                        (tid, t, "completed", delta, mj, "daily", db.now(), db.DEFAULT_KID))
+        if cid is None:
             c.close()
             raise HTTPException(409, "今天这项已完成过啦")
-        db.insert_ledger(c, t, delta, "daily", f"cmp-{cur.lastrowid}",
+        db.insert_ledger(c, t, delta, "daily", f"cmp-{cid}",
                          d["name"] + ("（破纪录 +%d）" % bonus if bonus else ""))
         m = maybe_milestone(c)
         c.commit()
@@ -498,11 +497,11 @@ def custom_task(body: CustomTaskBody):
         raise HTTPException(404, "没有这个学科")
     # 自定义任务归到独立的「自定义」单元（seq=99 排最后），不混进教材单元
     unit_id = f"custom-{body.subject_id}"
-    c.execute("INSERT OR IGNORE INTO units(id,subject_id,term_id,seq,name) VALUES(?,?,?,?,?)",
+    c.execute("INSERT INTO units(id,subject_id,term_id,seq,name) VALUES(?,?,?,?,?) ON CONFLICT DO NOTHING",
               (unit_id, body.subject_id, active_term(c), 99, "自定义"))
     tid = uuid.uuid4().hex[:8]
-    c.execute("INSERT INTO tasks(id,subject_id,unit_id,action,title,sunshine,sort,custom) VALUES(?,?,?,?,?,?,99,1)",
-              (tid, body.subject_id, unit_id, "自定义", title, body.sunshine or 5))
+    c.execute("INSERT INTO tasks(id,subject_id,unit_id,action,title,sunshine,sort,custom,family_id) VALUES(?,?,?,?,?,?,99,1,?)",
+              (tid, body.subject_id, unit_id, "自定义", title, body.sunshine or 5, db.DEFAULT_FAMILY))
     c.commit()
     c.close()
     return {"id": tid}
@@ -565,8 +564,8 @@ def redeem(body: RedeemBody):
         raise HTTPException(404, "没找到这个奖励")
     # 需要家长同意的奖励：只挂起，不扣阳光，等家长端「审批」通过
     if r["need_approval"]:
-        c.execute("INSERT INTO redemptions(reward_id,date,price,status,created_at) VALUES(?,?,?,?,?)",
-                  (r["id"], db.today(), r["price"], "pending", db.now()))
+        c.execute("INSERT INTO redemptions(reward_id,date,price,status,created_at,kid_id) VALUES(?,?,?,?,?,?)",
+                  (r["id"], db.today(), r["price"], "pending", db.now(), db.DEFAULT_KID))
         c.commit()
         res = {"pending": True, "reward": r["name"], "level": level_info(c)}
         c.close()
@@ -574,9 +573,9 @@ def redeem(body: RedeemBody):
     if balance(c) < r["price"]:
         c.close()
         raise HTTPException(409, "阳光不够哦，还差 %d" % (r["price"] - balance(c)))
-    cur = c.execute("INSERT INTO redemptions(reward_id,date,price,status,created_at) VALUES(?,?,?,?,?)",
-              (r["id"], db.today(), r["price"], "done", db.now()))
-    db.insert_ledger(c, db.today(), -r["price"], "redeem", f"red-{cur.lastrowid}", r["name"])
+    rid = db.insert(c, "INSERT INTO redemptions(reward_id,date,price,status,created_at,kid_id) VALUES(?,?,?,?,?,?)",
+                    (r["id"], db.today(), r["price"], "done", db.now(), db.DEFAULT_KID))
+    db.insert_ledger(c, db.today(), -r["price"], "redeem", f"red-{rid}", r["name"])
     m = maybe_milestone(c)
     c.commit()
     res = {"delta": -r["price"], "reward": r["name"], "milestone": m, "level": level_info(c)}
@@ -679,8 +678,8 @@ class RewardIn(BaseModel):
 def reward_create(b: RewardIn):
     c = get_conn()
     rid = uuid.uuid4().hex[:8]
-    c.execute("INSERT INTO rewards(id,name,price,category,need_approval) VALUES(?,?,?,?,0)",
-              (rid, b.name, b.price, b.category))
+    c.execute("INSERT INTO rewards(id,name,price,category,need_approval,family_id) VALUES(?,?,?,?,0,?)",
+              (rid, b.name, b.price, b.category, db.DEFAULT_FAMILY))
     c.commit(); c.close()
     return {"id": rid}
 
@@ -786,12 +785,12 @@ def test_create(b: TestIn):
     if b.unit_id:
         u = c.execute("SELECT name FROM units WHERE id=?", (b.unit_id,)).fetchone()
         unit_name = u["name"] if u else ""
-    cur = c.execute("INSERT INTO tests(subject_id,unit_id,score,sunshine,note,date,created_at) VALUES(?,?,?,?,?,?,?)",
-                    (b.subject_id, b.unit_id or None, b.score, sun, (b.note or "").strip()[:40], db.today(), db.now()))
+    tid = db.insert(c, "INSERT INTO tests(subject_id,unit_id,score,sunshine,note,date,created_at,kid_id) VALUES(?,?,?,?,?,?,?,?)",
+                    (b.subject_id, b.unit_id or None, b.score, sun, (b.note or "").strip()[:40], db.today(), db.now(), db.DEFAULT_KID))
     label = unit_name or b.note or b.subject_id
-    db.insert_ledger(c, db.today(), sun, "test", f"test-{cur.lastrowid}", f"{label} 测试 {b.score} 分")
+    db.insert_ledger(c, db.today(), sun, "test", f"test-{tid}", f"{label} 测试 {b.score} 分")
     c.commit()
-    res = {"id": cur.lastrowid, "sunshine": sun, "level": level_info(c)}
+    res = {"id": tid, "sunshine": sun, "level": level_info(c)}
     c.close()
     return res
 
@@ -833,8 +832,8 @@ def ranks_admin():
 @app.post("/api/admin/ranks", dependencies=[Depends(require_admin)])
 def rank_create(b: RankIn):
     c = get_conn()
-    c.execute("INSERT INTO ranks(id,name,min_sunshine,sort) VALUES(?,?,?,?)",
-              (uuid.uuid4().hex[:8], b.name, b.min_sunshine, b.min_sunshine))
+    c.execute("INSERT INTO ranks(id,name,min_sunshine,sort,family_id) VALUES(?,?,?,?,?)",
+              (uuid.uuid4().hex[:8], b.name, b.min_sunshine, b.min_sunshine, db.DEFAULT_FAMILY))
     c.commit(); c.close()
     return {"ok": True}
 

@@ -1,4 +1,21 @@
 services:
+  postgres:
+    image: postgres:16
+    container_name: sunshine-postgres
+    restart: unless-stopped
+    profiles: ["postgres"]   # 默认不起。切流：compose --profile postgres up，并给 sunshine 设 DATABASE_URL
+    environment:
+      POSTGRES_USER: sunshine
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sunshine}
+      POSTGRES_DB: sunshine
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sunshine -d sunshine"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   sunshine:
     build: .
     container_name: sunshine-workbench
@@ -8,6 +25,9 @@ services:
     environment:
       - SUNSHINE_DB=/data/sunshine.db
       - TZ=Asia/Shanghai
+      # 切流：compose --profile postgres up，并取消下面两行。APP 必须是 sunshine_app（非 superuser）
+      # - DATABASE_URL=postgresql://sunshine:${POSTGRES_PASSWORD:-sunshine}@postgres:5432/sunshine
+      # - DATABASE_APP_URL=postgresql://sunshine_app:sunshine@postgres:5432/sunshine
     volumes:
       - ./data:/data            # SQLite 持久化到宿主机 data/ 目录
     healthcheck:
@@ -16,3 +36,6 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
+
+volumes:
+  pgdata:
