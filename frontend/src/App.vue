@@ -63,11 +63,13 @@ function scoreClass(s) {
 
 const isAdmin = ref(false)
 const me = ref(null)
+const authed = ref(false)
 const pinForm = reactive({ open: false, mode: 'login', account: 'lele', val: '', name: '', family: '我家', code: '' })
 async function afterLogin(r) {
   me.value = r
   pinForm.open = false
   pinForm.val = ''
+  authed.value = true
   isAdmin.value = r.role === 'parent'
   if (r.force_pin_change) showToast('请先改密码')
   if (!isAdmin.value) await refresh()
@@ -92,6 +94,7 @@ async function openParent() {
     isAdmin.value = true
     return
   }
+  pinForm.mode = 'login'
   pinForm.account = 'parent'
   pinForm.open = true
 }
@@ -99,8 +102,10 @@ async function doLogout() {
   await api.logout().catch(() => {})
   me.value = null
   isAdmin.value = false
-  pinForm.open = true
+  authed.value = false
+  pinForm.mode = 'login'
   pinForm.account = 'lele'
+  pinForm.val = ''
 }
 
 async function refresh() {
@@ -333,10 +338,11 @@ onMounted(async () => {
   window.addEventListener('sw-update', () => { updateReady.value = true })
   try {
     me.value = await api.me()
-    isAdmin.value = false
-    await refresh()
+    authed.value = true
+    isAdmin.value = me.value.role === 'parent'
+    if (!isAdmin.value) await refresh()
   } catch (e) {
-    pinForm.open = true
+    authed.value = false
     loading.value = false
   }
 })
@@ -349,7 +355,7 @@ function reloadApp() {
 
 <template>
   <Admin v-if="isAdmin" @exit="exitAdmin" @switched="refresh" />
-  <div v-else class="desk">
+  <div v-else-if="authed" class="desk">
     <button v-if="updateReady" type="button" class="update-bar" @click="reloadApp"><RefreshCw class="ico" :size="15" /> 有新版本，点我刷新</button>
     <!-- 蓝顶栏 -->
     <header class="topbar">
@@ -560,6 +566,30 @@ function reloadApp() {
         </template>
 
         <button class="ghost" @click="chartOpen.open = false">关闭</button>
+      </div>
+    </div>
+
+    <div v-else class="login-screen">
+      <div class="login-card">
+        <div class="login-logo"><Sun class="ico" :size="36" /></div>
+        <h1>阳光学习工作台</h1>
+        <p class="login-sub">孩子的每日学习打卡小助手</p>
+        <div class="login-tabs">
+          <button type="button" :class="{ on: pinForm.mode==='login' }" @click="pinForm.mode='login'">登录</button>
+          <button type="button" :class="{ on: pinForm.mode==='register' }" @click="pinForm.mode='register'">注册新家</button>
+          <button type="button" :class="{ on: pinForm.mode==='join' }" @click="pinForm.mode='join'">邀请码加入</button>
+        </div>
+        <input v-model="pinForm.account" placeholder="账号" autocomplete="username" />
+        <input v-model="pinForm.val" type="password" inputmode="numeric" placeholder="密码（4 位数字）" autocomplete="current-password" @keyup.enter="verifyPin" />
+        <input v-if="pinForm.mode!=='login'" v-model="pinForm.name" placeholder="你的名字" />
+        <input v-if="pinForm.mode==='register'" v-model="pinForm.family" placeholder="家庭名（如：乐乐的家）" />
+        <input v-if="pinForm.mode==='join'" v-model="pinForm.code" placeholder="邀请码" />
+        <button class="login-enter" @click="verifyPin">进入</button>
+        <p class="login-note">
+          <template v-if="pinForm.mode==='register'">注册就是为你家开一个独立空间，不需要邀请码。</template>
+          <template v-else-if="pinForm.mode==='join'">邀请码由家庭里已有的家长在设置页生成。</template>
+          <template v-else>孩子用小名账号登录打卡，家长用家长账号管理。</template>
+        </p>
       </div>
     </div>
 
@@ -796,6 +826,19 @@ body {
 .shop-modal input, .metric input { width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; font-size: 15px; }
 .parent { border: none; background: none; color: var(--ink-3); font-size: 13px; font-weight: 700; cursor: pointer; padding: 10px 4px; white-space: nowrap; }
 .err { color: var(--danger); text-align: center; }
+
+/* 登录页 */
+.login-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; background: var(--bg); }
+.login-card { background: var(--surface); border-radius: var(--r-card); padding: 32px 28px; width: 92%; max-width: 380px; box-shadow: var(--sh-2); text-align: center; }
+.login-logo { width: 72px; height: 72px; margin: 0 auto 14px; border-radius: 50%; background: var(--warm); color: var(--accent); display: flex; align-items: center; justify-content: center; }
+.login-card h1 { font-size: 22px; margin: 0 0 4px; }
+.login-sub { color: var(--ink-3); font-size: 13px; margin: 0 0 18px; }
+.login-tabs { display: flex; gap: 4px; margin-bottom: 16px; background: var(--surface-2); border-radius: 999px; padding: 4px; }
+.login-tabs button { flex: 1; border: none; background: none; padding: 8px 4px; border-radius: 999px; font-size: 13px; color: var(--ink-2); cursor: pointer; font-weight: 700; }
+.login-tabs button.on { background: var(--surface); color: var(--brand-deep); box-shadow: var(--sh-1); }
+.login-card input { width: 100%; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--r-input); font-size: 15px; margin-bottom: 10px; box-sizing: border-box; font-family: inherit; }
+.login-enter { width: 100%; border: none; background: var(--brand); color: #fff; border-radius: var(--r-input); padding: 12px; font-weight: 800; font-size: 15px; cursor: pointer; margin-top: 2px; font-family: inherit; }
+.login-note { font-size: 12px; color: var(--ink-3); margin: 12px 0 0; line-height: 1.5; }
 
 /* 升级庆祝 */
 .celebrate { position: fixed; inset: 0; z-index: 40; display: flex; align-items: center; justify-content: center; pointer-events: none; }
