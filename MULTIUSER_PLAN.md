@@ -255,7 +255,7 @@ def require_parent(user=Depends(get_current_user)):
 
 ### P4 功能扩展
 
-见第 7 节（排行榜/全家汇总/家庭共同任务/长辈红包/班级模式/成就战报…），按「多娃单家庭（P2 解锁）」优先、多家庭（P3 后解锁）次之逐个上。**不改第 7 节现在的顺序。**
+见 §7.1 P4 总路线图（学习科学纵深为主线、激励/协同次之、多家庭/传播最后），分项详情见 §7.5~§7.8。
 
 ---
 
@@ -280,6 +280,36 @@ def require_parent(user=Depends(get_current_user)):
 10. **每家庭独立课程版本**：不同家庭绑定不同年级/教材目录，一学期新课一键下发。
 
 > 参考方向：ClassDojo（家庭+班级点）、`nitin27may/child-reward-system`（多子女 + 行级隔离的现成实现，可借鉴其 `kid_id` 归属和 RLS 思路）。
+
+---
+
+## 7.1 P4 总路线图（2026-09 定稿）
+
+> 把 §7.5（激励/协同）+ §7.6/7.7/7.8（学习纵深）收拢成一条可执行的线。**主线 = 学习科学纵深**（已定重心），激励/协同靠后，多家庭/传播最后。分项详情见 §7.5~§7.8。
+
+### 主线 M · 学习科学纵深（单家庭即用）
+
+| 步 | 做什么 | 依赖 | 交付感 |
+|---|---|---|---|
+| M1.1 | 结论引擎一期 + 家长端「本周盯点」卡（测试低分/连击/完成量） | 现有数据 | 家长一眼结论 ★ |
+| M1.2 | `fitness_standards`（国标）+ 体测弱项结论 | 现有 metrics | 体测可诊断 ★ |
+| M1.3 | 打卡页：单元头状态行 + 运动达标进度条 | M1.2 + tests(已有) | 孩子端看到状态 ★ |
+| M2.1 | 教材套餐底座（只有江苏，行为零变化） | 无 | 打地基 |
+| M2.2 | 考点标签 knowledge_tags（半自动） | M2.1 | 数据 |
+| M2.3 | 薄弱点 weak_points（**家长写/孩子读 + RLS**） | M2.2 | 可标记薄弱 |
+| M2.4 | 复习提醒 review queue（**家长一键过关**） | M2.3 | 到点提醒重默 |
+| M3.1 | 打卡页：今日复习卡 + 孩子版提醒 | M2.4 | 孩子看到动作 |
+| M3.2 | 复习到期结论并入「本周盯点」（优先级顶到最高） | M2.4 + M1.1 | 结论达峰 |
+
+> **建议节奏**：M1 整段可先做（现有数据、最快「变聪明」），再回头补 M2 内功底座，最后 M3 收口——即「先让产品看起来聪明，再让它真正聪明」。
+
+### 支线 B · 激励/协同（§7.5，看反馈再启动）
+
+扣分/负分、多娃排行榜、家长汇总面板（全家对比）、家庭共同任务、长辈红包、专注计时/星级（候选）。
+
+### 重线 C · 多家庭/传播（开放给他人再启动）
+
+成长相册、战报分享卡片、班级模式、多版本教材扩展（人教版/北师大目录）。
 
 ---
 
@@ -355,8 +385,8 @@ def require_parent(user=Depends(get_current_user)):
    - 11c. 班级榜（匿名昵称）。
    - 11d. 老师-家长站内信（最简）。
 12. **每家庭独立课程版本**
-   - 12a. 家庭绑定教材目录版本（人教版 / 北师大版 / 江苏版）。
-   - 12b. 新课一键下发、旧课保留。
+   - 12a. 家庭绑定教材版本组合——注意：**语文/道法全国统一部编版**，真正有版本差异的只有**数学（苏教/人教/北师大）、英语（译林/人教）、科学（苏教/教科）**三科。
+   - 12b. 新课一键下发、旧课保留。细节见 §7.6 ①。
 
 > **优先级建议**：P4.1 全做（自用立即有回报，全是已验证机制）；P4.2 做 5（家庭目标）和 7（长辈红包），6/4 看孩子反馈再定；P4.3/P4.4 等要开放给其他家庭或老师时再启动。
 
@@ -391,10 +421,10 @@ def require_parent(user=Depends(get_current_user)):
 **表改动**（迁移 `_migrate_014_curriculum_bundles`）：
 ```sql
 CREATE TABLE bundles (id TEXT PK, name TEXT, region TEXT, is_default INT, created_at TEXT);
-CREATE TABLE bundle_subjects (bundle_id TEXT, subject_id TEXT, publisher TEXT, edition TEXT, PRIMARY KEY(bundle_id, subject_id));
 ALTER TABLE units ADD COLUMN bundle_id TEXT DEFAULT 'js';  -- 存量回填 js
 ALTER TABLE families ADD COLUMN curriculum_bundle TEXT DEFAULT 'js';
 ```
+- `bundle_subjects`（科目→出版社明细表）**第一版不建**：只做江苏单 bundle，映射写死在 seed 即可；上第二套版本再补这张表（YAGNI）。
 - `units.bundle_id` 显式标记版本（江苏 js）；tasks 不加列，通过 `unit_id → units.bundle_id` 间接归属。
 - **家庭级**选版本（`families.curriculum_bundle`）：同一城市全家用同一套，不比 per-kid；`users.term_id` 仍 per-kid 管年级。
 - 查询统一加 `WHERE units.bundle_id = (SELECT curriculum_bundle FROM families WHERE id = :fid)`（走现有 `get_conn()` choke point，RLS 已就位）。
@@ -434,8 +464,8 @@ CREATE TABLE weak_points (
   created_at TEXT, resolved_at TEXT
 );
 ```
-- **埋点**：现有「单元测试」录入表单里，打分后**追加一步「勾薄弱点」**（从该科目 knowledge_tags 里勾，0~N 个，**勾选不手打**）。这是线下错题的唯一入口。
-- 家长 + 孩子都可勾（孩子端打卡测试时、家长端管理时都行），写 `kid_id`。
+- **埋点**：现有「单元测试」录入表单里（家长端），打完分**追加一步「勾薄弱点」**（从该科目 knowledge_tags 里勾，0~N 个，**勾选不手打**）。这是线下错题的唯一入口。
+- **权限（已定）**：weak_points/knowledge_tags 上 RLS；**家长写、孩子只读**——孩子端不暴露「新增薄弱点」入口，只读「今日复习」和「薄弱角标」，防止孩子自评"全会了"把诊断清空（自评水分）。
 
 ---
 
@@ -445,7 +475,7 @@ CREATE TABLE weak_points (
 
 - `review_due_at = 标记时间 + 间隔[review_count]`。
 - 到点 → 孩子端/家长端出现「**今日复习**」队列：该重默的字词、该重背的课文、该重做的口算类型。
-- 复习完点「完成」：**过关 → resolved=1（或 level 降档）；又错 → 间隔重置、从 1 天重来**。
+- 复习结果**由家长判定（已定）**：家长在面板上对到期的点一键「**已巩固** → resolved=1（或 level 降档）」「**还在错** → 间隔重置、从 1 天重来」。**不靠孩子自评**。
 - **只提醒「去做你练习册上的这件事」**，不推题不判题——这是和作业帮最后一线差异：它把你焊在屏幕里刷题，我们提醒你回到纸上。
 
 ---
@@ -458,7 +488,7 @@ CREATE TABLE weak_points (
   → 单元测试打分(tests) + 勾薄弱点(weak_points, tag 来自 knowledge_tags)
   → 按间隔算 review_due_at
   → 到点 →「今日复习」提醒重默字词/重背课文
-  → 复习完成 → 过关 resolved / 没关重置间隔
+  → 复习完成 → 家长判「已巩固 resolved / 还在错重置间隔」
   → 全家未 resolved 薄弱点 → 家长面板「下周该盯什么」
 ```
 
@@ -512,7 +542,7 @@ CREATE TABLE fitness_standards (
 );
 -- item：跳绳(次/分)、仰卧起坐(次/分)、体前屈(cm)
 ```
-- 数据源：**江苏学生体质健康标准**，按年级+性别录达标值；**必须可靠来源后补，不拍脑袋填数字**。
+- 数据源：**《国家学生体质健康标准(2014 年修订)》**（全国统一、江苏执行同一套），按年级+性别录单项评分表；**必须据官方文件录，不拍脑袋填数字**。
 
 ### 呈现
 
@@ -591,6 +621,10 @@ CREATE TABLE fitness_standards (
 3. **迁移幂等 + 先备份**：每个 ALTER 都 `try/except`，`backup_db.py` 是前置。
 4. **ledger 不动**：仍 append-only，新增 `kid_id` 列只回填不重算，历史余额/等级不变。
 5. 娃「独立账号」意味着娃要多一步登录——保留「记住这台设备」的免密选项（绑定设备 + 可选 PIN），避免娃每天嫌烦弃用。
+6. **weak_points / knowledge_tags 上 RLS**（跟 profiles/daily_tasks 同套路），诊断数据不比打卡数据松。
+7. **诊断权归家长**：薄弱点家长写、孩子只读，孩子端不暴露「新增薄弱点」入口——否则孩子自评"全会了"把诊断清空。
+8. **复习过关由家长判**（一键「已巩固/还在错」），不靠孩子自评。
+9. **fitness_standards 达标线必须据《国家学生体质健康标准》官方文件录**，禁止拍脑袋填数字。
 
 ---
 
