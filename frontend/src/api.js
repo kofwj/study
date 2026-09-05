@@ -1,5 +1,11 @@
+export let selectedKid = ''
+export function setSelectedKid(id) { selectedKid = id || '' }
+
 const j = async (url, opts = {}) => {
   const headers = { 'Content-Type': 'application/json', ...(opts.headers || {}) }
+  if (selectedKid) {
+    url += (url.includes('?') ? '&' : '?') + 'selected_kid=' + encodeURIComponent(selectedKid)
+  }
   const r = await fetch(url, { ...opts, headers, credentials: 'include' })
   if (!r.ok) {
     let msg = `请求失败 (${r.status})`
@@ -55,10 +61,14 @@ export const api = {
     updateDaily: (id, o) => j(`/api/admin/daily/${id}`, { method: 'PUT', ...body(o) }),
     delDaily: (id) => j(`/api/admin/daily/${id}`, { method: 'DELETE' }),
     setCursor: (o) => j('/api/admin/cursor', { method: 'POST', ...body(o) }),
-    setTerm: (term_id) => j('/api/admin/term', { method: 'POST', ...body({ term_id }) }),
+
     setProgressLock: (on) => j('/api/admin/progress-lock', { method: 'POST', ...body({ on }) }),
     tests: () => j('/api/admin/tests'),
     createTest: (o) => j('/api/admin/tests', { method: 'POST', ...body(o) }),
     delTest: (id) => j(`/api/admin/tests/${id}`, { method: 'DELETE' }),
+    kids: () => j('/api/admin/kids'),
+    createKid: (o) => j('/api/admin/kids', { method: 'POST', ...body(o) }),
+    updateKid: (id, o) => j(`/api/admin/kids/${id}`, { method: 'PUT', ...body(o) }),
+    delKid: (id) => j(`/api/admin/kids/${id}`, { method: 'DELETE' }),
   },
 }

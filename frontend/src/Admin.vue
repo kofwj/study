@@ -1,8 +1,11 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
-import { api } from './api.js'
+import { api, setSelectedKid } from './api.js'
 
-const emit = defineEmits(['exit'])
+const emit = defineEmits(['exit', 'switched'])
+const kids = ref([])
+const selectedKid = ref('')
+const newKid = reactive({ name: '', account: '', pin: '', term_id: 'g5s1' })
 const tab = ref('weekly')
 const rewards = ref([])
 const ranks = ref([])
@@ -18,7 +21,7 @@ const redemptions = ref([])
 const tests = ref([])
 const newTest = reactive({ subject_id: '', unit_id: '', score: '', note: '' })
 const TEST_BANDS = [[100, 30], [95, 20], [90, 15], [85, 10], [0, 5]]
-const weekly = ref({ days: [], weeks: [], by_subject: [], total_earned: 0, total_spent: 0, net: 0, balance: 0, earned_all: 0, streak: 0, checkins: 0, week_start: '', week_end: '' })
+const weekly = ref({ days: [], weeks: [], by_subject: [], kids: [], total_earned: 0, total_spent: 0, net: 0, balance: 0, earned_all: 0, streak: 0, checkins: 0, week_start: '', week_end: '' })
 const toast = ref('')
 
 const maxDayEarn = computed(() => Math.max(1, ...(weekly.value.days || []).map((d) => d.earned)))
@@ -39,6 +42,12 @@ function showToast(m) { toast.value = m; setTimeout(() => (toast.value = ''), 22
 function unitName(id) { return units.value.find(u => u.id === id)?.name || id }
 
 async function load() {
+  const ks = await api.admin.kids()
+  kids.value = ks
+  if (!selectedKid.value && ks.length) {
+    selectedKid.value = ks[0].id
+    setSelectedKid(ks[0].id)
+  }
   const [r, rk, t, rd, wk, ts] = await Promise.all([api.rewards(), api.admin.ranks(), api.tasks(), api.admin.redemptions(), api.admin.weekly(), api.admin.tests()])
   rewards.value = r
   ranks.value = rk
@@ -160,10 +169,40 @@ async function setCursor(subj, taskId) {
   } catch (e) { showToast(e.message) }
 }
 
-async function changeTerm() {
+async function switchKid() {
+  setSelectedKid(selectedKid.value)
+  emit('switched')
+  await load()
+}
+async function pickKid(id) {
+  selectedKid.value = id
+  await switchKid()
+}
+
+async function addKid() {
+  if (!newKid.name) return showToast('填名字')
   try {
-    await api.admin.setTerm(activeTerm.value)
-    showToast('已切换学期')
+    await api.admin.createKid({ ...newKid })
+    newKid.name = newKid.account = newKid.pin = ''
+    showToast('已添加')
+    await load()
+  } catch (e) { showToast(e.message) }
+}
+
+async function saveKid(k) {
+  try {
+    await api.admin.updateKid(k.id, { name: k.name, term_id: k.term_id, pin: k._pin || '' })
+    k._pin = ''
+    showToast('已保存')
+    await load()
+  } catch (e) { showToast(e.message) }
+}
+async function delKid(k) {
+  if (!confirm('删除「' + k.name + '」？打卡记录还在库里，只是账号没了。')) return
+  try {
+    await api.admin.delKid(k.id)
+    if (selectedKid.value === k.id) { selectedKid.value = ''; setSelectedKid('') }
+    showToast('已删除')
     await load()
   } catch (e) { showToast(e.message) }
 }
@@ -194,9 +233,9 @@ onMounted(load)
       <div>
         <div class="a-title">🛠️ 家长管理</div>
         <div class="a-sub">给孩子配置奖励、等级与任务</div>
-        <label class="a-term">学期
-          <select v-model="activeTerm" @change="changeTerm">
-            <option v-for="tm in terms" :key="tm.id" :value="tm.id">{{ tm.label }}</option>
+        <label class="a-term">看哪个娃
+          <select v-model="selectedKid" @change="switchKid">
+            <option v-for="k in kids" :key="k.id" :value="k.id">{{ k.name }}</option>
           </select>
         </label>
       </div>
@@ -211,6 +250,7 @@ onMounted(load)
       <button :class="{ on: tab === 'task' }" @click="tab = 'task'">任务</button>
       <button :class="{ on: tab === 'cursor' }" @click="tab = 'cursor'">已学到</button>
       <button :class="{ on: tab === 'test' }" @click="tab = 'test'">测试</button>
+      <button :class="{ on: tab === 'kids' }" @click="tab = 'kids'">孩子</button>
       <button :class="{ on: tab === 'pin' }" @click="tab = 'pin'">密码</button>
     </div>
 
@@ -218,6 +258,12 @@ onMounted(load)
     <section v-if="tab === 'weekly'" class="a-card">
       <h3>📊 本周周报</h3>
       <p class="lead">{{ weekly.week_start }} ~ {{ weekly.week_end }}（周一到周日）</p>
+      <div v-if="(weekly.kids || []).length" class="w-kids">
+        <div v-for="k in weekly.kids" :key="k.id" class="w-box" :class="{ on: k.current }" @click="pickKid(k.id)">
+          <span>{{ k.name }}</span><b>+{{ k.earned }}</b>
+          <i class="dim">花 {{ k.spent }} · 连击 {{ k.streak }}</i>
+        </div>
+      </div>
       <div class="w-summary">
         <div class="w-box"><span>本周赚</span><b>+{{ weekly.total_earned }}</b></div>
         <div class="w-box"><span>兑换花</span><b>-{{ weekly.total_spent }}</b></div>
@@ -426,6 +472,29 @@ onMounted(load)
       </div>
     </section>
 
+    <section v-if="tab === 'kids'" class="a-card">
+      <h3>管理孩子</h3>
+      <div class="a-item" v-for="k in kids" :key="k.id">
+        <span class="badge">{{ k.name }}</span>
+        <span class="dim">{{ k.account }}</span>
+        <select v-model="k.term_id">
+          <option v-for="tm in terms" :key="tm.id" :value="tm.id">{{ tm.label }}</option>
+        </select>
+        <input v-model="k._pin" type="password" placeholder="改 PIN" class="w-num" />
+        <button class="ok" @click="saveKid(k)">存</button>
+        <button class="del" @click="delKid(k)">删</button>
+      </div>
+      <div class="a-item add">
+        <input v-model="newKid.name" placeholder="名字" class="w-name" />
+        <input v-model="newKid.account" placeholder="账号" class="w-cat" />
+        <input v-model="newKid.pin" placeholder="PIN" class="w-num" />
+        <select v-model="newKid.term_id">
+          <option v-for="tm in terms" :key="tm.id" :value="tm.id">{{ tm.label }}</option>
+        </select>
+        <button class="ok" @click="addKid">添加</button>
+      </div>
+    </section>
+
     <!-- 密码 -->
     <section v-if="tab === 'pin'" class="a-card">
       <h3>修改家长密码</h3>
@@ -487,6 +556,10 @@ onMounted(load)
 .daily .d-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; width: 100%; padding: 4px 0; }
 .toast { position: fixed; left: 50%; bottom: 30px; transform: translateX(-50%); background: rgba(31,59,85,.92); color: #fff; padding: 10px 18px; border-radius: 22px; font-size: 14px; z-index: 20; }
 
+.w-kids { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 12px; }
+.w-kids .w-box { cursor: pointer; }
+.w-kids .w-box.on { outline: 2px solid #ffb800; }
+.w-kids .w-box i { display: block; font-style: normal; font-size: 11px; }
 .w-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .w-box { background: #f4fafd; border: 1px solid #e8f3fa; border-radius: 12px; padding: 12px 6px; text-align: center; }
 .w-box span { display: block; font-size: 11px; color: #7aa0b8; margin-bottom: 4px; }

@@ -90,11 +90,11 @@ CREATE TABLE IF NOT EXISTS tests (
 
 
 class _Row(dict):
-    """sqlite3.Row 兼容：r['col'] / r[0] / dict(r)。"""
+    """sqlite3.Row 兼容：r['col'] / r[0] / dict(r)。缺列返回 None。"""
     def __getitem__(self, key):
         if isinstance(key, int):
             return list(dict.values(self))[key]
-        return dict.__getitem__(self, key)
+        return dict.get(self, key)
 
 
 def _pg_row_factory(cursor):
@@ -500,11 +500,23 @@ def _migrate_004(conn):
         conn.execute("GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO sunshine_app")
 
 
+def _migrate_005(conn):
+    _add_column(conn, "users", "force_pin_change TEXT DEFAULT '1'")
+    # None=没键→仍强制；''=家长 P1 已改→不再强制。DEFAULT '1' 已写过，必须全表覆盖。
+    raw = conn.execute("SELECT value FROM settings WHERE key='force_pin_change'").fetchone()
+    flag = "1" if raw is None else (raw["value"] or "")
+    conn.execute("UPDATE users SET force_pin_change=?", (flag,))
+    conn.execute("DELETE FROM settings WHERE key='force_pin_change'")
+    if conn.pg:
+        conn.execute("GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO sunshine_app")
+
+
 MIGRATIONS = (
     ("001_identity", _migrate_001),
     ("002_kid_id", _migrate_002),
     ("003_rls", _migrate_003),
     ("004_auth", _migrate_004),
+    ("005_force_pin", _migrate_005),
 )
 
 
@@ -587,6 +599,18 @@ def set_setting(conn, key, value):
                  "ON CONFLICT(key) DO UPDATE SET value=excluded.value", (str(key), str(value)))
 
 
-def insert_ledger(conn, date, delta, reason, ref_id, note, kid_id=DEFAULT_KID):
+def get_kid_setting(conn, kid, key, default=None):
+    r = conn.execute("SELECT value FROM kid_settings WHERE kid_id=? AND key=?", (kid, key)).fetchone()
+    return r["value"] if r else default
+
+
+def set_kid_setting(conn, kid, key, value):
+    conn.execute(
+        "INSERT INTO kid_settings(kid_id,key,value) VALUES(?,?,?) "
+        "ON CONFLICT(kid_id, key) DO UPDATE SET value=excluded.value",
+        (kid, key, str(value)))
+
+
+def insert_ledger(conn, date, delta, reason, ref_id, note, kid_id):
     conn.execute("INSERT INTO ledger(date,delta,reason,ref_id,note,created_at,kid_id) VALUES(?,?,?,?,?,?,?)",
                  (date, delta, reason, ref_id, note, now(), kid_id))

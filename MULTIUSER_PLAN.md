@@ -235,7 +235,8 @@ def require_parent(user=Depends(get_current_user)):
 1. **Postgres 迁移/RLS 是 P0 的事，别塞回 P3**：本阶段只做「多家庭隔离」，数据库已 Postgres+RLS 就位。
 2. **`curriculum_ver` 全局重灌逻辑要按家庭拆**：现在 `apply_curriculum` 用全局 `settings.curriculum_ver` 决定是否重灌；一旦「每家庭独立课程版本」（第 7 节第 10 条）成立，版本号要变成 `family_curriculum_ver(family_id)`、重灌按家庭触发——否则 A 家一换教材，B 家的系统任务也被删了重插。
 3. **课程共享、家庭配置不共享**：`terms/units/tasks(教材)/daily_tasks` 全局共享（正确）；`rewards/ranks/custom/ledger/completions/redemptions/tests/kid_settings` 全要 `family_id`（或由 `kid→family` 反查）在 **SQL 层强制**。任何一处漏 `AND family_id=?` 就是跨租户数据泄漏，不能只靠前端藏。
-4. **成员权限要回收语义**：parent（全权）/observer（只读）；删成员、删家庭时，该成员名下数据归属怎么处理（软删 / 级联 / 移交给首家长）——不定义就是孤儿数据。
+4. **成员权限要回收语义**：parent（全权）/observer（只读）；删成员、删家庭时，该成员名下数据归属怎么处理（软删 / 级联 / 移交给首家长）——不定义就是孤儿数据。P2 `kids_delete` 已硬删 users/profiles，ledger 等活动行会孤儿，本阶段定软删还是级联。
+4b. **`rank_update/rank_delete` 显式 `AND family_id`**：现在靠 RLS 兜；`admin/tasks` 新建系统任务（custom 空）会进全局课表，多家庭前必须挂 family 或标 custom。
 5. **会话里的 family 是权威**：所有 `kid_id → family_id` 解析从服务端 `users` 表来，不读前端传的 `family_id` 参数。
 
 **步骤**

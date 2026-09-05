@@ -22,8 +22,8 @@ from pydantic import BaseModel
 
 import db
 
-_kid = contextvars.ContextVar("kid", default=db.DEFAULT_KID)
-_fam = contextvars.ContextVar("fam", default=db.DEFAULT_FAMILY)
+_kid = contextvars.ContextVar("kid", default=None)
+_fam = contextvars.ContextVar("fam", default=None)
 COOKIE_PARENT, COOKIE_KID = "pid", "sid"
 TOKEN_MAX_AGE = 7 * 24 * 3600
 _fails = {}
@@ -52,15 +52,21 @@ def get_conn():
 
 
 def kid_id():
-    return _kid.get()
+    k = _kid.get()
+    if not k:
+        raise RuntimeError("kid scope missing")
+    return k
 
 
-def insert_ledger(c, date, delta, reason, ref_id, note):
-    db.insert_ledger(c, date, delta, reason, ref_id, note, kid_id=kid_id())
+def insert_ledger(c, date, delta, reason, ref_id, note, kid=None):
+    db.insert_ledger(c, date, delta, reason, ref_id, note, kid_id=kid or kid_id())
 
 
 def active_term(c):
-    return db.get_setting(c, "active_term", "g5s1")
+    r = c.execute("SELECT term_id, name FROM users WHERE id=?", (kid_id(),)).fetchone()
+    if not r:
+        return "g5s1"
+    return r["term_id"] or "g5s1"
 
 
 def _client_ip(request: Request) -> str:
@@ -131,15 +137,25 @@ async def auth_mw(request: Request, call_next):
     u = _user_from_request(request)
     if not u:
         return JSONResponse({"detail": "未登录"}, 401)
-    kid = u["id"] if u["role"] == "kid" else (request.query_params.get("selected_kid") or db.DEFAULT_KID)
-    if u["role"] == "parent" and kid != db.DEFAULT_KID:
-        c = db.connect()
-        try:
-            row = c.execute("SELECT family_id FROM users WHERE id=? AND role='kid'", (kid,)).fetchone()
-        finally:
-            c.close()
-        if not row or row["family_id"] != u["family_id"]:
-            return JSONResponse({"detail": "未登录"}, 403)
+    c0 = db.connect()
+    try:
+        if u["role"] == "kid":
+            kid = u["id"]
+        else:
+            kid = request.query_params.get("selected_kid")
+            if kid:
+                row = c0.execute("SELECT family_id FROM users WHERE id=? AND role='kid'", (kid,)).fetchone()
+                if not row or row["family_id"] != u["family_id"]:
+                    return JSONResponse({"detail": "未登录"}, 403)
+            else:
+                row = c0.execute(
+                    "SELECT id FROM users WHERE family_id=? AND role='kid' ORDER BY created_at LIMIT 1",
+                    (u["family_id"],)).fetchone()
+                kid = row["id"] if row else None
+    finally:
+        c0.close()
+    if not kid:
+        return JSONResponse({"detail": "没有孩子"}, 400)
     tok_k, tok_f = _kid.set(kid), _fam.set(u["family_id"])
     request.state.user = u
     try:
@@ -156,13 +172,14 @@ def require_parent(request: Request):
     return u
 
 
-def earned(c):
+def earned(c, kid=None):
     # 累计获得：赚/取消都算（正负抵消），唯独「兑换消费(redeem)」不算 → 消费不掉级
-    return c.execute("SELECT COALESCE(SUM(delta),0) FROM ledger WHERE reason != 'redeem'").fetchone()[0]
+    return c.execute("SELECT COALESCE(SUM(delta),0) FROM ledger WHERE reason != 'redeem' AND kid_id=?",
+                     (kid or kid_id(),)).fetchone()[0]
 
 
-def balance(c):
-    return c.execute("SELECT COALESCE(SUM(delta),0) FROM ledger").fetchone()[0]
+def balance(c, kid=None):
+    return c.execute("SELECT COALESCE(SUM(delta),0) FROM ledger WHERE kid_id=?", (kid or kid_id(),)).fetchone()[0]
 
 
 def level_info(c):
@@ -204,13 +221,13 @@ def today_label():
 def subject_order(c, subject_id):
     rows = c.execute(
         "SELECT t.id FROM tasks t LEFT JOIN units u ON u.id=t.unit_id "
-        "WHERE t.subject_id=? AND (u.term_id=? OR COALESCE(t.custom,0)=1) "
-        "ORDER BY COALESCE(u.seq,99), t.sort", (subject_id, active_term(c))).fetchall()
+        "WHERE t.subject_id=? AND (u.term_id=? OR (COALESCE(t.custom,0)=1 AND (t.kid_id IS NULL OR t.kid_id=?))) "
+        "ORDER BY COALESCE(u.seq,99), t.sort", (subject_id, active_term(c), kid_id())).fetchall()
     return [r["id"] for r in rows]
 
 
 def is_past(c, task_id, subject_id):
-    cur = db.get_setting(c, "cursor_" + subject_id, "")
+    cur = db.get_kid_setting(c, kid_id(), "cursor_" + subject_id, "")
     if not cur:
         return False
     ids = subject_order(c, subject_id)
@@ -226,19 +243,20 @@ def locked_task_ids(c):
     term = active_term(c)
     tseq = {r["id"]: r["seq"] for r in c.execute(
         "SELECT t.id, COALESCE(u.seq,0) seq FROM tasks t LEFT JOIN units u ON u.id=t.unit_id "
-        "WHERE u.term_id=? OR COALESCE(t.custom,0)=1", (term,)).fetchall()}
-    custom_ids = {r["id"] for r in c.execute("SELECT id FROM tasks WHERE custom=1").fetchall()}
+        "WHERE u.term_id=? OR (COALESCE(t.custom,0)=1 AND (t.kid_id IS NULL OR t.kid_id=?))", (term, kid_id())).fetchall()}
+    custom_ids = {r["id"] for r in c.execute(
+        "SELECT id FROM tasks WHERE custom=1 AND (kid_id IS NULL OR kid_id=?)", (kid_id(),)).fetchall()}
     locked = set()
     for sid in {r[0] for r in c.execute(
             "SELECT DISTINCT t.subject_id FROM tasks t LEFT JOIN units u ON u.id=t.unit_id "
-            "WHERE u.term_id=? OR COALESCE(t.custom,0)=1", (term,)).fetchall()}:
+            "WHERE u.term_id=? OR (COALESCE(t.custom,0)=1 AND (t.kid_id IS NULL OR t.kid_id=?))", (term, kid_id())).fetchall()}:
         ids = subject_order(c, sid)
         cur_seq = None
         for tid in ids:
             if tid in custom_ids:
                 continue
-            done = c.execute("SELECT 1 FROM completions WHERE task_id=? AND status='completed'",
-                            (tid,)).fetchone() is not None
+            done = c.execute("SELECT 1 FROM completions WHERE task_id=? AND status='completed' AND kid_id=?",
+                            (tid, kid_id())).fetchone() is not None
             if done or is_past(c, tid, sid):
                 continue
             cur_seq = tseq.get(tid, 0)
@@ -248,13 +266,14 @@ def locked_task_ids(c):
     return locked
 
 
-def streak(c):
+def streak(c, kid=None):
     # 连击 = 连续几天有「任何学习活动」（签到 / 完成任务 / 每日打卡 / 兑换成功）
-    dates = {r["date"] for r in c.execute("SELECT DISTINCT date FROM checkins").fetchall()}
+    kid = kid or kid_id()
+    dates = {r["date"] for r in c.execute("SELECT DISTINCT date FROM checkins WHERE kid_id=?", (kid,)).fetchall()}
     dates |= {r["date"] for r in c.execute(
-        "SELECT DISTINCT date FROM completions WHERE status='completed'").fetchall()}
+        "SELECT DISTINCT date FROM completions WHERE status='completed' AND kid_id=?", (kid,)).fetchall()}
     dates |= {r["date"] for r in c.execute(
-        "SELECT DISTINCT date FROM redemptions WHERE status IN ('done','delivered')").fetchall()}
+        "SELECT DISTINCT date FROM redemptions WHERE status IN ('done','delivered') AND kid_id=?", (kid,)).fetchall()}
     d = datetime.now().date()
     n = 0
     while d.isoformat() in dates:
@@ -267,15 +286,16 @@ def streak(c):
 MILESTONES = [(7, 20), (14, 50), (30, 100)]
 
 
-def maybe_milestone(c):
-    """连击达 7/14/30 天各发一次一次性阳光（用 settings 标记，绝不重复）。返回 [(天数, 奖励)]。"""
-    s = streak(c)
+def maybe_milestone(c, kid=None):
+    """连击达 7/14/30 天各发一次一次性阳光（用 kid_settings 标记，绝不重复）。返回 [(天数, 奖励)]。"""
+    kid = kid or kid_id()
+    s = streak(c, kid)
     got = []
     for days, bonus in MILESTONES:
         key = f"milestone_{days}"
-        if s >= days and not db.get_setting(c, key, ""):
-            db.set_setting(c, key, db.today())
-            insert_ledger(c, db.today(), bonus, "milestone", key, f"连续坚持 {days} 天")
+        if s >= days and not db.get_kid_setting(c, kid, key, ""):
+            db.set_kid_setting(c, kid, key, db.today())
+            insert_ledger(c, db.today(), bonus, "milestone", key, f"连续坚持 {days} 天", kid=kid)
             got.append((days, bonus))
     return got
 
@@ -308,22 +328,23 @@ ACHIEVEMENTS = [
 @app.get("/api/achievements")
 def achievements():
     c = get_conn()
-    total = c.execute("SELECT COUNT(*) FROM completions WHERE status='completed'").fetchone()[0]
-    unit_done = c.execute("SELECT COUNT(*) FROM completions WHERE status='completed' AND kind='unit'").fetchone()[0]
-    sport = c.execute("SELECT COUNT(*) FROM completions WHERE status='completed' AND kind='daily'").fetchone()[0]
-    go_n = c.execute("SELECT COUNT(*) FROM completions WHERE status='completed' AND kind='daily' AND task_id='go-play'").fetchone()[0]
-    calc_n = c.execute("SELECT COUNT(*) FROM completions WHERE status='completed' AND kind='daily' AND task_id='ma-calc'").fetchone()[0]
+    kid = kid_id()
+    total = c.execute("SELECT COUNT(*) FROM completions WHERE status='completed' AND kid_id=?", (kid,)).fetchone()[0]
+    unit_done = c.execute("SELECT COUNT(*) FROM completions WHERE status='completed' AND kind='unit' AND kid_id=?", (kid,)).fetchone()[0]
+    sport = c.execute("SELECT COUNT(*) FROM completions WHERE status='completed' AND kind='daily' AND kid_id=?", (kid,)).fetchone()[0]
+    go_n = c.execute("SELECT COUNT(*) FROM completions WHERE status='completed' AND kind='daily' AND task_id='go-play' AND kid_id=?", (kid,)).fetchone()[0]
+    calc_n = c.execute("SELECT COUNT(*) FROM completions WHERE status='completed' AND kind='daily' AND task_id='ma-calc' AND kid_id=?", (kid,)).fetchone()[0]
     custom_n = c.execute(
         "SELECT COUNT(*) FROM completions c JOIN tasks t ON t.id=c.task_id "
-        "WHERE c.status='completed' AND COALESCE(t.custom,0)=1").fetchone()[0]
-    shop_n = c.execute("SELECT COUNT(*) FROM redemptions WHERE status IN ('done','delivered')").fetchone()[0]
-    best_test = c.execute("SELECT COALESCE(MAX(score),0) FROM tests").fetchone()[0]
-    box_n = int(db.get_setting(c, "box_opened", "0"))
+        "WHERE c.status='completed' AND COALESCE(t.custom,0)=1 AND c.kid_id=?", (kid,)).fetchone()[0]
+    shop_n = c.execute("SELECT COUNT(*) FROM redemptions WHERE status IN ('done','delivered') AND kid_id=?", (kid,)).fetchone()[0]
+    best_test = c.execute("SELECT COALESCE(MAX(score),0) FROM tests WHERE kid_id=?", (kid,)).fetchone()[0]
+    box_n = int(db.get_kid_setting(c, kid_id(), "box_opened", "0"))
     s = streak(c)
     e = earned(c)
     done_by_subj = {r[0]: r[1] for r in c.execute(
         "SELECT t.subject_id, COUNT(*) FROM completions c JOIN tasks t ON t.id=c.task_id "
-        "WHERE c.status='completed' GROUP BY t.subject_id").fetchall()}
+        "WHERE c.status='completed' AND c.kid_id=? GROUP BY t.subject_id", (kid,)).fetchall()}
     cur = {
         "first": total, "all100": unit_done,
         "sport": sport, "daily30": sport, "go10": go_n, "calc10": calc_n,
@@ -348,7 +369,7 @@ BOX_INTERVAL = 3
 def boxes():
     c = get_conn()
     s = streak(c)
-    opened = int(db.get_setting(c, "box_opened", "0"))
+    opened = int(db.get_kid_setting(c, kid_id(), "box_opened", "0"))
     earned = s // BOX_INTERVAL
     c.close()
     return {"avail": max(0, earned - opened), "opened": opened, "earned": earned, "streak": s}
@@ -358,12 +379,12 @@ def boxes():
 def open_box():
     c = get_conn()
     s = streak(c)
-    opened = int(db.get_setting(c, "box_opened", "0"))
+    opened = int(db.get_kid_setting(c, kid_id(), "box_opened", "0"))
     if s // BOX_INTERVAL <= opened:
         c.close()
         raise HTTPException(409, "还没有可开的宝箱，再坚持坚持吧！")
     bonus = random.randint(3, 10)
-    db.set_setting(c, "box_opened", str(opened + 1))
+    db.set_kid_setting(c, kid_id(), "box_opened", str(opened + 1))
     insert_ledger(c, db.today(), bonus, "box", f"box-{opened + 1}", "连击宝箱")
     c.commit()
     res = {"delta": bonus, "streak": streak(c), "level": level_info(c)}
@@ -405,15 +426,16 @@ def tasks():
     out = {
         "level": level_info(c),
         "streak": streak(c),
-        "kid_name": db.get_setting(c, "kid_name", "乐乐"),
+        "kid_name": (c.execute("SELECT name FROM users WHERE id=?", (kid_id(),)).fetchone() or {"name": "乐乐"})["name"],
+        "kid_id": kid_id(),
         "today": today_label(),
         "active_term": term,
         "term": dict(term_row) if term_row else {"id": term, "label": term},
         "terms": [dict(r) for r in c.execute("SELECT * FROM terms ORDER BY id").fetchall()],
         "cursors": {r["key"][7:]: r["value"] for r in c.execute(
-            "SELECT key,value FROM settings WHERE key LIKE ?", ("cursor_%",)).fetchall()},
+            "SELECT key,value FROM kid_settings WHERE kid_id=? AND key LIKE ?", (kid_id(), "cursor_%")).fetchall()},
         "today_checkin": c.execute(
-            "SELECT 1 FROM checkins WHERE date=?", (db.today(),)).fetchone() is not None,
+            "SELECT 1 FROM checkins WHERE date=? AND kid_id=?", (db.today(), kid_id())).fetchone() is not None,
         "subjects": [dict(r) for r in c.execute("SELECT * FROM subjects").fetchall()],
         "units": [{"id": r["id"], "name": r["name"], "subject_id": r["subject_id"]}
                   for r in c.execute(
@@ -430,10 +452,10 @@ def tasks():
     # 单元任务 + 完成状态（只看当前学期 + 自定义）
     tasks_rows = c.execute(
         "SELECT t.* FROM tasks t LEFT JOIN units u ON u.id=t.unit_id "
-        "WHERE u.term_id=? OR COALESCE(t.custom,0)=1 "
-        "ORDER BY t.subject_id, COALESCE(u.seq,99), t.sort", (term,)).fetchall()
+        "WHERE u.term_id=? OR (COALESCE(t.custom,0)=1 AND (t.kid_id IS NULL OR t.kid_id=?)) "
+        "ORDER BY t.subject_id, COALESCE(u.seq,99), t.sort", (term, kid_id())).fetchall()
     done_ids = {r["task_id"] for r in c.execute(
-        "SELECT DISTINCT task_id FROM completions WHERE status='completed'").fetchall()}
+        "SELECT DISTINCT task_id FROM completions WHERE status='completed' AND kid_id=?", (kid_id(),)).fetchall()}
     out["progress_lock"] = db.get_setting(c, "progress_lock", "1")
     locked_ids = locked_task_ids(c)
     out["tasks"] = [{**dict(t), "done": t["id"] in done_ids,
@@ -445,8 +467,8 @@ def tasks():
     for d in dts:
         dct = dict(d)
         comp_today = c.execute(
-            "SELECT * FROM completions WHERE task_id=? AND date=? AND status='completed' ORDER BY id DESC LIMIT 1",
-            (d["id"], db.today())).fetchone()
+            "SELECT * FROM completions WHERE task_id=? AND date=? AND status='completed' AND kid_id=? ORDER BY id DESC LIMIT 1",
+            (d["id"], db.today(), kid_id())).fetchone()
         dct["done_today"] = comp_today is not None
         dct["today_metrics"] = json.loads(comp_today["metrics"]) if comp_today and comp_today["metrics"] else None
         dct["metrics"] = [dict(m) for m in c.execute(
@@ -456,8 +478,8 @@ def tasks():
         for m in c.execute("SELECT * FROM daily_metrics WHERE task_id=?", (d["id"],)).fetchall():
             best = None
             for comp in c.execute(
-                "SELECT metrics FROM completions WHERE task_id=? AND status='completed' AND metrics IS NOT NULL",
-                (d["id"],)).fetchall():
+                "SELECT metrics FROM completions WHERE task_id=? AND status='completed' AND metrics IS NOT NULL AND kid_id=?",
+                (d["id"], kid_id())).fetchall():
                 v = (json.loads(comp["metrics"]) or {}).get(m["id"])
                 if v is None:
                     continue
@@ -507,8 +529,8 @@ def compute_daily_bonus(c, d, metrics):
             continue
         best = None
         for comp in c.execute(
-            "SELECT metrics FROM completions WHERE task_id=? AND status='completed' AND metrics IS NOT NULL",
-            (d["id"],)).fetchall():
+            "SELECT metrics FROM completions WHERE task_id=? AND status='completed' AND metrics IS NOT NULL AND kid_id=?",
+            (d["id"], kid_id())).fetchall():
             v = (json.loads(comp["metrics"]) or {}).get(m["id"])
             if v is None:
                 continue
@@ -575,13 +597,13 @@ class KidNameBody(BaseModel):
     name: str
 
 
-@app.post("/api/kid-name")
+@app.post("/api/kid-name", dependencies=[Depends(require_parent)])
 def set_kid_name(body: KidNameBody):
     name = (body.name or "").strip()[:12]
     if not name:
         raise HTTPException(400, "名字不能为空")
     c = get_conn()
-    db.set_setting(c, "kid_name", name)
+    c.execute("UPDATE users SET name=? WHERE id=?", (name, kid_id()))
     c.commit()
     c.close()
     return {"name": name}
@@ -591,10 +613,11 @@ class CustomTaskBody(BaseModel):
     subject_id: str
     title: str
     sunshine: int = 5
+    kid_id: Optional[str] = None  # None=全家
 
 
 @app.post("/api/custom-task", dependencies=[Depends(require_parent)])
-def custom_task(body: CustomTaskBody):
+def custom_task(body: CustomTaskBody, request: Request):
     title = (body.title or "").strip()[:40]
     if not title:
         raise HTTPException(400, "填一下任务名称")
@@ -602,13 +625,18 @@ def custom_task(body: CustomTaskBody):
     if not c.execute("SELECT 1 FROM subjects WHERE id=?", (body.subject_id,)).fetchone():
         c.close()
         raise HTTPException(404, "没有这个学科")
-    # 自定义任务归到独立的「自定义」单元（seq=99 排最后），不混进教材单元
+    owner = body.kid_id or None
+    if owner:
+        u = request.state.user
+        row = c.execute("SELECT family_id FROM users WHERE id=? AND role='kid'", (owner,)).fetchone()
+        if not row or row["family_id"] != u["family_id"]:
+            c.close(); raise HTTPException(404, "没找到这个孩子")
     unit_id = f"custom-{body.subject_id}"
     c.execute("INSERT INTO units(id,subject_id,term_id,seq,name) VALUES(?,?,?,?,?) ON CONFLICT DO NOTHING",
               (unit_id, body.subject_id, active_term(c), 99, "自定义"))
     tid = uuid.uuid4().hex[:8]
-    c.execute("INSERT INTO tasks(id,subject_id,unit_id,action,title,sunshine,sort,custom,family_id) VALUES(?,?,?,?,?,?,99,1,?)",
-              (tid, body.subject_id, unit_id, "自定义", title, body.sunshine or 5, db.DEFAULT_FAMILY))
+    c.execute("INSERT INTO tasks(id,subject_id,unit_id,action,title,sunshine,sort,custom,family_id,kid_id) VALUES(?,?,?,?,?,?,99,1,?,?)",
+              (tid, body.subject_id, unit_id, "自定义", title, body.sunshine or 5, request.state.user["family_id"], owner))
     c.commit()
     c.close()
     return {"id": tid}
@@ -636,8 +664,8 @@ def cancel(body: CompleteBody):
     t = db.today()
     # 单元任务：整个学期内有已完成记录即可取消；每日任务：只取消今天这条
     comp = c.execute(
-        "SELECT * FROM completions WHERE task_id=? AND status='completed' ORDER BY id DESC LIMIT 1",
-        (body.task_id,)).fetchone()
+        "SELECT * FROM completions WHERE task_id=? AND status='completed' AND kid_id=? ORDER BY id DESC LIMIT 1",
+        (body.task_id, kid_id())).fetchone()
     if not comp:
         c.close()
         raise HTTPException(404, "没有可取消的记录")
@@ -706,7 +734,7 @@ def redemptions():
 def ledger(limit: int = 20):
     c = get_conn()
     return [dict(r) for r in c.execute(
-        "SELECT * FROM ledger ORDER BY id DESC LIMIT ?", (limit,)).fetchall()]
+        "SELECT * FROM ledger WHERE kid_id=? ORDER BY id DESC LIMIT ?", (kid_id(), limit)).fetchall()]
 
 
 # ---------------- 管理端（家长，需 PIN） -------------
@@ -720,8 +748,8 @@ class CursorBody(BaseModel):
 @app.post("/api/admin/cursor", dependencies=[Depends(require_parent)])
 def set_cursor(b: CursorBody):
     c = get_conn()
-    db.set_setting(c, "cursor_" + b.subject_id, b.task_id)
-    c.commit()
+    db.set_kid_setting(c, kid_id(), "cursor_" + b.subject_id, b.task_id)
+    c.commit(); c.close()
     return {"ok": True}
 
 
@@ -737,19 +765,7 @@ def set_progress_lock(b: LockBody):
     return {"ok": True}
 
 
-class TermBody(BaseModel):
-    term_id: str
 
-
-@app.post("/api/admin/term", dependencies=[Depends(require_parent)])
-def set_active_term(b: TermBody):
-    c = get_conn()
-    if not c.execute("SELECT 1 FROM terms WHERE id=?", (b.term_id,)).fetchone():
-        c.close()
-        raise HTTPException(404, "没有这个学期")
-    db.set_setting(c, "active_term", b.term_id)
-    c.commit(); c.close()
-    return {"ok": True, "term_id": b.term_id}
 
 
 class LoginBody(BaseModel):
@@ -771,7 +787,7 @@ def auth_login(b: LoginBody, request: Request):
     try:
         u = c.execute("SELECT * FROM users WHERE account=?", (account,)).fetchone()
         ok = bool(u) and db.verify_pin(b.pin, u["pin_hash"] or "")
-        force = bool(db.get_setting(c, "force_pin_change", "")) if ok else False
+        force = bool(ok and u["force_pin_change"] not in (None, "", "0"))
         user = dict(u) if ok else None
     finally:
         c.close()
@@ -806,10 +822,8 @@ def auth_logout(request: Request):
 @app.get("/api/auth/me")
 def auth_me(request: Request):
     u = getattr(request.state, "user", None)
-    c = get_conn()
-    force = bool(db.get_setting(c, "force_pin_change", ""))
-    c.close()
-    return {"role": u["role"], "name": u["name"], "account": u["account"], "force_pin_change": force}
+    return {"role": u["role"], "name": u["name"], "account": u["account"],
+            "force_pin_change": bool(u.get("force_pin_change"))}
 
 
 @app.post("/api/admin/pin", dependencies=[Depends(require_parent)])
@@ -819,11 +833,10 @@ def admin_change_pin(b: PinBody, request: Request):
         raise HTTPException(400, "密码至少 4 位")
     u = request.state.user
     c = get_conn()
-    c.execute("UPDATE users SET pin_hash=? WHERE id=?", (db.hash_pin(pin), u["id"]))
+    c.execute("UPDATE users SET pin_hash=?, force_pin_change='' WHERE id=?", (db.hash_pin(pin), u["id"]))
     # ponytail: created_at 存 unix 浮点串，和 token.iat 比；别改成 ISO
     c.execute("INSERT INTO revoked(jti,created_at) VALUES(?,?) ON CONFLICT(jti) DO UPDATE SET created_at=excluded.created_at",
               ("u:" + u["id"], str(time.time())))
-    db.set_setting(c, "force_pin_change", "")
     c.commit(); c.close()
     payload = {"user_id": u["id"], "family_id": u["family_id"], "role": u["role"],
                "term_id": u.get("term_id"), "iat": time.time()}
@@ -844,7 +857,7 @@ def reward_create(b: RewardIn):
     c = get_conn()
     rid = uuid.uuid4().hex[:8]
     c.execute("INSERT INTO rewards(id,name,price,category,need_approval,family_id) VALUES(?,?,?,?,0,?)",
-              (rid, b.name, b.price, b.category, db.DEFAULT_FAMILY))
+              (rid, b.name, b.price, b.category, _fam.get()))
     c.commit(); c.close()
     return {"id": rid}
 
@@ -885,12 +898,13 @@ def redemption_approve(rid: str):
         c.close(); raise HTTPException(404, "没找到这条兑换")
     if rd["status"] != "pending":
         c.close(); raise HTTPException(409, "这条已处理过")
-    if balance(c) < rd["price"]:
-        c.close(); raise HTTPException(409, "阳光不够，还差 %d" % (rd["price"] - balance(c)))
+    applicant = rd["kid_id"] or kid_id()
+    if balance(c, applicant) < rd["price"]:
+        c.close(); raise HTTPException(409, "阳光不够，还差 %d" % (rd["price"] - balance(c, applicant)))
     c.execute("UPDATE redemptions SET status='done' WHERE id=?", (rid,))
     rw = c.execute("SELECT name FROM rewards WHERE id=?", (rd["reward_id"],)).fetchone()
-    insert_ledger(c, db.today(), -rd["price"], "redeem", f"red-{rid}", rw["name"] if rw else "兑换")
-    maybe_milestone(c)
+    insert_ledger(c, db.today(), -rd["price"], "redeem", f"red-{rid}", rw["name"] if rw else "兑换", kid=applicant)
+    maybe_milestone(c, applicant)
     c.commit(); c.close()
     return {"ok": True}
 
@@ -998,7 +1012,7 @@ def ranks_admin():
 def rank_create(b: RankIn):
     c = get_conn()
     c.execute("INSERT INTO ranks(id,name,min_sunshine,sort,family_id) VALUES(?,?,?,?,?)",
-              (uuid.uuid4().hex[:8], b.name, b.min_sunshine, b.min_sunshine, db.DEFAULT_FAMILY))
+              (uuid.uuid4().hex[:8], b.name, b.min_sunshine, b.min_sunshine, _fam.get()))
     c.commit(); c.close()
     return {"ok": True}
 
@@ -1113,39 +1127,55 @@ def daily_delete(did: str):
 @app.get("/api/admin/weekly", dependencies=[Depends(require_parent)])
 def weekly():
     c = get_conn()
+    kid = kid_id()
     today = datetime.now().date()
     monday = today - timedelta(days=today.weekday())
     days = []
     for i in range(7):
         d = (monday + timedelta(days=i)).isoformat()
-        day_earned = c.execute("SELECT COALESCE(SUM(delta),0) FROM ledger WHERE date=? AND delta>0", (d,)).fetchone()[0]
+        day_earned = c.execute("SELECT COALESCE(SUM(delta),0) FROM ledger WHERE date=? AND delta>0 AND kid_id=?", (d, kid)).fetchone()[0]
         day_spent = c.execute(
-            "SELECT COALESCE(SUM(-delta),0) FROM ledger WHERE date=? AND reason='redeem' AND delta<0", (d,)).fetchone()[0]
+            "SELECT COALESCE(SUM(-delta),0) FROM ledger WHERE date=? AND reason='redeem' AND delta<0 AND kid_id=?", (d, kid)).fetchone()[0]
         days.append({"date": d, "weekday": WEEKDAYS[i], "earned": day_earned, "spent": day_spent})
     w_start, w_end = days[0]["date"], days[6]["date"]
     net = c.execute(
-        "SELECT COALESCE(SUM(delta),0) FROM ledger WHERE date BETWEEN ? AND ?", (w_start, w_end)).fetchone()[0]
-    # 单元任务 + 每日任务（跳绳等）都计入学科完成
+        "SELECT COALESCE(SUM(delta),0) FROM ledger WHERE date BETWEEN ? AND ? AND kid_id=?", (w_start, w_end, kid)).fetchone()[0]
     by_subject = c.execute(
         "SELECT name, SUM(cnt) cnt, SUM(sun) sun FROM ("
         "  SELECT s.name name, COUNT(*) cnt, COALESCE(SUM(c.sunshine),0) sun "
         "  FROM completions c JOIN tasks t ON t.id=c.task_id JOIN subjects s ON s.id=t.subject_id "
-        "  WHERE c.status='completed' AND c.date BETWEEN ? AND ? GROUP BY s.name "
+        "  WHERE c.status='completed' AND c.kid_id=? AND c.date BETWEEN ? AND ? GROUP BY s.name "
         "  UNION ALL "
         "  SELECT s.name, COUNT(*), COALESCE(SUM(c.sunshine),0) "
         "  FROM completions c JOIN daily_tasks t ON t.id=c.task_id JOIN subjects s ON s.id=t.subject_id "
-        "  WHERE c.status='completed' AND c.date BETWEEN ? AND ? GROUP BY s.name "
-        ") GROUP BY name ORDER BY cnt DESC", (w_start, w_end, w_start, w_end)).fetchall()
+        "  WHERE c.status='completed' AND c.kid_id=? AND c.date BETWEEN ? AND ? GROUP BY s.name "
+        ") GROUP BY name ORDER BY cnt DESC", (kid, w_start, w_end, kid, w_start, w_end)).fetchall()
     checkins = c.execute(
-        "SELECT COUNT(DISTINCT date) FROM checkins WHERE date BETWEEN ? AND ?", (w_start, w_end)).fetchone()[0]
+        "SELECT COUNT(DISTINCT date) FROM checkins WHERE kid_id=? AND date BETWEEN ? AND ?", (kid, w_start, w_end)).fetchone()[0]
     weeks = []
     for i in range(3, -1, -1):
         wm = monday - timedelta(weeks=i)
         we = wm + timedelta(days=6)
         wk_earned = c.execute(
-            "SELECT COALESCE(SUM(delta),0) FROM ledger WHERE date BETWEEN ? AND ? AND delta>0",
-            (wm.isoformat(), we.isoformat())).fetchone()[0]
+            "SELECT COALESCE(SUM(delta),0) FROM ledger WHERE date BETWEEN ? AND ? AND delta>0 AND kid_id=?",
+            (wm.isoformat(), we.isoformat(), kid)).fetchone()[0]
         weeks.append({"label": f"{wm.month}/{wm.day}", "earned": wk_earned, "week_start": wm.isoformat()})
+    fam = _fam.get()
+    kids_cmp = []
+    if fam:
+        roster = c.execute(
+            "SELECT id, name FROM users WHERE family_id=? AND role='kid' ORDER BY created_at", (fam,)).fetchall()
+        for kr in roster:
+            db.apply_scope(c, fam, kr["id"])
+            ke = c.execute(
+                "SELECT COALESCE(SUM(delta),0) FROM ledger WHERE kid_id=? AND date BETWEEN ? AND ? AND delta>0",
+                (kr["id"], w_start, w_end)).fetchone()[0]
+            ks = c.execute(
+                "SELECT COALESCE(SUM(-delta),0) FROM ledger WHERE kid_id=? AND date BETWEEN ? AND ? AND reason='redeem' AND delta<0",
+                (kr["id"], w_start, w_end)).fetchone()[0]
+            kids_cmp.append({"id": kr["id"], "name": kr["name"], "earned": ke, "spent": ks,
+                             "streak": streak(c, kr["id"]), "current": kr["id"] == kid})
+        db.apply_scope(c, fam, kid)
     out = {
         "week_start": w_start, "week_end": w_end,
         "days": days,
@@ -1158,9 +1188,92 @@ def weekly():
         "checkins": checkins,
         "weeks": weeks,
         "by_subject": [dict(r) for r in by_subject],
+        "kids": kids_cmp,
     }
     c.close()
     return out
+
+
+class KidIn(BaseModel):
+    name: str
+    account: str = ""
+    pin: str = ""
+    term_id: str = "g5s1"
+
+
+@app.get("/api/admin/kids", dependencies=[Depends(require_parent)])
+def kids_list(request: Request):
+    u = request.state.user
+    c = db.connect()
+    rows = c.execute(
+        "SELECT id, name, account, term_id FROM users WHERE family_id=? AND role='kid' ORDER BY created_at",
+        (u["family_id"],)).fetchall()
+    c.close()
+    return [dict(r) for r in rows]
+
+
+@app.post("/api/admin/kids", dependencies=[Depends(require_parent)])
+def kids_create(b: KidIn, request: Request):
+    name = (b.name or "").strip()[:12]
+    if not name:
+        raise HTTPException(400, "名字不能为空")
+    account = (b.account or name).strip().lower()
+    pin = (b.pin or "0129").strip()
+    if len(pin) < 4:
+        raise HTTPException(400, "密码至少 4 位")
+    u = request.state.user
+    c = db.connect()
+    if c.execute("SELECT 1 FROM users WHERE account=?", (account,)).fetchone():
+        c.close()
+        raise HTTPException(409, "这个账号已经有了")
+    if b.term_id and not c.execute("SELECT 1 FROM terms WHERE id=?", (b.term_id,)).fetchone():
+        c.close()
+        raise HTTPException(404, "没有这个学期")
+    kid = "kid-" + uuid.uuid4().hex[:8]
+    c.execute(
+        "INSERT INTO users(id,family_id,role,name,avatar,pin_hash,term_id,account,created_at,force_pin_change) VALUES(?,?,?,?,?,?,?,?,?,?)",
+        (kid, u["family_id"], "kid", name, "", db.hash_pin(pin), b.term_id or "g5s1", account, db.now(), ""))
+    c.execute("INSERT INTO profiles(user_id,family_id) VALUES(?,?) ON CONFLICT DO NOTHING", (kid, u["family_id"]))
+    c.commit(); c.close()
+    return {"id": kid, "account": account}
+
+
+@app.put("/api/admin/kids/{kid}", dependencies=[Depends(require_parent)])
+def kids_update(kid: str, b: KidIn, request: Request):
+    u = request.state.user
+    c = db.connect()
+    row = c.execute("SELECT * FROM users WHERE id=? AND role='kid'", (kid,)).fetchone()
+    if not row or row["family_id"] != u["family_id"]:
+        c.close(); raise HTTPException(404, "没找到这个孩子")
+    name = (b.name or row["name"]).strip()[:12]
+    term = b.term_id or row["term_id"] or "g5s1"
+    if not c.execute("SELECT 1 FROM terms WHERE id=?", (term,)).fetchone():
+        c.close(); raise HTTPException(404, "没有这个学期")
+    c.execute("UPDATE users SET name=?, term_id=? WHERE id=?", (name, term, kid))
+    if b.pin:
+        if len(b.pin.strip()) < 4:
+            c.close(); raise HTTPException(400, "密码至少 4 位")
+        c.execute("UPDATE users SET pin_hash=?, force_pin_change='' WHERE id=?", (db.hash_pin(b.pin.strip()), kid))
+        c.execute("INSERT INTO revoked(jti,created_at) VALUES(?,?) ON CONFLICT(jti) DO UPDATE SET created_at=excluded.created_at",
+                  ("u:" + kid, str(time.time())))
+    c.commit(); c.close()
+    return {"ok": True}
+
+
+@app.delete("/api/admin/kids/{kid}", dependencies=[Depends(require_parent)])
+def kids_delete(kid: str, request: Request):
+    u = request.state.user
+    c = db.connect()
+    row = c.execute("SELECT * FROM users WHERE id=? AND role='kid'", (kid,)).fetchone()
+    if not row or row["family_id"] != u["family_id"]:
+        c.close(); raise HTTPException(404, "没找到这个孩子")
+    n = c.execute("SELECT COUNT(*) FROM users WHERE family_id=? AND role='kid'", (u["family_id"],)).fetchone()[0]
+    if n <= 1:
+        c.close(); raise HTTPException(400, "至少留一个孩子")
+    c.execute("DELETE FROM users WHERE id=?", (kid,))
+    c.execute("DELETE FROM profiles WHERE user_id=?", (kid,))
+    c.commit(); c.close()
+    return {"ok": True}
 
 
 @app.get("/api/daily/{task_id}/history")
@@ -1168,8 +1281,8 @@ def daily_history(task_id: str):
     """孩子端查看某每日任务（跳绳等）的逐次记录（按日期升序），画趋势图用。"""
     c = get_conn()
     rows = c.execute(
-        "SELECT date, metrics FROM completions WHERE task_id=? AND status='completed' "
-        "ORDER BY date, id", (task_id,)).fetchall()
+        "SELECT date, metrics FROM completions WHERE task_id=? AND status='completed' AND kid_id=? "
+        "ORDER BY date, id", (task_id, kid_id())).fetchall()
     c.close()
     return [{"date": r["date"], "metrics": (json.loads(r["metrics"]) if r["metrics"] else {})} for r in rows]
 

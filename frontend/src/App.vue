@@ -257,16 +257,6 @@ async function openRankMap() {
   try { rankMap.value = await api.ranks() } catch {}
 }
 
-async function saveName() {
-  const n = renameVal.value.trim()
-  if (!n) return
-  try {
-    const r = await api.setKidName(n)
-    data.kid_name = r.name
-    renaming.value = false
-  } catch (e) { showToast(e.message) }
-}
-
 const unitName = (id) => data.units.find(u => u.id === id)?.name || ''
 const bySubject = computed(() => {
   const m = {}
@@ -341,7 +331,7 @@ function reloadApp() {
 </script>
 
 <template>
-  <Admin v-if="isAdmin" @exit="exitAdmin" />
+  <Admin v-if="isAdmin" @exit="exitAdmin" @switched="refresh" />
   <div v-else class="desk">
     <button v-if="updateReady" type="button" class="update-bar" @click="reloadApp">🔄 有新版本，点我刷新</button>
     <!-- 蓝顶栏 -->
@@ -352,14 +342,7 @@ function reloadApp() {
           <div class="hello">{{ data.today || '今天' }}</div>
           <div class="hello greet-long">你好呀，五年级的小主人！</div>
           <div class="name-row">
-            <template v-if="!renaming">
-              <b class="kid">{{ data.kid_name }}</b>
-              <button class="rename" @click="renaming = true; renameVal = data.kid_name">✏️ <span class="rename-txt">点击改名</span></button>
-            </template>
-            <template v-else>
-              <input v-model="renameVal" maxlength="12" @keyup.enter="saveName" />
-              <button class="rename" @click="saveName">保存</button>
-            </template>
+            <b class="kid">{{ data.kid_name }}</b>
           </div>
         </div>
       </div>
