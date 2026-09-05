@@ -48,11 +48,22 @@ ssh -o BatchMode=yes root@192.168.100.5 \
 
 备份落在 `~/sunshine/data/backups/`。设了 `DATABASE_URL` 时改走 `pg_dump -Fc`（需本机 `pg_dump` 或 `docker exec sunshine-postgres pg_dump ...`）。
 
-SQLite → Postgres（**不切流量**，只校验）：
+SQLite → Postgres（**只在切流前跑一次**；会清空 PG 重灌，切流后勿重跑）。
+
+前置：postgres 已起且 healthy；`.env` 已写好 `DATABASE_URL`/`DATABASE_APP_URL`（两者都必须是 `@postgres:5432`，容器网络名）。
+
+宿主机没装 psycopg、postgres 也没开 host 端口，所以在 **app 镜像里借 psycopg、走 docker 网络**跑。在 VPS 上（kofwj）执行：
+
 ```bash
-DATABASE_URL=postgresql://sunshine:sunshine@127.0.0.1:5432/sunshine python3 scripts/migrate_to_pg.py
+cd ~/sunshine
+set -a; . ./.env; set +a
+docker run --rm --network sunshine_default \
+  -v /home/kofwj/sunshine:/app -w /app \
+  -e DATABASE_URL -e DATABASE_APP_URL \
+  sunshine-sunshine python3 scripts/migrate_to_pg.py
 ```
-通过后把 `DATABASE_URL` + `DATABASE_APP_URL` + `COMPOSE_PROFILES=postgres` 写进 VPS `.env`（不进 git），再 `docker compose up -d`。请求必须走 `sunshine_app`，`sunshine` 是 superuser 会绕过 RLS。
+
+通过后 `docker compose up -d`（`.env` 的 `COMPOSE_PROFILES=postgres` 会让 postgres 一起起并切流量）。请求必须走 `sunshine_app`，`sunshine` 是 superuser 会绕过 RLS。
 
 ## 三、日常更新（备份 → 拉代码 → 重新构建 → 起容器）
 
