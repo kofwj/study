@@ -362,6 +362,119 @@ def require_parent(user=Depends(get_current_user)):
 
 ---
 
+## 7.6 学习科学纵深 + 多版本教材（方案 2026-09）
+
+> 定位一句话：**不做题库、不推题、不判题**（那是作业帮/小猿的主场，硬碰必死）；做的是它们视野外的**补集**——孩子**线下**（作业本/听写/默写/背诵）哪里薄弱、何时该再练，结构化记下来、到点提醒。底盘是**多版本教材**（先做全江苏，架构预留其他省）。
+
+### 四层架构
+
+| 层 | 作用 | 新表/改动 | 作业帮做的？ |
+|---|---|---|---|
+| ① 教材套餐 bundle | 不同版本教材可切（先江苏） | `bundles` / `bundle_subjects` / `units.bundle_id` / `families.curriculum_bundle` | ✗ 只在它题库内 |
+| ② 考点标签 | 单元→课往下钻到「考什么」 | `knowledge_tags`（科目级字典） | ✗ |
+| ③ 薄弱点记录 | 线下「哪里没掌握」结构化 | `weak_points` | ✗（它只记待过的题） |
+| ④ 间隔复习提醒 | 何时该重练 | `weak_points.review_due_at` + 日队列 | ✗ 它推题不推线下回访 |
+
+---
+
+### ① 教材套餐 bundle（多版本底座）
+
+**现状痛点**：`terms.version="江苏南通"` 写死全局一份；`unit_id = g5s1-cn-1`、`task_id = g5s1-cn-1-1` **不含版本**。所以换个省/出版社，同年级同学期的单元顺序、考点全不同，现有 id 撞不上、也没地方存。
+
+**已确认现状**：当前 catalog 已经就是江苏南通组合（语文部编 / 数学苏教 / 英语译林 / 科学苏教 / 道法部编），56 本，只缺「多版本可切」的壳。所以这一步**不是重新抓教材，是给现有目录装上版本维度**。
+
+**id 约定（关键、写死）**：
+- **江苏 = 默认 bundle `js`，id 不带前缀**：`g5s1-cn-1` 原样保留。**completions/ledger/五上手工 id 全部零破坏**。
+- **其他 bundle 带前缀**：`rj-g5s1-cn-1`。
+- `term_id` 仍是全局学期轴（g5s1~g6x2），不动；版本由「家庭选了哪个 bundle」决定。
+
+**表改动**（迁移 `_migrate_014_curriculum_bundles`）：
+```sql
+CREATE TABLE bundles (id TEXT PK, name TEXT, region TEXT, is_default INT, created_at TEXT);
+CREATE TABLE bundle_subjects (bundle_id TEXT, subject_id TEXT, publisher TEXT, edition TEXT, PRIMARY KEY(bundle_id, subject_id));
+ALTER TABLE units ADD COLUMN bundle_id TEXT DEFAULT 'js';  -- 存量回填 js
+ALTER TABLE families ADD COLUMN curriculum_bundle TEXT DEFAULT 'js';
+```
+- `units.bundle_id` 显式标记版本（江苏 js）；tasks 不加列，通过 `unit_id → units.bundle_id` 间接归属。
+- **家庭级**选版本（`families.curriculum_bundle`）：同一城市全家用同一套，不比 per-kid；`users.term_id` 仍 per-kid 管年级。
+- 查询统一加 `WHERE units.bundle_id = (SELECT curriculum_bundle FROM families WHERE id = :fid)`（走现有 `get_conn()` choke point，RLS 已就位）。
+
+**前端**：设置页「教材版本」下拉（先只有「江苏南通」，人教版/北师大版灰着标「数据未接」）。切 bundle 只影响 units/tasks 显示，不动已完成历史（历史 task 值在 ledger/completions 里留着）。
+
+---
+
+### ② 考点标签 knowledge_tags（科目级字典）
+
+catalog 只有「单元名 + 课次名」，没有「这课考什么」。补一张**科目级**考点字典（跨版本通用，版本特化以后再说）：
+
+```sql
+CREATE TABLE knowledge_tags (id TEXT PK, subject_id TEXT, kind TEXT, name TEXT);
+-- 示例：cn/字词、cn/背诵、cn/古诗、cn/习作；ma/口算、ma/计算、ma/应用题、ma/图形；en/词汇、en/句型、en/听力
+```
+- **生成方式**：跟现在 `action` 一样自动预生成（识字课→字词、古诗→背诵、口算→计算…），标 `auto:true`；江苏版五上/五下人工精标。
+- 作用：让「薄弱」能从单元粒度精确到「语文第二单元 · 字词」。没有它，复习提醒只能到"第二单元"，太粗、家长还得自己去翻书看哪块错。
+
+---
+
+### ③ 薄弱点记录 weak_points（线下结构化入口）
+
+`tests` 现在只存 `score + note`，没有「错在哪」。补一张**并与 tests 解耦**（tests 管分数+阳光，weak_points 管诊断+复习，职责不同、不合并）：
+
+```sql
+CREATE TABLE weak_points (
+  id TEXT PK,                 -- wp-<uuid>
+  kid_id TEXT, family_id TEXT,
+  unit_id TEXT,               -- 该版本该单元（unit 已带 bundle_id）
+  tag_id TEXT,                -- 考点标签，可空（没标签时降级到单元粒度）
+  level INT DEFAULT 1,        -- 1薄弱 2未掌握 3待巩固
+  note TEXT,
+  review_due_at TEXT,         -- 下次该复习时间
+  review_count INT DEFAULT 0,
+  resolved INT DEFAULT 0,
+  created_at TEXT, resolved_at TEXT
+);
+```
+- **埋点**：现有「单元测试」录入表单里，打分后**追加一步「勾薄弱点」**（从该科目 knowledge_tags 里勾，0~N 个，**勾选不手打**）。这是线下错题的唯一入口。
+- 家长 + 孩子都可勾（孩子端打卡测试时、家长端管理时都行），写 `kid_id`。
+
+---
+
+### ④ 间隔复习提醒 review queue
+
+对未 resolved 的 weak_point，按艾宾浩斯轻度间隔推下次时间：**间隔序列 [1,3,7,14,30] 天**（首次 1 天后、过再过 3 天…）。
+
+- `review_due_at = 标记时间 + 间隔[review_count]`。
+- 到点 → 孩子端/家长端出现「**今日复习**」队列：该重默的字词、该重背的课文、该重做的口算类型。
+- 复习完点「完成」：**过关 → resolved=1（或 level 降档）；又错 → 间隔重置、从 1 天重来**。
+- **只提醒「去做你练习册上的这件事」**，不推题不判题——这是和作业帮最后一线差异：它把你焊在屏幕里刷题，我们提醒你回到纸上。
+
+---
+
+### 闭环数据流
+
+```
+家长选「教材版本」--(families.curriculum_bundle)
+  → 该家 units/tasks 切到对应版本
+  → 单元测试打分(tests) + 勾薄弱点(weak_points, tag 来自 knowledge_tags)
+  → 按间隔算 review_due_at
+  → 到点 →「今日复习」提醒重默字词/重背课文
+  → 复习完成 → 过关 resolved / 没关重置间隔
+  → 全家未 resolved 薄弱点 → 家长面板「下周该盯什么」
+```
+
+### 与作业帮的边界（收敛成一句）
+
+**它做「题在哪、对错、再给我题」；我们做「你纸上哪里错、哪天该重练、数据是你自家 Postgres 的」。** 互补的补集，不是同一根赛道。唯一诚实的前提：孩子已在刷作业帮的家庭，我们这条价值有限；但「记录线下学习」的用户，作业帮就是失明的。
+
+### 实施顺序（先江苏）
+
+1. **P4.5a 教材套餐底座**：四张表 + 迁移 + 设置页下拉（只有江苏）。架构就位、行为零变化。
+2. **P4.5b 考点标签**：knowledge_tags 半自动生成，江苏语数英五上/五下精标、其余 auto。
+3. **P4.5c 薄弱点 + 复习提醒**：weak_points 表 + 测试表单勾选埋点 + 孩子端「今日复习」队列 + 家长面板「下周盯点」。← 核心交付。
+4. **P4.5d（以后）**：人教版/北师大版目录抓取接入，回到 P4.4 的「新课一键下发」。
+
+---
+
 ## 8. 关键技术决策
 
 | 决策点 | 推荐 | 理由 |
