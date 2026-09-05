@@ -720,9 +720,9 @@ body {
 .unit-score.gray { background: var(--surface-2); color: var(--ink-3); }
 .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
 .card {
-  position: relative; background: var(--surface); border-radius: 16px; padding: 16px 14px 14px 14px;
+  position: relative; background: var(--surface); border-radius: var(--r-card); padding: 16px 14px 14px 14px;
   display: flex; gap: 10px; align-items: flex-start; min-height: 86px;
-  box-shadow: 0 4px 14px rgba(60,120,170,.07); border: 1px solid var(--line);
+  box-shadow: var(--sh-card); border: 1px solid var(--line);
 }
 .card.done { background: var(--ok-bg); border-color: var(--ok-bg); }
 .card.past { opacity: .55; }
@@ -761,7 +761,7 @@ body {
 }
 
 .mask { position: fixed; inset: 0; background: rgba(20,40,60,.35); display: flex; align-items: center; justify-content: center; z-index: 20; }
-.shop-modal { background: var(--surface); border-radius: 18px; padding: 22px; width: 92%; max-width: 420px; }
+.shop-modal { background: var(--surface); border-radius: var(--r-card); padding: 22px; width: 92%; max-width: 420px; }
 .shop-modal h3 { margin: 0 0 14px; }
 .shop-list { display: flex; flex-direction: column; gap: 10px; }
 .shop-item { display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--line); border-radius: 12px; padding: 12px; }

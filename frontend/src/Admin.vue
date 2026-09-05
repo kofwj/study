@@ -704,7 +704,7 @@ onMounted(load)
 .a-nav.on { background: var(--brand); color: #fff; }
 .a-nav-ico { width: 18px; text-align: center; }
 .a-main { flex: 1; min-width: 0; }
-.a-card { background: var(--surface); border-radius: 16px; padding: 18px; margin-bottom: 14px; box-shadow: 0 4px 14px rgba(60,120,170,.07); border: 1px solid var(--line); }
+.a-card { background: var(--surface); border-radius: var(--r-card); padding: 18px; margin-bottom: 14px; box-shadow: var(--sh-card); border: 1px solid var(--line); }
 .a-card h3 { margin: 0 0 6px; font-size: 16px; color: var(--ink); }
 .lead { color: var(--ink-3); font-size: 12px; margin: 0 0 14px; }
 .lock-row { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-2); font-weight: 700; }

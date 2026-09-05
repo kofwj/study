@@ -23,12 +23,13 @@
   --danger-bg: #fbe9e7;
 
   /* —— 圆角（一套）—— */
-  --r-card: 18px;
+  --r-card: 16px;
   --r-pill: 999px;
   --r-input: 10px;
 
   /* —— 阴影（染底色调，非纯黑）—— */
   --sh-1: 0 1px 2px rgba(28, 39, 51, .06);
+  --sh-card: 0 4px 14px rgba(60, 120, 170, .07);
   --sh-2: 0 10px 30px -12px rgba(31, 127, 176, .22);
   --sh-3: 0 18px 50px -16px rgba(31, 127, 176, .30);
 
