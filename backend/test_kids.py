@@ -58,10 +58,10 @@ def main_fn():
         cur_l = cli.get("/api/tasks?selected_kid=" + lele).json()["cursors"].get("语文")
         assert cur_d == "g5s1-cn-1-1"
         assert cur_l != cur_d
-        r = cli.put("/api/admin/kids/" + didi, json={"name": "弟弟", "term_id": "g5s1", "pin": "2222"})
+        r = cli.put("/api/admin/kids/" + didi, json={"name": "弟弟", "account": "erzi", "term_id": "g5s1", "pin": "2222"})
         assert r.status_code == 200, r.text
         assert cli.post("/api/auth/logout").status_code == 200
-        r = cli.post("/api/auth/login", json={"account": "didi", "pin": "2222"})
+        r = cli.post("/api/auth/login", json={"account": "erzi", "pin": "2222"})
         assert r.status_code == 200 and r.json()["force_pin_change"] is False
         assert cli.post("/api/auth/logout").status_code == 200
         assert cli.post("/api/auth/login", json={"account": "parent", "pin": "8888"}).status_code == 200
@@ -96,5 +96,23 @@ def main_fn():
         print("kids ok", lele[:8], didi[:8], "earned", e_lele, e_didi, "cursors", cur_l, cur_d)
 
 
+def streak_fn():
+    from datetime import date, timedelta
+    db.init_db()
+    c = db.connect()
+    ghost = "kid-streak"
+    y = (date.today() - timedelta(days=1)).isoformat()
+    yy = (date.today() - timedelta(days=2)).isoformat()
+    c.execute("INSERT INTO checkins(date,sunshine,created_at,kid_id) VALUES(?,?,?,?)", (y, 0, db.now(), ghost))
+    c.commit()
+    assert main.streak(c, ghost) == 1
+    c.execute("INSERT INTO checkins(date,sunshine,created_at,kid_id) VALUES(?,?,?,?)", (yy, 0, db.now(), ghost))
+    c.commit()
+    assert main.streak(c, ghost) == 2
+    c.close()
+    print("streak ok")
+
+
 if __name__ == "__main__":
     main_fn()
+    streak_fn()

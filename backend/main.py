@@ -279,7 +279,7 @@ def locked_task_ids(c):
 
 
 def streak(c, kid=None):
-    # 连击 = 连续几天有「任何学习活动」（签到 / 完成任务 / 每日打卡 / 兑换成功）
+    # 连击 = 连续几天有学习活动。今天还没打卡时沿用昨天，隔了一整天没活动才归零。
     kid = kid or kid_id()
     dates = {r["date"] for r in c.execute("SELECT DISTINCT date FROM checkins WHERE kid_id=?", (kid,)).fetchall()}
     dates |= {r["date"] for r in c.execute(
@@ -287,6 +287,8 @@ def streak(c, kid=None):
     dates |= {r["date"] for r in c.execute(
         "SELECT DISTINCT date FROM redemptions WHERE status IN ('done','delivered') AND kid_id=?", (kid,)).fetchall()}
     d = datetime.now().date()
+    if d.isoformat() not in dates:
+        d -= timedelta(days=1)
     n = 0
     while d.isoformat() in dates:
         n += 1
@@ -1464,9 +1466,20 @@ def kids_update(kid: str, b: KidIn, request: Request):
         c.close(); raise HTTPException(404, "没找到这个孩子")
     name = (b.name or row["name"]).strip()[:12]
     term = b.term_id or row["term_id"] or "g5s1"
+    account = (b.account or row["account"] or "").strip().lower()
     if not c.execute("SELECT 1 FROM terms WHERE id=?", (term,)).fetchone():
         c.close(); raise HTTPException(404, "没有这个学期")
-    c.execute("UPDATE users SET name=?, term_id=? WHERE id=?", (name, term, kid))
+    if account and account != (row["account"] or ""):
+        if len(account) < 2:
+            c.close(); raise HTTPException(400, "账号至少 2 位")
+        pc = db.connect(admin=True)
+        try:
+            taken = pc.execute("SELECT 1 FROM users WHERE account=? AND id!=?", (account, kid)).fetchone()
+        finally:
+            pc.close()
+        if taken:
+            c.close(); raise HTTPException(409, "这个账号已经有了")
+    c.execute("UPDATE users SET name=?, term_id=?, account=? WHERE id=?", (name, term, account or row["account"], kid))
     if b.pin:
         try:
             _check_pin(b.pin, parent=False)

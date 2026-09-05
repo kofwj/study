@@ -219,7 +219,7 @@ async function addKid() {
 
 async function saveKid(k) {
   try {
-    await api.admin.updateKid(k.id, { name: k.name, term_id: k.term_id, pin: k._pin || '' })
+    await api.admin.updateKid(k.id, { name: k.name, account: k.account, term_id: k.term_id, pin: k._pin || '' })
     k._pin = ''
     showToast('已保存')
     await load()
@@ -616,8 +616,8 @@ onMounted(load)
     <section v-if="section === 'kids'" class="a-card enter">
       <h3>管理孩子</h3>
       <div class="a-item" v-for="k in kids" :key="k.id">
-        <span class="badge">{{ k.name }}</span>
-        <span class="dim">{{ k.account }}</span>
+        <input v-model="k.name" class="w-name" placeholder="名字" />
+        <input v-model="k.account" class="w-cat" placeholder="登录账号" />
         <select v-model="k.term_id">
           <option v-for="tm in terms" :key="tm.id" :value="tm.id">{{ tm.label }}</option>
         </select>
