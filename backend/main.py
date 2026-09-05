@@ -910,10 +910,8 @@ def auth_join(b: JoinBody, request: Request):
             "INSERT INTO users(id,family_id,role,name,avatar,pin_hash,term_id,account,created_at,force_pin_change) VALUES(?,?,?,?,?,?,?,?,?,?)",
             (uid, inv["family_id"], role, (b.name or "家长").strip()[:12], "", db.hash_pin(pin), None, account, db.now(), ""))
         c.execute("INSERT INTO profiles(user_id,family_id) VALUES(?,?) ON CONFLICT DO NOTHING", (uid, inv["family_id"]))
-        if max_uses:
-            c.execute("UPDATE invites SET used_count = used_count + 1 WHERE code=?", (code,))
-            if used + 1 >= max_uses:
-                c.execute("DELETE FROM invites WHERE code=?", (code,))
+        c.execute("UPDATE invites SET used_count = used_count + 1, used_by=?, used_at=? WHERE code=?",
+                  ((b.name or "家长").strip()[:12], db.now(), code))
         c.commit()
         user = {"id": uid, "family_id": inv["family_id"], "role": role, "term_id": None}
     finally:
@@ -963,6 +961,33 @@ def family_invite_protect(b: InviteProtectIn, request: Request):
     c.execute("UPDATE families SET invite_protect=? WHERE id=?", (val, u["family_id"]))
     c.commit(); c.close()
     return {"invite_protect": val}
+
+
+@app.get("/api/admin/invites", dependencies=[Depends(require_parent)])
+def invites_list(request: Request):
+    u = request.state.user
+    c = get_conn()
+    rows = c.execute(
+        "SELECT code, role, created_at, max_uses, expires_at, used_count, used_by, used_at FROM invites "
+        "WHERE family_id=? ORDER BY created_at DESC",
+        (u["family_id"],)).fetchall()
+    c.close()
+    out = []
+    for r in rows:
+        d = dict(r)
+        d["expired"] = bool(r["expires_at"] and r["expires_at"] < db.now())
+        d["used_up"] = bool(r["max_uses"] and int(r["used_count"] or 0) >= int(r["max_uses"] or 0))
+        out.append(d)
+    return out
+
+
+@app.delete("/api/admin/invites/{code}", dependencies=[Depends(require_parent)])
+def invite_delete(code: str, request: Request):
+    u = request.state.user
+    c = get_conn()
+    c.execute("DELETE FROM invites WHERE code=? AND family_id=?", (code.upper(), u["family_id"]))
+    c.commit(); c.close()
+    return {"ok": True}
 
 
 @app.get("/api/admin/members", dependencies=[Depends(require_parent)])

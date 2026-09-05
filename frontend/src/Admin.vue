@@ -6,6 +6,7 @@ const emit = defineEmits(['exit', 'switched'])
 const kids = ref([])
 const members = ref([])
 const inviteProtect = ref(false)
+const invites = ref([])
 const selectedKid = ref('')
 const newKid = reactive({ name: '', account: '', pin: '', term_id: 'g5s1' })
 const tab = ref('weekly')
@@ -44,10 +45,11 @@ function showToast(m) { toast.value = m; setTimeout(() => (toast.value = ''), 22
 function unitName(id) { return units.value.find(u => u.id === id)?.name || id }
 
 async function load() {
-  const [ks, ms, fam] = await Promise.all([api.admin.kids(), api.admin.members(), api.admin.family()])
+  const [ks, ms, fam, inv] = await Promise.all([api.admin.kids(), api.admin.members(), api.admin.family(), api.admin.invites()])
   kids.value = ks
   members.value = ms
   inviteProtect.value = !!fam.invite_protect
+  invites.value = inv
   if (!selectedKid.value && ks.length) {
     selectedKid.value = ks[0].id
     setSelectedKid(ks[0].id)
@@ -227,11 +229,32 @@ async function changePin() {
     showToast('密码已改')
   } catch (e) { showToast(e.message) }
 }
+async function refreshInvites() { invites.value = await api.admin.invites() }
 async function makeInvite(role) {
   try {
     const r = await api.admin.invite(role)
-    showToast((role === 'observer' ? '观察员码 ' : '家长码 ') + r.code)
+    await refreshInvites()
+    showToast('已生成 ' + r.code + '，点「复制」分享')
   } catch (e) { showToast(e.message) }
+}
+function inviteStatus(iv) {
+  if (iv.expired) return '已过期'
+  if (iv.used_up) return '已用' + (iv.used_by ? '（' + iv.used_by + '）' : '')
+  if (iv.used_count > 0) return '已用 ' + iv.used_count + ' 次' + (iv.used_by ? '（最近 ' + iv.used_by + '）' : '')
+  return '未用'
+}
+async function copyCode(code) {
+  try {
+    await navigator.clipboard.writeText(code)
+  } catch {
+    const t = document.createElement('textarea')
+    t.value = code; document.body.appendChild(t); t.select()
+    document.execCommand('copy'); document.body.removeChild(t)
+  }
+  showToast('已复制 ' + code)
+}
+async function delInvite(code) {
+  try { await api.admin.delInvite(code); await refreshInvites(); showToast('已删除') } catch (e) { showToast(e.message) }
 }
 async function toggleProtect(e) {
   try {
@@ -532,6 +555,14 @@ onMounted(load)
         <button class="ok" @click="makeInvite('parent')">家长邀请码</button>
         <button class="ok" @click="makeInvite('observer')">观察员码</button>
       </p>
+      <div class="a-item" v-for="iv in invites" :key="iv.code" style="flex-wrap:wrap">
+        <span class="badge">{{ iv.role === 'observer' ? '观察员' : '家长' }}</span>
+        <code style="font-family:ui-monospace,monospace;font-weight:700;font-size:14px">{{ iv.code }}</code>
+        <span class="dim">{{ inviteStatus(iv) }}</span>
+        <button class="ok" @click="copyCode(iv.code)">复制</button>
+        <button class="del" @click="delInvite(iv.code)">删</button>
+      </div>
+      <p v-if="!invites.length" class="dim" style="margin-top:6px">还没有邀请码，点上面生成，再点「复制」分享给家人。</p>
     </section>
 
     <!-- 密码 -->

@@ -561,6 +561,11 @@ def _migrate_009(conn):
     _add_column(conn, "invites", "used_count INTEGER DEFAULT 0")
 
 
+def _migrate_010(conn):
+    _add_column(conn, "invites", "used_by TEXT")
+    _add_column(conn, "invites", "used_at TEXT")
+
+
 MIGRATIONS = (
     ("001_identity", _migrate_001),
     ("002_kid_id", _migrate_002),
@@ -571,6 +576,7 @@ MIGRATIONS = (
     ("007_invites", _migrate_007),
     ("008_invites_rls", _migrate_008),
     ("009_invite_protect", _migrate_009),
+    ("010_invite_usage", _migrate_010),
 )
 
 

@@ -60,6 +60,8 @@ def main_fn():
         code1 = a.post("/api/admin/invite").json()["code"]
         assert b.post("/api/auth/join", json={"account": "dave", "pin": "5555", "code": code1, "name": "戴夫"}).status_code == 200
         assert b.post("/api/auth/join", json={"account": "erin", "pin": "6666", "code": code1, "name": "二用"}).status_code != 200
+        ivs = {x["code"]: x for x in a.get("/api/admin/invites").json()}
+        assert ivs[code1]["used_count"] == 1 and ivs[code1]["used_by"] == "戴夫"
         print("family ok")
 
 
