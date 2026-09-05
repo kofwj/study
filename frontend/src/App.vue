@@ -308,16 +308,17 @@ onMounted(async () => {
   window.addEventListener('sw-update', () => { updateReady.value = true })
   await refresh()
 })
-function reloadApp() { location.reload() }
+function reloadApp() {
+  const u = new URL(location.href)
+  u.searchParams.set('_', Date.now())
+  location.replace(u.href)
+}
 </script>
 
 <template>
   <Admin v-if="isAdmin" @exit="exitAdmin" />
   <div v-else class="desk">
-    <div v-if="updateReady" class="update-bar">
-      🔄 有新版本，点我刷新
-      <button @click="reloadApp">立即刷新</button>
-    </div>
+    <button v-if="updateReady" type="button" class="update-bar" @click="reloadApp">🔄 有新版本，点我刷新</button>
     <!-- 蓝顶栏 -->
     <header class="topbar">
       <div class="who">
@@ -615,8 +616,7 @@ body {
   background: #eef6fb;
   color: #1f3b55;
 }
-.update-bar { background: #ff9800; color: #fff; padding: 9px 22px; display: flex; justify-content: center; align-items: center; gap: 12px; font-weight: 700; font-size: 14px; position: sticky; top: 0; z-index: 30; }
-.update-bar button { border: none; background: #fff; color: #e65100; border-radius: 16px; padding: 5px 14px; font-weight: 800; cursor: pointer; font-family: inherit; }
+.update-bar { width: 100%; border: none; background: #ff9800; color: #fff; padding: 9px 22px; display: flex; justify-content: center; align-items: center; font-weight: 700; font-size: 14px; font-family: inherit; position: sticky; top: 0; z-index: 30; cursor: pointer; }
 .desk { min-height: 100vh; padding-bottom: 78px; }
 
 .topbar {
