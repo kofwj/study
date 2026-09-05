@@ -64,10 +64,9 @@ function scoreClass(s) {
 const isAdmin = ref(false)
 const me = ref(null)
 const authed = ref(false)
-const pinForm = reactive({ open: false, mode: 'login', account: 'lele', val: '', name: '', family: '我家', code: '' })
+const pinForm = reactive({ mode: 'login', account: 'lele', val: '', name: '', family: '我家', code: '' })
 async function afterLogin(r) {
   me.value = r
-  pinForm.open = false
   pinForm.val = ''
   authed.value = true
   isAdmin.value = r.role === 'parent'
@@ -94,9 +93,12 @@ async function openParent() {
     isAdmin.value = true
     return
   }
+  await api.logout().catch(() => {})
+  me.value = null
+  authed.value = false
   pinForm.mode = 'login'
   pinForm.account = 'parent'
-  pinForm.open = true
+  pinForm.val = ''
 }
 async function doLogout() {
   await api.logout().catch(() => {})
@@ -123,7 +125,7 @@ async function refresh() {
     boxes.value = bx
     err.value = ''
   } catch (e) {
-    if (e.status === 401) { me.value = null; pinForm.open = true }
+    if (e.status === 401) { me.value = null; authed.value = false }
     err.value = e.message
   } finally {
     loading.value = false
@@ -569,23 +571,6 @@ function reloadApp() {
       </div>
     </div>
 
-    <div v-if="pinForm.open" class="mask">
-      <div class="shop-modal enter">
-        <h3>{{ pinForm.mode === 'register' ? '注册家庭' : (pinForm.mode === 'join' ? '加入家庭' : '登录') }}</h3>
-        <input v-model="pinForm.account" placeholder="账号" autocomplete="username" />
-        <input v-model="pinForm.val" type="password" inputmode="numeric" placeholder="密码" autocomplete="current-password" @keyup.enter="verifyPin" />
-        <input v-if="pinForm.mode !== 'login'" v-model="pinForm.name" placeholder="你的名字" />
-        <input v-if="pinForm.mode === 'register'" v-model="pinForm.family" placeholder="家庭名" />
-        <input v-if="pinForm.mode === 'join'" v-model="pinForm.code" placeholder="邀请码" />
-        <button class="do big" @click="verifyPin">进入</button>
-        <p class="dim" style="margin-top:8px">
-          <button class="ghost" @click="pinForm.mode = 'login'">登录</button>
-          <button class="ghost" @click="pinForm.mode = 'register'">注册</button>
-          <button class="ghost" @click="pinForm.mode = 'join'">邀请码</button>
-        </p>
-        <button v-if="me" class="ghost" @click="pinForm.open = false">取消</button>
-      </div>
-    </div>
     <p v-if="err" class="err">{{ err }}</p>
 
     <!-- +N 阳光飞出 -->
@@ -659,7 +644,7 @@ function reloadApp() {
         <button type="button" :class="{ on: pinForm.mode==='join' }" @click="pinForm.mode='join'">邀请码加入</button>
       </div>
       <input v-model="pinForm.account" placeholder="账号" autocomplete="username" />
-      <input v-model="pinForm.val" type="password" inputmode="numeric" placeholder="密码（4 位数字）" autocomplete="current-password" @keyup.enter="verifyPin" />
+      <input v-model="pinForm.val" type="password" :placeholder="pinForm.mode==='login' ? '密码' : '家长密码至少 8 位'" autocomplete="current-password" @keyup.enter="verifyPin" />
       <input v-if="pinForm.mode!=='login'" v-model="pinForm.name" placeholder="你的名字" />
       <input v-if="pinForm.mode==='register'" v-model="pinForm.family" placeholder="家庭名（如：乐乐的家）" />
       <input v-if="pinForm.mode==='join'" v-model="pinForm.code" placeholder="邀请码" />
@@ -667,8 +652,9 @@ function reloadApp() {
       <p class="login-note">
         <template v-if="pinForm.mode==='register'">注册就是为你家开一个独立空间，不需要邀请码。</template>
         <template v-else-if="pinForm.mode==='join'">邀请码由家庭里已有的家长在设置页生成。</template>
-        <template v-else>孩子用小名账号登录打卡，家长用家长账号管理。</template>
+        <template v-else>孩子用 4 位密码；家长注册/改密至少 8 位。</template>
       </p>
+      <p v-if="toast" class="login-note" style="color:var(--danger)">{{ toast }}</p>
     </div>
   </div>
 </template>

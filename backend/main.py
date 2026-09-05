@@ -169,6 +169,16 @@ async def auth_mw(request: Request, call_next):
         _fam.reset(tok_f)
 
 
+def _check_pin(pin, *, parent):
+    pin = (pin or "").strip()
+    if parent:
+        if len(pin) < 8:
+            raise HTTPException(400, "家长密码至少 8 位")
+    elif len(pin) < 4:
+        raise HTTPException(400, "孩子密码至少 4 位")
+    return pin
+
+
 def require_parent(request: Request):
     u = getattr(request.state, "user", None)
     if not u or u["role"] != "parent":
@@ -855,8 +865,7 @@ def auth_register(b: RegisterBody, request: Request):
     pin = (b.pin or "").strip()
     if len(account) < 2:
         raise HTTPException(400, "账号至少 2 位")
-    if len(pin) < 4:
-        raise HTTPException(400, "密码至少 4 位")
+    pin = _check_pin(pin, parent=True)
     ip = _client_ip(request)
     _rate_ok("ip:" + ip)
     c = db.connect(admin=True)
@@ -884,8 +893,9 @@ def auth_join(b: JoinBody, request: Request):
     account = (b.account or "").strip().lower()
     pin = (b.pin or "").strip()
     code = (b.code or "").strip().upper()
-    if len(account) < 2 or len(pin) < 4 or not code:
+    if len(account) < 2 or not code:
         raise HTTPException(400, "账号、密码、邀请码都要填")
+    pin = _check_pin(pin, parent=True)
     ip = _client_ip(request)
     _rate_ok("ip:" + ip)
     _rate_ok("join:" + code)
@@ -1033,9 +1043,7 @@ def auth_me(request: Request):
 
 @app.post("/api/admin/pin", dependencies=[Depends(require_parent)])
 def admin_change_pin(b: PinBody, request: Request):
-    pin = (b.pin or "").strip()
-    if len(pin) < 4:
-        raise HTTPException(400, "密码至少 4 位")
+    pin = _check_pin(b.pin, parent=True)
     u = request.state.user
     c = get_conn()
     c.execute("UPDATE users SET pin_hash=?, force_pin_change='' WHERE id=?", (db.hash_pin(pin), u["id"]))
@@ -1443,9 +1451,7 @@ def kids_create(b: KidIn, request: Request):
     if not name:
         raise HTTPException(400, "名字不能为空")
     account = (b.account or name).strip().lower()
-    pin = (b.pin or "0129").strip()
-    if len(pin) < 4:
-        raise HTTPException(400, "密码至少 4 位")
+    pin = _check_pin(b.pin or "0129", parent=False)
     u = request.state.user
     # 账号全局唯一：RLS 只让看本家，这里走特权连接查全部家庭
     pc = db.connect(admin=True)
@@ -1481,8 +1487,10 @@ def kids_update(kid: str, b: KidIn, request: Request):
         c.close(); raise HTTPException(404, "没有这个学期")
     c.execute("UPDATE users SET name=?, term_id=? WHERE id=?", (name, term, kid))
     if b.pin:
-        if len(b.pin.strip()) < 4:
-            c.close(); raise HTTPException(400, "密码至少 4 位")
+        try:
+            _check_pin(b.pin, parent=False)
+        except HTTPException as e:
+            c.close(); raise e
         c.execute("UPDATE users SET pin_hash=?, force_pin_change='' WHERE id=?", (db.hash_pin(b.pin.strip()), kid))
         c.execute("INSERT INTO revoked(jti,created_at) VALUES(?,?) ON CONFLICT(jti) DO UPDATE SET created_at=excluded.created_at",
                   ("u:" + kid, str(time.time())))

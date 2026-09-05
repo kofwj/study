@@ -672,7 +672,7 @@ onMounted(load)
     <section v-if="section === 'pin'" class="a-card enter">
       <h3>修改家长密码</h3>
       <div class="a-item">
-        <input v-model="pinForm.next" type="password" placeholder="新密码（至少 4 位）" class="w-name" />
+        <input v-model="pinForm.next" type="password" placeholder="新密码（家长至少 8 位）" class="w-name" />
         <button class="ok" @click="changePin">改密码</button>
       </div>
       <p class="dim">账号 parent；改密后旧设备要重新登录。首登请改掉迁移来的旧密码。</p>

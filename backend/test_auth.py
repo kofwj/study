@@ -36,6 +36,8 @@ def main_fn():
         r = cli.get("/api/tasks")
         assert r.status_code == 200, r.text
         r = cli.post("/api/admin/pin", json={"pin": "4321"})
+        assert r.status_code == 400
+        r = cli.post("/api/admin/pin", json={"pin": "parent88"})
         assert r.status_code == 200, r.text
         r = cli.post("/api/auth/logout")
         assert r.status_code == 200
@@ -43,6 +45,8 @@ def main_fn():
         assert r.status_code == 401
         r = cli.post("/api/auth/login", json={"account": "parent", "pin": "8888"})
         assert r.status_code == 401
+        r = cli.post("/api/auth/login", json={"account": "parent", "pin": "parent88"})
+        assert r.status_code == 200
         r = cli.post("/api/auth/login", json={"account": "lele", "pin": "8888"})
         assert r.status_code == 200, r.text
         r = cli.get("/api/admin/weekly")
