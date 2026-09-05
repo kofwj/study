@@ -10,6 +10,8 @@ const subjects = ref([])
 const units = ref([])
 const tasks = ref([])
 const daily = ref([])
+const terms = ref([])
+const activeTerm = ref('g5s1')
 const cursors = ref({})
 const progressLock = ref(true)
 const redemptions = ref([])
@@ -44,6 +46,8 @@ async function load() {
   units.value = t.units
   tasks.value = t.tasks
   daily.value = t.daily
+  terms.value = t.terms || []
+  activeTerm.value = t.active_term || 'g5s1'
   cursors.value = t.cursors || {}
   progressLock.value = t.progress_lock === '1'
   redemptions.value = rd
@@ -156,6 +160,14 @@ async function setCursor(subj, taskId) {
   } catch (e) { showToast(e.message) }
 }
 
+async function changeTerm() {
+  try {
+    await api.admin.setTerm(activeTerm.value)
+    showToast('已切换学期')
+    await load()
+  } catch (e) { showToast(e.message) }
+}
+
 async function toggleLock() {
   try {
     await api.admin.setProgressLock(!progressLock.value)
@@ -183,6 +195,11 @@ onMounted(load)
       <div>
         <div class="a-title">🛠️ 家长管理</div>
         <div class="a-sub">给孩子配置奖励、等级与任务</div>
+        <label class="a-term">学期
+          <select v-model="activeTerm" @change="changeTerm">
+            <option v-for="tm in terms" :key="tm.id" :value="tm.id">{{ tm.label }}</option>
+          </select>
+        </label>
       </div>
       <button class="a-exit" @click="emit('exit')">← 回到孩子端</button>
     </header>
@@ -433,6 +450,8 @@ onMounted(load)
 }
 .a-title { font-size: 20px; font-weight: 800; }
 .a-sub { font-size: 12px; opacity: .85; margin-top: 4px; }
+.a-term { display: block; margin-top: 8px; font-size: 12px; }
+.a-term select { margin-left: 6px; padding: 4px 8px; border-radius: 8px; border: 1px solid #cfe4f2; background: #fff; color: #1f3b55; }
 .a-exit { background: rgba(255,255,255,.22); border: none; color: #fff; border-radius: 20px; padding: 9px 16px; font-weight: 700; cursor: pointer; font-family: inherit; }
 .a-tabs { display: flex; gap: 8px; margin: 14px 0; overflow-x: auto; padding-bottom: 4px; }
 .a-tabs button {

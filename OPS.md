@@ -2,35 +2,42 @@
 
 > 所有命令按「本机(Mac)」和「VPS」区分。源码在本机 `/Users/jian/Downloads/study`，线上在 VPS `/home/kofwj/sunshine`（以下用 `~` 代指）。
 
-## 一、改教材（下学期 / 补 4 科）
+## 一、改教材（多学期 / 多科目）
 
-任务卡全由 `scripts/gen_tasks.py` 生成，**只改数据不碰代码**。
+教材目录从「电子课本网 dzkbw.com」抓取，再转成多学期 seed。**只改数据不碰代码**。
 
-### 下学期换教材（如五年级下）
+> 口径：目录只到「单元 + 课」粒度；每课的「动作/怎么做」仍靠 `gen_seed.py` 里的关键词规则给默认值，精确到手录级仍需人工过（参照当年五上实物核对）。
 
-1. 本机编辑 `scripts/gen_tasks.py`：
-   - `TERM` 改 `id`（`g5s1`→`g5s2`）、`label`、`term`、`version`
-   - 把 `CN` / `MA` / `EN` 三个列表换成新目录（每项 `("动作", "标题")`，如 `("背诵", "《海上日出》")`）
-   - `main()` 里 `curriculum_ver` 换一个全新值（如 `2026-g5s2-v1`）——**这个值变了，线上才会刷新任务**
-2. 本机重新生成：
+### 数据流
+
+```
+dzkbw 目录 → scripts/fetch_catalog.py(单本) → scripts/gen_catalog.py(批量) → data/catalog.json
+                                                                                  ↓
+                                                                     scripts/gen_seed.py(转换)
+                                                                                  ↓
+                                                          data/tasks.seed.multi.json + 核对表
+```
+
+### 下册 / 新学期换新版
+
+1. 抓最新目录（实时抓站点书目，新版 slug 一上线自动覆盖）：
    ```bash
-   cd /Users/jian/Downloads/study && python3 scripts/gen_tasks.py
+   cd /Users/jian/Downloads/study && python3 scripts/gen_catalog.py --save
    ```
-3. 提交推送 + 部署（见「三、日常更新」）
-
-### 补 4 科（科学/道法/音美/综合）
-
-1. 加内容列表（格式同 `CN`）：`SCI = [...]`、`DA = [...]`、`YM = [...]`、`ZH = [...]`
-2. `SUBJ_ID` 加对应映射：`"科学": "sci"`、`"道法": "da"`、`"音美": "ym"`、`"综合": "zh"`
-3. `build()` 里加循环：
-   ```python
-   for i, (name, items) in enumerate(SCI, 1):
-       u, ts = pack("科学", i, name, items); units.append(u); tasks.extend(ts)
+2. 重新生成多学期 seed（五上语数英会自动用手工核实版覆盖）：
+   ```bash
+   python3 scripts/gen_seed.py
    ```
-4. `main()` 里 `curriculum_ver` 升一位（`...-v4` → `...-v5`）
-5. 本机 `python3 scripts/gen_tasks.py` → 提交 → 部署
+3. 改 `gen_seed.py` 顶部 `curriculum_ver`（或每次重跑自然变，因为内容变了）——**这个值变了，线上才会刷新任务**。
+4. 提交推送 + 部署（见「三、日常更新」）。
 
-> 换学期后旧完成记录自动隔离（任务 ID 带 `g5s1-`/`g5s2-` 前缀），不会污染等级/流水。妈妈端「已学到」游标也是带前缀的，新学期重新拨。
+### 补 4 科 / 加新学科
+
+- 目录来源见 `data/textbook-index.md`（版本 × 年级 × 站点路径 + 版次推进）。
+- 在 `scripts/gen_seed.py` 的 `SUBJECTS`/`SPLIT`/`ACTION` 里加对应的切分与动作规则。
+- 主课（语数英科道法）已配好；音美/综合因无稳定电子课本，当前不做。
+
+> 换学期后旧完成记录自动隔离（任务 ID 带 `g5s1-`/`g5x2-` 等学期前缀），不污染等级/流水。家长端「已学到」游标也带前缀，新学期重新拨。
 
 ## 二、备份（只读热备份，留最近 10 份）
 
@@ -41,14 +48,14 @@ ssh -o BatchMode=yes root@192.168.100.5 \
 
 备份落在 `~/sunshine/data/backups/`。
 
-## 三、日常更新（拉代码 → 重新构建 → 起容器）
+## 三、日常更新（备份 → 拉代码 → 重新构建 → 起容器）
 
 ```bash
 ssh -o BatchMode=yes root@192.168.100.5 \
   'su - kofwj -c "cd ~/sunshine && python3 scripts/backup_db.py && git pull --ff-only origin main && docker compose build --no-cache && docker compose up -d"'
 ```
 
-前端烘焙进镜像，**改前端必须 build**。部署后等 3 秒，手机/PWA 会自动检测新版本并提示刷新（不用手动清缓存）。
+或直接跑本地脚本 `scripts/deploy_vps.sh`（同样先备份再构建）。前端烘焙进镜像，**改前端必须 build**。部署后等 3 秒，手机/PWA 会自动检测新版本并提示刷新（不用手动清缓存）。
 
 ## 四、重置数据（清打卡，回到零起点）
 

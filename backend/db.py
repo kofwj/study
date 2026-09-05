@@ -13,6 +13,7 @@ from pathlib import Path
 BASE = Path(__file__).parent
 DB_PATH = Path(os.environ.get("SUNSHINE_DB", BASE / "sunshine.db"))
 SEED_JSON = BASE.parent / "data" / "tasks.seed.json"
+SEED_MULTI = BASE.parent / "data" / "tasks.seed.multi.json"
 
 # 兑换商店（P0 内置示例，家长后续在管理端增删改）
 REWARDS = [
@@ -88,6 +89,15 @@ def connect():
     return c
 
 
+def load_seed():
+    """优先读多学期 seed；旧单学期文件自动包成 terms[]。"""
+    path = SEED_MULTI if SEED_MULTI.exists() else SEED_JSON
+    data = json.loads(path.read_text(encoding="utf-8"))
+    if "terms" not in data and "term" in data:
+        data["terms"] = [data["term"]]
+    return data
+
+
 def seed_ranks(conn):
     """重写默认等级（含图标）+ 记录版本号；版本不变时不再覆盖，尊重家长后续改动。"""
     conn.execute("DELETE FROM ranks")
@@ -98,11 +108,11 @@ def seed_ranks(conn):
 
 
 def seed(conn):
-    data = json.loads(SEED_JSON.read_text(encoding="utf-8"))
-    term = data["term"]
+    data = load_seed()
     conn.execute("DELETE FROM terms")
-    conn.execute("INSERT INTO terms(id,label,grade,term,version) VALUES(?,?,?,?,?)",
-                 (term["id"], term["label"], term["grade"], term["term"], term["version"]))
+    for term in data.get("terms", []):
+        conn.execute("INSERT INTO terms(id,label,grade,term,version) VALUES(?,?,?,?,?)",
+                     (term["id"], term["label"], term["grade"], term["term"], term["version"]))
     for s in ALL_SUBJECTS:
         conn.execute("INSERT OR REPLACE INTO subjects(id,name) VALUES(?,?)", (s, s))
     for u in data["units"]:
@@ -133,12 +143,16 @@ def seed(conn):
 
 def apply_curriculum(conn):
     """已有库：只刷新系统任务/单元，保留自定义任务和流水。"""
-    data = json.loads(SEED_JSON.read_text(encoding="utf-8"))
+    data = load_seed()
     ver = data.get("curriculum_ver", "")
     if get_setting(conn, "curriculum_ver", "") == ver:
         return
     conn.execute("DELETE FROM tasks WHERE COALESCE(custom,0)=0")
     conn.execute("DELETE FROM units WHERE id NOT IN (SELECT DISTINCT unit_id FROM tasks)")
+    conn.execute("DELETE FROM terms")
+    for term in data.get("terms", []):
+        conn.execute("INSERT INTO terms(id,label,grade,term,version) VALUES(?,?,?,?,?)",
+                     (term["id"], term["label"], term["grade"], term["term"], term["version"]))
     for u in data["units"]:
         conn.execute("INSERT OR REPLACE INTO units(id,subject_id,term_id,seq,name) VALUES(?,?,?,?,?)",
                      (u["id"], u["subject"], u["term_id"], u["seq"], u["name"]))
@@ -223,6 +237,7 @@ def init_db():
     # 语文已学到《珍珠鸟》（g5s1-cn-1-5），推荐从这里往后，前面不加阳光
     conn.execute("INSERT OR IGNORE INTO settings(key,value) VALUES('cursor_语文','g5s1-cn-1-5')")
     conn.execute("INSERT OR IGNORE INTO settings(key,value) VALUES('progress_lock','1')")
+    conn.execute("INSERT OR IGNORE INTO settings(key,value) VALUES('active_term','g5s1')")
     if get_setting(conn, "ranks_ver", "") != RANKS_VER:
         seed_ranks(conn)
     conn.commit()

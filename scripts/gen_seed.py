@@ -28,7 +28,8 @@ GRADE_CN = "一二三四五六"
 
 
 def term_id(grade: int, term: str) -> str:
-    return f"g{grade}{'s' if term == '上' else 'x'}"
+    # 跟现有五上手工 id 对齐：g5s1=五年级上，g5x2=五年级下
+    return f"g{grade}{'s1' if term == '上' else 'x2'}"
 
 
 # ---------------- 各科：单元切分 + 动作规则 ----------------
@@ -165,17 +166,29 @@ def main():
         u, t = build_book(book)
         units.extend(u)
         tasks.extend(t)
-    # 儿底：任何没生成任务的单元补一条，避免空单元
+    # 兜底：任何没生成任务的单元补一条，避免空单元
     have = {t["unit_id"] for t in tasks}
     for u in units:
         if u["id"] not in have:
             tasks.append(_task(u["subject"], u["id"], 1,
                                DEFAULT_ACTION[u["subject"]], f"完成「{u['name']}」"))
-    # 12 个学期（上=2024/25/26秋新版，下含旧版），只保留有教材的
+    # 五上语数英用手工实物核对版覆盖自动生成，保留 g5s1-* id（完成记录不断）
+    hand = json.loads((DATA / "tasks.seed.json").read_text(encoding="utf-8"))
+    hand_subj = {"语文", "数学", "英语"}
+    units = [u for u in units if not (u["term_id"] == "g5s1" and u["subject"] in hand_subj)]
+    keep = {u["id"] for u in units}
+    tasks = [t for t in tasks if t["unit_id"] in keep]
+    units.extend(hand["units"])
+    tasks.extend(hand["tasks"])
+
     term_ids = sorted({term_id(b["grade"], b["term"]) for b in CATALOG["books"]})
-    terms = [{"id": t, "label": f"{'一二三四五六'[int(t[1])-1]}年级{'上' if t[2]=='s' else '下'}",
-              "grade": f"{'一二三四五六'[int(t[1])-1]}年级", "term": "上" if t[2] == "s" else "下",
-              "version": "江苏南通"} for t in term_ids]
+    terms = []
+    for t in term_ids:
+        m = re.match(r"g(\d+)([sx])", t)
+        g, sx = int(m.group(1)), m.group(2)
+        terms.append({"id": t, "label": f"{GRADE_CN[g-1]}年级{'上' if sx=='s' else '下'}",
+                      "grade": f"{GRADE_CN[g-1]}年级", "term": "上" if sx == "s" else "下",
+                      "version": "江苏南通"})
 
     seed = {"curriculum_ver": "2026-multi-v1", "subjects": SUBJECTS,
             "terms": terms, "units": units, "tasks": tasks, "daily_tasks": DAILY}

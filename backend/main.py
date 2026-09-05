@@ -35,6 +35,10 @@ def get_conn():
     return db.connect()
 
 
+def active_term(c):
+    return db.get_setting(c, "active_term", "g5s1")
+
+
 def require_admin(x_admin_pin: Optional[str] = Header(None)):
     c = get_conn()
     try:
@@ -93,7 +97,8 @@ def today_label():
 def subject_order(c, subject_id):
     rows = c.execute(
         "SELECT t.id FROM tasks t LEFT JOIN units u ON u.id=t.unit_id "
-        "WHERE t.subject_id=? ORDER BY COALESCE(u.seq,99), t.sort", (subject_id,)).fetchall()
+        "WHERE t.subject_id=? AND (u.term_id=? OR COALESCE(t.custom,0)=1) "
+        "ORDER BY COALESCE(u.seq,99), t.sort", (subject_id, active_term(c))).fetchall()
     return [r["id"] for r in rows]
 
 
@@ -111,11 +116,15 @@ def locked_task_ids(c):
     """进度锁（默认开）：每科只有「当前单元」可打卡，之后的单元锁定，防提前刷后面的课。"""
     if db.get_setting(c, "progress_lock", "1") != "1":
         return set()
+    term = active_term(c)
     tseq = {r["id"]: r["seq"] for r in c.execute(
-        "SELECT t.id, COALESCE(u.seq,0) seq FROM tasks t LEFT JOIN units u ON u.id=t.unit_id").fetchall()}
+        "SELECT t.id, COALESCE(u.seq,0) seq FROM tasks t LEFT JOIN units u ON u.id=t.unit_id "
+        "WHERE u.term_id=? OR COALESCE(t.custom,0)=1", (term,)).fetchall()}
     custom_ids = {r["id"] for r in c.execute("SELECT id FROM tasks WHERE custom=1").fetchall()}
     locked = set()
-    for sid in {r[0] for r in c.execute("SELECT DISTINCT subject_id FROM tasks").fetchall()}:
+    for sid in {r[0] for r in c.execute(
+            "SELECT DISTINCT t.subject_id FROM tasks t LEFT JOIN units u ON u.id=t.unit_id "
+            "WHERE u.term_id=? OR COALESCE(t.custom,0)=1", (term,)).fetchall()}:
         ids = subject_order(c, sid)
         cur_seq = None
         for tid in ids:
@@ -284,18 +293,25 @@ def overview():
 @app.get("/api/tasks")
 def tasks():
     c = get_conn()
+    term = active_term(c)
+    term_row = c.execute("SELECT * FROM terms WHERE id=?", (term,)).fetchone()
     out = {
         "level": level_info(c),
         "streak": streak(c),
         "kid_name": db.get_setting(c, "kid_name", "乐乐"),
         "today": today_label(),
+        "active_term": term,
+        "term": dict(term_row) if term_row else {"id": term, "label": term},
+        "terms": [dict(r) for r in c.execute("SELECT * FROM terms ORDER BY id").fetchall()],
         "cursors": {r["key"][7:]: r["value"] for r in c.execute(
             "SELECT key,value FROM settings WHERE key LIKE 'cursor_%'").fetchall()},
         "today_checkin": c.execute(
             "SELECT 1 FROM checkins WHERE date=?", (db.today(),)).fetchone() is not None,
         "subjects": [dict(r) for r in c.execute("SELECT * FROM subjects").fetchall()],
         "units": [{"id": r["id"], "name": r["name"], "subject_id": r["subject_id"]}
-                  for r in c.execute("SELECT id, name, subject_id FROM units").fetchall()],
+                  for r in c.execute(
+                      "SELECT id, name, subject_id FROM units WHERE term_id=? OR id LIKE 'custom-%'",
+                      (term,)).fetchall()],
     }
     # 单元测试成绩（unit_id → 最近一次分），孩子端单元旁展示
     unit_scores = {}
@@ -304,10 +320,11 @@ def tasks():
         if r["unit_id"] not in unit_scores:
             unit_scores[r["unit_id"]] = {"score": r["score"], "date": r["date"]}
     out["unit_scores"] = unit_scores
-    # 单元任务 + 完成状态
+    # 单元任务 + 完成状态（只看当前学期 + 自定义）
     tasks_rows = c.execute(
         "SELECT t.* FROM tasks t LEFT JOIN units u ON u.id=t.unit_id "
-        "ORDER BY t.subject_id, COALESCE(u.seq,99), t.sort").fetchall()
+        "WHERE u.term_id=? OR COALESCE(t.custom,0)=1 "
+        "ORDER BY t.subject_id, COALESCE(u.seq,99), t.sort", (term,)).fetchall()
     done_ids = {r["task_id"] for r in c.execute(
         "SELECT DISTINCT task_id FROM completions WHERE status='completed'").fetchall()}
     out["progress_lock"] = db.get_setting(c, "progress_lock", "1")
@@ -482,7 +499,7 @@ def custom_task(body: CustomTaskBody):
     # 自定义任务归到独立的「自定义」单元（seq=99 排最后），不混进教材单元
     unit_id = f"custom-{body.subject_id}"
     c.execute("INSERT OR IGNORE INTO units(id,subject_id,term_id,seq,name) VALUES(?,?,?,?,?)",
-              (unit_id, body.subject_id, "g5s1", 99, "自定义"))
+              (unit_id, body.subject_id, active_term(c), 99, "自定义"))
     tid = uuid.uuid4().hex[:8]
     c.execute("INSERT INTO tasks(id,subject_id,unit_id,action,title,sunshine,sort,custom) VALUES(?,?,?,?,?,?,99,1)",
               (tid, body.subject_id, unit_id, "自定义", title, body.sunshine or 5))
@@ -612,6 +629,21 @@ def set_progress_lock(b: LockBody):
     db.set_setting(c, "progress_lock", "1" if b.on else "0")
     c.commit(); c.close()
     return {"ok": True}
+
+
+class TermBody(BaseModel):
+    term_id: str
+
+
+@app.post("/api/admin/term", dependencies=[Depends(require_admin)])
+def set_active_term(b: TermBody):
+    c = get_conn()
+    if not c.execute("SELECT 1 FROM terms WHERE id=?", (b.term_id,)).fetchone():
+        c.close()
+        raise HTTPException(404, "没有这个学期")
+    db.set_setting(c, "active_term", b.term_id)
+    c.commit(); c.close()
+    return {"ok": True, "term_id": b.term_id}
 
 
 class PinBody(BaseModel):
