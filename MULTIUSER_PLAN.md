@@ -199,9 +199,14 @@ def require_parent(user=Depends(get_current_user)):
 
 目标：一个家庭多个孩子，各看各的课、各有各的游标/盲盒/里程碑/成就/个人纪录。**P0 那三条 `kid_id` 维度唯一索引是前提**，少了它第二个娃任何卡都点不了、也签不了到。
 
+**已定决定（2026-09）**
+- 每个娃都建账号（active），**不设 passive/只读角色**；小娃由家长在「切换娃」下代点打卡。
+- 娃账号用拼音/小名（唯一，`ux_users_account` 已卡），display 名用中文小名；名/账号/PIN/`term_id` 家长在「管理孩子」页可改。
+- 学期切换：删掉全家 `settings.active_term` 下拉，改成「管理孩子」页按娃改 `users.term_id`（读源换成 `users.term_id`、删 `/api/admin/term` 全家端点）。属破坏性变更，当变更点处理。
+
 **硬骨头（上一步没想的）**
 0. **`kid_settings` 接线（P0 COPY 了、读写仍走 settings）**：`cursor_%`/`box_opened`/`milestone_%` 必须改 `get_kid_setting/set_kid_setting`，否则两娃游标/盲盒/里程碑串。
-0b. **娃 PIN 独立改接口**：P1 把娃 `pin_hash` 复制成家长 PIN，`/api/admin/pin` 只改家长；`force_pin_change` 是全局的。P2 拆 active/passive 时必须给娃单独改 PIN，并把 `force_pin_change` 改成 per-user。
+0b. **娃 PIN 独立改接口**：P1 把娃 `pin_hash` 复制成家长 PIN，`/api/admin/pin` 只改家长；`force_pin_change` 是全局的。P2 每娃独立 PIN（家长在「管理孩子」页设，不做 active/passive），`force_pin_change` 改成 per-user。
 1. **唯一约束必须 kid 化（P0 已做）**：`complete()`/`checkin()` 靠「已完成」唯一约束判重复（PG 用 `ON CONFLICT DO NOTHING`），约束带 `kid_id` 后两娃才能各自完成同一张 `g5s1-cn-1-1` 且不串。这条漏了 P2 直接是坏的。
 2. **不止游标，这些推导全要按娃**：`earned/balance/level_info/streak`（P0 已带参）、`locked_task_ids` 查 `completions` 判「已解锁」、`is_past`、`/api/tasks` 的 `done_ids`、每日任务的个人纪录 `pb` 好成绩循环、`achievements()` 全部徽章计数。漏一处 =「哥哥打了卡，弟弟的课被判已完成」。
 3. **刚上线的「学期切换下拉」语义要变**：现在写的是全局 `settings.active_term`（全家一个学期）；多娃后应删掉这个全家开关，改成「在某娃的管理页改该娃的 `users.term_id`」。这是对上一个 commit 已上线功能的**破坏性变更**，要当变更点列出，不是新增。
@@ -217,7 +222,7 @@ def require_parent(user=Depends(get_current_user)):
 4. 家长端「管理孩子」：增删娃、名字/头像/PIN/`term_id`；`/api/admin/kids` CRUD + 校验 `family_id`。
 5. 家长端「切换查看娃」下拉 + `current_kid` 校验；周报/流水/审批按选中娃查。
 6. `/api/custom-task` 加可选 `kid_id`。
-7. 孩子账号加 `active/passive` 角色开关：大娃 active 自己登录打卡；小娃 passive 由家长在「切换娃」下代打卡或只读（省掉小娃的多设备登录 + 「免密击穿」问题，参考 nitin27may 的 read-only child）。
+7. 每娃都建账号（active，不设 passive）：大娃自己登录打卡，小娃由家长在「切换娃」下代点；所有娃 PIN 家长在「管理孩子」页设。
 
 **验收**：哥哥 `g5s1`、弟弟 `g2s1` 各自登录只看到自己的卡；两人同一天都能完成「跳绳」和各自的签到；哥哥完成 `g5s1-cn-1-1` 后弟弟再完成同一张不报「已做过」；家长切换娃，周报/流水/审批/游标/盲盒全跟着切；伪造 `kid_id` 查别家娃返回空/403。
 
