@@ -2,7 +2,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { api } from './api.js'
 import Admin from './Admin.vue'
-import { SUBJECT_ICONS as ICONS, rankIcon } from './icons.js'
+import { SUBJECT_ICONS as ICONS, rankIcon, achIcon } from './icons.js'
 import { Sun, Lock, Gift, Check, TrendingUp, Target, User, ShoppingCart, ScrollText, Medal, BarChart3, Map, CalendarDays, RefreshCw, PartyPopper, Sparkles, BookOpen, Flame } from 'lucide-vue-next'
 
 const data = reactive({
@@ -603,7 +603,7 @@ function reloadApp() {
         <h3><Medal class="ico" :size="18" /> 我的成就</h3>
         <div class="ach-grid">
           <div v-for="a in achievements" :key="a.id" class="ach-cell" :class="{ on: a.earned }">
-            <div class="ach-icon"><Sparkles class="ico" :size="20" /></div>
+            <div class="ach-icon"><component :is="achIcon(a.icon)" class="ico" :size="24" /></div>
             <div class="ach-name">{{ a.name }}</div>
             <div class="ach-prog">{{ Math.min(a.current, a.target) }}/{{ a.target }}</div>
           </div>

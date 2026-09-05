@@ -2,6 +2,7 @@
 import {
     BookOpen, Calculator, Globe, FlaskConical, Heart, Dumbbell, Palette, Sparkles,
     Sprout, Leaf, Flower, Star, Flame, Trophy, Medal, Gem, Rocket, Crown,
+    CalendarDays, Circle, Brain, Moon, Award, ShoppingCart, Gift, Dices, Coins,
 } from 'lucide-vue-next'
 
 export const SUBJECT_ICONS = {
@@ -24,4 +25,16 @@ const RANK_ICONS = {
 
 export function rankIcon(glyph) {
     return RANK_ICONS[glyph] || Star
+}
+
+const ACH_ICONS = {
+    sprout: Sprout, book: BookOpen, calc: Calculator, globe: Globe,
+    medal: Medal, sport: Dumbbell, calendar: CalendarDays, go: Circle,
+    mental: Brain, flame: Flame, rocket: Rocket, moon: Moon,
+    award: Award, cart: ShoppingCart, gift: Gift, dices: Dices,
+    sparkles: Sparkles, coins: Coins, gem: Gem, crown: Crown,
+}
+
+export function achIcon(glyph) {
+    return ACH_ICONS[glyph] || Sparkles
 }
