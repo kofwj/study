@@ -395,21 +395,25 @@ onMounted(load)
     <!-- 审批 -->
     <section v-if="section === 'approve'" class="a-card enter">
       <h3>兑换审批与兑现</h3>
-      <p class="lead">需家长同意的奖励先到「待同意」；同意后扣阳光，实际给了奖励再点「标记已兑现」。</p>
+      <p class="lead">需家长同意的奖励先到「待同意」；同意后扣阳光，实际给了再点「标记已兑现」。</p>
       <div v-if="!redemptions.length" class="dim">还没有任何兑换记录。</div>
-      <div class="a-item" v-for="rd in redemptions" :key="rd.id">
-        <span class="badge">{{ rd.name }}</span>
-        <span class="dim">{{ rd.date }} · -{{ rd.price }} <Sun class="ico sun" :size="12" /></span>
-        <template v-if="rd.status === 'pending'">
-          <span class="st pending">待同意</span>
-          <button class="ok" @click="approveRedeem(rd.id)">同意</button>
-          <button class="del" @click="rejectRedeem(rd.id)">拒绝</button>
-        </template>
-        <template v-else-if="rd.status === 'done'">
-          <span class="st done">已扣阳光</span>
-          <button class="ok ghost-o" @click="deliverRedeem(rd.id)">标记已兑现</button>
-        </template>
-        <span v-else class="st delivered">已兑现 <Check class="ico" :size="12" /></span>
+      <div class="apv-row" v-for="rd in redemptions" :key="rd.id">
+        <div class="apv-info">
+          <span class="apv-name">{{ rd.name }}</span>
+          <span class="dim">{{ rd.date }} · -{{ rd.price }} <Sun class="ico sun" :size="12" /></span>
+        </div>
+        <div class="apv-right">
+          <template v-if="rd.status === 'pending'">
+            <span class="st pending">待同意</span>
+            <button class="ok" @click="approveRedeem(rd.id)">同意</button>
+            <button class="del" @click="rejectRedeem(rd.id)">拒绝</button>
+          </template>
+          <template v-else-if="rd.status === 'done'">
+            <span class="st done">已扣阳光</span>
+            <button class="ok ghost-o" @click="deliverRedeem(rd.id)">标记已兑现</button>
+          </template>
+          <span v-else class="st delivered">已兑现 <Check class="ico" :size="12" /></span>
+        </div>
       </div>
     </section>
 
@@ -571,24 +575,31 @@ onMounted(load)
       <div class="band-box">
         <span v-for="[th, sun] in TEST_BANDS" :key="th" class="band">{{ th === 0 ? '85 以下' : th + ' 分' }} · +{{ sun }} 阳光</span>
       </div>
-      <div class="a-item add">
-        <select v-model="newTest.subject_id" @change="newTest.unit_id = ''">
-          <option value="" disabled>科目</option>
-          <option v-for="s in subjects" :key="s.id" :value="s.id">{{ s.name }}</option>
-        </select>
-        <select v-model="newTest.unit_id">
-          <option value="">选单元（可选）</option>
-          <option v-for="u in units.filter(x => x.subject_id === newTest.subject_id)" :key="u.id" :value="u.id">{{ u.name }}</option>
-        </select>
-        <input v-model="newTest.score" type="number" placeholder="分数 0~100" class="w-num" />
-        <input v-model="newTest.note" placeholder="备注（如：期中）" class="w-cat" />
-        <button class="ok" @click="addTest">录成绩</button>
+      <div class="add-box">
+        <div class="add-title">录入成绩</div>
+        <div class="frm-row">
+          <label class="fld w104"><span>科目</span>
+            <select v-model="newTest.subject_id" @change="newTest.unit_id = ''">
+              <option value="" disabled>选科目</option>
+              <option v-for="s in subjects" :key="s.id" :value="s.id">{{ s.name }}</option>
+            </select>
+          </label>
+          <label class="fld grow"><span>单元（可选）</span>
+            <select v-model="newTest.unit_id">
+              <option value="">不选</option>
+              <option v-for="u in units.filter(x => x.subject_id === newTest.subject_id)" :key="u.id" :value="u.id">{{ u.name }}</option>
+            </select>
+          </label>
+          <label class="fld w84"><span>分数</span><input v-model="newTest.score" type="number" placeholder="0~100" /></label>
+          <label class="fld w104"><span>备注</span><input v-model="newTest.note" placeholder="如：期中" /></label>
+        </div>
+        <button class="ok wide" @click="addTest">录成绩并发阳光</button>
       </div>
       <div v-if="!tests.length" class="dim">还没录过测试成绩。</div>
-      <div class="a-item" v-for="t in tests" :key="t.id">
+      <div class="test-row" v-for="t in tests" :key="t.id">
         <span class="badge">{{ t.subject_id }}</span>
         <span class="badge daily">{{ t.score }} 分</span>
-        <span class="dim" style="flex:1">{{ t.note || '—' }} · {{ t.date }}</span>
+        <span class="dim">{{ t.note || '—' }} · {{ t.date }}</span>
         <span class="st delivered">+{{ t.sunshine }} <Sun class="ico sun" :size="12" /></span>
         <button class="del" @click="delTest(t.id)">删</button>
       </div>
@@ -772,6 +783,14 @@ details.subj[open] summary::after { transform: rotate(-135deg); }
 .add-title { font-size: 12px; font-weight: 800; color: var(--ink-2); margin-bottom: 10px; }
 .frm-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
 .ok.wide { width: 100%; }
+
+/* —— 兑换审批 / 单元测试 行 —— */
+.apv-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--surface-2); flex-wrap: wrap; }
+.apv-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.apv-name { font-weight: 700; }
+.apv-right { display: flex; align-items: center; gap: 8px; flex: none; }
+.test-row { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--surface-2); flex-wrap: wrap; }
+.test-row .dim { flex: 1; min-width: 0; }
 
 @media (max-width: 760px) {
   .a-body { flex-direction: column; }
