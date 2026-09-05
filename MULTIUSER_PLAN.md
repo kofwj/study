@@ -533,7 +533,24 @@ CREATE TABLE weak_points (
 - 生成时机：**实时算**（数据量小，跟「ledger 纯推导、不物化周报」同一原则），家长打开面板/周报时算。
 - 一条结论必须能落到**一个动作**；给不出动作的（如「成绩下滑」这种空话）不生成。
 
-### 新表 fitness_standards（江苏体测达标线，唯一缺的数据）
+### 结论规则阈值（默认值 + 家庭可改，已定）
+
+「每个家庭对孩子的要求不同」，阈值**不写死**：内置默认值，家长在设置页可改。
+
+```python
+INSIGHT_DEFAULTS = {
+  "test_fail_count": 2,    # 连续几次低分算「薄弱单元」
+  "test_fail_score": 80,   # 低于多少分算低
+  "drop_ratio": 0.3,       # 完成量比上周少多少算「下滑」
+  "streak_break": 2,       # 连击断几次值得在结论里提
+}
+```
+
+- 存储：`families.insight_rules TEXT DEFAULT ''`（JSON 覆盖项，空 = 全用内置默认）；引擎 `merge(INSIGHT_DEFAULTS, family.insight_rules)`。
+- 家长在设置页「诊断阈值」区块改（每项带「恢复默认」）；结论文案里的数字（如「没过 80 分」）随阈值变。
+- **家庭级一个值**（不比 per-kid）：家长对全家孩子的标准通常一致；真有个别娃要单独标准，以后再加 per-kid 覆盖。
+
+### 新表 fitness_standards（国家体测达标线，唯一缺的数据）
 
 ```sql
 CREATE TABLE fitness_standards (
