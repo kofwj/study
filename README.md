@@ -9,6 +9,7 @@
 - 后端：FastAPI + SQLite（流水账 ledger 是唯一真相源，余额/累计/等级/连击全由流水推导）
 - 前端：Vue3 + Vite（单页 SPA，移动优先，PWA 可装桌面）
 - 部署：Docker Compose + Cloudflare Tunnel
+- 平板：[下载 APK](https://github.com/kofwj/study/releases/latest/download/sunshine.apk)（WebView 壳，不走 Chrome）
 
 ## 现在能做什么
 

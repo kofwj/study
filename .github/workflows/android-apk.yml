@@ -5,6 +5,8 @@ on:
     paths:
       - 'android/**'
       - '.github/workflows/android-apk.yml'
+permissions:
+  contents: write
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -21,7 +23,10 @@ jobs:
           gradle-version: '8.9'
       - run: gradle assembleDebug
         working-directory: android
-      - uses: actions/upload-artifact@v4
-        with:
-          name: sunshine-apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+      - name: Publish to Releases
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cp android/app/build/outputs/apk/debug/app-debug.apk sunshine.apk
+          gh release view apk >/dev/null 2>&1 || gh release create apk --title "阳光学习 APK" --notes "平板安装包，打开后用 WebView 访问 https://study.anemy.org/，不走 Chrome。" --target "$GITHUB_SHA"
+          gh release upload apk sunshine.apk --clobber
