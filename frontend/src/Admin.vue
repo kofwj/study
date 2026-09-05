@@ -480,14 +480,14 @@ onMounted(load)
         <select v-model="k.term_id">
           <option v-for="tm in terms" :key="tm.id" :value="tm.id">{{ tm.label }}</option>
         </select>
-        <input v-model="k._pin" type="password" placeholder="改 PIN" class="w-num" />
+        <input v-model="k._pin" type="password" placeholder="改密码" class="w-num" />
         <button class="ok" @click="saveKid(k)">存</button>
         <button class="del" @click="delKid(k)">删</button>
       </div>
       <div class="a-item add">
         <input v-model="newKid.name" placeholder="名字" class="w-name" />
         <input v-model="newKid.account" placeholder="账号" class="w-cat" />
-        <input v-model="newKid.pin" placeholder="PIN" class="w-num" />
+        <input v-model="newKid.pin" placeholder="密码" class="w-num" />
         <select v-model="newKid.term_id">
           <option v-for="tm in terms" :key="tm.id" :value="tm.id">{{ tm.label }}</option>
         </select>
@@ -502,7 +502,7 @@ onMounted(load)
         <input v-model="pinForm.next" type="password" placeholder="新密码（至少 4 位）" class="w-name" />
         <button class="ok" @click="changePin">改密码</button>
       </div>
-      <p class="dim">账号 parent；改密后旧设备要重新登录。首登请改掉迁移来的旧 PIN。</p>
+      <p class="dim">账号 parent；改密后旧设备要重新登录。首登请改掉迁移来的旧密码。</p>
     </section>
 
     <div v-if="toast" class="toast">{{ toast }}</div>
