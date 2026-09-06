@@ -303,10 +303,10 @@ function goInsight(row) {
   } else if (a === '每日打卡' || a === '运动打卡') emit('exit')
   else if (a === '今日复习') section.value = 'review'
 }
-async function judge(id, ok) {
+async function judge(id, action) {
   try {
-    await api.admin.judgeWeak(id, ok)
-    showToast(ok ? '记下了，过关' : '还得练，明天再来')
+    await api.admin.judgeWeak(id, action)
+    showToast(action === 'done' ? '已巩固，结束' : action === 'pass' ? '过关，间隔拉长' : '还在错，间隔缩短')
     await load()
   } catch (e) { showToast(e.message) }
 }
@@ -402,7 +402,7 @@ onMounted(load)
     <!-- 今日复习 -->
     <section v-if="section === 'review'" class="a-card enter">
       <h3>今日复习</h3>
-      <p class="lead">到期该练的。过关记下；还在错就明天再来。</p>
+      <p class="lead">到期该练的：过关间隔拉长，还在错间隔缩短，彻底巩固再点结束。</p>
       <div v-if="!reviewDue.length" class="dim">今天没有到期的。</div>
       <div v-for="x in reviewDue" :key="x.id" class="apv-row">
         <div class="apv-info">
@@ -410,8 +410,9 @@ onMounted(load)
           <span class="dim">{{ x.subject_id }} · {{ x.review_due_at }}</span>
         </div>
         <div class="ops">
-          <button class="ok" @click="judge(x.id, true)">过关</button>
-          <button class="del" @click="judge(x.id, false)">还在错</button>
+          <button class="ok" @click="judge(x.id, 'pass')">过关</button>
+          <button class="del" @click="judge(x.id, 'fail')">还在错</button>
+          <button class="ok ghost-o" @click="judge(x.id, 'done')">已巩固</button>
         </div>
       </div>
     </section>

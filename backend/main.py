@@ -1554,7 +1554,7 @@ def admin_review_due(request: Request):
 
 
 class ReviewJudgeIn(BaseModel):
-    ok: bool  # True=已巩固 False=还在错
+    action: str  # pass=过关升档 / fail=还在错降档 / done=已巩固
 
 
 @app.post("/api/admin/weak-points/{wid}/judge")
@@ -1572,15 +1572,22 @@ def admin_wp_judge(wid: str, b: ReviewJudgeIn, request: Request):
         db.apply_scope(c, fam, kid_id()); c.close()
         raise HTTPException(404, "没找到这条")
     now, today = db.now(), db.today()
-    if b.ok:
+    act = (b.action or "").strip()
+    if act not in ("pass", "fail", "done"):
+        db.apply_scope(c, fam, kid_id()); c.close()
+        raise HTTPException(400, "动作是 pass / fail / done")
+    new_idx = int(row["interval_idx"] or 0)
+    if act == "done":
         c.execute("UPDATE weak_points SET status='resolved', updated_at=? WHERE id=?", (now, wid))
     else:
-        due = _due_date(today, 0)
-        c.execute("UPDATE weak_points SET interval_idx=0, review_due_at=?, updated_at=? WHERE id=?", (due, now, wid))
+        new_idx = min(new_idx + 1, len(WEAKPOINT_INTERVALS) - 1) if act == "pass" else max(new_idx - 1, 0)
+        due = _due_date(today, new_idx)
+        c.execute("UPDATE weak_points SET interval_idx=?, review_due_at=?, updated_at=? WHERE id=?",
+                  (new_idx, due, now, wid))
     c.commit()
     db.apply_scope(c, fam, kid_id())
     c.close()
-    return {"ok": True, "resolved": bool(b.ok)}
+    return {"ok": True, "action": act, "interval_idx": new_idx}
 
 
 # --- 等级 ---

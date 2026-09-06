@@ -86,6 +86,6 @@ export const api = {
     weakPoints: (unit_id) => j('/api/admin/weak-points?unit_id=' + encodeURIComponent(unit_id)),
     setWeakPoints: (o) => j('/api/admin/weak-points', { method: 'PUT', ...body(o) }),
     reviewDue: () => j('/api/admin/review-due'),
-    judgeWeak: (id, ok) => j(`/api/admin/weak-points/${id}/judge`, { method: 'POST', ...body({ ok }) }),
+    judgeWeak: (id, action) => j(`/api/admin/weak-points/${id}/judge`, { method: 'POST', ...body({ action }) }),
   },
 }

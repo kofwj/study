@@ -48,10 +48,17 @@ def main_fn():
         due = p.get("/api/admin/review-due", params={"selected_kid": a}).json()
         assert any(x["tag_id"] == t2 for x in due)
         wid = next(x["id"] for x in due if x["tag_id"] == t2)
-        assert p.post(f"/api/admin/weak-points/{wid}/judge", json={"ok": False}).status_code == 200
-        due2 = p.get("/api/admin/review-due", params={"selected_kid": a}).json()
-        assert not any(x["id"] == wid for x in due2)
-        assert p.post(f"/api/admin/weak-points/{wid}/judge", json={"ok": True}).status_code == 200
+        # 过关升档：间隔 1→3 天，今天不再到期
+        assert p.post(f"/api/admin/weak-points/{wid}/judge", json={"action": "pass"}).status_code == 200
+        assert not any(x["id"] == wid for x in p.get("/api/admin/review-due", params={"selected_kid": a}).json())
+        # 还在错降档：清空重设今天到期后再 fail，归到 1 天（明天）
+        p.put("/api/admin/weak-points", json={"kid_id": a, "unit_id": uid, "tag_ids": []})
+        p.put("/api/admin/weak-points", json={"kid_id": a, "unit_id": uid, "tag_ids": [t2], "first_review": today})
+        wid2 = next(x["id"] for x in p.get("/api/admin/review-due", params={"selected_kid": a}).json() if x["tag_id"] == t2)
+        assert p.post(f"/api/admin/weak-points/{wid2}/judge", json={"action": "fail"}).status_code == 200
+        assert not any(x["id"] == wid2 for x in p.get("/api/admin/review-due", params={"selected_kid": a}).json())
+        # 已巩固：结束留历史
+        assert p.post(f"/api/admin/weak-points/{wid2}/judge", json={"action": "done"}).status_code == 200
         r = p.put("/api/admin/weak-points", json={"kid_id": a, "unit_id": uid, "tag_ids": [t2], "first_review": today})
         with TestClient(main.app) as k:
             assert k.post("/api/auth/login", json={"account": "jia", "pin": "1111"}).status_code == 200
