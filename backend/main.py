@@ -1420,14 +1420,13 @@ def admin_unit_tags(request: Request, unit_id: str = ""):
 
 
 @app.get("/api/admin/weak-points")
-def admin_weak_points(request: Request, unit_id: str = "", kid_id: str = ""):
+def admin_weak_points(request: Request, unit_id: str = "", kid_q: str = ""):
     require_parent(request)
     c = get_conn()
     fam = _fam.get()
-    kid = _own_kid(c, kid_id or kid_id(), fam)
+    kid = _own_kid(c, kid_q or kid_id(), fam)
     db.apply_scope(c, fam, kid)
     rows = _wp_rows(c, kid, unit_id or None)
-    db.apply_scope(c, fam, kid_id())
     c.close()
     return rows
 
