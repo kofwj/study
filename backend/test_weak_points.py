@@ -29,10 +29,13 @@ def main_fn():
         t1, t2 = tags[0]["tag_id"], tags[-1]["tag_id"]
         all_tags = p.get("/api/admin/unit-tags").json()
         assert len(all_tags["tags"]) >= 20 and len(all_tags["unit_tags"]) >= 50
-        assert p.put("/api/admin/weak-points", json={"kid_id": a, "unit_id": uid, "tag_ids": []}).status_code == 400
         r = p.put("/api/admin/weak-points", json={"kid_id": a, "unit_id": uid, "tag_ids": [t1], "note": "默写"})
         assert r.status_code == 200, r.text
         assert [x["tag_id"] for x in r.json()] == [t1]
+        r = p.put("/api/admin/weak-points", json={"kid_id": a, "unit_id": uid, "tag_ids": [t2]})
+        assert [x["tag_id"] for x in r.json()] == [t2]
+        r0 = p.put("/api/admin/weak-points", json={"kid_id": a, "unit_id": uid, "tag_ids": []})
+        assert r0.status_code == 200 and r0.json() == []
         r = p.put("/api/admin/weak-points", json={"kid_id": a, "unit_id": uid, "tag_ids": [t2]})
         assert [x["tag_id"] for x in r.json()] == [t2]
         with TestClient(main.app) as k:

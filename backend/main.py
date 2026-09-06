@@ -1445,8 +1445,6 @@ def admin_weak_put(b: WeakIn, request: Request):
     if not b.unit_id:
         raise HTTPException(400, "选一个单元")
     tags = [t for t in (b.tag_ids or []) if t]
-    if not tags:
-        raise HTTPException(400, "至少勾一个考点")
     c = get_conn()
     fam = _fam.get()
     kid = _own_kid(c, b.kid_id or kid_id(), fam)
