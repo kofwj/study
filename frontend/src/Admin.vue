@@ -18,7 +18,7 @@ const SECTIONS = [
     { id: 'weekly', icon: ChartColumn, label: '周报' },
   ] },
   { group: '家庭', items: [
-    { id: 'kids', icon: Baby, label: '孩子' },
+    { id: 'kids', icon: Baby, label: '孩子账号' },
     { id: 'members', icon: Users, label: '家长成员' },
     { id: 'invites', icon: KeyRound, label: '邀请码' },
     { id: 'pin', icon: Lock, label: '家长密码' },
@@ -364,7 +364,7 @@ onMounted(load)
       <div>
         <div class="a-title"><Settings class="ico" :size="18" /> 家长管理</div>
         <div class="a-sub">给孩子配置奖励、等级与任务</div>
-        <label class="a-term">看哪个娃
+        <label class="a-term">正在看
           <select v-model="selectedKid" @change="switchKid">
             <option v-for="k in kids" :key="k.id" :value="k.id">{{ k.name }}</option>
           </select>
@@ -570,15 +570,15 @@ onMounted(load)
       <div class="add-box">
         <div class="add-title">新增单元任务（针对当前学期）</div>
         <div class="frm-row">
-          <label class="fld"><span>科目</span>
+          <label class="fld grow"><span>哪一科</span>
             <select v-model="newTask.subject_id" @change="pickSubject">
-              <option value="" disabled>选科目</option>
+              <option value="" disabled>先选科</option>
               <option v-for="s in subjects" :key="s.id" :value="s.id">{{ s.name }}</option>
             </select>
           </label>
-          <label class="fld grow"><span>单元</span>
+          <label class="fld grow"><span>哪一单元</span>
             <select v-model="newTask.unit_id">
-              <option value="" disabled>选单元</option>
+              <option value="" disabled>{{ newTask.subject_id ? '选单元' : '先选科' }}</option>
               <option v-for="u in unitOptions" :key="u.id" :value="u.id">{{ u.name }}</option>
             </select>
           </label>
@@ -606,7 +606,7 @@ onMounted(load)
           <div class="dc-head">
             <span class="badge daily">每天</span>
             <label class="fld grow"><span>名称</span><input v-model="d.name" /></label>
-            <label class="fld w84"><span>科目</span>
+            <label class="fld grow"><span>哪一科</span>
               <select v-model="d.subject_id">
                 <option v-for="s in subjects" :key="s.id" :value="s.id">{{ s.name }}</option>
               </select>
@@ -637,7 +637,7 @@ onMounted(load)
       <div class="add-box">
         <div class="add-title">新增每日任务（你自己家的）</div>
         <div class="frm-row">
-          <label class="fld w84"><span>科目</span>
+          <label class="fld grow"><span>哪一科</span>
             <select v-model="newDaily.subject_id">
               <option v-for="s in subjects" :key="s.id" :value="s.id">{{ s.name }}</option>
             </select>
@@ -690,15 +690,15 @@ onMounted(load)
       <div class="add-box">
         <div class="add-title">录入成绩</div>
         <div class="frm-row">
-          <label class="fld w104"><span>科目</span>
+          <label class="fld grow"><span>哪一科</span>
             <select v-model="newTest.subject_id" @change="newTest.unit_id = ''">
-              <option value="" disabled>选科目</option>
+              <option value="" disabled>先选科</option>
               <option v-for="s in subjects" :key="s.id" :value="s.id">{{ s.name }}</option>
             </select>
           </label>
-          <label class="fld grow"><span>单元（可选）</span>
+          <label class="fld grow"><span>哪一单元（可空）</span>
             <select v-model="newTest.unit_id">
-              <option value="">不选</option>
+              <option value="">不绑单元</option>
               <option v-for="u in units.filter(x => x.subject_id === newTest.subject_id)" :key="u.id" :value="u.id">{{ u.name }}</option>
             </select>
           </label>
@@ -718,35 +718,51 @@ onMounted(load)
     </section>
 
     <section v-if="section === 'kids'" class="a-card enter">
-      <h3>管理孩子</h3>
-      <div class="a-item" v-for="k in kids" :key="k.id">
-        <input v-model="k.name" class="w-name" placeholder="名字" />
-        <input v-model="k.account" class="w-cat" placeholder="登录账号" />
-        <select v-model="k.term_id">
-          <option v-for="tm in terms" :key="tm.id" :value="tm.id">{{ tm.label }}</option>
-        </select>
-        <select v-model="k.gender">
-          <option value="">性别</option>
-          <option value="男">男</option>
-          <option value="女">女</option>
-        </select>
-        <input v-model="k._pin" type="password" placeholder="改密码" class="w-num" />
-        <button class="ok" @click="saveKid(k)">存</button>
-        <button class="del" @click="delKid(k)">删</button>
+      <h3>孩子账号</h3>
+      <p class="lead">名字给家里看，登录账号给孩子打卡用。学期决定学哪册，性别用来对照体测达标线。</p>
+      <div class="kid-card" v-for="k in kids" :key="k.id">
+        <label class="fld grow"><span>家里怎么叫</span><input v-model="k.name" placeholder="如：乐乐" /></label>
+        <label class="fld grow"><span>登录账号</span><input v-model="k.account" placeholder="如：lele" /></label>
+        <label class="fld grow"><span>现在读哪册</span>
+          <select v-model="k.term_id">
+            <option v-for="tm in terms" :key="tm.id" :value="tm.id">{{ tm.label }}</option>
+          </select>
+        </label>
+        <label class="fld w84"><span>性别</span>
+          <select v-model="k.gender">
+            <option value="">还没填</option>
+            <option value="男">男</option>
+            <option value="女">女</option>
+          </select>
+        </label>
+        <label class="fld w84"><span>改密码</span><input v-model="k._pin" type="password" placeholder="不改就空着" /></label>
+        <div class="ops">
+          <button class="ok" @click="saveKid(k)">存</button>
+          <button class="del" @click="delKid(k)">删</button>
+        </div>
       </div>
-      <div class="a-item add">
-        <input v-model="newKid.name" placeholder="名字" class="w-name" />
-        <input v-model="newKid.account" placeholder="账号" class="w-cat" />
-        <input v-model="newKid.pin" placeholder="密码" class="w-num" />
-        <select v-model="newKid.term_id">
-          <option v-for="tm in terms" :key="tm.id" :value="tm.id">{{ tm.label }}</option>
-        </select>
-        <select v-model="newKid.gender">
-          <option value="">性别</option>
-          <option value="男">男</option>
-          <option value="女">女</option>
-        </select>
-        <button class="ok" @click="addKid">添加</button>
+      <div class="add-box">
+        <div class="add-title">再加一个孩子</div>
+        <div class="frm-row">
+          <label class="fld grow"><span>家里怎么叫</span><input v-model="newKid.name" placeholder="如：弟弟" /></label>
+          <label class="fld grow"><span>登录账号</span><input v-model="newKid.account" placeholder="如：didi" /></label>
+          <label class="fld w84"><span>密码</span><input v-model="newKid.pin" placeholder="至少 4 位" /></label>
+        </div>
+        <div class="frm-row">
+          <label class="fld grow"><span>现在读哪册</span>
+            <select v-model="newKid.term_id">
+              <option v-for="tm in terms" :key="tm.id" :value="tm.id">{{ tm.label }}</option>
+            </select>
+          </label>
+          <label class="fld w84"><span>性别</span>
+            <select v-model="newKid.gender">
+              <option value="">还没填</option>
+              <option value="男">男</option>
+              <option value="女">女</option>
+            </select>
+          </label>
+        </div>
+        <button class="ok wide" @click="addKid">添加</button>
       </div>
     </section>
 
@@ -875,7 +891,8 @@ onMounted(load)
 /* —— 单元任务 / 每日任务 表单重排 —— */
 .fld { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .fld > span { font-size: 11px; color: var(--ink-3); font-weight: 700; }
-.fld input, .fld select { border: 1px solid var(--line); border-radius: 8px; padding: 6px 9px; font-size: 13px; color: var(--ink); background: var(--surface); font-family: inherit; width: 100%; }
+.fld input, .fld select { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: 15px; color: var(--ink); background: var(--surface); font-family: inherit; width: 100%; min-height: 40px; }
+.kid-card { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; padding: 12px 0; border-bottom: 1px solid var(--surface-2); }
 .fld input:focus, .fld select:focus { outline: none; border-color: var(--brand); }
 .grow { flex: 1 1 120px; }
 .w64 { width: 64px; flex: none; }
