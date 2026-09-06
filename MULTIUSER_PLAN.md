@@ -699,6 +699,66 @@ if last > 0 and this < last * (1 - drop_ratio)
 
 ---
 
+## 7.10 M1.2 开工规格（体测达标后端）
+
+> 范围：`fitness_standards` 建表 + seed 入库 + 引擎加「体测弱项」第 4 类结论 + kids 加 gender。前端运动卡进度条属 M1.3。
+
+### 前置缺口（M1.2 独有）：孩子没有性别
+
+- `fitness_standards` 分**年级 × 性别**，`users` 无 `gender` 列 → 必须补。
+- `gender` 由家长在「管理孩子」页设（可选）；**未设时体测结论直接跳过**，不硬设默认，避免瞎判。
+
+### 数据模型（迁移 015）
+
+```sql
+ALTER TABLE users ADD COLUMN gender TEXT DEFAULT NULL;   -- '男' / '女' / NULL
+CREATE TABLE fitness_standards (
+  grade INT, gender TEXT, item TEXT,
+  pass_value REAL, good_value REAL, excellent_value REAL,
+  unit TEXT, direction TEXT DEFAULT 'high',
+  PRIMARY KEY (grade, gender, item)
+);
+```
+- `db.py` 加 `_migrate_015_fitness` + 注册；**迁移内读 `data/fitness_standards.json` 的 `rows` 幂等 INSERT**（`ON CONFLICT DO NOTHING`，同 `seed_ranks` 套路）。
+
+### 指标对齐映射（main.py 常量）
+
+```python
+FITNESS_METRIC = {
+    "跳绳":     ("pe-jump-rope", "n1m"),   # 1 分钟跳多少个
+    "仰卧起坐":  ("pe-situp",    "cnt"),   # 1 分钟做多少个
+    "坐位体前屈": ("pe-bend",     "cm"),    # 手指过脚尖多远
+}
+```
+
+### build_insights 加第 4 类 fitness
+
+优先级涨为 = `weak_unit > fitness > streak_break > drop`。口径：
+```
+gender = kid.gender; grade = int(term_id 首个数字); 无 gender/grade → 跳过
+对每个 FITNESS_METRIC item：
+  pass_ = fitness_standards[grade, gender, item].pass_value
+  last = 该娃最近 14 天 completions.metrics[metric_id] 的最新非空值
+  若 last 存在且 last < pass_（均为越高越好）→ 候选，取差距最大的 1 项
+  text = f"{item}离达标还差 {round(pass_-last,1)}{unit}"  action = "运动打卡"
+  source = {item, last, pass_}
+```
+
+### endpoint 变更
+
+- **并入** `GET /api/admin/insights`（体测结论只是第 4 类，不新增独立端点；无阈值可配）。
+- `Kids create/update`（`KidIn` 加 `gender`）+ 前端「管理孩子」页加性别下拉（可选，年级/性别用于推导体测）。
+
+### 前端
+
+- 后端只需让 `insights` 的 fitness 结论带 `item/pass/last/unit`；运动卡达标进度条在 M1.3 做。
+
+### 验证（并入 test_insights.py）
+
+- 造 daily completion `metrics` + 达标线 → 断言「低于达标」命中、「高于达标」不命中、「gender 为空」跳过。
+
+---
+
 ## 8. 关键技术决策
 
 | 决策点 | 推荐 | 理由 |
