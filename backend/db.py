@@ -269,6 +269,15 @@ def seed_ranks(conn):
     set_setting(conn, "ranks_ver", RANKS_VER)
 
 
+def _upsert_unit(conn, u):
+    ver = unit_edition(u["subject"], u["id"])
+    conn.execute(
+        "INSERT INTO units(id,subject_id,term_id,seq,name,version) VALUES(?,?,?,?,?,?) "
+        "ON CONFLICT(id) DO UPDATE SET subject_id=excluded.subject_id, term_id=excluded.term_id, "
+        "seq=excluded.seq, name=excluded.name, version=excluded.version",
+        (u["id"], u["subject"], u["term_id"], u["seq"], u["name"], ver))
+
+
 def seed(conn):
     data = load_seed()
     conn.execute("DELETE FROM terms")
@@ -279,11 +288,7 @@ def seed(conn):
         conn.execute("INSERT INTO subjects(id,name) VALUES(?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name",
                      (s, s))
     for u in data["units"]:
-        conn.execute(
-            "INSERT INTO units(id,subject_id,term_id,seq,name) VALUES(?,?,?,?,?) "
-            "ON CONFLICT(id) DO UPDATE SET subject_id=excluded.subject_id, term_id=excluded.term_id, "
-            "seq=excluded.seq, name=excluded.name",
-            (u["id"], u["subject"], u["term_id"], u["seq"], u["name"]))
+        _upsert_unit(conn, u)
     for t in data["tasks"]:
         conn.execute(
             "INSERT INTO tasks(id,subject_id,unit_id,action,title,detail,sunshine,sort,custom) "
@@ -327,11 +332,7 @@ def apply_curriculum(conn):
         conn.execute("INSERT INTO terms(id,label,grade,term,version) VALUES(?,?,?,?,?)",
                      (term["id"], term["label"], term["grade"], term["term"], term["version"]))
     for u in data["units"]:
-        conn.execute(
-            "INSERT INTO units(id,subject_id,term_id,seq,name) VALUES(?,?,?,?,?) "
-            "ON CONFLICT(id) DO UPDATE SET subject_id=excluded.subject_id, term_id=excluded.term_id, "
-            "seq=excluded.seq, name=excluded.name",
-            (u["id"], u["subject"], u["term_id"], u["seq"], u["name"]))
+        _upsert_unit(conn, u)
     for t in data["tasks"]:
         conn.execute(
             "INSERT INTO tasks(id,subject_id,unit_id,action,title,detail,sunshine,sort,custom) "
@@ -637,6 +638,60 @@ CREATE TABLE IF NOT EXISTS fitness_standards (
     seed_fitness_standards(conn)
 
 
+# 江苏南通现用版：语文部编 / 数学苏教 / 英语译林 / 科学苏教 / 道法部编
+UNIT_EDITION = {
+    "语文": "rjb-yuwen",
+    "数学": "sjb-math",
+    "英语": "yilin-eng",
+    "科学": "sjb-sci",
+    "道法": "rjb-daofa",
+}
+
+
+def unit_edition(subject, uid=""):
+    if str(uid).startswith("custom"):
+        return None
+    return UNIT_EDITION.get(subject)
+
+
+def _migrate_016(conn):
+    _add_column(conn, "units", "version TEXT")
+    for subj, ver in UNIT_EDITION.items():
+        conn.execute(
+            "UPDATE units SET version=? WHERE subject_id=? AND (version IS NULL OR version='')",
+            (ver, subj))
+
+
+def seed_knowledge_tags(conn):
+    path = BASE.parent / "data" / "knowledge_tags.json"
+    data = json.loads(path.read_text(encoding="utf-8"))
+    for t in data["tags"]:
+        conn.execute(
+            "INSERT INTO knowledge_tags(id,subject_id,kind,name) VALUES(?,?,?,?) "
+            "ON CONFLICT(id) DO UPDATE SET subject_id=excluded.subject_id, kind=excluded.kind, name=excluded.name",
+            (t["id"], t["subject_id"], t["kind"], t["name"]))
+    conn.execute("DELETE FROM unit_tags")
+    for u in data["unit_tags"]:
+        auto = 1 if u.get("auto") else 0
+        for tid in u.get("tag_ids") or []:
+            conn.execute(
+                "INSERT INTO unit_tags(unit_id,tag_id,auto) VALUES(?,?,?) ON CONFLICT DO NOTHING",
+                (u["unit_id"], tid, auto))
+
+
+def _migrate_017(conn):
+    conn.execute("""
+CREATE TABLE IF NOT EXISTS knowledge_tags (
+  id TEXT PRIMARY KEY, subject_id TEXT, kind TEXT, name TEXT)
+""")
+    conn.execute("""
+CREATE TABLE IF NOT EXISTS unit_tags (
+  unit_id TEXT NOT NULL, tag_id TEXT NOT NULL, auto INTEGER DEFAULT 1,
+  PRIMARY KEY (unit_id, tag_id))
+""")
+    seed_knowledge_tags(conn)
+
+
 MIGRATIONS = (
     ("001_identity", _migrate_001),
     ("002_kid_id", _migrate_002),
@@ -653,6 +708,8 @@ MIGRATIONS = (
     ("013_force_parent_pin", _migrate_013),
     ("014_insight_rules", _migrate_014),
     ("015_fitness", _migrate_015),
+    ("016_unit_version", _migrate_016),
+    ("017_knowledge_tags", _migrate_017),
 )
 
 

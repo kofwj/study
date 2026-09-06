@@ -40,8 +40,12 @@ def main():
     assert n >= 8
     assert db.get_setting(c, "k") == "2"
     migs = {r[0] for r in c.execute("SELECT id FROM schema_migrations").fetchall()}
-    assert {"001_identity", "002_kid_id"} <= migs
+    assert {"001_identity", "002_kid_id", "016_unit_version", "017_knowledge_tags"} <= migs
     assert c.execute("SELECT 1 FROM users WHERE id=?", (db.DEFAULT_KID,)).fetchone()
+    assert c.execute("SELECT version FROM units WHERE id=?", ("g5s1-ma-1",)).fetchone()[0] == "sjb-math"
+    assert c.execute("SELECT version FROM units WHERE id=?", ("g5s1-en-1",)).fetchone()[0] == "yilin-eng"
+    assert c.execute("SELECT COUNT(*) FROM knowledge_tags").fetchone()[0] >= 20
+    assert c.execute("SELECT COUNT(*) FROM unit_tags WHERE unit_id=?", ("g5s1-cn-1",)).fetchone()[0] >= 1
     assert c.execute("SELECT kid_id FROM checkins LIMIT 1").fetchone()[0] == db.DEFAULT_KID
     fp = db.fingerprints(c)
     assert fp["checkins"] >= 1 and fp["completions"] >= 1
