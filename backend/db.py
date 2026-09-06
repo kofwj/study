@@ -708,6 +708,11 @@ def _migrate_019(conn):
     seed_knowledge_tags(conn)
 
 
+def _migrate_020(conn):
+    # 五上数英考点精标（苏教数学 + 译林英语）：重跑 seed
+    seed_knowledge_tags(conn)
+
+
 def _migrate_017(conn):
     conn.execute("""
 CREATE TABLE IF NOT EXISTS knowledge_tags (
@@ -741,6 +746,7 @@ MIGRATIONS = (
     ("017_knowledge_tags", _migrate_017),
     ("018_weak_points", _migrate_018),
     ("019_cn5_tags", _migrate_019),
+    ("020_ma_en_tags", _migrate_020),
 )
 
 

@@ -276,6 +276,180 @@
       "subject_id": "语文",
       "kind": "单元考点",
       "name": "分段表述突出重点"
+    },
+    {
+      "id": "ma5-py",
+      "subject_id": "数学",
+      "kind": "单元考点",
+      "name": "平移"
+    },
+    {
+      "id": "ma5-xz",
+      "subject_id": "数学",
+      "kind": "单元考点",
+      "name": "旋转"
+    },
+    {
+      "id": "ma5-dc",
+      "subject_id": "数学",
+      "kind": "单元考点",
+      "name": "轴对称"
+    },
+    {
+      "id": "ma5-fbtj",
+      "subject_id": "数学",
+      "kind": "单元考点",
+      "name": "复式统计表"
+    },
+    {
+      "id": "ma5-fbtu",
+      "subject_id": "数学",
+      "kind": "单元考点",
+      "name": "复式条形统计图"
+    },
+    {
+      "id": "ma5-px",
+      "subject_id": "数学",
+      "kind": "单元考点",
+      "name": "平行四边形面积"
+    },
+    {
+      "id": "ma5-sjx",
+      "subject_id": "数学",
+      "kind": "单元考点",
+      "name": "三角形面积"
+    },
+    {
+      "id": "ma5-tx",
+      "subject_id": "数学",
+      "kind": "单元考点",
+      "name": "梯形面积"
+    },
+    {
+      "id": "ma5-xsc",
+      "subject_id": "数学",
+      "kind": "单元考点",
+      "name": "小数乘法"
+    },
+    {
+      "id": "ma5-xsch",
+      "subject_id": "数学",
+      "kind": "单元考点",
+      "name": "小数除法"
+    },
+    {
+      "id": "ma5-kn",
+      "subject_id": "数学",
+      "kind": "单元考点",
+      "name": "确定与不确定事件"
+    },
+    {
+      "id": "ma5-kndx",
+      "subject_id": "数学",
+      "kind": "单元考点",
+      "name": "可能性大小"
+    },
+    {
+      "id": "ma5-ys",
+      "subject_id": "数学",
+      "kind": "单元考点",
+      "name": "因数与倍数"
+    },
+    {
+      "id": "ma5-bstz",
+      "subject_id": "数学",
+      "kind": "单元考点",
+      "name": "2、3、5的倍数特征"
+    },
+    {
+      "id": "ma5-zh",
+      "subject_id": "数学",
+      "kind": "单元考点",
+      "name": "质数与合数"
+    },
+    {
+      "id": "ma5-zm",
+      "subject_id": "数学",
+      "kind": "单元考点",
+      "name": "用字母表示数"
+    },
+    {
+      "id": "ma5-zmsz",
+      "subject_id": "数学",
+      "kind": "单元考点",
+      "name": "含字母式子的化简"
+    },
+    {
+      "id": "ma5-gc",
+      "subject_id": "数学",
+      "kind": "单元考点",
+      "name": "从不同方向观察"
+    },
+    {
+      "id": "ma5-st",
+      "subject_id": "数学",
+      "kind": "单元考点",
+      "name": "三视图与空间想象"
+    },
+    {
+      "id": "en5-u1",
+      "subject_id": "英语",
+      "kind": "单元考点",
+      "name": "一般现在时·三单"
+    },
+    {
+      "id": "en5-u1hab",
+      "subject_id": "英语",
+      "kind": "单元考点",
+      "name": "谈日常习惯"
+    },
+    {
+      "id": "en5-u2",
+      "subject_id": "英语",
+      "kind": "单元考点",
+      "name": "表达感受"
+    },
+    {
+      "id": "en5-u3",
+      "subject_id": "英语",
+      "kind": "单元考点",
+      "name": "like doing 谈爱好"
+    },
+    {
+      "id": "en5-u4",
+      "subject_id": "英语",
+      "kind": "单元考点",
+      "name": "谈安全规则"
+    },
+    {
+      "id": "en5-u5",
+      "subject_id": "英语",
+      "kind": "单元考点",
+      "name": "谈周末活动"
+    },
+    {
+      "id": "en5-u6",
+      "subject_id": "英语",
+      "kind": "单元考点",
+      "name": "谈与人相处"
+    },
+    {
+      "id": "en5-u7",
+      "subject_id": "英语",
+      "kind": "单元考点",
+      "name": "购物用语"
+    },
+    {
+      "id": "en5-u8",
+      "subject_id": "英语",
+      "kind": "单元考点",
+      "name": "谈节日"
+    },
+    {
+      "id": "en5-pjt",
+      "subject_id": "英语",
+      "kind": "单元考点",
+      "name": "综合运用"
     }
   ],
   "unit_tags": [
@@ -2208,161 +2382,138 @@
     {
       "unit_id": "g5s1-ma-1",
       "tag_ids": [
-        "ma-shape"
+        "ma5-py",
+        "ma5-xz",
+        "ma5-dc"
       ],
       "auto": false
     },
     {
       "unit_id": "g5s1-ma-2",
       "tag_ids": [
-        "ma-stat"
+        "ma5-fbtj",
+        "ma5-fbtu"
       ],
       "auto": false
     },
     {
       "unit_id": "g5s1-ma-3",
       "tag_ids": [
-        "ma-shape",
-        "ma-calc"
+        "ma5-px",
+        "ma5-sjx",
+        "ma5-tx"
       ],
       "auto": false
     },
     {
       "unit_id": "g5s1-ma-4",
       "tag_ids": [
-        "ma-oral",
-        "ma-calc"
+        "ma5-xsc",
+        "ma5-xsch"
       ],
       "auto": false
     },
     {
       "unit_id": "g5s1-ma-5",
       "tag_ids": [
-        "ma-idea"
+        "ma5-kn",
+        "ma5-kndx"
       ],
       "auto": false
     },
     {
       "unit_id": "g5s1-ma-6",
       "tag_ids": [
-        "ma-idea"
+        "ma5-ys",
+        "ma5-bstz",
+        "ma5-zh"
       ],
       "auto": false
     },
     {
       "unit_id": "g5s1-ma-7",
       "tag_ids": [
-        "ma-idea",
-        "ma-word"
+        "ma5-zm",
+        "ma5-zmsz"
       ],
       "auto": false
     },
     {
       "unit_id": "g5s1-ma-8",
       "tag_ids": [
-        "ma-shape"
+        "ma5-gc",
+        "ma5-st"
       ],
       "auto": false
     },
     {
       "unit_id": "g5s1-en-1",
       "tag_ids": [
-        "en-word",
-        "en-phon",
-        "en-listen",
-        "en-gram",
-        "en-task"
+        "en5-u1",
+        "en5-u1hab"
       ],
       "auto": false
     },
     {
       "unit_id": "g5s1-en-2",
       "tag_ids": [
-        "en-word",
-        "en-phon",
-        "en-listen",
-        "en-gram",
-        "en-task"
+        "en5-u2"
       ],
       "auto": false
     },
     {
       "unit_id": "g5s1-en-3",
       "tag_ids": [
-        "en-word",
-        "en-phon",
-        "en-listen",
-        "en-gram",
-        "en-task"
+        "en5-u3"
       ],
       "auto": false
     },
     {
       "unit_id": "g5s1-en-4",
       "tag_ids": [
-        "en-word",
-        "en-phon",
-        "en-listen",
-        "en-gram",
-        "en-task"
+        "en5-u4"
       ],
       "auto": false
     },
     {
       "unit_id": "g5s1-en-5",
       "tag_ids": [
-        "en-word",
-        "en-phon",
-        "en-listen",
-        "en-gram",
-        "en-task"
+        "en5-u5"
       ],
       "auto": false
     },
     {
       "unit_id": "g5s1-en-6",
       "tag_ids": [
-        "en-word",
-        "en-phon",
-        "en-listen",
-        "en-gram",
-        "en-task"
+        "en5-u6"
       ],
       "auto": false
     },
     {
       "unit_id": "g5s1-en-7",
       "tag_ids": [
-        "en-word",
-        "en-phon",
-        "en-listen",
-        "en-gram",
-        "en-task"
+        "en5-u7"
       ],
       "auto": false
     },
     {
       "unit_id": "g5s1-en-8",
       "tag_ids": [
-        "en-word",
-        "en-phon",
-        "en-listen",
-        "en-gram",
-        "en-task"
+        "en5-u8"
       ],
       "auto": false
     },
     {
       "unit_id": "g5s1-en-9",
       "tag_ids": [
-        "en-task"
+        "en5-pjt"
       ],
       "auto": false
     },
     {
       "unit_id": "g5s1-en-10",
       "tag_ids": [
-        "en-task"
+        "en5-pjt"
       ],
       "auto": false
     }
