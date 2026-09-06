@@ -65,6 +65,17 @@ docker run --rm --network sunshine_default \
 
 通过后 `docker compose up -d`（`.env` 的 `COMPOSE_PROFILES=postgres` 会让 postgres 一起起并切流量）。请求必须走 `sunshine_app`，`sunshine` 是 superuser 会绕过 RLS。
 
+## 2.5 本地前端（改 Vue 必跑，不用上 VPS 才知道白屏）
+
+本机 PATH 经常没有 node，脚本会用 `~/.hermes/node/bin`。
+
+```bash
+bash scripts/smoke_frontend.sh          # vite build + 产物/结构冒烟
+bash scripts/pre_deploy.sh              # 后端 4 测 + 上面这条
+```
+
+冒烟会拦住「`.login-screen` 套进 `.desk`」那种白屏。不装 Playwright。
+
 ## 三、日常更新（备份 → 拉代码 → 重新构建 → 起容器）
 
 ```bash
