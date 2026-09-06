@@ -2,7 +2,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { api, setSelectedKid } from './api.js'
 import { rankIcon } from './icons.js'
-import { BarChart3, Baby, Users, KeyRound, Lock, Store, Trophy, ClipboardCheck, BookOpen, RefreshCw, MapPinned, FileText, Settings, Sun, Star, Check, ArrowLeft } from 'lucide-vue-next'
+import { ChartColumn, Baby, Users, KeyRound, Lock, Store, Trophy, ClipboardCheck, BookOpen, RefreshCw, MapPinned, FileText, Settings, Sun, Star, Check, ArrowLeft } from '@lucide/vue'
 
 const emit = defineEmits(['exit', 'switched'])
 const kids = ref([])
@@ -13,7 +13,7 @@ const selectedKid = ref('')
 const newKid = reactive({ name: '', account: '', pin: '', term_id: 'g5s1' })
 const section = ref('weekly')
 const SECTIONS = [
-  { group: '概览', items: [{ id: 'weekly', icon: BarChart3, label: '周报' }] },
+  { group: '概览', items: [{ id: 'weekly', icon: ChartColumn, label: '周报' }] },
   { group: '家庭', items: [
     { id: 'kids', icon: Baby, label: '孩子' },
     { id: 'members', icon: Users, label: '家长成员' },
@@ -325,7 +325,7 @@ onMounted(load)
 
     <!-- 周报 -->
     <section v-if="section === 'weekly'" class="a-card enter">
-      <h3><BarChart3 class="ico" :size="16" /> 本周周报</h3>
+      <h3><ChartColumn class="ico" :size="16" /> 本周周报</h3>
       <p class="lead">{{ weekly.week_start }} ~ {{ weekly.week_end }}（周一到周日）</p>
       <div v-if="(weekly.kids || []).length" class="w-kids">
         <div v-for="k in weekly.kids" :key="k.id" class="w-box" :class="{ on: k.current }" @click="pickKid(k.id)">

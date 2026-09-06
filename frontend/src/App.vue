@@ -3,7 +3,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { api } from './api.js'
 import Admin from './Admin.vue'
 import { SUBJECT_ICONS as ICONS, rankIcon, achIcon } from './icons.js'
-import { Sun, Lock, Gift, Check, TrendingUp, Target, User, ShoppingCart, ScrollText, Medal, BarChart3, Map, CalendarDays, RefreshCw, PartyPopper, Sparkles, BookOpen, Flame } from 'lucide-vue-next'
+import { Sun, Lock, Gift, Check, TrendingUp, Target, User, ShoppingCart, ScrollText, Medal, ChartColumn, Map, CalendarDays, RefreshCw, PartyPopper, Sparkles, BookOpen, Flame } from '@lucide/vue'
 
 const data = reactive({
   level: { earned: 0, balance: 0, level: '阳光萌新', next: null, next_need: 0, progress: 0 },
@@ -569,7 +569,7 @@ function reloadApp() {
                 <title>{{ p.v }}{{ m.unit }}</title>
               </circle>
             </svg>
-            <div class="chart-pb"><Medal class="ico" :size="13" /> 个人纪录 {{ chartOpen.task.pb?.[m.id] ?? '—' }} {{ m.unit }} · <BarChart3 class="ico" :size="13" /> 累计 {{ lineFor(m).sum }} {{ m.unit }} · 共 {{ lineFor(m).count }} 次</div>
+            <div class="chart-pb"><Medal class="ico" :size="13" /> 个人纪录 {{ chartOpen.task.pb?.[m.id] ?? '—' }} {{ m.unit }} · <ChartColumn class="ico" :size="13" /> 累计 {{ lineFor(m).sum }} {{ m.unit }} · 共 {{ lineFor(m).count }} 次</div>
           </div>
         </template>
 

@@ -1,0 +1,2276 @@
+{
+  "_meta": {
+    "note": "科目级字典 + 单元映射。g5s1/g5x2 语数英 auto=false 精标，其余 auto=true。",
+    "hand_units": [
+      "g5s1-cn-1",
+      "g5s1-cn-2",
+      "g5s1-cn-3",
+      "g5s1-cn-4",
+      "g5s1-cn-5",
+      "g5s1-cn-6",
+      "g5s1-cn-7",
+      "g5s1-cn-8",
+      "g5s1-en-1",
+      "g5s1-en-10",
+      "g5s1-en-2",
+      "g5s1-en-3",
+      "g5s1-en-4",
+      "g5s1-en-5",
+      "g5s1-en-6",
+      "g5s1-en-7",
+      "g5s1-en-8",
+      "g5s1-en-9",
+      "g5s1-ma-1",
+      "g5s1-ma-2",
+      "g5s1-ma-3",
+      "g5s1-ma-4",
+      "g5s1-ma-5",
+      "g5s1-ma-6",
+      "g5s1-ma-7",
+      "g5s1-ma-8",
+      "g5x2-cn-1",
+      "g5x2-cn-2",
+      "g5x2-cn-3",
+      "g5x2-cn-4",
+      "g5x2-cn-5",
+      "g5x2-cn-6",
+      "g5x2-cn-7",
+      "g5x2-cn-8",
+      "g5x2-en-1",
+      "g5x2-en-2",
+      "g5x2-en-3",
+      "g5x2-en-4",
+      "g5x2-en-5",
+      "g5x2-en-6",
+      "g5x2-en-7",
+      "g5x2-en-8",
+      "g5x2-ma-1",
+      "g5x2-ma-2",
+      "g5x2-ma-3",
+      "g5x2-ma-4",
+      "g5x2-ma-5",
+      "g5x2-ma-6",
+      "g5x2-ma-7",
+      "g5x2-ma-8"
+    ]
+  },
+  "tags": [
+    {
+      "id": "cn-zi",
+      "subject_id": "语文",
+      "kind": "基础",
+      "name": "字词"
+    },
+    {
+      "id": "cn-recite",
+      "subject_id": "语文",
+      "kind": "基础",
+      "name": "背诵"
+    },
+    {
+      "id": "cn-poem",
+      "subject_id": "语文",
+      "kind": "基础",
+      "name": "古诗"
+    },
+    {
+      "id": "cn-read",
+      "subject_id": "语文",
+      "kind": "阅读",
+      "name": "阅读理解"
+    },
+    {
+      "id": "cn-skim",
+      "subject_id": "语文",
+      "kind": "阅读",
+      "name": "略读"
+    },
+    {
+      "id": "cn-write",
+      "subject_id": "语文",
+      "kind": "表达",
+      "name": "习作"
+    },
+    {
+      "id": "cn-oral",
+      "subject_id": "语文",
+      "kind": "表达",
+      "name": "口语"
+    },
+    {
+      "id": "cn-copy",
+      "subject_id": "语文",
+      "kind": "表达",
+      "name": "摘抄"
+    },
+    {
+      "id": "ma-oral",
+      "subject_id": "数学",
+      "kind": "计算",
+      "name": "口算"
+    },
+    {
+      "id": "ma-calc",
+      "subject_id": "数学",
+      "kind": "计算",
+      "name": "计算"
+    },
+    {
+      "id": "ma-word",
+      "subject_id": "数学",
+      "kind": "应用",
+      "name": "应用题"
+    },
+    {
+      "id": "ma-shape",
+      "subject_id": "数学",
+      "kind": "空间",
+      "name": "图形"
+    },
+    {
+      "id": "ma-stat",
+      "subject_id": "数学",
+      "kind": "数据",
+      "name": "统计"
+    },
+    {
+      "id": "ma-idea",
+      "subject_id": "数学",
+      "kind": "概念",
+      "name": "概念"
+    },
+    {
+      "id": "en-word",
+      "subject_id": "英语",
+      "kind": "基础",
+      "name": "词汇"
+    },
+    {
+      "id": "en-sent",
+      "subject_id": "英语",
+      "kind": "基础",
+      "name": "句型"
+    },
+    {
+      "id": "en-phon",
+      "subject_id": "英语",
+      "kind": "基础",
+      "name": "拼读"
+    },
+    {
+      "id": "en-listen",
+      "subject_id": "英语",
+      "kind": "听说",
+      "name": "听力跟读"
+    },
+    {
+      "id": "en-gram",
+      "subject_id": "英语",
+      "kind": "基础",
+      "name": "语法"
+    },
+    {
+      "id": "en-task",
+      "subject_id": "英语",
+      "kind": "运用",
+      "name": "口语任务"
+    }
+  ],
+  "unit_tags": [
+    {
+      "unit_id": "g1s1-cn-1",
+      "tag_ids": [
+        "cn-read"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g1s1-cn-2",
+      "tag_ids": [
+        "cn-zi",
+        "cn-read"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g1s1-cn-3",
+      "tag_ids": [
+        "cn-zi",
+        "cn-read"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g1s1-cn-4",
+      "tag_ids": [
+        "cn-zi",
+        "cn-read"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g1s1-cn-5",
+      "tag_ids": [
+        "cn-zi",
+        "cn-read"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g1s1-cn-6",
+      "tag_ids": [
+        "cn-zi",
+        "cn-read"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g1s1-cn-7",
+      "tag_ids": [
+        "cn-zi",
+        "cn-read"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g1s1-cn-8",
+      "tag_ids": [
+        "cn-zi",
+        "cn-read"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g1s1-cn-9",
+      "tag_ids": [
+        "cn-zi",
+        "cn-read"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g1x2-cn-1",
+      "tag_ids": [
+        "cn-zi",
+        "cn-read"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g1x2-cn-2",
+      "tag_ids": [
+        "cn-zi",
+        "cn-read"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g1x2-cn-3",
+      "tag_ids": [
+        "cn-zi",
+        "cn-read"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g1x2-cn-4",
+      "tag_ids": [
+        "cn-zi",
+        "cn-read"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g1x2-cn-5",
+      "tag_ids": [
+        "cn-zi",
+        "cn-read"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g1x2-cn-6",
+      "tag_ids": [
+        "cn-zi",
+        "cn-read"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g1x2-cn-7",
+      "tag_ids": [
+        "cn-zi",
+        "cn-read"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g1x2-cn-8",
+      "tag_ids": [
+        "cn-zi",
+        "cn-read"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g2s1-cn-1",
+      "tag_ids": [
+        "cn-zi",
+        "cn-read"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g2s1-cn-2",
+      "tag_ids": [
+        "cn-zi",
+        "cn-read"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g2s1-cn-3",
+      "tag_ids": [
+        "cn-zi",
+        "cn-read"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g2s1-cn-4",
+      "tag_ids": [
+        "cn-zi",
+        "cn-read"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g2s1-cn-5",
+      "tag_ids": [
+        "cn-zi",
+        "cn-read"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g2s1-cn-6",
+      "tag_ids": [
+        "cn-zi",
+        "cn-read"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g2s1-cn-7",
+      "tag_ids": [
+        "cn-zi",
+        "cn-read"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g2s1-cn-8",
+      "tag_ids": [
+        "cn-zi",
+        "cn-read"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g2x2-cn-1",
+      "tag_ids": [
+        "cn-zi",
+        "cn-read"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g2x2-cn-2",
+      "tag_ids": [
+        "cn-zi",
+        "cn-read"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g2x2-cn-3",
+      "tag_ids": [
+        "cn-zi",
+        "cn-read"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g2x2-cn-4",
+      "tag_ids": [
+        "cn-zi",
+        "cn-read"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g2x2-cn-5",
+      "tag_ids": [
+        "cn-zi",
+        "cn-read"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g2x2-cn-6",
+      "tag_ids": [
+        "cn-zi",
+        "cn-read"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g2x2-cn-7",
+      "tag_ids": [
+        "cn-zi",
+        "cn-read"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g2x2-cn-8",
+      "tag_ids": [
+        "cn-zi",
+        "cn-read"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g3s1-cn-1",
+      "tag_ids": [
+        "cn-read",
+        "cn-skim",
+        "cn-write",
+        "cn-oral",
+        "cn-zi"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g3s1-cn-2",
+      "tag_ids": [
+        "cn-skim",
+        "cn-zi",
+        "cn-read",
+        "cn-write"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g3s1-cn-3",
+      "tag_ids": [
+        "cn-read",
+        "cn-skim",
+        "cn-write",
+        "cn-oral",
+        "cn-zi"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g3s1-cn-4",
+      "tag_ids": [
+        "cn-read",
+        "cn-skim",
+        "cn-write",
+        "cn-zi"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g3s1-cn-5",
+      "tag_ids": [
+        "cn-write",
+        "cn-read"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g3s1-cn-6",
+      "tag_ids": [
+        "cn-skim",
+        "cn-zi",
+        "cn-read",
+        "cn-write"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g3s1-cn-7",
+      "tag_ids": [
+        "cn-zi",
+        "cn-read",
+        "cn-write",
+        "cn-oral"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g3s1-cn-8",
+      "tag_ids": [
+        "cn-read",
+        "cn-skim",
+        "cn-write",
+        "cn-oral",
+        "cn-zi"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g3x2-cn-1",
+      "tag_ids": [
+        "cn-poem",
+        "cn-recite",
+        "cn-read",
+        "cn-skim",
+        "cn-write",
+        "cn-oral",
+        "cn-zi"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g3x2-cn-2",
+      "tag_ids": [
+        "cn-read",
+        "cn-skim",
+        "cn-write",
+        "cn-oral",
+        "cn-zi"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g3x2-cn-3",
+      "tag_ids": [
+        "cn-zi",
+        "cn-read",
+        "cn-write"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g3x2-cn-4",
+      "tag_ids": [
+        "cn-poem",
+        "cn-recite",
+        "cn-skim",
+        "cn-zi",
+        "cn-read"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g3x2-cn-5",
+      "tag_ids": [
+        "cn-write",
+        "cn-read"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g3x2-cn-6",
+      "tag_ids": [
+        "cn-skim",
+        "cn-zi",
+        "cn-read",
+        "cn-write"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g3x2-cn-7",
+      "tag_ids": [
+        "cn-zi",
+        "cn-read",
+        "cn-write"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g3x2-cn-8",
+      "tag_ids": [
+        "cn-read",
+        "cn-skim",
+        "cn-write",
+        "cn-oral",
+        "cn-zi"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g4s1-cn-1",
+      "tag_ids": [
+        "cn-read",
+        "cn-skim",
+        "cn-write",
+        "cn-oral",
+        "cn-zi"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g4s1-cn-2",
+      "tag_ids": [
+        "cn-skim",
+        "cn-zi",
+        "cn-read",
+        "cn-write"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g4s1-cn-3",
+      "tag_ids": [
+        "cn-poem",
+        "cn-recite",
+        "cn-read",
+        "cn-write",
+        "cn-oral",
+        "cn-zi"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g4s1-cn-4",
+      "tag_ids": [
+        "cn-read",
+        "cn-skim",
+        "cn-write",
+        "cn-zi"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g4s1-cn-5",
+      "tag_ids": [
+        "cn-write",
+        "cn-read"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g4s1-cn-6",
+      "tag_ids": [
+        "cn-read",
+        "cn-skim",
+        "cn-write",
+        "cn-oral",
+        "cn-zi"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g4s1-cn-7",
+      "tag_ids": [
+        "cn-read",
+        "cn-skim",
+        "cn-write",
+        "cn-oral",
+        "cn-zi"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g4s1-cn-8",
+      "tag_ids": [
+        "cn-poem",
+        "cn-recite",
+        "cn-read",
+        "cn-skim",
+        "cn-write",
+        "cn-zi"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g4x2-cn-1",
+      "tag_ids": [
+        "cn-poem",
+        "cn-recite",
+        "cn-read",
+        "cn-skim",
+        "cn-write",
+        "cn-oral",
+        "cn-zi"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g4x2-cn-2",
+      "tag_ids": [
+        "cn-read",
+        "cn-skim",
+        "cn-write",
+        "cn-oral",
+        "cn-zi"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g4x2-cn-3",
+      "tag_ids": [
+        "cn-skim",
+        "cn-zi",
+        "cn-read"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g4x2-cn-4",
+      "tag_ids": [
+        "cn-zi",
+        "cn-read",
+        "cn-write"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g4x2-cn-5",
+      "tag_ids": [
+        "cn-write",
+        "cn-read"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g4x2-cn-6",
+      "tag_ids": [
+        "cn-read",
+        "cn-skim",
+        "cn-write",
+        "cn-oral",
+        "cn-zi"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g4x2-cn-7",
+      "tag_ids": [
+        "cn-poem",
+        "cn-recite",
+        "cn-read",
+        "cn-skim",
+        "cn-write",
+        "cn-oral",
+        "cn-zi"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g4x2-cn-8",
+      "tag_ids": [
+        "cn-skim",
+        "cn-zi",
+        "cn-read",
+        "cn-write"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g5x2-cn-1",
+      "tag_ids": [
+        "cn-poem",
+        "cn-recite",
+        "cn-read",
+        "cn-oral",
+        "cn-write"
+      ],
+      "auto": false
+    },
+    {
+      "unit_id": "g5x2-cn-2",
+      "tag_ids": [
+        "cn-read",
+        "cn-oral",
+        "cn-write"
+      ],
+      "auto": false
+    },
+    {
+      "unit_id": "g5x2-cn-3",
+      "tag_ids": [
+        "cn-zi",
+        "cn-read"
+      ],
+      "auto": false
+    },
+    {
+      "unit_id": "g5x2-cn-4",
+      "tag_ids": [
+        "cn-poem",
+        "cn-recite",
+        "cn-read",
+        "cn-write"
+      ],
+      "auto": false
+    },
+    {
+      "unit_id": "g5x2-cn-5",
+      "tag_ids": [
+        "cn-read",
+        "cn-write"
+      ],
+      "auto": false
+    },
+    {
+      "unit_id": "g5x2-cn-6",
+      "tag_ids": [
+        "cn-read",
+        "cn-write"
+      ],
+      "auto": false
+    },
+    {
+      "unit_id": "g5x2-cn-7",
+      "tag_ids": [
+        "cn-read",
+        "cn-oral",
+        "cn-write"
+      ],
+      "auto": false
+    },
+    {
+      "unit_id": "g5x2-cn-8",
+      "tag_ids": [
+        "cn-read",
+        "cn-oral",
+        "cn-write"
+      ],
+      "auto": false
+    },
+    {
+      "unit_id": "g6s1-cn-1",
+      "tag_ids": [
+        "cn-poem",
+        "cn-recite",
+        "cn-write",
+        "cn-zi",
+        "cn-read"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g6s1-cn-2",
+      "tag_ids": [
+        "cn-read",
+        "cn-skim",
+        "cn-write",
+        "cn-oral",
+        "cn-zi"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g6s1-cn-3",
+      "tag_ids": [
+        "cn-skim",
+        "cn-zi",
+        "cn-read",
+        "cn-write"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g6s1-cn-4",
+      "tag_ids": [
+        "cn-read",
+        "cn-skim",
+        "cn-write",
+        "cn-oral",
+        "cn-zi"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g6s1-cn-5",
+      "tag_ids": [
+        "cn-write",
+        "cn-read"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g6s1-cn-6",
+      "tag_ids": [
+        "cn-poem",
+        "cn-recite",
+        "cn-read",
+        "cn-skim",
+        "cn-write",
+        "cn-oral",
+        "cn-zi"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g6s1-cn-7",
+      "tag_ids": [
+        "cn-skim",
+        "cn-zi",
+        "cn-read",
+        "cn-write"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g6s1-cn-8",
+      "tag_ids": [
+        "cn-skim",
+        "cn-zi",
+        "cn-read",
+        "cn-write"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g6x2-cn-1",
+      "tag_ids": [
+        "cn-poem",
+        "cn-recite",
+        "cn-read",
+        "cn-skim",
+        "cn-write",
+        "cn-oral",
+        "cn-zi"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g6x2-cn-2",
+      "tag_ids": [
+        "cn-read",
+        "cn-skim",
+        "cn-write",
+        "cn-oral",
+        "cn-zi"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g6x2-cn-3",
+      "tag_ids": [
+        "cn-write",
+        "cn-read"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g6x2-cn-4",
+      "tag_ids": [
+        "cn-poem",
+        "cn-recite",
+        "cn-read",
+        "cn-skim",
+        "cn-write",
+        "cn-zi"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g6x2-cn-5",
+      "tag_ids": [
+        "cn-read",
+        "cn-skim",
+        "cn-write",
+        "cn-oral",
+        "cn-zi"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g6x2-cn-6",
+      "tag_ids": [
+        "cn-poem",
+        "cn-recite",
+        "cn-read"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g1s1-ma-1",
+      "tag_ids": [
+        "ma-idea"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g1s1-ma-2",
+      "tag_ids": [
+        "ma-calc"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g1s1-ma-3",
+      "tag_ids": [
+        "ma-calc"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g1s1-ma-4",
+      "tag_ids": [
+        "ma-shape"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g1s1-ma-5",
+      "tag_ids": [
+        "ma-calc"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g1s1-ma-6",
+      "tag_ids": [
+        "ma-idea"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g1s1-ma-7",
+      "tag_ids": [
+        "ma-idea"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g1x2-ma-1",
+      "tag_ids": [
+        "ma-idea"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g1x2-ma-2",
+      "tag_ids": [
+        "ma-idea"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g2s1-ma-1",
+      "tag_ids": [
+        "ma-idea"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g2s1-ma-2",
+      "tag_ids": [
+        "ma-calc"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g2s1-ma-3",
+      "tag_ids": [
+        "ma-calc"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g2s1-ma-4",
+      "tag_ids": [
+        "ma-calc"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g2s1-ma-5",
+      "tag_ids": [
+        "ma-idea"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g2s1-ma-6",
+      "tag_ids": [
+        "ma-calc"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g2s1-ma-7",
+      "tag_ids": [
+        "ma-calc"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g2s1-ma-8",
+      "tag_ids": [
+        "ma-idea"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g2x2-ma-1",
+      "tag_ids": [
+        "ma-idea"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g2x2-ma-2",
+      "tag_ids": [
+        "ma-idea"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g2x2-ma-3",
+      "tag_ids": [
+        "ma-calc"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g2x2-ma-4",
+      "tag_ids": [
+        "ma-idea"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g2x2-ma-5",
+      "tag_ids": [
+        "ma-idea"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g2x2-ma-6",
+      "tag_ids": [
+        "ma-calc"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g2x2-ma-7",
+      "tag_ids": [
+        "ma-shape"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g3s1-ma-1",
+      "tag_ids": [
+        "ma-idea"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g3s1-ma-2",
+      "tag_ids": [
+        "ma-idea"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g3s1-ma-3",
+      "tag_ids": [
+        "ma-calc"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g3s1-ma-4",
+      "tag_ids": [
+        "ma-idea"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g3s1-ma-5",
+      "tag_ids": [
+        "ma-idea"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g3s1-ma-6",
+      "tag_ids": [
+        "ma-shape"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g3s1-ma-7",
+      "tag_ids": [
+        "ma-calc"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g3s1-ma-8",
+      "tag_ids": [
+        "ma-idea"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g3s1-ma-9",
+      "tag_ids": [
+        "ma-shape"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g3s1-ma-10",
+      "tag_ids": [
+        "ma-idea"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g3x2-ma-1",
+      "tag_ids": [
+        "ma-shape"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g3x2-ma-2",
+      "tag_ids": [
+        "ma-calc"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g3x2-ma-3",
+      "tag_ids": [
+        "ma-calc"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g3x2-ma-4",
+      "tag_ids": [
+        "ma-stat"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g3x2-ma-5",
+      "tag_ids": [
+        "ma-idea"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g3x2-ma-6",
+      "tag_ids": [
+        "ma-calc"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g3x2-ma-7",
+      "tag_ids": [
+        "ma-idea"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g4s1-ma-1",
+      "tag_ids": [
+        "ma-calc"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g4s1-ma-2",
+      "tag_ids": [
+        "ma-shape"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g4s1-ma-3",
+      "tag_ids": [
+        "ma-calc"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g4s1-ma-4",
+      "tag_ids": [
+        "ma-idea"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g4s1-ma-5",
+      "tag_ids": [
+        "ma-idea"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g4s1-ma-6",
+      "tag_ids": [
+        "ma-idea"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g4s1-ma-7",
+      "tag_ids": [
+        "ma-idea"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g4x2-ma-1",
+      "tag_ids": [
+        "ma-shape"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g4x2-ma-2",
+      "tag_ids": [
+        "ma-idea"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g4x2-ma-3",
+      "tag_ids": [
+        "ma-calc"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g4x2-ma-4",
+      "tag_ids": [
+        "ma-idea"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g4x2-ma-5",
+      "tag_ids": [
+        "ma-word"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g4x2-ma-6",
+      "tag_ids": [
+        "ma-idea"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g4x2-ma-7",
+      "tag_ids": [
+        "ma-shape"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g4x2-ma-8",
+      "tag_ids": [
+        "ma-idea"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g4x2-ma-9",
+      "tag_ids": [
+        "ma-idea"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g5x2-ma-1",
+      "tag_ids": [
+        "ma-idea",
+        "ma-calc",
+        "ma-word"
+      ],
+      "auto": false
+    },
+    {
+      "unit_id": "g5x2-ma-2",
+      "tag_ids": [
+        "ma-stat"
+      ],
+      "auto": false
+    },
+    {
+      "unit_id": "g5x2-ma-3",
+      "tag_ids": [
+        "ma-idea"
+      ],
+      "auto": false
+    },
+    {
+      "unit_id": "g5x2-ma-4",
+      "tag_ids": [
+        "ma-idea"
+      ],
+      "auto": false
+    },
+    {
+      "unit_id": "g5x2-ma-5",
+      "tag_ids": [
+        "ma-calc"
+      ],
+      "auto": false
+    },
+    {
+      "unit_id": "g5x2-ma-6",
+      "tag_ids": [
+        "ma-shape",
+        "ma-calc"
+      ],
+      "auto": false
+    },
+    {
+      "unit_id": "g5x2-ma-7",
+      "tag_ids": [
+        "ma-word"
+      ],
+      "auto": false
+    },
+    {
+      "unit_id": "g5x2-ma-8",
+      "tag_ids": [
+        "ma-idea",
+        "ma-calc",
+        "ma-word",
+        "ma-shape",
+        "ma-stat"
+      ],
+      "auto": false
+    },
+    {
+      "unit_id": "g6s1-ma-1",
+      "tag_ids": [
+        "ma-calc"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g6s1-ma-2",
+      "tag_ids": [
+        "ma-idea"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g6s1-ma-3",
+      "tag_ids": [
+        "ma-idea"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g6s1-ma-4",
+      "tag_ids": [
+        "ma-idea"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g6s1-ma-5",
+      "tag_ids": [
+        "ma-shape"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g6s1-ma-6",
+      "tag_ids": [
+        "ma-idea"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g6s1-ma-7",
+      "tag_ids": [
+        "ma-idea"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g6s1-ma-8",
+      "tag_ids": [
+        "ma-idea"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g6x2-ma-1",
+      "tag_ids": [
+        "ma-stat"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g6x2-ma-2",
+      "tag_ids": [
+        "ma-shape"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g6x2-ma-3",
+      "tag_ids": [
+        "ma-word"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g6x2-ma-4",
+      "tag_ids": [
+        "ma-idea"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g6x2-ma-5",
+      "tag_ids": [
+        "ma-idea"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g6x2-ma-6",
+      "tag_ids": [
+        "ma-idea"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g6x2-ma-7",
+      "tag_ids": [
+        "ma-idea"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g3s1-en-1",
+      "tag_ids": [
+        "en-listen",
+        "en-gram",
+        "en-phon"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g3s1-en-2",
+      "tag_ids": [
+        "en-listen",
+        "en-gram",
+        "en-phon",
+        "en-word"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g3s1-en-3",
+      "tag_ids": [
+        "en-listen",
+        "en-gram",
+        "en-phon",
+        "en-word"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g3s1-en-4",
+      "tag_ids": [
+        "en-task",
+        "en-listen",
+        "en-gram",
+        "en-phon",
+        "en-word"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g3s1-en-5",
+      "tag_ids": [
+        "en-listen",
+        "en-gram",
+        "en-phon"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g3s1-en-6",
+      "tag_ids": [
+        "en-listen",
+        "en-gram",
+        "en-phon",
+        "en-word"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g3s1-en-7",
+      "tag_ids": [
+        "en-listen",
+        "en-gram",
+        "en-phon",
+        "en-word"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g3s1-en-8",
+      "tag_ids": [
+        "en-task",
+        "en-phon",
+        "en-listen",
+        "en-gram",
+        "en-word"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g3x2-en-1",
+      "tag_ids": [
+        "en-listen",
+        "en-word"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g3x2-en-2",
+      "tag_ids": [
+        "en-listen",
+        "en-word"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g3x2-en-3",
+      "tag_ids": [
+        "en-listen",
+        "en-word"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g3x2-en-4",
+      "tag_ids": [
+        "en-listen",
+        "en-task",
+        "en-word"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g3x2-en-5",
+      "tag_ids": [
+        "en-listen",
+        "en-word"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g3x2-en-6",
+      "tag_ids": [
+        "en-listen",
+        "en-word"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g3x2-en-7",
+      "tag_ids": [
+        "en-listen",
+        "en-word"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g3x2-en-8",
+      "tag_ids": [
+        "en-listen",
+        "en-task",
+        "en-word"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g4s1-en-1",
+      "tag_ids": [
+        "en-listen",
+        "en-word"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g4s1-en-2",
+      "tag_ids": [
+        "en-listen",
+        "en-word"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g4s1-en-3",
+      "tag_ids": [
+        "en-listen",
+        "en-word"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g4s1-en-4",
+      "tag_ids": [
+        "en-listen",
+        "en-task",
+        "en-word"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g4s1-en-5",
+      "tag_ids": [
+        "en-listen",
+        "en-word"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g4s1-en-6",
+      "tag_ids": [
+        "en-listen",
+        "en-word"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g4s1-en-7",
+      "tag_ids": [
+        "en-listen",
+        "en-word"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g4s1-en-8",
+      "tag_ids": [
+        "en-listen",
+        "en-task",
+        "en-word"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g4x2-en-1",
+      "tag_ids": [
+        "en-listen",
+        "en-word"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g4x2-en-2",
+      "tag_ids": [
+        "en-listen",
+        "en-word"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g4x2-en-3",
+      "tag_ids": [
+        "en-listen",
+        "en-word"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g4x2-en-4",
+      "tag_ids": [
+        "en-task",
+        "en-word",
+        "en-listen"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g4x2-en-5",
+      "tag_ids": [
+        "en-listen",
+        "en-word"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g4x2-en-6",
+      "tag_ids": [
+        "en-listen",
+        "en-word"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g4x2-en-7",
+      "tag_ids": [
+        "en-listen",
+        "en-word"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g4x2-en-8",
+      "tag_ids": [
+        "en-task",
+        "en-word",
+        "en-listen"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g5x2-en-1",
+      "tag_ids": [
+        "en-word",
+        "en-listen",
+        "en-sent"
+      ],
+      "auto": false
+    },
+    {
+      "unit_id": "g5x2-en-2",
+      "tag_ids": [
+        "en-word",
+        "en-listen",
+        "en-sent"
+      ],
+      "auto": false
+    },
+    {
+      "unit_id": "g5x2-en-3",
+      "tag_ids": [
+        "en-word",
+        "en-listen",
+        "en-sent"
+      ],
+      "auto": false
+    },
+    {
+      "unit_id": "g5x2-en-4",
+      "tag_ids": [
+        "en-task"
+      ],
+      "auto": false
+    },
+    {
+      "unit_id": "g5x2-en-5",
+      "tag_ids": [
+        "en-word",
+        "en-listen",
+        "en-sent"
+      ],
+      "auto": false
+    },
+    {
+      "unit_id": "g5x2-en-6",
+      "tag_ids": [
+        "en-word",
+        "en-listen",
+        "en-sent"
+      ],
+      "auto": false
+    },
+    {
+      "unit_id": "g5x2-en-7",
+      "tag_ids": [
+        "en-word",
+        "en-listen",
+        "en-sent"
+      ],
+      "auto": false
+    },
+    {
+      "unit_id": "g5x2-en-8",
+      "tag_ids": [
+        "en-word",
+        "en-task"
+      ],
+      "auto": false
+    },
+    {
+      "unit_id": "g6s1-en-1",
+      "tag_ids": [
+        "en-listen",
+        "en-word"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g6s1-en-2",
+      "tag_ids": [
+        "en-listen",
+        "en-word"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g6s1-en-3",
+      "tag_ids": [
+        "en-listen",
+        "en-word"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g6s1-en-4",
+      "tag_ids": [
+        "en-task",
+        "en-word",
+        "en-listen"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g6s1-en-5",
+      "tag_ids": [
+        "en-listen",
+        "en-word"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g6s1-en-6",
+      "tag_ids": [
+        "en-listen",
+        "en-word"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g6s1-en-7",
+      "tag_ids": [
+        "en-listen",
+        "en-word"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g6s1-en-8",
+      "tag_ids": [
+        "en-task",
+        "en-word",
+        "en-listen"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g6x2-en-1",
+      "tag_ids": [
+        "en-listen",
+        "en-word"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g6x2-en-2",
+      "tag_ids": [
+        "en-listen",
+        "en-word"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g6x2-en-3",
+      "tag_ids": [
+        "en-listen",
+        "en-word"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g6x2-en-4",
+      "tag_ids": [
+        "en-task",
+        "en-word",
+        "en-listen"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g6x2-en-5",
+      "tag_ids": [
+        "en-listen",
+        "en-word"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g6x2-en-6",
+      "tag_ids": [
+        "en-listen",
+        "en-word"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g6x2-en-7",
+      "tag_ids": [
+        "en-listen",
+        "en-word"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g6x2-en-8",
+      "tag_ids": [
+        "en-task",
+        "en-word",
+        "en-listen"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g5s1-cn-1",
+      "tag_ids": [
+        "cn-zi",
+        "cn-read",
+        "cn-write"
+      ],
+      "auto": false
+    },
+    {
+      "unit_id": "g5s1-cn-2",
+      "tag_ids": [
+        "cn-zi",
+        "cn-read",
+        "cn-write"
+      ],
+      "auto": false
+    },
+    {
+      "unit_id": "g5s1-cn-3",
+      "tag_ids": [
+        "cn-read",
+        "cn-oral",
+        "cn-write"
+      ],
+      "auto": false
+    },
+    {
+      "unit_id": "g5s1-cn-4",
+      "tag_ids": [
+        "cn-poem",
+        "cn-recite",
+        "cn-read",
+        "cn-write"
+      ],
+      "auto": false
+    },
+    {
+      "unit_id": "g5s1-cn-5",
+      "tag_ids": [
+        "cn-read",
+        "cn-write"
+      ],
+      "auto": false
+    },
+    {
+      "unit_id": "g5s1-cn-6",
+      "tag_ids": [
+        "cn-read",
+        "cn-oral",
+        "cn-write"
+      ],
+      "auto": false
+    },
+    {
+      "unit_id": "g5s1-cn-7",
+      "tag_ids": [
+        "cn-poem",
+        "cn-recite",
+        "cn-read",
+        "cn-copy",
+        "cn-write"
+      ],
+      "auto": false
+    },
+    {
+      "unit_id": "g5s1-cn-8",
+      "tag_ids": [
+        "cn-read",
+        "cn-write"
+      ],
+      "auto": false
+    },
+    {
+      "unit_id": "g5s1-ma-1",
+      "tag_ids": [
+        "ma-shape"
+      ],
+      "auto": false
+    },
+    {
+      "unit_id": "g5s1-ma-2",
+      "tag_ids": [
+        "ma-stat"
+      ],
+      "auto": false
+    },
+    {
+      "unit_id": "g5s1-ma-3",
+      "tag_ids": [
+        "ma-shape",
+        "ma-calc"
+      ],
+      "auto": false
+    },
+    {
+      "unit_id": "g5s1-ma-4",
+      "tag_ids": [
+        "ma-oral",
+        "ma-calc"
+      ],
+      "auto": false
+    },
+    {
+      "unit_id": "g5s1-ma-5",
+      "tag_ids": [
+        "ma-idea"
+      ],
+      "auto": false
+    },
+    {
+      "unit_id": "g5s1-ma-6",
+      "tag_ids": [
+        "ma-idea"
+      ],
+      "auto": false
+    },
+    {
+      "unit_id": "g5s1-ma-7",
+      "tag_ids": [
+        "ma-idea",
+        "ma-word"
+      ],
+      "auto": false
+    },
+    {
+      "unit_id": "g5s1-ma-8",
+      "tag_ids": [
+        "ma-shape"
+      ],
+      "auto": false
+    },
+    {
+      "unit_id": "g5s1-en-1",
+      "tag_ids": [
+        "en-word",
+        "en-phon",
+        "en-listen",
+        "en-gram",
+        "en-task"
+      ],
+      "auto": false
+    },
+    {
+      "unit_id": "g5s1-en-2",
+      "tag_ids": [
+        "en-word",
+        "en-phon",
+        "en-listen",
+        "en-gram",
+        "en-task"
+      ],
+      "auto": false
+    },
+    {
+      "unit_id": "g5s1-en-3",
+      "tag_ids": [
+        "en-word",
+        "en-phon",
+        "en-listen",
+        "en-gram",
+        "en-task"
+      ],
+      "auto": false
+    },
+    {
+      "unit_id": "g5s1-en-4",
+      "tag_ids": [
+        "en-word",
+        "en-phon",
+        "en-listen",
+        "en-gram",
+        "en-task"
+      ],
+      "auto": false
+    },
+    {
+      "unit_id": "g5s1-en-5",
+      "tag_ids": [
+        "en-word",
+        "en-phon",
+        "en-listen",
+        "en-gram",
+        "en-task"
+      ],
+      "auto": false
+    },
+    {
+      "unit_id": "g5s1-en-6",
+      "tag_ids": [
+        "en-word",
+        "en-phon",
+        "en-listen",
+        "en-gram",
+        "en-task"
+      ],
+      "auto": false
+    },
+    {
+      "unit_id": "g5s1-en-7",
+      "tag_ids": [
+        "en-word",
+        "en-phon",
+        "en-listen",
+        "en-gram",
+        "en-task"
+      ],
+      "auto": false
+    },
+    {
+      "unit_id": "g5s1-en-8",
+      "tag_ids": [
+        "en-word",
+        "en-phon",
+        "en-listen",
+        "en-gram",
+        "en-task"
+      ],
+      "auto": false
+    },
+    {
+      "unit_id": "g5s1-en-9",
+      "tag_ids": [
+        "en-task"
+      ],
+      "auto": false
+    },
+    {
+      "unit_id": "g5s1-en-10",
+      "tag_ids": [
+        "en-task"
+      ],
+      "auto": false
+    }
+  ]
+}

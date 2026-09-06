@@ -3,7 +3,7 @@ import {
     BookOpen, Calculator, Globe, FlaskConical, Heart, Dumbbell, Palette, Sparkles,
     Sprout, Leaf, Flower, Star, Flame, Trophy, Medal, Gem, Rocket, Crown,
     CalendarDays, Circle, Brain, Moon, Award, ShoppingCart, Gift, Dices, Coins,
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 
 export const SUBJECT_ICONS = {
     语文: BookOpen,

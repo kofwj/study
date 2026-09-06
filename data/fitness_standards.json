@@ -1,0 +1,56 @@
+{
+  "_meta": {
+    "standard": "国家学生体质健康标准（2014年修订）",
+    "issuer": "教育部",
+    "doc": "教体艺〔2014〕5号",
+    "pass_score": 60,
+    "good_score": 80,
+    "excellent_score": 100,
+    "note": "pass_value=单项60分线（达标）。一、二年级国标不测仰卧起坐，故无该行。江苏执行同一套全国标准。",
+    "tables": {
+      "跳绳": "表1-9/1-10 一分钟跳绳（次）",
+      "坐位体前屈": "表1-7/1-8 坐位体前屈（厘米）",
+      "仰卧起坐": "表1-13/1-14 一分钟仰卧起坐（次），小学仅三至六年级"
+    },
+    "sources": [
+      "https://www.moe.gov.cn/s78/A17/twys_left/moe_938/moe_792/s3273/201407/t20140708_171692.html",
+      "https://www.nchvc.edu.cn/ggwhb/info/1008/3933.htm"
+    ]
+  },
+  "rows": [
+    {"grade": 1, "gender": "男", "item": "跳绳", "pass_value": 17, "good_value": 87, "excellent_value": 109, "unit": "次/分", "direction": "high"},
+    {"grade": 2, "gender": "男", "item": "跳绳", "pass_value": 25, "good_value": 95, "excellent_value": 117, "unit": "次/分", "direction": "high"},
+    {"grade": 3, "gender": "男", "item": "跳绳", "pass_value": 34, "good_value": 104, "excellent_value": 126, "unit": "次/分", "direction": "high"},
+    {"grade": 4, "gender": "男", "item": "跳绳", "pass_value": 45, "good_value": 115, "excellent_value": 137, "unit": "次/分", "direction": "high"},
+    {"grade": 5, "gender": "男", "item": "跳绳", "pass_value": 56, "good_value": 126, "excellent_value": 148, "unit": "次/分", "direction": "high"},
+    {"grade": 6, "gender": "男", "item": "跳绳", "pass_value": 65, "good_value": 135, "excellent_value": 157, "unit": "次/分", "direction": "high"},
+    {"grade": 1, "gender": "女", "item": "跳绳", "pass_value": 17, "good_value": 87, "excellent_value": 117, "unit": "次/分", "direction": "high"},
+    {"grade": 2, "gender": "女", "item": "跳绳", "pass_value": 27, "good_value": 97, "excellent_value": 127, "unit": "次/分", "direction": "high"},
+    {"grade": 3, "gender": "女", "item": "跳绳", "pass_value": 39, "good_value": 109, "excellent_value": 139, "unit": "次/分", "direction": "high"},
+    {"grade": 4, "gender": "女", "item": "跳绳", "pass_value": 49, "good_value": 119, "excellent_value": 149, "unit": "次/分", "direction": "high"},
+    {"grade": 5, "gender": "女", "item": "跳绳", "pass_value": 58, "good_value": 128, "excellent_value": 158, "unit": "次/分", "direction": "high"},
+    {"grade": 6, "gender": "女", "item": "跳绳", "pass_value": 66, "good_value": 136, "excellent_value": 166, "unit": "次/分", "direction": "high"},
+
+    {"grade": 1, "gender": "男", "item": "坐位体前屈", "pass_value": 0.0, "good_value": 11.0, "excellent_value": 16.1, "unit": "厘米", "direction": "high"},
+    {"grade": 2, "gender": "男", "item": "坐位体前屈", "pass_value": -0.4, "good_value": 10.6, "excellent_value": 16.2, "unit": "厘米", "direction": "high"},
+    {"grade": 3, "gender": "男", "item": "坐位体前屈", "pass_value": -0.8, "good_value": 10.2, "excellent_value": 16.3, "unit": "厘米", "direction": "high"},
+    {"grade": 4, "gender": "男", "item": "坐位体前屈", "pass_value": -2.2, "good_value": 9.8, "excellent_value": 16.4, "unit": "厘米", "direction": "high"},
+    {"grade": 5, "gender": "男", "item": "坐位体前屈", "pass_value": -2.6, "good_value": 9.4, "excellent_value": 16.5, "unit": "厘米", "direction": "high"},
+    {"grade": 6, "gender": "男", "item": "坐位体前屈", "pass_value": -4.0, "good_value": 9.0, "excellent_value": 16.6, "unit": "厘米", "direction": "high"},
+    {"grade": 1, "gender": "女", "item": "坐位体前屈", "pass_value": 2.4, "good_value": 13.4, "excellent_value": 18.6, "unit": "厘米", "direction": "high"},
+    {"grade": 2, "gender": "女", "item": "坐位体前屈", "pass_value": 2.3, "good_value": 13.3, "excellent_value": 18.9, "unit": "厘米", "direction": "high"},
+    {"grade": 3, "gender": "女", "item": "坐位体前屈", "pass_value": 2.2, "good_value": 13.2, "excellent_value": 19.2, "unit": "厘米", "direction": "high"},
+    {"grade": 4, "gender": "女", "item": "坐位体前屈", "pass_value": 2.1, "good_value": 13.1, "excellent_value": 19.5, "unit": "厘米", "direction": "high"},
+    {"grade": 5, "gender": "女", "item": "坐位体前屈", "pass_value": 2.0, "good_value": 13.0, "excellent_value": 19.8, "unit": "厘米", "direction": "high"},
+    {"grade": 6, "gender": "女", "item": "坐位体前屈", "pass_value": 1.9, "good_value": 12.9, "excellent_value": 19.9, "unit": "厘米", "direction": "high"},
+
+    {"grade": 3, "gender": "男", "item": "仰卧起坐", "pass_value": 16, "good_value": 36, "excellent_value": 48, "unit": "次/分", "direction": "high"},
+    {"grade": 4, "gender": "男", "item": "仰卧起坐", "pass_value": 17, "good_value": 37, "excellent_value": 49, "unit": "次/分", "direction": "high"},
+    {"grade": 5, "gender": "男", "item": "仰卧起坐", "pass_value": 18, "good_value": 38, "excellent_value": 50, "unit": "次/分", "direction": "high"},
+    {"grade": 6, "gender": "男", "item": "仰卧起坐", "pass_value": 19, "good_value": 39, "excellent_value": 51, "unit": "次/分", "direction": "high"},
+    {"grade": 3, "gender": "女", "item": "仰卧起坐", "pass_value": 16, "good_value": 36, "excellent_value": 46, "unit": "次/分", "direction": "high"},
+    {"grade": 4, "gender": "女", "item": "仰卧起坐", "pass_value": 17, "good_value": 37, "excellent_value": 47, "unit": "次/分", "direction": "high"},
+    {"grade": 5, "gender": "女", "item": "仰卧起坐", "pass_value": 18, "good_value": 38, "excellent_value": 48, "unit": "次/分", "direction": "high"},
+    {"grade": 6, "gender": "女", "item": "仰卧起坐", "pass_value": 19, "good_value": 39, "excellent_value": 49, "unit": "次/分", "direction": "high"}
+  ]
+}

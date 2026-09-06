@@ -1090,7 +1090,7 @@ def redemptions_admin():
             "LEFT JOIN rewards rw ON rw.id=rd.reward_id WHERE rd.status='pending'").fetchall())
         done.extend(c.execute(
             "SELECT rd.id, rd.date, rd.price, rd.status, rw.name, rd.kid_id FROM redemptions rd "
-            "LEFT JOIN rewards rw ON rw.id=rd.reward_id WHERE rd.status!='pending' ORDER BY rd.id DESC LIMIT 50").fetchall())
+            "LEFT JOIN rewards rw ON rw.id=rd.reward_id WHERE rd.status!='pending'").fetchall())
     db.apply_scope(c, fam, kid_id())
     c.close()
     pend = [dict(r) for r in pending]
