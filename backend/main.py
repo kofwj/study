@@ -455,9 +455,18 @@ def _insight_fitness(c, kid):
     return {"type": "fitness", "text": best["text"], "action": "运动打卡", "source": best["source"]}
 
 
+def _insight_review_due(c, kid):
+    n = c.execute(
+        "SELECT COUNT(*) FROM weak_points WHERE kid_id=? AND status='open' AND review_due_at IS NOT NULL AND review_due_at!='' AND review_due_at<=?",
+        (kid, db.today())).fetchone()[0]
+    if n:
+        return {"type": "review_due", "text": "有 " + str(n) + " 个薄弱点该复习了", "action": "今日复习", "source": {}}
+    return None
+
+
 def build_insights(c, kid):
     rules = insight_rules(c)
-    return (_insight_weak_unit(c, kid, rules) or _insight_fitness(c, kid)
+    return (_insight_review_due(c, kid) or _insight_weak_unit(c, kid, rules) or _insight_fitness(c, kid)
             or _insight_streak_break(c, kid, rules) or _insight_drop(c, kid, rules))
 
 
@@ -1816,6 +1825,11 @@ def weekly():
             "SELECT COALESCE(SUM(delta),0) FROM ledger WHERE date BETWEEN ? AND ? AND delta>0 AND kid_id=?",
             (wm.isoformat(), we.isoformat(), kid)).fetchone()[0]
         weeks.append({"label": f"{wm.month}/{wm.day}", "earned": wk_earned, "week_start": wm.isoformat()})
+    mastered = [r[0] for r in c.execute(
+        "SELECT DISTINCT kt.name FROM weak_points wp JOIN knowledge_tags kt ON kt.id=wp.tag_id "
+        "WHERE wp.kid_id=? AND substr(wp.updated_at,1,10) BETWEEN ? AND ? "
+        "AND (wp.status='resolved' OR COALESCE(wp.interval_idx,0) >= 4) "
+        "ORDER BY kt.name", (kid, w_start, w_end)).fetchall()]
     fam = _fam.get()
     kids_cmp = []
     if fam:
@@ -1844,6 +1858,7 @@ def weekly():
         "checkins": checkins,
         "weeks": weeks,
         "by_subject": [dict(r) for r in by_subject],
+        "mastered": mastered,
         "kids": kids_cmp,
     }
     c.close()

@@ -122,6 +122,29 @@ def main_fn():
         tasks = cli.get("/api/tasks" + q).json()
         g = tasks["fitness_goals"]["pe-jump-rope"]
         assert g["pass"] == 56 and g["excellent"] == 148 and g["grade"] == 5
+
+        # 复习到期盯点优先；本周练牢含 resolved + 第 5 轮
+        cli.put("/api/admin/insight-rules", json={"streak_break": 7, "drop_ratio": 0.9})
+        c = db.connect()
+        c.execute("DELETE FROM tests WHERE kid_id=?", (kid,))
+        c.execute("DELETE FROM checkins WHERE kid_id=?", (kid,))
+        c.execute("DELETE FROM completions WHERE kid_id=?", (kid,))
+        c.execute(
+            "INSERT INTO weak_points(kid_id,unit_id,tag_id,note,status,interval_idx,review_due_at,created_at,updated_at) "
+            "VALUES(?,?,?,?,?,?,?,?,?)",
+            (kid, "g5s1-cn-1", "cn-zi", "", "open", 0, today.isoformat(), db.now(), db.now()))
+        c.commit(); c.close()
+        ins = next(x["insight"] for x in cli.get("/api/admin/insights").json()["kids"] if x["kid_id"] == kid)
+        assert ins and ins["type"] == "review_due" and ins["action"] == "今日复习"
+        c = db.connect()
+        c.execute("UPDATE weak_points SET status='resolved', updated_at=? WHERE kid_id=?", (db.now(), kid))
+        c.execute(
+            "INSERT INTO weak_points(kid_id,unit_id,tag_id,note,status,interval_idx,review_due_at,created_at,updated_at) "
+            "VALUES(?,?,?,?,?,?,?,?,?)",
+            (kid, "g5s1-cn-1", "cn-read", "", "open", 4, None, db.now(), db.now()))
+        c.commit(); c.close()
+        wk = cli.get("/api/admin/weekly" + q).json()
+        assert "字词" in (wk.get("mastered") or []) and "阅读理解" in (wk.get("mastered") or [])
         print("insights ok")
 
 

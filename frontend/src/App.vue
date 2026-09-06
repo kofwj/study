@@ -68,6 +68,12 @@ function unitWeak(id) {
   const s = data.unit_scores[id]
   return s && s.score < (data.test_fail_score || 80)
 }
+function dueUnit(id) {
+  return reviewDue.value.some(x => x.unit_id === id)
+}
+function wpFlag(id) {
+  return !!((data.weak_tags[id] || []).length)
+}
 function n1(v) {
   if (v == null) return ''
   const x = Math.round(Number(v) * 10) / 10
@@ -471,7 +477,7 @@ function reloadApp() {
             <div class="grid">
               <div v-for="x in reviewDue" :key="x.id" class="card enter">
                 <div class="card-body">
-                  <div class="card-title">重练 {{ x.unit_name }} · {{ x.tag_name }}</div>
+                  <div class="card-title"><span class="wp-round">第 {{ (x.interval_idx || 0) + 1 }} 轮</span> 重练 {{ x.unit_name }} · {{ x.tag_name }}</div>
                   <div class="card-detail">翻练习册再做一遍，让家长看过关。</div>
                 </div>
               </div>
@@ -530,9 +536,10 @@ function reloadApp() {
               </span>
               <span v-if="unitWeak(u.id)" class="unit-weak">再练练</span>
               <span v-if="(data.weak_tags[u.id] || []).length" class="unit-weak">薄弱：{{ (data.weak_tags[u.id] || []).join(' / ') }}</span>
+              <span v-if="dueUnit(u.id)" class="unit-weak">该复习了</span>
             </h2>
             <div class="grid">
-              <div v-for="t in u.tasks" :key="t.id" class="card enter" :class="{ done: t.done, past: t.past, locked: t.locked }">
+              <div v-for="t in u.tasks" :key="t.id" class="card enter" :class="{ done: t.done, past: t.past, locked: t.locked, wpflag: wpFlag(u.id) }">
                 <button class="circle" :class="{ ok: t.done || t.past }" @click="toggleTask(t, $event)"><Check v-if="t.done || t.past" :size="15" /><Lock v-else-if="t.locked" :size="14" /></button>
                 <div class="card-body">
                   <div class="card-title">{{ t.title }}</div>
@@ -805,7 +812,9 @@ body {
 .unit-score.green { background: var(--ok-bg); color: var(--ok); }
 .unit-score.blue { background: var(--surface-2); color: var(--brand-deep); }
 .unit-score.gray { background: var(--surface-2); color: var(--ink-3); }
-.unit-weak { font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 800; background: var(--warm); color: var(--accent-ink); }
+.unit-weak { font-size: 11px; padding:  2px 8px; border-radius: 10px; font-weight: 800; background: var(--warm); color: var(--accent-ink); }
+.wp-round { font-size: 11px; padding: 3px 7px; border-radius: 10px; background: var(--warm); color: var(--accent-ink); font-weight: 800; margin-right: 6px; }
+.card.wpflag:before { content: ''; position: absolute; top: 8px; right: 8px; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
 .fit-bar { position: relative; height: 14px; background: var(--surface-2); border-radius: 8px; margin: 6px 0 4px; overflow: hidden; }
 .fit-bar i { display: block; height: 100%; background: var(--brand); border-radius: 8px; }
 .fit-bar em { position: absolute; inset: 0; font-style: normal; font-size: 10px; font-weight: 800; color: var(--ink-2); display: flex; align-items: center; justify-content: center; }

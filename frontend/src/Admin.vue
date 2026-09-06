@@ -471,6 +471,10 @@ onMounted(load)
         <div class="w-box"><span>本周签到</span><b>{{ weekly.checkins }} 天</b></div>
       </div>
 
+      <div v-if="(weekly.mastered || []).length" class="w-mastered">
+        这周孩子把 <b>{{ weekly.mastered.join('、') }}</b> 练牢了，继续保持。
+      </div>
+
       <h4 class="w-h">近 4 周阳光趋势</h4>
       <div class="w-trend">
         <svg viewBox="0 0 288 80" class="w-trend-svg" preserveAspectRatio="none">
@@ -940,7 +944,8 @@ onMounted(load)
 .w64 { width: 64px; flex: none; }
 .w84 { width: 84px; flex: none; }
 .w104 { width: 104px; flex: none; }
-.ops { display: flex; gap: 6px; align-items: center; flex: none; }
+.ops { display: flex; gap:  6px; align-items: center; flex: none; }
+.w-mastered { margin: 12px 0; padding: 9px 12px; border-radius: 12px; background: var(--brand); color: #fff; font-size: 13px; font-weight: 600; }
 
 .subj-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
 .subj-tab { border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px; font-size: 13px; font-weight: 700; color: var(--ink); background: var(--surface); cursor: pointer; }
