@@ -34,16 +34,38 @@ TAGS = [
     {"id": "en-task", "subject_id": "英语", "kind": "运用", "name": "口语任务"},
 ]
 
+# 五上语文精标（统编语文要素提炼，替换泛化大类）
+CN5_TAGS = [
+    {"id": "cn5-jw", "subject_id": "语文", "kind": "单元考点", "name": "借物抒情"},
+    {"id": "cn5-gj", "subject_id": "语文", "kind": "单元考点", "name": "抓关键语句体会感情"},
+    {"id": "cn5-gk", "subject_id": "语文", "kind": "单元考点", "name": "概括主要内容"},
+    {"id": "cn5-ysd", "subject_id": "语文", "kind": "单元考点", "name": "提高阅读速度"},
+    {"id": "cn5-rw", "subject_id": "语文", "kind": "单元考点", "name": "结合事例写人物"},
+    {"id": "cn5-mj", "subject_id": "语文", "kind": "单元考点", "name": "民间故事特点"},
+    {"id": "cn5-fs", "subject_id": "语文", "kind": "单元考点", "name": "创造性复述"},
+    {"id": "cn5-zl", "subject_id": "语文", "kind": "单元考点", "name": "结合资料体会感情"},
+    {"id": "cn5-tg", "subject_id": "语文", "kind": "单元考点", "name": "列提纲分段落"},
+    {"id": "cn5-sm", "subject_id": "语文", "kind": "单元考点", "name": "了解说明方法"},
+    {"id": "cn5-smw", "subject_id": "语文", "kind": "单元考点", "name": "用说明方法介绍事物"},
+    {"id": "cn5-xj", "subject_id": "语文", "kind": "单元考点", "name": "体会场景细节描写"},
+    {"id": "cn5-bd", "subject_id": "语文", "kind": "单元考点", "name": "表达自己看法"},
+    {"id": "cn5-dj", "subject_id": "语文", "kind": "单元考点", "name": "体会静态动态描写"},
+    {"id": "cn5-sx", "subject_id": "语文", "kind": "单元考点", "name": "按顺序写景"},
+    {"id": "cn5-xl", "subject_id": "语文", "kind": "单元考点", "name": "梳理信息把握要点"},
+    {"id": "cn5-fd", "subject_id": "语文", "kind": "单元考点", "name": "分段表述突出重点"},
+]
+TAGS += CN5_TAGS
+
 # 五上/五下语数英精标（对照现有手工任务卡）
 HAND = {
-    "g5s1-cn-1": ["cn-zi", "cn-read", "cn-write"],
-    "g5s1-cn-2": ["cn-zi", "cn-read", "cn-write"],
-    "g5s1-cn-3": ["cn-read", "cn-oral", "cn-write"],
-    "g5s1-cn-4": ["cn-poem", "cn-recite", "cn-read", "cn-write"],
-    "g5s1-cn-5": ["cn-read", "cn-write"],
-    "g5s1-cn-6": ["cn-read", "cn-oral", "cn-write"],
-    "g5s1-cn-7": ["cn-poem", "cn-recite", "cn-read", "cn-copy", "cn-write"],
-    "g5s1-cn-8": ["cn-read", "cn-write"],
+    "g5s1-cn-1": ["cn5-jw", "cn5-gj", "cn5-gk"],
+    "g5s1-cn-2": ["cn5-ysd", "cn5-rw"],
+    "g5s1-cn-3": ["cn5-mj", "cn5-fs"],
+    "g5s1-cn-4": ["cn5-zl", "cn5-tg"],
+    "g5s1-cn-5": ["cn5-sm", "cn5-smw"],
+    "g5s1-cn-6": ["cn5-xj", "cn5-bd"],
+    "g5s1-cn-7": ["cn5-dj", "cn5-sx"],
+    "g5s1-cn-8": ["cn5-xl", "cn5-fd"],
     "g5s1-ma-1": ["ma-shape"],
     "g5s1-ma-2": ["ma-stat"],
     "g5s1-ma-3": ["ma-shape", "ma-calc"],

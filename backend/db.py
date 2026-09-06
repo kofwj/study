@@ -703,6 +703,11 @@ CREATE TABLE IF NOT EXISTS weak_points (
         conn.execute("GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO sunshine_app")
 
 
+def _migrate_019(conn):
+    # 五上语文考点精标（统编语文要素）：重跑 seed（tags upsert + 重建 unit_tags 映射）
+    seed_knowledge_tags(conn)
+
+
 def _migrate_017(conn):
     conn.execute("""
 CREATE TABLE IF NOT EXISTS knowledge_tags (
@@ -735,6 +740,7 @@ MIGRATIONS = (
     ("016_unit_version", _migrate_016),
     ("017_knowledge_tags", _migrate_017),
     ("018_weak_points", _migrate_018),
+    ("019_cn5_tags", _migrate_019),
 )
 
 
