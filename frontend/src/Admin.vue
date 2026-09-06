@@ -48,6 +48,7 @@ const progressLock = ref(true)
 const redemptions = ref([])
 const tests = ref([])
 const newTest = reactive({ subject_id: '', unit_id: '', score: '', note: '' })
+const weakDlg = reactive({ open: false, unit_id: '', tags: [], picked: {}, note: '' })
 const TEST_BANDS = [[100, 30], [95, 20], [90, 15], [85, 10], [0, 5]]
 const weekly = ref({ days: [], weeks: [], by_subject: [], kids: [], total_earned: 0, total_spent: 0, net: 0, balance: 0, earned_all: 0, streak: 0, checkins: 0, week_start: '', week_end: '' })
 const insights = ref({ rules: { test_fail_count: 2, test_fail_score: 80, drop_ratio: 0.3, streak_break: 2 }, kids: [] })
@@ -137,6 +138,23 @@ async function addTest() {
 async function delTest(id) {
   if (!confirm('删除这条测试记录？会冲正扣回阳光。')) return
   await api.admin.delTest(id); await load()
+}
+async function openWeak(unit_id) {
+  if (!unit_id) return showToast('先选单元')
+  try {
+    const [tags, cur] = await Promise.all([api.admin.unitTags(unit_id), api.admin.weakPoints(unit_id)])
+    const picked = {}
+    for (const t of tags) picked[t.tag_id] = cur.some(x => x.tag_id === t.tag_id)
+    Object.assign(weakDlg, { open: true, unit_id, tags, picked, note: (cur[0] && cur[0].note) || '' })
+  } catch (e) { showToast(e.message) }
+}
+async function saveWeak() {
+  const tag_ids = Object.keys(weakDlg.picked).filter(k => weakDlg.picked[k])
+  try {
+    await api.admin.setWeakPoints({ unit_id: weakDlg.unit_id, tag_ids, note: weakDlg.note, kid_id: selectedKid.value })
+    weakDlg.open = false
+    showToast('已标薄弱')
+  } catch (e) { showToast(e.message) }
 }
 
 // —— 等级 ——
@@ -663,6 +681,7 @@ onMounted(load)
           <label class="fld w104"><span>备注</span><input v-model="newTest.note" placeholder="如：期中" /></label>
         </div>
         <button class="ok wide" @click="addTest">录成绩并发阳光</button>
+        <button class="ghost" style="margin-top:8px" @click="openWeak(newTest.unit_id)">标薄弱</button>
       </div>
       <div v-if="!tests.length" class="dim">还没录过测试成绩。</div>
       <div class="test-row" v-for="t in tests" :key="t.id">
@@ -750,6 +769,22 @@ onMounted(load)
       </main>
     </div>
 
+    <div v-if="weakDlg.open" class="mask" @click.self="weakDlg.open = false">
+      <div class="a-card" style="max-width:420px;margin:12vh auto">
+        <h3>标薄弱 · {{ unitName(weakDlg.unit_id) }}</h3>
+        <p class="lead">勾这个单元没掌握的考点，孩子端只看标签。</p>
+        <label v-for="t in weakDlg.tags" :key="t.tag_id" class="a-item" style="cursor:pointer">
+          <input type="checkbox" v-model="weakDlg.picked[t.tag_id]" />
+          <span>{{ t.name }}</span>
+        </label>
+        <p v-if="!weakDlg.tags.length" class="dim">这个单元还没有考点标签。</p>
+        <input v-model="weakDlg.note" placeholder="备注（可选）" class="w-name" style="margin:8px 0" />
+        <div class="ops">
+          <button class="ok" @click="saveWeak">存</button>
+          <button class="ghost" @click="weakDlg.open = false">取消</button>
+        </div>
+      </div>
+    </div>
     <div v-if="toast" class="toast">{{ toast }}</div>
   </div>
 </template>

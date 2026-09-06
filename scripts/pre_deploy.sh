@@ -3,7 +3,7 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT/backend"
-for t in test_dialect test_auth test_kids test_family test_insights; do
+for t in test_dialect test_auth test_kids test_family test_insights test_weak_points; do
   echo "== $t =="
   python3 "$t.py"
 done

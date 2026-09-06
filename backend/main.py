@@ -681,6 +681,10 @@ def tasks():
                     "grade": grade, "gender": gender,
                 }
     out["fitness_goals"] = goals
+    weak = {}
+    for r in _wp_rows(c, kid_id()):
+        weak.setdefault(r["unit_id"], []).append(r["tag_name"] or r["tag_id"])
+    out["weak_tags"] = weak
     return out
 
 
@@ -1377,6 +1381,122 @@ def test_delete(tid: str):
     insert_ledger(c, db.today(), -r["sunshine"], "test_cancel", f"test-{tid}", "删除测试冲正")
     c.commit(); c.close()
     return {"ok": True}
+
+
+def _wp_rows(c, kid, unit_id=None):
+    q = ("SELECT wp.id, wp.unit_id, wp.tag_id, wp.note, wp.status, kt.name AS tag_name "
+         "FROM weak_points wp LEFT JOIN knowledge_tags kt ON kt.id=wp.tag_id "
+         "WHERE wp.kid_id=? AND wp.status='open'")
+    args = [kid]
+    if unit_id:
+        q += " AND wp.unit_id=?"
+        args.append(unit_id)
+    q += " ORDER BY wp.id"
+    return [dict(r) for r in c.execute(q, args).fetchall()]
+
+
+def _own_kid(c, kid, fam):
+    row = c.execute("SELECT id FROM users WHERE id=? AND family_id=? AND role='kid'", (kid, fam)).fetchone()
+    if not row:
+        raise HTTPException(404, "没找到这个孩子")
+    return kid
+
+
+@app.get("/api/admin/unit-tags")
+def admin_unit_tags(unit_id: str, request: Request):
+    require_parent(request)
+    c = get_conn()
+    rows = c.execute(
+        "SELECT ut.tag_id, kt.name FROM unit_tags ut JOIN knowledge_tags kt ON kt.id=ut.tag_id "
+        "WHERE ut.unit_id=? ORDER BY kt.kind, kt.id", (unit_id,)).fetchall()
+    c.close()
+    return [dict(r) for r in rows]
+
+
+@app.get("/api/admin/weak-points")
+def admin_weak_points(request: Request, unit_id: str = "", kid_id: str = ""):
+    require_parent(request)
+    c = get_conn()
+    fam = _fam.get()
+    kid = _own_kid(c, kid_id or kid_id(), fam)
+    db.apply_scope(c, fam, kid)
+    rows = _wp_rows(c, kid, unit_id or None)
+    db.apply_scope(c, fam, kid_id())
+    c.close()
+    return rows
+
+
+class WeakIn(BaseModel):
+    unit_id: str
+    tag_ids: list[str]
+    note: str = ""
+    kid_id: str = ""
+
+
+@app.put("/api/admin/weak-points")
+def admin_weak_put(b: WeakIn, request: Request):
+    require_parent(request)
+    if not b.unit_id:
+        raise HTTPException(400, "选一个单元")
+    tags = [t for t in (b.tag_ids or []) if t]
+    if not tags:
+        raise HTTPException(400, "至少勾一个考点")
+    c = get_conn()
+    fam = _fam.get()
+    kid = _own_kid(c, b.kid_id or kid_id(), fam)
+    db.apply_scope(c, fam, kid)
+    for tid in tags:
+        if not c.execute("SELECT 1 FROM knowledge_tags WHERE id=?", (tid,)).fetchone():
+            db.apply_scope(c, fam, kid_id()); c.close()
+            raise HTTPException(400, "没有这个考点")
+    c.execute("DELETE FROM weak_points WHERE kid_id=? AND unit_id=? AND status='open'", (kid, b.unit_id))
+    note = (b.note or "").strip()[:40]
+    now = db.now()
+    for tid in tags:
+        c.execute(
+            "INSERT INTO weak_points(kid_id,unit_id,tag_id,note,status,interval_idx,created_at,updated_at) "
+            "VALUES(?,?,?,?,?,?,?,?)",
+            (kid, b.unit_id, tid, note, "open", 0, now, now))
+    c.commit()
+    rows = _wp_rows(c, kid, b.unit_id)
+    db.apply_scope(c, fam, kid_id())
+    c.close()
+    return rows
+
+
+@app.delete("/api/admin/weak-points/{wid}")
+def admin_weak_del(wid: str, request: Request):
+    require_parent(request)
+    c = get_conn()
+    fam = _fam.get()
+    row = c.execute("SELECT * FROM weak_points WHERE id=?", (wid,)).fetchone()
+    if not row:
+        # 可能被 RLS 挡住，按 roster 再找一次
+        found = None
+        for kr in c.execute("SELECT id FROM users WHERE family_id=? AND role='kid'", (fam,)).fetchall():
+            db.apply_scope(c, fam, kr["id"])
+            found = c.execute("SELECT * FROM weak_points WHERE id=?", (wid,)).fetchone()
+            if found:
+                break
+        if not found:
+            db.apply_scope(c, fam, kid_id()); c.close()
+            raise HTTPException(404, "没找到这条")
+        row = found
+    else:
+        db.apply_scope(c, fam, row["kid_id"])
+    c.execute("DELETE FROM weak_points WHERE id=?", (wid,))
+    c.commit()
+    db.apply_scope(c, fam, kid_id())
+    c.close()
+    return {"ok": True}
+
+
+@app.get("/api/weak-points")
+def kid_weak_points(unit_id: str = ""):
+    c = get_conn()
+    rows = _wp_rows(c, kid_id(), unit_id or None)
+    c.close()
+    return rows
 
 
 # --- 等级 ---

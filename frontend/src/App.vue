@@ -20,6 +20,7 @@ const data = reactive({
   unit_scores: {},
   test_fail_score: 80,
   fitness_goals: {},
+  weak_tags: {},
 })
 const rewards = ref([])
 const loading = ref(true)
@@ -515,6 +516,7 @@ function reloadApp() {
                 <Target class="ico" :size="13" /> {{ data.unit_scores[u.id].score }} 分
               </span>
               <span v-if="unitWeak(u.id)" class="unit-weak">再练练</span>
+              <span v-if="(data.weak_tags[u.id] || []).length" class="unit-weak">薄弱：{{ (data.weak_tags[u.id] || []).join(' / ') }}</span>
             </h2>
             <div class="grid">
               <div v-for="t in u.tasks" :key="t.id" class="card enter" :class="{ done: t.done, past: t.past, locked: t.locked }">
