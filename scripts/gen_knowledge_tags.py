@@ -112,7 +112,7 @@ def ma_from_name(name):
 def auto_tags(unit, tasks):
     subj = unit["subject"]
     name = unit["name"]
-    acts = {t["action"] for t in tasks}
+    acts = list(dict.fromkeys(t["action"] for t in tasks))
     out = []
     if subj == "语文":
         if "古诗" in name or any("古诗" in t["title"] for t in tasks):
