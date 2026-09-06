@@ -163,7 +163,8 @@ async function delRank(id) {
 
 // —— 单元任务 ——
 const newTask = reactive({ subject_id: '', unit_id: '', action: '', title: '', sunshine: 5 })
-const unitOptions = computed(() => units.value.filter(u => u.subject_id === newTask.subject_id))
+const unitOptions = computed(() => units.value.filter(u => u.subject_id === newTask.subject_id && u.term_id === activeTerm.value))
+const testUnitOptions = computed(() => units.value.filter(u => u.subject_id === newTest.subject_id && u.term_id === activeTerm.value))
 function pickSubject() { newTask.unit_id = '' }
 async function addTask() {
   if (!newTask.subject_id || !newTask.unit_id || !newTask.title) return showToast('选科目/单元、填标题')
@@ -576,7 +577,7 @@ onMounted(load)
               <option v-for="s in subjects" :key="s.id" :value="s.id">{{ s.name }}</option>
             </select>
           </label>
-          <label class="fld grow"><span>哪一单元</span>
+          <label class="fld full"><span>哪一单元</span>
             <select v-model="newTask.unit_id">
               <option value="" disabled>{{ newTask.subject_id ? '选单元' : '先选科' }}</option>
               <option v-for="u in unitOptions" :key="u.id" :value="u.id">{{ u.name }}</option>
@@ -696,10 +697,10 @@ onMounted(load)
               <option v-for="s in subjects" :key="s.id" :value="s.id">{{ s.name }}</option>
             </select>
           </label>
-          <label class="fld grow"><span>哪一单元（可空）</span>
+          <label class="fld full"><span>哪一单元（可空）</span>
             <select v-model="newTest.unit_id">
               <option value="">不绑单元</option>
-              <option v-for="u in units.filter(x => x.subject_id === newTest.subject_id)" :key="u.id" :value="u.id">{{ u.name }}</option>
+              <option v-for="u in testUnitOptions" :key="u.id" :value="u.id">{{ u.name }}</option>
             </select>
           </label>
           <label class="fld w84"><span>分数</span><input v-model="newTest.score" type="number" placeholder="0~100" /></label>
