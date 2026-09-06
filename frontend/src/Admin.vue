@@ -583,7 +583,7 @@ onMounted(load)
               <option v-for="s in subjects" :key="s.id" :value="s.id">{{ s.name }}</option>
             </select>
           </label>
-          <label class="fld full"><span>哪一单元</span>
+          <label class="fld grow"><span>哪一单元</span>
             <select v-model="newTask.unit_id">
               <option value="" disabled>{{ newTask.subject_id ? '选单元' : '先选科' }}</option>
               <option v-for="u in unitOptions" :key="u.id" :value="u.id">{{ u.name }}</option>
@@ -703,7 +703,7 @@ onMounted(load)
               <option v-for="s in subjects" :key="s.id" :value="s.id">{{ s.name }}</option>
             </select>
           </label>
-          <label class="fld full"><span>哪一单元（可空）</span>
+          <label class="fld grow"><span>哪一单元（可空）</span>
             <select v-model="newTest.unit_id">
               <option value="">不绑单元</option>
               <option v-for="u in testUnitOptions" :key="u.id" :value="u.id">{{ u.name }}</option>
@@ -731,7 +731,7 @@ onMounted(load)
       <div class="kid-card" v-for="k in kids" :key="k.id">
         <label class="fld grow"><span>家里怎么叫</span><input v-model="k.name" placeholder="如：乐乐" /></label>
         <label class="fld grow"><span>登录账号</span><input v-model="k.account" placeholder="如：lele" /></label>
-        <label class="fld full"><span>现在读哪册</span>
+        <label class="fld grow"><span>现在读哪册</span>
           <select v-model="k.term_id">
             <option disabled value="">请选择</option>
             <option v-for="tm in terms" :key="tm.id" :value="tm.id">{{ tm.label }}</option>
@@ -758,7 +758,7 @@ onMounted(load)
           <label class="fld w84"><span>密码</span><input v-model="newKid.pin" placeholder="至少 4 位" /></label>
         </div>
         <div class="frm-row">
-          <label class="fld full"><span>现在读哪册</span>
+          <label class="fld grow"><span>现在读哪册</span>
             <select v-model="newKid.term_id">
               <option v-for="tm in terms" :key="tm.id" :value="tm.id">{{ tm.label }}</option>
             </select>
@@ -902,8 +902,6 @@ onMounted(load)
 .fld > span { font-size: 11px; color: var(--ink-3); font-weight: 700; }
 .fld input, .fld select { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: 15px; color: var(--ink); background: var(--surface); font-family: inherit; width: 100%; min-height: 40px; }
 .kid-card { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; padding: 12px 0; border-bottom: 1px solid var(--surface-2); }
-.fld.full { flex: 1 1 100%; min-width: 0; }
-.fld.full select { width: 100%; max-width: 100%; }
 .fld input:focus, .fld select:focus { outline: none; border-color: var(--brand); }
 .grow { flex: 1 1 120px; }
 .w64 { width: 64px; flex: none; }
