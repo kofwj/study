@@ -717,14 +717,16 @@ onMounted(load)
       </div>
     </section>
 
-    <section v-if="section === 'kids'" class="a-card enter">
+    <section v-if="section === 'kids'" class="a-card">
       <h3>孩子账号</h3>
       <p class="lead">名字给家里看，登录账号给孩子打卡用。学期决定学哪册，性别用来对照体测达标线。</p>
+      <p v-if="!terms.length" class="dim">学期列表还没载入，退出再进一次家长端。</p>
       <div class="kid-card" v-for="k in kids" :key="k.id">
         <label class="fld grow"><span>家里怎么叫</span><input v-model="k.name" placeholder="如：乐乐" /></label>
         <label class="fld grow"><span>登录账号</span><input v-model="k.account" placeholder="如：lele" /></label>
-        <label class="fld grow"><span>现在读哪册</span>
+        <label class="fld full"><span>现在读哪册</span>
           <select v-model="k.term_id">
+            <option disabled value="">请选择</option>
             <option v-for="tm in terms" :key="tm.id" :value="tm.id">{{ tm.label }}</option>
           </select>
         </label>
@@ -749,7 +751,7 @@ onMounted(load)
           <label class="fld w84"><span>密码</span><input v-model="newKid.pin" placeholder="至少 4 位" /></label>
         </div>
         <div class="frm-row">
-          <label class="fld grow"><span>现在读哪册</span>
+          <label class="fld full"><span>现在读哪册</span>
             <select v-model="newKid.term_id">
               <option v-for="tm in terms" :key="tm.id" :value="tm.id">{{ tm.label }}</option>
             </select>
@@ -893,6 +895,8 @@ onMounted(load)
 .fld > span { font-size: 11px; color: var(--ink-3); font-weight: 700; }
 .fld input, .fld select { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: 15px; color: var(--ink); background: var(--surface); font-family: inherit; width: 100%; min-height: 40px; }
 .kid-card { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; padding: 12px 0; border-bottom: 1px solid var(--surface-2); }
+.fld.full { flex: 1 1 100%; min-width: 0; }
+.fld.full select { width: 100%; max-width: 100%; }
 .fld input:focus, .fld select:focus { outline: none; border-color: var(--brand); }
 .grow { flex: 1 1 120px; }
 .w64 { width: 64px; flex: none; }
