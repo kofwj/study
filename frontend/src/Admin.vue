@@ -198,14 +198,17 @@ function tagsFor(uid) {
 }
 function tagOn(uid, tid) { return !!(weakByUnit.value[uid] && weakByUnit.value[uid][tid]) }
 async function toggleTag(uid, tid) {
-  const cur = { ...(weakByUnit.value[uid] || {}) }
+  const prev = { ...(weakByUnit.value[uid] || {}) }
+  const cur = { ...prev }
   if (cur[tid]) delete cur[tid]
   else cur[tid] = true
-  const tag_ids = Object.keys(cur)
+  weakByUnit.value = { ...weakByUnit.value, [uid]: cur }
   try {
-    await api.admin.setWeakPoints({ unit_id: uid, tag_ids, kid_id: selectedKid.value })
-    weakByUnit.value = { ...weakByUnit.value, [uid]: cur }
-  } catch (e) { showToast(e.message) }
+    await api.admin.setWeakPoints({ unit_id: uid, tag_ids: Object.keys(cur), kid_id: selectedKid.value })
+  } catch (e) {
+    weakByUnit.value = { ...weakByUnit.value, [uid]: prev }
+    showToast(e.message)
+  }
 }
 
 // —— 每日任务 ——
