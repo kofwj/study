@@ -43,6 +43,7 @@ const tasks = ref([])
 const daily = ref([])
 const terms = ref([])
 const activeTerm = ref('g5s1')
+const activeSubject = ref('')
 const cursors = ref({})
 const progressLock = ref(true)
 const redemptions = ref([])
@@ -92,6 +93,7 @@ async function load() {
   daily.value = t.daily
   terms.value = t.terms || []
   activeTerm.value = t.active_term || 'g5s1'
+  if (!activeSubject.value || !unitsBySubject.value[activeSubject.value]) activeSubject.value = Object.keys(unitsBySubject.value)[0] || ''
   cursors.value = t.cursors || {}
   progressLock.value = t.progress_lock === '1'
   redemptions.value = rd
@@ -547,8 +549,12 @@ onMounted(load)
     <section v-if="section === 'unit-task'" class="a-card enter">
       <h3>单元任务</h3>
       <p class="lead">只看当前学期。勾考点立刻记下（自动建议，请核对）。</p>
-      <details v-for="(arr, sid) in unitsBySubject" :key="sid" class="subj">
-        <summary>{{ subjectName(sid) }}<em>{{ arr.length }} 单元</em></summary>
+      <div class="subj-tabs">
+        <button v-for="(arr, sid) in unitsBySubject" :key="sid" type="button"
+          :class="['subj-tab', { on: activeSubject === sid }]"
+          @click="activeSubject = sid">{{ subjectName(sid) }}</button>
+      </div>
+      <div v-for="(arr, sid) in unitsBySubject" :key="sid" class="subj" v-show="activeSubject === sid">
         <div v-for="u in arr" :key="u.id" class="unit-block">
           <div class="unit-h">{{ u.name }}</div>
           <div class="tag-row">
@@ -567,7 +573,7 @@ onMounted(load)
             </div>
           </div>
         </div>
-      </details>
+      </div>
       <div class="add-box">
         <div class="add-title">新增单元任务（针对当前学期）</div>
         <div class="frm-row">
@@ -905,12 +911,11 @@ onMounted(load)
 .w104 { width: 104px; flex: none; }
 .ops { display: flex; gap: 6px; align-items: center; flex: none; }
 
-details.subj { border: 1px solid var(--line); border-radius: 12px; margin-bottom: 8px; background: var(--surface); overflow: hidden; }
-details.subj summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 11px 14px; font-weight: 800; color: var(--brand-deep); font-size: 14px; }
-details.subj summary::-webkit-details-marker { display: none; }
-details.subj summary em { font-style: normal; font-size: 11px; color: var(--ink-3); background: var(--surface-2); padding: 1px 8px; border-radius: 10px; }
-details.subj summary::after { content: ''; margin-left: auto; width: 8px; height: 8px; border-right: 2px solid var(--ink-3); border-bottom: 2px solid var(--ink-3); transform: rotate(45deg); transition: transform .18s var(--ease); flex: none; }
-details.subj[open] summary::after { transform: rotate(-135deg); }
+.subj-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+.subj-tab { border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px; font-size: 13px; font-weight: 700; color: var(--ink); background: var(--surface); cursor: pointer; }
+.subj-tab.on { background: var(--brand); color: #fff; border-color: var(--brand); }
+.subj { border: 1px solid var(--line); border-radius: 12px; margin-bottom: 8px; background: var(--surface); overflow: hidden; }
+.subj .unit-block:first-child { border-top: none; }
 .unit-block { padding: 10px 14px 12px; border-top: 1px solid var(--surface-2); }
 .unit-h { font-weight: 800; font-size: 13px; margin-bottom: 6px; }
 .tag-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
