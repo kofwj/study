@@ -184,6 +184,16 @@ def require_parent(request: Request):
     return u
 
 
+def _sun(n, lo=0):
+    try:
+        v = int(n)
+    except (TypeError, ValueError):
+        raise HTTPException(400, "阳光要填数字")
+    if v < lo:
+        raise HTTPException(400, "阳光不能是负数")
+    return v
+
+
 def earned(c, kid=None):
     # 累计获得：赚/取消都算（正负抵消），唯独「兑换消费(redeem)」不算 → 消费不掉级
     return c.execute("SELECT COALESCE(SUM(delta),0) FROM ledger WHERE reason != 'redeem' AND kid_id=?",
@@ -832,7 +842,7 @@ def custom_task(body: CustomTaskBody, request: Request):
               (unit_id, body.subject_id, active_term(c), 99, "自定义"))
     tid = uuid.uuid4().hex[:8]
     c.execute("INSERT INTO tasks(id,subject_id,unit_id,action,title,sunshine,sort,custom,family_id,kid_id) VALUES(?,?,?,?,?,?,99,1,?,?)",
-              (tid, body.subject_id, unit_id, "自定义", title, body.sunshine or 5, request.state.user["family_id"], owner))
+              (tid, body.subject_id, unit_id, "自定义", title, _sun(body.sunshine if body.sunshine is not None else 5), request.state.user["family_id"], owner))
     c.commit()
     c.close()
     return {"id": tid}
@@ -1241,16 +1251,6 @@ class RewardIn(BaseModel):
     category: str = "其他"
 
 
-def _sun(n, lo=0):
-    try:
-        v = int(n)
-    except (TypeError, ValueError):
-        raise HTTPException(400, "阳光要填数字")
-    if v < lo:
-        raise HTTPException(400, "阳光不能是负数")
-    return v
-
-
 @app.post("/api/admin/rewards", dependencies=[Depends(require_parent)])
 def reward_create(b: RewardIn):
     c = get_conn()
@@ -1312,10 +1312,21 @@ def redemptions_admin():
     return pend + rest[:50]
 
 
+def _own_redemption(c, rid):
+    fam = _fam.get()
+    for kr in c.execute("SELECT id FROM users WHERE family_id=? AND role='kid'", (fam,)).fetchall():
+        db.apply_scope(c, fam, kr["id"])
+        rd = c.execute("SELECT * FROM redemptions WHERE id=? AND kid_id=?", (rid, kr["id"])).fetchone()
+        if rd:
+            return rd
+    db.apply_scope(c, fam, kid_id())
+    return None
+
+
 @app.post("/api/admin/redemptions/{rid}/approve", dependencies=[Depends(require_parent)])
 def redemption_approve(rid: str):
     c = get_conn()
-    rd = c.execute("SELECT * FROM redemptions WHERE id=?", (rid,)).fetchone()
+    rd = _own_redemption(c, rid)
     if not rd:
         c.close(); raise HTTPException(404, "没找到这条兑换")
     if rd["status"] != "pending":
@@ -1334,7 +1345,7 @@ def redemption_approve(rid: str):
 @app.post("/api/admin/redemptions/{rid}/reject", dependencies=[Depends(require_parent)])
 def redemption_reject(rid: str):
     c = get_conn()
-    rd = c.execute("SELECT status FROM redemptions WHERE id=?", (rid,)).fetchone()
+    rd = _own_redemption(c, rid)
     if not rd:
         c.close(); raise HTTPException(404, "没找到这条兑换")
     if rd["status"] != "pending":
@@ -1348,7 +1359,7 @@ def redemption_reject(rid: str):
 def redemption_deliver(rid: str):
     """家长标记「奖励已实际兑现」：done → delivered（阳光已在批准时扣除）。"""
     c = get_conn()
-    rd = c.execute("SELECT status FROM redemptions WHERE id=?", (rid,)).fetchone()
+    rd = _own_redemption(c, rid)
     if not rd:
         c.close(); raise HTTPException(404, "没找到这条兑换")
     if rd["status"] != "done":
@@ -1735,7 +1746,7 @@ def daily_create(b: DailyTaskIn):
     did = uuid.uuid4().hex[:8]
     c.execute("INSERT INTO daily_tasks(id,subject_id,name,sunshine,frequency,bonus_type,bonus_per_metric,family_id) "
               "VALUES(?,?,?,?,'daily','personal_best',?,?)",
-              (did, b.subject_id, b.name, _sun(b.sunshine), b.bonus_per_metric, _fam.get()))
+              (did, b.subject_id, b.name, _sun(b.sunshine), _sun(b.bonus_per_metric if b.bonus_per_metric is not None else 0), _fam.get()))
     _replace_metrics(c, did, b.metrics)
     c.commit(); c.close()
     return {"id": did}
@@ -1748,7 +1759,7 @@ def daily_update(did: str, b: DailyTaskIn):
     if not row or not row["family_id"]:
         c.close(); raise HTTPException(403, "系统每日任务不能改")
     c.execute("UPDATE daily_tasks SET subject_id=?, name=?, sunshine=?, bonus_per_metric=? WHERE id=? AND family_id=?",
-              (b.subject_id, b.name, _sun(b.sunshine), b.bonus_per_metric, did, _fam.get()))
+              (b.subject_id, b.name, _sun(b.sunshine), _sun(b.bonus_per_metric if b.bonus_per_metric is not None else 0), did, _fam.get()))
     _replace_metrics(c, did, b.metrics)
     c.commit(); c.close()
     return {"ok": True}

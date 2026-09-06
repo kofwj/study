@@ -32,6 +32,11 @@ def main_fn():
         assert r.status_code == 200
         names_b = {x["name"] for x in b.get("/api/rewards").json()}
         assert "A家奖" not in names_b
+        rid_a = next(x["id"] for x in a.get("/api/rewards").json() if x["name"] == "A家奖")
+        assert a.post("/api/rewards/redeem", json={"reward_id": rid_a}).status_code == 200
+        pend = next(x for x in a.get("/api/admin/redemptions").json() if x["status"] == "pending")
+        assert b.post(f"/api/admin/redemptions/{pend['id']}/approve").status_code == 404
+        assert b.post(f"/api/admin/redemptions/{pend['id']}/reject").status_code == 404
         r = a.post("/api/admin/daily", json={"subject_id": "体育", "name": "A家跳绳", "sunshine": 3})
         assert r.status_code == 200, r.text
         a_daily = {d["name"] for d in a.get("/api/tasks").json()["daily"]}

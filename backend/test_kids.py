@@ -110,6 +110,8 @@ def main_fn():
         assert cli.get("/api/overview?selected_kid=" + didi).json()["balance"] == before
         assert cli.post("/api/admin/rewards", json={"name": "负奖", "price": -10, "category": "测"}).status_code == 400
         assert cli.post("/api/admin/tasks", json={"subject_id": "语文", "unit_id": "g5s1-cn-1", "action": "练", "title": "负任务", "sunshine": -3}).status_code == 400
+        assert cli.post("/api/custom-task", json={"subject_id": "语文", "title": "负自定义", "sunshine": -3}).status_code == 400
+        assert cli.post("/api/admin/daily", json={"subject_id": "体育", "name": "负bonus", "sunshine": 5, "bonus_per_metric": -2}).status_code == 400
         print("kids ok", lele[:8], didi[:8], "earned", e_lele, e_didi, "cursors", cur_l, cur_d)
 
 
