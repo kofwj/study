@@ -621,6 +621,84 @@ CREATE TABLE fitness_standards (
 
 ---
 
+## 7.9 M1.1 开工规格（结论引擎一期 + 本周盯点卡）
+
+> 范围：一期结论引擎（3 类，纯现有数据）+ 阈值可配 + 家长端「本周盯点」卡。**不含**体测弱项（M1.2）、复习到期（M3.2）。
+
+### 数据模型（迁移 014）
+
+```sql
+ALTER TABLE families ADD COLUMN insight_rules TEXT DEFAULT '';  -- JSON 覆盖，空=全默认
+```
+- `db.py` 加 `_migrate_014_insight_rules` + 注册 `("014_insight_rules", _migrate_014_insight_rules)`。
+
+### 规则常量（main.py）
+
+```python
+INSIGHT_DEFAULTS = {
+    "test_fail_count": 2,    # 连续几次低分算薄弱
+    "test_fail_score": 80,   # 低于多少分算低（0-100）
+    "drop_ratio": 0.3,       # 完成量比上周少多少算下滑
+    "streak_break": 2,       # 连击断几天值得提
+}
+
+def insight_rules(c):
+    raw = c.execute("SELECT insight_rules FROM families WHERE id=?", (_fam.get(),)).fetchone()
+    merged = dict(INSIGHT_DEFAULTS)
+    try: merged.update(json.loads(raw["insight_rules"] or "{}"))
+    except Exception: pass
+    return merged
+```
+
+### 结论引擎（build_insights，按优先级取 1 条）
+
+优先级（一期） = `weak_unit > streak_break > drop`。每类结论给出 `{type, text, action, source}`。
+
+**① weak_unit — 测试连续低分**
+```
+对每个该娃有 tests 的 unit_id（date desc, id desc）：
+  取最近 test_fail_count 次；若凑够 count 且全部 score < test_fail_score，
+  且最近一次 date 距今 <= 30 天 → 命中。
+text = f"{subject}《{unit名}》连续 {count} 次低于 {score} 分"
+action = "单元测试"  source = {unit_id, 各 score}
+```
+
+**② streak_break — 连击断裂**
+```
+weekdays_passed = (today - 本周一).days + 1
+active_days = COUNT(DISTINCT date) WHERE date IN [周一, today] 来自 checkins ∪ completions(completed)
+gap = weekdays_passed - active_days
+if gap >= streak_break → text = f"这周有 {gap} 天没打卡"  action = "每日打卡"
+```
+
+**③ drop — 完成量下滑**
+```
+this = COUNT(completions completed, date∈[本周一, today])
+last = COUNT(completions completed, date∈[上周一, 上周日])
+if last > 0 and this < last * (1 - drop_ratio)
+  → text = f"完成比上周少 {round((1 - this/last)*100)}%"  action = None（进周报即可）
+```
+
+### Endpoint（2 个，均 require_parent；RLS 下逐娃 apply_scope，仿 redemptions_admin）
+
+1. `GET /api/admin/insights` → `{ rules, kids: [{kid_id, name, insight|null}] }`
+   - 遍历 roster，`apply_scope(c, fam, kid)` → `build_insights(c, kid)` 取 1 条。
+2. `PUT /api/admin/insight-rules` body `{test_fail_count, test_fail_score, drop_ratio, streak_break}`
+   - 校验范围（score 0-100 / count 1-10 / ratio 0.1-0.9 / break 1-7），写 `families.insight_rules` JSON，返回合并后的 rules。
+
+### 前端落点（Admin.vue）
+
+- 新 **section `insights`「本周盯点」**，挂进「概览」组（weekly 旁）：每娃一行 `[头像+名字] [text] [去解决→]`，一娃最多一条。
+- 家长端设置页新增「诊断阈值」卡：4 个数字输入 + 每项「恢复默认」，调 `PUT /api/admin/insight-rules`。
+- `text` 里的数字（如「连续 2 次」「少 30%」）跟 rules 实时挂钩。
+
+### 验证（挂进 pre_deploy.sh）
+
+- 新增 `backend/test_insights.py`：造 tests/completions/checkins 数据 → 断言 3 类结论各命中/不命中边界 + 阈值 merge + PUT 校验。
+- `pre_deploy.sh` 加一行 `python3 test_insights.py`。
+
+---
+
 ## 8. 关键技术决策
 
 | 决策点 | 推荐 | 理由 |
