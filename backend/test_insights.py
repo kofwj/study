@@ -120,7 +120,8 @@ def main_fn():
         n = db.connect().execute("SELECT COUNT(*) FROM fitness_standards").fetchone()[0]
         assert n >= 32
         tasks = cli.get("/api/tasks" + q).json()
-        assert tasks["fitness_goals"]["pe-jump-rope"]["pass"] == 56
+        g = tasks["fitness_goals"]["pe-jump-rope"]
+        assert g["pass"] == 56 and g["excellent"] == 148 and g["grade"] == 5
         print("insights ok")
 
 

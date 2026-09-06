@@ -66,18 +66,23 @@ function unitWeak(id) {
   const s = data.unit_scores[id]
   return s && s.score < (data.test_fail_score || 80)
 }
+function n1(v) {
+  if (v == null) return ''
+  const x = Math.round(Number(v) * 10) / 10
+  return x % 1 ? String(x) : String(Math.round(x))
+}
 function fitnessBar(d) {
   const g = (data.fitness_goals || {})[d.id]
   if (!g) return null
   const last = (d.today_metrics && d.today_metrics[g.metric_id] != null)
     ? Number(d.today_metrics[g.metric_id])
     : (d.pb && d.pb[g.metric_id] != null ? Number(d.pb[g.metric_id]) : null)
-  if (last == null) return { ...g, last: null, pct: 0, gap: g.pass, label: `达标 ${g.pass}${g.unit}` }
-  const pct = Math.max(0, Math.min(100, Math.round(last / g.pass * 100)))
-  const gap = g.pass - last
-  const shown = Math.round(gap * 10) / 10
-  const label = gap > 0 ? `还差 ${shown}${g.unit}` : '达标了'
-  return { ...g, last, pct, gap, label }
+  const cap = g.excellent || g.pass
+  const pct = last == null ? 0 : Math.max(0, Math.min(100, Math.round(last / cap * 100)))
+  const who = (g.grade ? g.grade + '年级' : '') + (g.gender || '')
+  const lines = `${who} 达标 ${n1(g.pass)}${g.unit}` + (g.excellent != null ? ` · 优秀 ${n1(g.excellent)}${g.unit}` : '')
+  let status = last == null ? '还没记' : (last >= (g.excellent || g.pass) ? '优秀了' : (last >= g.pass ? '达标了' : `还差 ${n1(g.pass - last)}${g.unit}`))
+  return { ...g, last, pct, status, lines }
 }
 
 const isAdmin = ref(false)
@@ -467,10 +472,10 @@ function reloadApp() {
                 <div class="card-title">{{ t.frequency === 'daily' ? t.name : t.title }}</div>
                 <div v-if="t.note" class="card-detail">{{ t.note }}</div>
                 <div v-if="t.detail" class="card-detail">{{ t.detail }}</div>
-                <div v-if="t.frequency === 'daily' && fitnessBar(t)" class="fit-bar">
-                  <i :style="{ width: fitnessBar(t).pct + '%' }"></i>
-                  <em>{{ fitnessBar(t).label }}</em>
-                </div>
+                <template v-if="t.frequency === 'daily' && fitnessBar(t)">
+                  <div class="fit-bar"><i :style="{ width: fitnessBar(t).pct + '%' }"></i><em>{{ fitnessBar(t).status }}</em></div>
+                  <div class="fit-std">{{ fitnessBar(t).lines }}</div>
+                </template>
                 <div class="plus">{{ t.subject_id || '体育' }} · +{{ t.sunshine || 5 }} <Sun class="ico sun" :size="12" /></div>
               </div>
               <button v-if="t.frequency === 'daily'" class="trend" @click="openChart(t)" title="看趋势"><TrendingUp :size="15" /></button>
@@ -492,10 +497,10 @@ function reloadApp() {
                 <div class="card-body">
                   <div class="card-title">{{ d.name }}</div>
                   <div v-if="d.note" class="card-detail">{{ d.note }}</div>
-                  <div v-if="fitnessBar(d)" class="fit-bar">
-                    <i :style="{ width: fitnessBar(d).pct + '%' }"></i>
-                    <em>{{ fitnessBar(d).label }}</em>
-                  </div>
+                  <template v-if="fitnessBar(d)">
+                    <div class="fit-bar"><i :style="{ width: fitnessBar(d).pct + '%' }"></i><em>{{ fitnessBar(d).status }}</em></div>
+                    <div class="fit-std">{{ fitnessBar(d).lines }}</div>
+                  </template>
                   <div class="plus">+{{ d.sunshine }} <Sun class="ico sun" :size="12" /></div>
                 </div>
                 <button class="trend" @click="openChart(d)" title="看趋势"><TrendingUp :size="15" /></button>
@@ -789,6 +794,7 @@ body {
 .fit-bar { position: relative; height: 14px; background: var(--surface-2); border-radius: 8px; margin: 6px 0 4px; overflow: hidden; }
 .fit-bar i { display: block; height: 100%; background: var(--brand); border-radius: 8px; }
 .fit-bar em { position: absolute; inset: 0; font-style: normal; font-size: 10px; font-weight: 800; color: var(--ink-2); display: flex; align-items: center; justify-content: center; }
+.fit-std { font-size: 11px; color: var(--ink-3); margin: 0 0 4px; }
 .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
 .card {
   position: relative; background: var(--surface); border-radius: var(--r-card); padding: 16px 14px 14px 14px;

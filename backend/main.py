@@ -670,10 +670,16 @@ def tasks():
     if grade and gender:
         for item, (tid, mid) in FITNESS_METRIC.items():
             std = c.execute(
-                "SELECT pass_value, unit FROM fitness_standards WHERE grade=? AND gender=? AND item=?",
+                "SELECT pass_value, good_value, excellent_value, unit FROM fitness_standards WHERE grade=? AND gender=? AND item=?",
                 (grade, gender, item)).fetchone()
             if std and std["pass_value"] is not None:
-                goals[tid] = {"item": item, "metric_id": mid, "pass": float(std["pass_value"]), "unit": std["unit"] or ""}
+                goals[tid] = {
+                    "item": item, "metric_id": mid, "unit": std["unit"] or "",
+                    "pass": float(std["pass_value"]),
+                    "good": float(std["good_value"]) if std["good_value"] is not None else None,
+                    "excellent": float(std["excellent_value"]) if std["excellent_value"] is not None else None,
+                    "grade": grade, "gender": gender,
+                }
     out["fitness_goals"] = goals
     return out
 

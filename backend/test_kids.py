@@ -35,6 +35,7 @@ def main_fn():
         assert cli.put("/api/admin/kids/" + didi, json={"name": "弟弟", "account": "didi", "term_id": "g5s1", "gender": "男"}).status_code == 200
         t2 = cli.get("/api/tasks?selected_kid=" + didi).json()
         assert t2["fitness_goals"]["pe-jump-rope"]["pass"] == 56
+        assert t2["fitness_goals"]["pe-jump-rope"]["excellent"] == 148
 
         assert cli.post("/api/checkin?selected_kid=" + lele).status_code == 200
         assert cli.post("/api/checkin?selected_kid=" + didi).status_code == 200
