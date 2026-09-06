@@ -2,7 +2,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { api, setSelectedKid } from './api.js'
 import { rankIcon } from './icons.js'
-import { ChartColumn, Baby, Users, KeyRound, Lock, Store, Trophy, ClipboardCheck, BookOpen, RefreshCw, MapPinned, FileText, Settings, Sun, Star, Check, ArrowLeft } from '@lucide/vue'
+import { ChartColumn, Eye, Baby, Users, KeyRound, Lock, Store, Trophy, ClipboardCheck, BookOpen, RefreshCw, MapPinned, FileText, Settings, Sun, Star, Check, ArrowLeft } from '@lucide/vue'
 
 const emit = defineEmits(['exit', 'switched'])
 const kids = ref([])
@@ -11,9 +11,12 @@ const inviteProtect = ref(false)
 const invites = ref([])
 const selectedKid = ref('')
 const newKid = reactive({ name: '', account: '', pin: '', term_id: 'g5s1' })
-const section = ref('weekly')
+const section = ref('insights')
 const SECTIONS = [
-  { group: '概览', items: [{ id: 'weekly', icon: ChartColumn, label: '周报' }] },
+  { group: '概览', items: [
+    { id: 'insights', icon: Eye, label: '本周盯点' },
+    { id: 'weekly', icon: ChartColumn, label: '周报' },
+  ] },
   { group: '家庭', items: [
     { id: 'kids', icon: Baby, label: '孩子' },
     { id: 'members', icon: Users, label: '家长成员' },
@@ -47,6 +50,8 @@ const tests = ref([])
 const newTest = reactive({ subject_id: '', unit_id: '', score: '', note: '' })
 const TEST_BANDS = [[100, 30], [95, 20], [90, 15], [85, 10], [0, 5]]
 const weekly = ref({ days: [], weeks: [], by_subject: [], kids: [], total_earned: 0, total_spent: 0, net: 0, balance: 0, earned_all: 0, streak: 0, checkins: 0, week_start: '', week_end: '' })
+const insights = ref({ rules: { test_fail_count: 2, test_fail_score: 80, drop_ratio: 0.3, streak_break: 2 }, kids: [] })
+const RULE_DEFAULTS = { test_fail_count: 2, test_fail_score: 80, drop_ratio: 0.3, streak_break: 2 }
 const toast = ref('')
 
 const maxDayEarn = computed(() => Math.max(1, ...(weekly.value.days || []).map((d) => d.earned)))
@@ -76,7 +81,7 @@ async function load() {
     selectedKid.value = ks[0].id
     setSelectedKid(ks[0].id)
   }
-  const [r, rk, t, rd, wk, ts] = await Promise.all([api.rewards(), api.admin.ranks(), api.tasks(), api.admin.redemptions(), api.admin.weekly(), api.admin.tests()])
+  const [r, rk, t, rd, wk, ts, ig] = await Promise.all([api.rewards(), api.admin.ranks(), api.tasks(), api.admin.redemptions(), api.admin.weekly(), api.admin.tests(), api.admin.insights()])
   rewards.value = r
   ranks.value = rk
   subjects.value = t.subjects
@@ -90,6 +95,7 @@ async function load() {
   redemptions.value = rd
   weekly.value = wk
   tests.value = ts
+  insights.value = ig
 }
 
 // —— 商店 ——
@@ -235,6 +241,25 @@ async function delKid(k) {
   } catch (e) { showToast(e.message) }
 }
 
+async function saveRule(key, val) {
+  try {
+    insights.value.rules = await api.admin.setInsightRules({ [key]: val })
+    showToast('已保存')
+    await load()
+  } catch (e) { showToast(e.message) }
+}
+async function resetRule(key) {
+  await saveRule(key, RULE_DEFAULTS[key])
+}
+function goInsight(row) {
+  const a = row.insight?.action
+  if (a === '单元测试') {
+    selectedKid.value = row.kid_id
+    setSelectedKid(row.kid_id)
+    section.value = 'test'
+  } else if (a === '每日打卡') emit('exit')
+}
+
 async function toggleLock() {
   try {
     await api.admin.setProgressLock(!progressLock.value)
@@ -322,6 +347,41 @@ onMounted(load)
         </template>
       </aside>
       <main class="a-main">
+
+    <!-- 本周盯点 -->
+    <section v-if="section === 'insights'" class="a-card enter">
+      <h3><Eye class="ico" :size="16" /> 本周盯点</h3>
+      <p class="lead">每娃一句，点「去解决」跳对应页。</p>
+      <div v-if="!(insights.kids || []).length" class="dim">还没有孩子。</div>
+      <div v-for="row in insights.kids" :key="row.kid_id" class="apv-row">
+        <div class="apv-info">
+          <span class="apv-name">{{ row.name }}</span>
+          <span class="dim">{{ row.insight ? row.insight.text : '这周不用特别盯。' }}</span>
+        </div>
+        <button v-if="row.insight && row.insight.action" class="ok" @click="goInsight(row)">去解决</button>
+      </div>
+      <h4 class="w-h">诊断阈值</h4>
+      <div class="a-item">
+        <span class="dim">连续低分次数</span>
+        <input class="w-num" type="number" :value="insights.rules.test_fail_count" @change="saveRule('test_fail_count', +$event.target.value)" />
+        <button class="ghost" @click="resetRule('test_fail_count')">默认</button>
+      </div>
+      <div class="a-item">
+        <span class="dim">低于多少分算低</span>
+        <input class="w-num" type="number" :value="insights.rules.test_fail_score" @change="saveRule('test_fail_score', +$event.target.value)" />
+        <button class="ghost" @click="resetRule('test_fail_score')">默认</button>
+      </div>
+      <div class="a-item">
+        <span class="dim">完成量少几成算下滑</span>
+        <input class="w-num" type="number" step="0.1" :value="insights.rules.drop_ratio" @change="saveRule('drop_ratio', +$event.target.value)" />
+        <button class="ghost" @click="resetRule('drop_ratio')">默认</button>
+      </div>
+      <div class="a-item">
+        <span class="dim">连击断几天再提</span>
+        <input class="w-num" type="number" :value="insights.rules.streak_break" @change="saveRule('streak_break', +$event.target.value)" />
+        <button class="ghost" @click="resetRule('streak_break')">默认</button>
+      </div>
+    </section>
 
     <!-- 周报 -->
     <section v-if="section === 'weekly'" class="a-card enter">

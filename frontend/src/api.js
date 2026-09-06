@@ -79,5 +79,7 @@ export const api = {
     createKid: (o) => j('/api/admin/kids', { method: 'POST', ...body(o) }),
     updateKid: (id, o) => j(`/api/admin/kids/${id}`, { method: 'PUT', ...body(o) }),
     delKid: (id) => j(`/api/admin/kids/${id}`, { method: 'DELETE' }),
+    insights: () => j('/api/admin/insights'),
+    setInsightRules: (o) => j('/api/admin/insight-rules', { method: 'PUT', ...body(o) }),
   },
 }

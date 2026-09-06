@@ -610,6 +610,10 @@ def _migrate_013(conn):
     conn.execute("UPDATE rewards SET need_approval=1 WHERE COALESCE(need_approval,0)=0")
 
 
+def _migrate_014(conn):
+    _add_column(conn, "families", "insight_rules TEXT DEFAULT ''")
+
+
 MIGRATIONS = (
     ("001_identity", _migrate_001),
     ("002_kid_id", _migrate_002),
@@ -624,6 +628,7 @@ MIGRATIONS = (
     ("011_daily_family", _migrate_011),
     ("012_daily_metrics_rls", _migrate_012),
     ("013_force_parent_pin", _migrate_013),
+    ("014_insight_rules", _migrate_014),
 )
 
 

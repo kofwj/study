@@ -296,6 +296,102 @@ def streak(c, kid=None):
     return n
 
 
+INSIGHT_DEFAULTS = {
+    "test_fail_count": 2,
+    "test_fail_score": 80,
+    "drop_ratio": 0.3,
+    "streak_break": 2,
+}
+
+
+def insight_rules(c):
+    row = c.execute("SELECT insight_rules FROM families WHERE id=?", (_fam.get(),)).fetchone()
+    merged = dict(INSIGHT_DEFAULTS)
+    raw = (row["insight_rules"] if row else "") or ""
+    try:
+        extra = json.loads(raw) if raw else {}
+        if isinstance(extra, dict):
+            merged.update(extra)
+    except Exception:
+        pass
+    return merged
+
+
+def _monday(d=None):
+    d = d or datetime.now().date()
+    return d - timedelta(days=d.weekday())
+
+
+def _insight_weak_unit(c, kid, rules):
+    n = int(rules["test_fail_count"])
+    bar = int(rules["test_fail_score"])
+    cutoff = (datetime.now().date() - timedelta(days=30)).isoformat()
+    units = [r[0] for r in c.execute(
+        "SELECT DISTINCT unit_id FROM tests WHERE kid_id=? AND unit_id IS NOT NULL AND unit_id!=''",
+        (kid,)).fetchall()]
+    for uid in units:
+        rows = c.execute(
+            "SELECT score, date FROM tests WHERE kid_id=? AND unit_id=? ORDER BY date DESC, id DESC LIMIT ?",
+            (kid, uid, n)).fetchall()
+        if len(rows) < n:
+            continue
+        if any(int(r["score"]) >= bar for r in rows):
+            continue
+        if rows[0]["date"] < cutoff:
+            continue
+        u = c.execute("SELECT name, subject_id FROM units WHERE id=?", (uid,)).fetchone()
+        subj = (u["subject_id"] if u else "") or ""
+        uname = (u["name"] if u else uid) or uid
+        return {
+            "type": "weak_unit",
+            "text": f"{subj}《{uname}》连续 {n} 次低于 {bar} 分",
+            "action": "单元测试",
+            "source": {"unit_id": uid, "scores": [int(r["score"]) for r in rows]},
+        }
+    return None
+
+
+def _insight_streak_break(c, kid, rules):
+    need = int(rules["streak_break"])
+    today = datetime.now().date()
+    monday = _monday(today)
+    weekdays_passed = (today - monday).days + 1
+    start, end = monday.isoformat(), today.isoformat()
+    dates = {r[0] for r in c.execute(
+        "SELECT DISTINCT date FROM checkins WHERE kid_id=? AND date BETWEEN ? AND ?", (kid, start, end)).fetchall()}
+    dates |= {r[0] for r in c.execute(
+        "SELECT DISTINCT date FROM completions WHERE status='completed' AND kid_id=? AND date BETWEEN ? AND ?",
+        (kid, start, end)).fetchall()}
+    gap = weekdays_passed - len(dates)
+    if gap < need:
+        return None
+    return {"type": "streak_break", "text": f"这周有 {gap} 天没打卡", "action": "每日打卡",
+            "source": {"gap": gap, "active_days": len(dates)}}
+
+
+def _insight_drop(c, kid, rules):
+    ratio = float(rules["drop_ratio"])
+    today = datetime.now().date()
+    monday = _monday(today)
+    last_m, last_s = monday - timedelta(days=7), monday - timedelta(days=1)
+    this = c.execute(
+        "SELECT COUNT(*) FROM completions WHERE status='completed' AND kid_id=? AND date BETWEEN ? AND ?",
+        (kid, monday.isoformat(), today.isoformat())).fetchone()[0]
+    last = c.execute(
+        "SELECT COUNT(*) FROM completions WHERE status='completed' AND kid_id=? AND date BETWEEN ? AND ?",
+        (kid, last_m.isoformat(), last_s.isoformat())).fetchone()[0]
+    if last <= 0 or this >= last * (1 - ratio):
+        return None
+    pct = round((1 - this / last) * 100)
+    return {"type": "drop", "text": f"完成比上周少 {pct}%", "action": None,
+            "source": {"this": this, "last": last}}
+
+
+def build_insights(c, kid):
+    rules = insight_rules(c)
+    return _insight_weak_unit(c, kid, rules) or _insight_streak_break(c, kid, rules) or _insight_drop(c, kid, rules)
+
+
 # 连续坚持里程碑（一次性奖励，防通胀）：第 7/14/30 天各发一次
 MILESTONES = [(7, 20), (14, 50), (30, 100)]
 
@@ -1406,6 +1502,63 @@ def weekly():
         "by_subject": [dict(r) for r in by_subject],
         "kids": kids_cmp,
     }
+    c.close()
+    return out
+
+
+class InsightRulesIn(BaseModel):
+    test_fail_count: Optional[int] = None
+    test_fail_score: Optional[int] = None
+    drop_ratio: Optional[float] = None
+    streak_break: Optional[int] = None
+
+
+def _clamp_rules(b: InsightRulesIn):
+    out = {}
+    if b.test_fail_count is not None:
+        if not (1 <= b.test_fail_count <= 10):
+            raise HTTPException(400, "连续低分次数要在 1~10")
+        out["test_fail_count"] = int(b.test_fail_count)
+    if b.test_fail_score is not None:
+        if not (0 <= b.test_fail_score <= 100):
+            raise HTTPException(400, "低分线要在 0~100")
+        out["test_fail_score"] = int(b.test_fail_score)
+    if b.drop_ratio is not None:
+        if not (0.1 <= b.drop_ratio <= 0.9):
+            raise HTTPException(400, "下滑比例要在 0.1~0.9")
+        out["drop_ratio"] = float(b.drop_ratio)
+    if b.streak_break is not None:
+        if not (1 <= b.streak_break <= 7):
+            raise HTTPException(400, "连击断几天要在 1~7")
+        out["streak_break"] = int(b.streak_break)
+    return out
+
+
+@app.get("/api/admin/insights", dependencies=[Depends(require_parent)])
+def insights_admin():
+    c = get_conn()
+    fam = _fam.get()
+    rules = insight_rules(c)
+    roster = c.execute(
+        "SELECT id, name FROM users WHERE family_id=? AND role='kid' ORDER BY created_at", (fam,)).fetchall()
+    kids = []
+    for kr in roster:
+        db.apply_scope(c, fam, kr["id"])
+        kids.append({"kid_id": kr["id"], "name": kr["name"], "insight": build_insights(c, kr["id"])})
+    db.apply_scope(c, fam, kid_id())
+    c.close()
+    return {"rules": rules, "kids": kids}
+
+
+@app.put("/api/admin/insight-rules", dependencies=[Depends(require_parent)])
+def insight_rules_put(b: InsightRulesIn):
+    patch = _clamp_rules(b)
+    c = get_conn()
+    merged = insight_rules(c)
+    merged.update(patch)
+    c.execute("UPDATE families SET insight_rules=? WHERE id=?", (json.dumps(merged, ensure_ascii=False), _fam.get()))
+    c.commit()
+    out = insight_rules(c)
     c.close()
     return out
 
