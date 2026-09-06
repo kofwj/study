@@ -759,6 +759,64 @@ gender = kid.gender; grade = int(term_id 首个数字); 无 gender/grade → 跳
 
 ---
 
+## 7.11 M2.3 开工规格（薄弱点记录：家长写 / 孩子读）
+
+> 范围：`weak_points` 建表 + 家长勾选薄弱考点 + 孩子端单元页「薄弱」只读标签。**不含**复习提醒队列 / 一键过关（M2.4）。
+> 权限：复用 tests 模式 —— `kid_id` RLS + 家长 admin 特权读写 + 孩子 kid scope 只读。
+
+### 数据模型（迁移 018）
+
+```sql
+CREATE TABLE IF NOT EXISTS weak_points (
+  id {pk},
+  kid_id TEXT NOT NULL,
+  unit_id TEXT NOT NULL,
+  tag_id TEXT NOT NULL,               -- → knowledge_tags.id（勾选，不手打）
+  note TEXT DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'open',          -- open(待巩固) / resolved(已巩固)
+  interval_idx INTEGER NOT NULL DEFAULT 0,      -- 0..4 → [1,3,7,14,30] 天
+  review_due_at TEXT,                           -- 下次复习到期日；NULL=还没排期（M2.4 才排）
+  created_at TEXT, updated_at TEXT
+);
+CREATE INDEX IF NOT EXISTS ix_wp_kid ON weak_points(kid_id);
+CREATE INDEX IF NOT EXISTS ix_wp_kid_unit ON weak_points(kid_id, unit_id);
+```
+- `db.py` 加 `_migrate_018_weak_points`；**PG 下**同 003 套路：`ENABLE/FORCE RLS` + policy `iso USING (kid_id = current_setting('app.kid_id', true)) WITH CHECK (同)`。sqlite 跳过 RLS。
+- 注册 `("018_weak_points", _migrate_018_weak_points)`。
+
+### 复习间隔 + 状态机（M2.4 才排期，M2.3 只建字段）
+
+```python
+WEAKPOINT_INTERVALS = [1, 3, 7, 14, 30]   # 天；interval_idx 是数组下标
+# 状态机语义（在此定死，避免 M2.4 返工）：
+#   新建 → status='open', interval_idx=0, review_due_at=NULL
+#   M2.4 到期：家长「已巩固」→ status='resolved'（review_due_at 留痕）
+#             家长「还在错」→ interval_idx=0（重置），review_due_at=今天+1 天
+#   review_due_at=NULL 表示该薄弱点尚未进入复习队列
+```
+
+### API（家长 3 + 孩子 1）
+
+- `GET /api/admin/weak-points?kid_id=x&unit_id=y`（require_parent）→ 该娃该单元当前 weak_points（含 tag name）。
+- `PUT /api/admin/weak-points`（require_parent）body `{kid_id, unit_id, tag_ids[], note}` → **替换式**（先删该 kid+unit 旧行，再插勾选的；`tag_ids` 至少 1 个）。
+- `DELETE /api/admin/weak-points/{id}`（require_parent）→ 删单条。
+- `GET /api/weak-points?unit_id=y`（require_kid）→ 当前娃该单元 weak_points（只读，RLS 过滤）。
+- 家长读写都应 `db.apply_scope(c, fam, kid)` 到目标娃（仿 insights_admin / redemptions_admin），否则 RLS 会把目标行滤掉。
+
+### 前端落点
+
+- 家长端 Admin.vue「单元测试」区，每单元加「标薄弱」按钮 → dialog 列 `unit_tags → knowledge_tags`（该单元考点）勾选 + 可选 note → `PUT`。
+- 孩子端 App.vue 单元页：单元名下方显示「薄弱：字词 / 计算」小标签（来自 `GET /api/weak-points`，只读，**无新增入口**）。
+
+### 验证（新增 test_weak_points.py，挂 pre_deploy）
+
+- 家长 PUT 勾选 → 孩子 GET 读到自己、**读不到别人的**（RLS/scope）。
+- 替换式语义：二次 PUT 覆盖旧勾选。
+- `tag_ids` 空 → 400。
+- 孩子无写接口（`/api/weak-points` 只有 GET）。
+
+---
+
 ## 8. 关键技术决策
 
 | 决策点 | 推荐 | 理由 |
