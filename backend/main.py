@@ -657,6 +657,20 @@ def tasks():
         dct["bonus_per_metric"] = d["bonus_per_metric"]
         daily.append(dct)
     out["daily"] = daily
+    rules = insight_rules(c)
+    out["test_fail_score"] = int(rules["test_fail_score"])
+    u = c.execute("SELECT gender, term_id FROM users WHERE id=?", (kid_id(),)).fetchone()
+    grade = _kid_grade(u["term_id"] if u else None)
+    gender = (u["gender"] if u else None) or None
+    goals = {}
+    if grade and gender:
+        for item, (tid, mid) in FITNESS_METRIC.items():
+            std = c.execute(
+                "SELECT pass_value, unit FROM fitness_standards WHERE grade=? AND gender=? AND item=?",
+                (grade, gender, item)).fetchone()
+            if std and std["pass_value"] is not None:
+                goals[tid] = {"item": item, "metric_id": mid, "pass": float(std["pass_value"]), "unit": std["unit"] or ""}
+    out["fitness_goals"] = goals
     return out
 
 

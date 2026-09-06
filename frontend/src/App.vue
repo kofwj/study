@@ -18,6 +18,8 @@ const data = reactive({
   tasks: [],
   daily: [],
   unit_scores: {},
+  test_fail_score: 80,
+  fitness_goals: {},
 })
 const rewards = ref([])
 const loading = ref(true)
@@ -59,6 +61,23 @@ function scoreClass(s) {
   if (s >= 90) return 'green'
   if (s >= 85) return 'blue'
   return 'gray'
+}
+function unitWeak(id) {
+  const s = data.unit_scores[id]
+  return s && s.score < (data.test_fail_score || 80)
+}
+function fitnessBar(d) {
+  const g = (data.fitness_goals || {})[d.id]
+  if (!g) return null
+  const last = (d.today_metrics && d.today_metrics[g.metric_id] != null)
+    ? Number(d.today_metrics[g.metric_id])
+    : (d.pb && d.pb[g.metric_id] != null ? Number(d.pb[g.metric_id]) : null)
+  if (last == null) return { ...g, last: null, pct: 0, gap: g.pass, label: `达标 ${g.pass}${g.unit}` }
+  const pct = Math.max(0, Math.min(100, Math.round(last / g.pass * 100)))
+  const gap = g.pass - last
+  const shown = Math.round(gap * 10) / 10
+  const label = gap > 0 ? `还差 ${shown}${g.unit}` : '达标了'
+  return { ...g, last, pct, gap, label }
 }
 
 const isAdmin = ref(false)
@@ -448,6 +467,10 @@ function reloadApp() {
                 <div class="card-title">{{ t.frequency === 'daily' ? t.name : t.title }}</div>
                 <div v-if="t.note" class="card-detail">{{ t.note }}</div>
                 <div v-if="t.detail" class="card-detail">{{ t.detail }}</div>
+                <div v-if="t.frequency === 'daily' && fitnessBar(t)" class="fit-bar">
+                  <i :style="{ width: fitnessBar(t).pct + '%' }"></i>
+                  <em>{{ fitnessBar(t).label }}</em>
+                </div>
                 <div class="plus">{{ t.subject_id || '体育' }} · +{{ t.sunshine || 5 }} <Sun class="ico sun" :size="12" /></div>
               </div>
               <button v-if="t.frequency === 'daily'" class="trend" @click="openChart(t)" title="看趋势"><TrendingUp :size="15" /></button>
@@ -469,6 +492,10 @@ function reloadApp() {
                 <div class="card-body">
                   <div class="card-title">{{ d.name }}</div>
                   <div v-if="d.note" class="card-detail">{{ d.note }}</div>
+                  <div v-if="fitnessBar(d)" class="fit-bar">
+                    <i :style="{ width: fitnessBar(d).pct + '%' }"></i>
+                    <em>{{ fitnessBar(d).label }}</em>
+                  </div>
                   <div class="plus">+{{ d.sunshine }} <Sun class="ico sun" :size="12" /></div>
                 </div>
                 <button class="trend" @click="openChart(d)" title="看趋势"><TrendingUp :size="15" /></button>
@@ -482,6 +509,7 @@ function reloadApp() {
               <span v-if="data.unit_scores[u.id]" class="unit-score" :class="scoreClass(data.unit_scores[u.id].score)">
                 <Target class="ico" :size="13" /> {{ data.unit_scores[u.id].score }} 分
               </span>
+              <span v-if="unitWeak(u.id)" class="unit-weak">再练练</span>
             </h2>
             <div class="grid">
               <div v-for="t in u.tasks" :key="t.id" class="card enter" :class="{ done: t.done, past: t.past, locked: t.locked }">
@@ -757,6 +785,10 @@ body {
 .unit-score.green { background: var(--ok-bg); color: var(--ok); }
 .unit-score.blue { background: var(--surface-2); color: var(--brand-deep); }
 .unit-score.gray { background: var(--surface-2); color: var(--ink-3); }
+.unit-weak { font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 800; background: var(--warm); color: var(--accent-ink); }
+.fit-bar { position: relative; height: 14px; background: var(--surface-2); border-radius: 8px; margin: 6px 0 4px; overflow: hidden; }
+.fit-bar i { display: block; height: 100%; background: var(--brand); border-radius: 8px; }
+.fit-bar em { position: absolute; inset: 0; font-style: normal; font-size: 10px; font-weight: 800; color: var(--ink-2); display: flex; align-items: center; justify-content: center; }
 .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
 .card {
   position: relative; background: var(--surface); border-radius: var(--r-card); padding: 16px 14px 14px 14px;
