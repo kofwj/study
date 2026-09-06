@@ -99,6 +99,17 @@ def main_fn():
         ids_l = {x["id"] for x in cli.get("/api/tasks?selected_kid=" + lele).json()["tasks"]}
         ids_d = {x["id"] for x in cli.get("/api/tasks?selected_kid=" + didi).json()["tasks"]}
         assert fam_tid in ids_l and fam_tid in ids_d
+        # 取消不改完成状态：再完成应 409，余额不涨
+        tid = next(x["id"] for x in cli.get("/api/tasks?selected_kid=" + didi).json()["tasks"] if not x.get("done") and not x.get("locked") and not x.get("past"))
+        before = cli.get("/api/overview?selected_kid=" + didi).json()["balance"]
+        assert cli.post("/api/complete?selected_kid=" + didi, json={"task_id": tid}).status_code == 200
+        mid = cli.get("/api/overview?selected_kid=" + didi).json()["balance"]
+        assert cli.post("/api/cancel?selected_kid=" + didi, json={"task_id": tid}).status_code == 200
+        assert cli.get("/api/overview?selected_kid=" + didi).json()["balance"] == before
+        assert cli.post("/api/complete?selected_kid=" + didi, json={"task_id": tid}).status_code == 409
+        assert cli.get("/api/overview?selected_kid=" + didi).json()["balance"] == before
+        assert cli.post("/api/admin/rewards", json={"name": "负奖", "price": -10, "category": "测"}).status_code == 400
+        assert cli.post("/api/admin/tasks", json={"subject_id": "语文", "unit_id": "g5s1-cn-1", "action": "练", "title": "负任务", "sunshine": -3}).status_code == 400
         print("kids ok", lele[:8], didi[:8], "earned", e_lele, e_didi, "cursors", cur_l, cur_d)
 
 

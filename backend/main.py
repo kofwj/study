@@ -613,8 +613,8 @@ def tasks():
     }
     # 单元测试成绩（unit_id → 最近一次分），孩子端单元旁展示
     unit_scores = {}
-    for r in c.execute("SELECT unit_id, score, date FROM tests WHERE unit_id IS NOT NULL "
-                       "ORDER BY date DESC, id DESC").fetchall():
+    for r in c.execute("SELECT unit_id, score, date FROM tests WHERE kid_id=? AND unit_id IS NOT NULL "
+                       "ORDER BY date DESC, id DESC", (kid_id(),)).fetchall():
         if r["unit_id"] not in unit_scores:
             unit_scores[r["unit_id"]] = {"score": r["score"], "date": r["date"]}
     out["unit_scores"] = unit_scores
@@ -624,7 +624,8 @@ def tasks():
         "WHERE u.term_id=? OR (COALESCE(t.custom,0)=1 AND (t.kid_id IS NULL OR t.kid_id=?)) "
         "ORDER BY t.subject_id, COALESCE(u.seq,99), t.sort", (term, kid_id())).fetchall()
     done_ids = {r["task_id"] for r in c.execute(
-        "SELECT DISTINCT task_id FROM completions WHERE status='completed' AND kid_id=?", (kid_id(),)).fetchall()}
+        "SELECT DISTINCT task_id FROM completions WHERE status='completed' AND kid_id=? AND NOT EXISTS ("
+        "SELECT 1 FROM ledger WHERE reason='cancel' AND ref_id='cmp-'||completions.id)", (kid_id(),)).fetchall()}
     out["progress_lock"] = db.get_setting(c, "progress_lock", "1")
     locked_ids = locked_task_ids(c)
     out["tasks"] = [{**dict(t), "done": t["id"] in done_ids,
@@ -857,14 +858,26 @@ def delete_task_kid(tid: str):
 def cancel(body: CompleteBody):
     c = get_conn()
     t = db.today()
-    # 单元任务：整个学期内有已完成记录即可取消；每日任务：只取消今天这条
-    comp = c.execute(
-        "SELECT * FROM completions WHERE task_id=? AND status='completed' AND kid_id=? ORDER BY id DESC LIMIT 1",
-        (body.task_id, kid_id())).fetchone()
+    kind = c.execute("SELECT kind FROM completions WHERE task_id=? AND kid_id=? AND status='completed' ORDER BY id DESC LIMIT 1",
+                     (body.task_id, kid_id())).fetchone()
+    if not kind:
+        c.close()
+        raise HTTPException(404, "没有可取消的记录")
+    if kind["kind"] == "daily":
+        comp = c.execute(
+            "SELECT * FROM completions WHERE task_id=? AND status='completed' AND kid_id=? AND date=? ORDER BY id DESC LIMIT 1",
+            (body.task_id, kid_id(), t)).fetchone()
+    else:
+        comp = c.execute(
+            "SELECT * FROM completions WHERE task_id=? AND status='completed' AND kid_id=? ORDER BY id DESC LIMIT 1",
+            (body.task_id, kid_id())).fetchone()
     if not comp:
         c.close()
         raise HTTPException(404, "没有可取消的记录")
-    c.execute("UPDATE completions SET status='cancelled' WHERE id=?", (comp["id"],))
+    if c.execute("SELECT 1 FROM ledger WHERE reason='cancel' AND ref_id=?", (f"cmp-{comp['id']}",)).fetchone():
+        c.close()
+        raise HTTPException(409, "这项已经取消过啦")
+    # 完成记录保持 completed，唯一索引继续挡住再刷；只记一条冲正流水
     delta = -comp["sunshine"]
     insert_ledger(c, t, delta, "cancel", f"cmp-{comp['id']}", "点错取消")
     c.commit()
@@ -906,7 +919,8 @@ def redemptions():
     c = get_conn()
     rows = c.execute(
         "SELECT rd.id, rd.date, rd.price, rd.status, rw.name FROM redemptions rd "
-        "LEFT JOIN rewards rw ON rw.id=rd.reward_id ORDER BY rd.id DESC LIMIT 30").fetchall()
+        "LEFT JOIN rewards rw ON rw.id=rd.reward_id WHERE rd.kid_id=? ORDER BY rd.id DESC LIMIT 30",
+        (kid_id(),)).fetchall()
     c.close()
     return [dict(r) for r in rows]
 
@@ -1227,12 +1241,22 @@ class RewardIn(BaseModel):
     category: str = "其他"
 
 
+def _sun(n, lo=0):
+    try:
+        v = int(n)
+    except (TypeError, ValueError):
+        raise HTTPException(400, "阳光要填数字")
+    if v < lo:
+        raise HTTPException(400, "阳光不能是负数")
+    return v
+
+
 @app.post("/api/admin/rewards", dependencies=[Depends(require_parent)])
 def reward_create(b: RewardIn):
     c = get_conn()
     rid = uuid.uuid4().hex[:8]
     c.execute("INSERT INTO rewards(id,name,price,category,need_approval,family_id) VALUES(?,?,?,?,1,?)",
-              (rid, b.name, b.price, b.category, _fam.get()))
+              (rid, b.name, _sun(b.price), b.category, _fam.get()))
     c.commit(); c.close()
     return {"id": rid}
 
@@ -1241,7 +1265,7 @@ def reward_create(b: RewardIn):
 def reward_update(rid: str, b: RewardIn):
     c = get_conn()
     c.execute("UPDATE rewards SET name=?, price=?, category=? WHERE id=? AND family_id=?",
-              (b.name, b.price, b.category, rid, _fam.get()))
+              (b.name, _sun(b.price), b.category, rid, _fam.get()))
     c.commit(); c.close()
     return {"ok": True}
 
@@ -1262,14 +1286,23 @@ def redemptions_admin():
     roster = [r["id"] for r in c.execute(
         "SELECT id FROM users WHERE family_id=? AND role='kid'", (fam,)).fetchall()]
     pending, done = [], []
+    seen_p, seen_d = set(), set()
     for kid in roster:
         db.apply_scope(c, fam, kid)
-        pending.extend(c.execute(
+        for r in c.execute(
             "SELECT rd.id, rd.date, rd.price, rd.status, rw.name, rd.kid_id FROM redemptions rd "
-            "LEFT JOIN rewards rw ON rw.id=rd.reward_id WHERE rd.status='pending'").fetchall())
-        done.extend(c.execute(
+            "LEFT JOIN rewards rw ON rw.id=rd.reward_id WHERE rd.status='pending' AND rd.kid_id=?",
+            (kid,)).fetchall():
+            if r["id"] in seen_p:
+                continue
+            seen_p.add(r["id"]); pending.append(r)
+        for r in c.execute(
             "SELECT rd.id, rd.date, rd.price, rd.status, rw.name, rd.kid_id FROM redemptions rd "
-            "LEFT JOIN rewards rw ON rw.id=rd.reward_id WHERE rd.status!='pending'").fetchall())
+            "LEFT JOIN rewards rw ON rw.id=rd.reward_id WHERE rd.status!='pending' AND rd.kid_id=?",
+            (kid,)).fetchall():
+            if r["id"] in seen_d:
+                continue
+            seen_d.add(r["id"]); done.append(r)
     db.apply_scope(c, fam, kid_id())
     c.close()
     pend = [dict(r) for r in pending]
@@ -1366,7 +1399,7 @@ def test_create(b: TestIn):
 @app.get("/api/admin/tests", dependencies=[Depends(require_parent)])
 def tests_list():
     c = get_conn()
-    rows = [dict(r) for r in c.execute("SELECT * FROM tests ORDER BY id DESC LIMIT 50").fetchall()]
+    rows = [dict(r) for r in c.execute("SELECT * FROM tests WHERE kid_id=? ORDER BY id DESC LIMIT 50", (kid_id(),)).fetchall()]
     c.close()
     return rows
 
@@ -1374,12 +1407,22 @@ def tests_list():
 @app.delete("/api/admin/tests/{tid}", dependencies=[Depends(require_parent)])
 def test_delete(tid: str):
     c = get_conn()
-    r = c.execute("SELECT * FROM tests WHERE id=?", (tid,)).fetchone()
+    fam = _fam.get()
+    r = None
+    owner = None
+    for kr in c.execute("SELECT id FROM users WHERE family_id=? AND role='kid'", (fam,)).fetchall():
+        db.apply_scope(c, fam, kr["id"])
+        r = c.execute("SELECT * FROM tests WHERE id=? AND kid_id=?", (tid, kr["id"])).fetchone()
+        if r:
+            owner = kr["id"]
+            break
     if not r:
-        c.close(); raise HTTPException(404, "没找到这条测试")
+        db.apply_scope(c, fam, kid_id()); c.close(); raise HTTPException(404, "没找到这条测试")
     c.execute("DELETE FROM tests WHERE id=?", (tid,))
-    insert_ledger(c, db.today(), -r["sunshine"], "test_cancel", f"test-{tid}", "删除测试冲正")
-    c.commit(); c.close()
+    insert_ledger(c, db.today(), -r["sunshine"], "test_cancel", f"test-{tid}", "删除测试冲正", kid=owner)
+    c.commit()
+    db.apply_scope(c, fam, kid_id())
+    c.close()
     return {"ok": True}
 
 
@@ -1648,7 +1691,7 @@ def task_create(b: TaskIn):
     c = get_conn()
     tid = uuid.uuid4().hex[:8]
     c.execute("INSERT INTO tasks(id,subject_id,unit_id,action,title,sunshine,sort,custom,family_id) VALUES(?,?,?,?,?,?,99,1,?)",
-              (tid, b.subject_id, b.unit_id, b.action, b.title, b.sunshine, _fam.get()))
+              (tid, b.subject_id, b.unit_id, b.action, b.title, _sun(b.sunshine), _fam.get()))
     c.commit(); c.close()
     return {"id": tid}
 
@@ -1657,7 +1700,7 @@ def task_create(b: TaskIn):
 def task_update(tid: str, b: TaskIn):
     c = get_conn()
     c.execute("UPDATE tasks SET subject_id=?, unit_id=?, action=?, title=?, sunshine=? WHERE id=? AND COALESCE(custom,0)=1 AND family_id=?",
-              (b.subject_id, b.unit_id, b.action, b.title, b.sunshine, tid, _fam.get()))
+              (b.subject_id, b.unit_id, b.action, b.title, _sun(b.sunshine), tid, _fam.get()))
     c.commit(); c.close()
     return {"ok": True}
 
@@ -1692,7 +1735,7 @@ def daily_create(b: DailyTaskIn):
     did = uuid.uuid4().hex[:8]
     c.execute("INSERT INTO daily_tasks(id,subject_id,name,sunshine,frequency,bonus_type,bonus_per_metric,family_id) "
               "VALUES(?,?,?,?,'daily','personal_best',?,?)",
-              (did, b.subject_id, b.name, b.sunshine, b.bonus_per_metric, _fam.get()))
+              (did, b.subject_id, b.name, _sun(b.sunshine), b.bonus_per_metric, _fam.get()))
     _replace_metrics(c, did, b.metrics)
     c.commit(); c.close()
     return {"id": did}
@@ -1705,7 +1748,7 @@ def daily_update(did: str, b: DailyTaskIn):
     if not row or not row["family_id"]:
         c.close(); raise HTTPException(403, "系统每日任务不能改")
     c.execute("UPDATE daily_tasks SET subject_id=?, name=?, sunshine=?, bonus_per_metric=? WHERE id=? AND family_id=?",
-              (b.subject_id, b.name, b.sunshine, b.bonus_per_metric, did, _fam.get()))
+              (b.subject_id, b.name, _sun(b.sunshine), b.bonus_per_metric, did, _fam.get()))
     _replace_metrics(c, did, b.metrics)
     c.commit(); c.close()
     return {"ok": True}
