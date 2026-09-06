@@ -614,6 +614,29 @@ def _migrate_014(conn):
     _add_column(conn, "families", "insight_rules TEXT DEFAULT ''")
 
 
+def seed_fitness_standards(conn):
+    path = BASE.parent / "data" / "fitness_standards.json"
+    rows = json.loads(path.read_text(encoding="utf-8"))["rows"]
+    for r in rows:
+        conn.execute(
+            "INSERT INTO fitness_standards(grade,gender,item,pass_value,good_value,excellent_value,unit,direction) "
+            "VALUES(?,?,?,?,?,?,?,?) ON CONFLICT DO NOTHING",
+            (r["grade"], r["gender"], r["item"], r["pass_value"], r.get("good_value"),
+             r.get("excellent_value"), r["unit"], r.get("direction", "high")))
+
+
+def _migrate_015(conn):
+    _add_column(conn, "users", "gender TEXT")
+    conn.execute("""
+CREATE TABLE IF NOT EXISTS fitness_standards (
+  grade INTEGER NOT NULL, gender TEXT NOT NULL, item TEXT NOT NULL,
+  pass_value REAL, good_value REAL, excellent_value REAL,
+  unit TEXT, direction TEXT DEFAULT 'high',
+  PRIMARY KEY (grade, gender, item))
+""")
+    seed_fitness_standards(conn)
+
+
 MIGRATIONS = (
     ("001_identity", _migrate_001),
     ("002_kid_id", _migrate_002),
@@ -629,6 +652,7 @@ MIGRATIONS = (
     ("012_daily_metrics_rls", _migrate_012),
     ("013_force_parent_pin", _migrate_013),
     ("014_insight_rules", _migrate_014),
+    ("015_fitness", _migrate_015),
 )
 
 

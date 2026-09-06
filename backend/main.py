@@ -302,6 +302,11 @@ INSIGHT_DEFAULTS = {
     "drop_ratio": 0.3,
     "streak_break": 2,
 }
+FITNESS_METRIC = {
+    "跳绳": ("pe-jump-rope", "n1m"),
+    "仰卧起坐": ("pe-situp", "cnt"),
+    "坐位体前屈": ("pe-bend", "cm"),
+}
 
 
 def insight_rules(c):
@@ -387,9 +392,59 @@ def _insight_drop(c, kid, rules):
             "source": {"this": this, "last": last}}
 
 
+def _kid_grade(term_id):
+    if not term_id or len(term_id) < 2 or term_id[0] != "g" or not term_id[1].isdigit():
+        return None
+    return int(term_id[1])
+
+
+def _insight_fitness(c, kid):
+    u = c.execute("SELECT gender, term_id FROM users WHERE id=?", (kid,)).fetchone()
+    if not u or not u["gender"]:
+        return None
+    grade = _kid_grade(u["term_id"])
+    if not grade:
+        return None
+    cutoff = (datetime.now().date() - timedelta(days=14)).isoformat()
+    best = None
+    for item, (tid, mid) in FITNESS_METRIC.items():
+        std = c.execute(
+            "SELECT pass_value, unit FROM fitness_standards WHERE grade=? AND gender=? AND item=?",
+            (grade, u["gender"], item)).fetchone()
+        if not std or std["pass_value"] is None:
+            continue
+        rows = c.execute(
+            "SELECT metrics FROM completions WHERE task_id=? AND status='completed' AND kid_id=? "
+            "AND date>=? AND metrics IS NOT NULL ORDER BY date DESC, id DESC",
+            (tid, kid, cutoff)).fetchall()
+        last = None
+        for r in rows:
+            try:
+                v = (json.loads(r["metrics"]) or {}).get(mid)
+            except Exception:
+                v = None
+            if v is not None:
+                last = float(v)
+                break
+        if last is None:
+            continue
+        gap = float(std["pass_value"]) - last
+        if gap <= 0:
+            continue
+        if best is None or gap > best["gap"]:
+            unit = std["unit"] or ""
+            shown = round(gap, 1) if gap % 1 else int(gap)
+            best = {"gap": gap, "item": item, "last": last, "pass": float(std["pass_value"]), "unit": unit,
+                    "text": f"{item}离达标还差 {shown}{unit}", "source": {"item": item, "last": last, "pass": float(std["pass_value"]), "unit": unit}}
+    if not best:
+        return None
+    return {"type": "fitness", "text": best["text"], "action": "运动打卡", "source": best["source"]}
+
+
 def build_insights(c, kid):
     rules = insight_rules(c)
-    return _insight_weak_unit(c, kid, rules) or _insight_streak_break(c, kid, rules) or _insight_drop(c, kid, rules)
+    return (_insight_weak_unit(c, kid, rules) or _insight_fitness(c, kid)
+            or _insight_streak_break(c, kid, rules) or _insight_drop(c, kid, rules))
 
 
 # 连续坚持里程碑（一次性奖励，防通胀）：第 7/14/30 天各发一次
@@ -1563,11 +1618,21 @@ def insight_rules_put(b: InsightRulesIn):
     return out
 
 
+def _gender(val):
+    g = (val or "").strip()
+    if not g:
+        return None
+    if g not in ("男", "女"):
+        raise HTTPException(400, "性别填男或女")
+    return g
+
+
 class KidIn(BaseModel):
     name: str
     account: str = ""
     pin: str = ""
     term_id: str = "g5s1"
+    gender: str = ""
 
 
 @app.get("/api/admin/kids", dependencies=[Depends(require_parent)])
@@ -1575,7 +1640,7 @@ def kids_list(request: Request):
     u = request.state.user
     c = get_conn()
     rows = c.execute(
-        "SELECT id, name, account, term_id FROM users WHERE family_id=? AND role='kid' ORDER BY created_at",
+        "SELECT id, name, account, term_id, gender FROM users WHERE family_id=? AND role='kid' ORDER BY created_at",
         (u["family_id"],)).fetchall()
     c.close()
     return [dict(r) for r in rows]
@@ -1603,8 +1668,8 @@ def kids_create(b: KidIn, request: Request):
         raise HTTPException(404, "没有这个学期")
     kid = "kid-" + uuid.uuid4().hex[:8]
     c.execute(
-        "INSERT INTO users(id,family_id,role,name,avatar,pin_hash,term_id,account,created_at,force_pin_change) VALUES(?,?,?,?,?,?,?,?,?,?)",
-        (kid, u["family_id"], "kid", name, "", db.hash_pin(pin), b.term_id or "g5s1", account, db.now(), ""))
+        "INSERT INTO users(id,family_id,role,name,avatar,pin_hash,term_id,account,created_at,force_pin_change,gender) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+        (kid, u["family_id"], "kid", name, "", db.hash_pin(pin), b.term_id or "g5s1", account, db.now(), "", _gender(b.gender)))
     c.execute("INSERT INTO profiles(user_id,family_id) VALUES(?,?) ON CONFLICT DO NOTHING", (kid, u["family_id"]))
     c.commit(); c.close()
     return {"id": kid, "account": account}
@@ -1632,7 +1697,9 @@ def kids_update(kid: str, b: KidIn, request: Request):
             pc.close()
         if taken:
             c.close(); raise HTTPException(409, "这个账号已经有了")
-    c.execute("UPDATE users SET name=?, term_id=?, account=? WHERE id=?", (name, term, account or row["account"], kid))
+    gender = _gender(b.gender) if b.gender != "" else row["gender"]
+    c.execute("UPDATE users SET name=?, term_id=?, account=?, gender=? WHERE id=?",
+              (name, term, account or row["account"], gender, kid))
     if b.pin:
         try:
             _check_pin(b.pin, parent=False)

@@ -90,6 +90,31 @@ def main_fn():
         ins = next(x["insight"] for x in cli.get("/api/admin/insights").json()["kids"] if x["kid_id"] == kid)
         assert ins and ins["type"] == "drop"
         assert "少" in ins["text"] and "%" in ins["text"]
+
+        # 体测：没性别跳过；低于达标命中；达到不命中
+        cli.put("/api/admin/insight-rules", json={"streak_break": 7, "drop_ratio": 0.9})
+        c = db.connect()
+        c.execute("DELETE FROM tests WHERE kid_id=?", (kid,))
+        c.execute("DELETE FROM checkins WHERE kid_id=?", (kid,))
+        c.execute("DELETE FROM completions WHERE kid_id=?", (kid,))
+        c.execute(
+            "INSERT INTO completions(task_id,date,status,sunshine,metrics,kind,created_at,kid_id) "
+            "VALUES(?,?,?,?,?,?,?,?)",
+            ("pe-jump-rope", today.isoformat(), "completed", 5, '{"n1m": 20}', "daily", db.now(), kid))
+        c.commit(); c.close()
+        ins = next(x["insight"] for x in cli.get("/api/admin/insights").json()["kids"] if x["kid_id"] == kid)
+        assert not ins or ins["type"] != "fitness"
+        assert cli.put("/api/admin/kids/" + kid, json={"name": "小测", "term_id": "g5s1", "gender": "男"}).status_code == 200
+        ins = next(x["insight"] for x in cli.get("/api/admin/insights").json()["kids"] if x["kid_id"] == kid)
+        assert ins and ins["type"] == "fitness"
+        assert "跳绳" in ins["text"] and "还差" in ins["text"]
+        c = db.connect()
+        c.execute("UPDATE completions SET metrics=? WHERE kid_id=? AND task_id=?", ('{"n1m": 56}', kid, "pe-jump-rope"))
+        c.commit(); c.close()
+        ins = next(x["insight"] for x in cli.get("/api/admin/insights").json()["kids"] if x["kid_id"] == kid)
+        assert not ins or ins["type"] != "fitness"
+        n = db.connect().execute("SELECT COUNT(*) FROM fitness_standards").fetchone()[0]
+        assert n >= 32
         print("insights ok")
 
 

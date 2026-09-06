@@ -10,7 +10,7 @@ const members = ref([])
 const inviteProtect = ref(false)
 const invites = ref([])
 const selectedKid = ref('')
-const newKid = reactive({ name: '', account: '', pin: '', term_id: 'g5s1' })
+const newKid = reactive({ name: '', account: '', pin: '', term_id: 'g5s1', gender: '' })
 const section = ref('insights')
 const SECTIONS = [
   { group: '概览', items: [
@@ -218,6 +218,7 @@ async function addKid() {
   try {
     await api.admin.createKid({ ...newKid })
     newKid.name = newKid.account = newKid.pin = ''
+    newKid.gender = ''
     showToast('已添加')
     await load()
   } catch (e) { showToast(e.message) }
@@ -225,7 +226,7 @@ async function addKid() {
 
 async function saveKid(k) {
   try {
-    await api.admin.updateKid(k.id, { name: k.name, account: k.account, term_id: k.term_id, pin: k._pin || '' })
+    await api.admin.updateKid(k.id, { name: k.name, account: k.account, term_id: k.term_id, pin: k._pin || '', gender: k.gender || '' })
     k._pin = ''
     showToast('已保存')
     await load()
@@ -257,7 +258,7 @@ function goInsight(row) {
     selectedKid.value = row.kid_id
     setSelectedKid(row.kid_id)
     section.value = 'test'
-  } else if (a === '每日打卡') emit('exit')
+  } else if (a === '每日打卡' || a === '运动打卡') emit('exit')
 }
 
 async function toggleLock() {
@@ -681,6 +682,11 @@ onMounted(load)
         <select v-model="k.term_id">
           <option v-for="tm in terms" :key="tm.id" :value="tm.id">{{ tm.label }}</option>
         </select>
+        <select v-model="k.gender">
+          <option value="">性别</option>
+          <option value="男">男</option>
+          <option value="女">女</option>
+        </select>
         <input v-model="k._pin" type="password" placeholder="改密码" class="w-num" />
         <button class="ok" @click="saveKid(k)">存</button>
         <button class="del" @click="delKid(k)">删</button>
@@ -691,6 +697,11 @@ onMounted(load)
         <input v-model="newKid.pin" placeholder="密码" class="w-num" />
         <select v-model="newKid.term_id">
           <option v-for="tm in terms" :key="tm.id" :value="tm.id">{{ tm.label }}</option>
+        </select>
+        <select v-model="newKid.gender">
+          <option value="">性别</option>
+          <option value="男">男</option>
+          <option value="女">女</option>
         </select>
         <button class="ok" @click="addKid">添加</button>
       </div>
