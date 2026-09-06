@@ -49,6 +49,8 @@ const redemptions = ref([])
 const tests = ref([])
 const newTest = reactive({ subject_id: '', unit_id: '', score: '', note: '' })
 const weakDlg = reactive({ open: false, unit_id: '', tags: [], picked: {}, note: '' })
+const catalog = ref({ tags: [], unit_tags: [] })
+const weakByUnit = ref({})
 const TEST_BANDS = [[100, 30], [95, 20], [90, 15], [85, 10], [0, 5]]
 const weekly = ref({ days: [], weeks: [], by_subject: [], kids: [], total_earned: 0, total_spent: 0, net: 0, balance: 0, earned_all: 0, streak: 0, checkins: 0, week_start: '', week_end: '' })
 const insights = ref({ rules: { test_fail_count: 2, test_fail_score: 80, drop_ratio: 0.3, streak_break: 2 }, kids: [] })
@@ -82,7 +84,7 @@ async function load() {
     selectedKid.value = ks[0].id
     setSelectedKid(ks[0].id)
   }
-  const [r, rk, t, rd, wk, ts, ig] = await Promise.all([api.rewards(), api.admin.ranks(), api.tasks(), api.admin.redemptions(), api.admin.weekly(), api.admin.tests(), api.admin.insights()])
+  const [r, rk, t, rd, wk, ts, ig, cat, wps] = await Promise.all([api.rewards(), api.admin.ranks(), api.tasks(), api.admin.redemptions(), api.admin.weekly(), api.admin.tests(), api.admin.insights(), api.admin.unitTags(), api.admin.weakPoints('')])
   rewards.value = r
   ranks.value = rk
   subjects.value = t.subjects
@@ -97,6 +99,13 @@ async function load() {
   weekly.value = wk
   tests.value = ts
   insights.value = ig
+  catalog.value = cat && cat.tags ? cat : { tags: [], unit_tags: [] }
+  const wb = {}
+  for (const x of (wps || [])) {
+    if (!wb[x.unit_id]) wb[x.unit_id] = {}
+    wb[x.unit_id][x.tag_id] = true
+  }
+  weakByUnit.value = wb
 }
 
 // —— 商店 ——
@@ -193,6 +202,34 @@ const tasksBySubject = computed(() => {
   return m
 })
 const subjectName = (id) => subjects.value.find(s => s.id === id)?.name || id
+const termUnits = computed(() => units.value.filter(u => u.term_id === activeTerm.value || (u.id || '').startsWith(activeTerm.value)))
+const unitsBySubject = computed(() => {
+  const m = {}
+  for (const u of termUnits.value) {
+    if (!m[u.subject_id]) m[u.subject_id] = []
+    m[u.subject_id].push(u)
+  }
+  return m
+})
+const tagName = (id) => (catalog.value.tags || []).find(t => t.id === id)?.name || id
+function tagsFor(uid) {
+  return (catalog.value.unit_tags || []).filter(x => x.unit_id === uid)
+}
+function tagOn(uid, tid) { return !!(weakByUnit.value[uid] && weakByUnit.value[uid][tid]) }
+async function toggleTag(uid, tid) {
+  const cur = { ...(weakByUnit.value[uid] || {}) }
+  if (cur[tid]) delete cur[tid]
+  else cur[tid] = true
+  const tag_ids = Object.keys(cur)
+  if (!tag_ids.length) {
+    showToast('至少留一个考点，或先勾别的再取消这个')
+    return
+  }
+  try {
+    await api.admin.setWeakPoints({ unit_id: uid, tag_ids, kid_id: selectedKid.value })
+    weakByUnit.value = { ...weakByUnit.value, [uid]: cur }
+  } catch (e) { showToast(e.message) }
+}
 
 // —— 每日任务 ——
 const DIRS = [['higher_better', '越多越好'], ['lower_better', '越少越好']]
@@ -528,17 +565,25 @@ onMounted(load)
     <!-- 任务 -->
     <section v-if="section === 'unit-task'" class="a-card enter">
       <h3>单元任务</h3>
-      <p class="lead">按学科折叠；改「标题 / 动作 / 阳光」后点保存。</p>
-      <details v-for="(arr, sid) in tasksBySubject" :key="sid" class="subj">
-        <summary>{{ subjectName(sid) }}<em>{{ arr.length }} 项</em></summary>
-        <div class="task-row" v-for="t in arr" :key="t.id">
-          <span class="badge">{{ unitName(t.unit_id) }}</span>
-          <label class="fld grow"><span>标题</span><input v-model="t.title" /></label>
-          <label class="fld w84"><span>动作</span><input v-model="t.action" /></label>
-          <label class="fld w64"><span>阳光</span><input v-model.number="t.sunshine" type="number" /></label>
-          <div class="ops">
-            <button class="ok" @click="saveTask(t)">保存</button>
-            <button class="del" @click="delTask(t.id)">删</button>
+      <p class="lead">只看当前学期。勾考点立刻记下（自动建议，请核对）。</p>
+      <details v-for="(arr, sid) in unitsBySubject" :key="sid" class="subj">
+        <summary>{{ subjectName(sid) }}<em>{{ arr.length }} 单元</em></summary>
+        <div v-for="u in arr" :key="u.id" class="unit-block">
+          <div class="unit-h">{{ u.name }}</div>
+          <div class="tag-row">
+            <button v-for="tg in tagsFor(u.id)" :key="tg.tag_id" type="button"
+              :class="['tag', { on: tagOn(u.id, tg.tag_id), auto: tg.auto }]"
+              @click="toggleTag(u.id, tg.tag_id)">{{ tagName(tg.tag_id) }}</button>
+            <span v-if="!tagsFor(u.id).length" class="dim">无考点</span>
+          </div>
+          <div class="task-row" v-for="t in (tasksBySubject[sid] || []).filter(x => x.unit_id === u.id)" :key="t.id">
+            <label class="fld grow"><span>标题</span><input v-model="t.title" /></label>
+            <label class="fld w84"><span>动作</span><input v-model="t.action" /></label>
+            <label class="fld w64"><span>阳光</span><input v-model.number="t.sunshine" type="number" /></label>
+            <div class="ops">
+              <button class="ok" @click="saveTask(t)">保存</button>
+              <button class="del" @click="delTask(t.id)">删</button>
+            </div>
           </div>
         </div>
       </details>
@@ -881,6 +926,12 @@ details.subj summary::-webkit-details-marker { display: none; }
 details.subj summary em { font-style: normal; font-size: 11px; color: var(--ink-3); background: var(--surface-2); padding: 1px 8px; border-radius: 10px; }
 details.subj summary::after { content: ''; margin-left: auto; width: 8px; height: 8px; border-right: 2px solid var(--ink-3); border-bottom: 2px solid var(--ink-3); transform: rotate(45deg); transition: transform .18s var(--ease); flex: none; }
 details.subj[open] summary::after { transform: rotate(-135deg); }
+.unit-block { padding: 10px 14px 12px; border-top: 1px solid var(--surface-2); }
+.unit-h { font-weight: 800; font-size: 13px; margin-bottom: 6px; }
+.tag-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.tag { border: 1px solid var(--line); background: var(--surface); border-radius: 14px; padding: 3px 10px; font-size: 12px; cursor: pointer; font-family: inherit; color: var(--ink-2); }
+.tag.on { background: var(--warm); border-color: var(--warm); color: var(--accent-ink); font-weight: 800; }
+.tag.auto:not(.on) { opacity: .75; }
 .task-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 8px 14px; border-top: 1px solid var(--surface-2); }
 .task-row .badge { flex: none; }
 

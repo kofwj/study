@@ -606,9 +606,9 @@ def tasks():
         "today_checkin": c.execute(
             "SELECT 1 FROM checkins WHERE date=? AND kid_id=?", (db.today(), kid_id())).fetchone() is not None,
         "subjects": [dict(r) for r in c.execute("SELECT * FROM subjects").fetchall()],
-        "units": [{"id": r["id"], "name": r["name"], "subject_id": r["subject_id"]}
+        "units": [{"id": r["id"], "name": r["name"], "subject_id": r["subject_id"], "term_id": r["term_id"]}
                   for r in c.execute(
-                      "SELECT id, name, subject_id FROM units WHERE term_id=? OR id LIKE ?",
+                      "SELECT id, name, subject_id, term_id FROM units WHERE term_id=? OR id LIKE ?",
                       (term, "custom-%")).fetchall()],
     }
     # 单元测试成绩（unit_id → 最近一次分），孩子端单元旁展示
@@ -1403,14 +1403,20 @@ def _own_kid(c, kid, fam):
 
 
 @app.get("/api/admin/unit-tags")
-def admin_unit_tags(unit_id: str, request: Request):
+def admin_unit_tags(request: Request, unit_id: str = ""):
     require_parent(request)
     c = get_conn()
-    rows = c.execute(
-        "SELECT ut.tag_id, kt.name FROM unit_tags ut JOIN knowledge_tags kt ON kt.id=ut.tag_id "
-        "WHERE ut.unit_id=? ORDER BY kt.kind, kt.id", (unit_id,)).fetchall()
+    if unit_id:
+        rows = c.execute(
+            "SELECT ut.tag_id, kt.name FROM unit_tags ut JOIN knowledge_tags kt ON kt.id=ut.tag_id "
+            "WHERE ut.unit_id=? ORDER BY kt.kind, kt.id", (unit_id,)).fetchall()
+        c.close()
+        return [dict(r) for r in rows]
+    tags = [dict(r) for r in c.execute("SELECT id, subject_id, kind, name FROM knowledge_tags ORDER BY kind, id").fetchall()]
+    unit_tags = [dict(r) for r in c.execute(
+        "SELECT unit_id, tag_id, auto FROM unit_tags ORDER BY unit_id, tag_id").fetchall()]
     c.close()
-    return [dict(r) for r in rows]
+    return {"tags": tags, "unit_tags": unit_tags}
 
 
 @app.get("/api/admin/weak-points")

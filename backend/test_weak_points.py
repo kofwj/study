@@ -27,6 +27,8 @@ def main_fn():
         tags = p.get("/api/admin/unit-tags?unit_id=" + uid).json()
         assert tags, tags
         t1, t2 = tags[0]["tag_id"], tags[-1]["tag_id"]
+        all_tags = p.get("/api/admin/unit-tags").json()
+        assert len(all_tags["tags"]) >= 20 and len(all_tags["unit_tags"]) >= 50
         assert p.put("/api/admin/weak-points", json={"kid_id": a, "unit_id": uid, "tag_ids": []}).status_code == 400
         r = p.put("/api/admin/weak-points", json={"kid_id": a, "unit_id": uid, "tag_ids": [t1], "note": "默写"})
         assert r.status_code == 200, r.text
