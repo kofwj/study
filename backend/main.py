@@ -345,7 +345,9 @@ def _insight_weak_unit(c, kid, rules):
         if rows[0]["date"] < cutoff:
             continue
         u = c.execute("SELECT name, subject_id FROM units WHERE id=?", (uid,)).fetchone()
-        subj = (u["subject_id"] if u else "") or ""
+        sid = (u["subject_id"] if u else "") or ""
+        sn = c.execute("SELECT name FROM subjects WHERE id=?", (sid,)).fetchone() if sid else None
+        subj = (sn["name"] if sn else sid) or ""
         uname = (u["name"] if u else uid) or uid
         return {
             "type": "weak_unit",
@@ -378,13 +380,15 @@ def _insight_drop(c, kid, rules):
     ratio = float(rules["drop_ratio"])
     today = datetime.now().date()
     monday = _monday(today)
-    last_m, last_s = monday - timedelta(days=7), monday - timedelta(days=1)
+    span = (today - monday).days
+    last_from = monday - timedelta(days=7)
+    last_to = last_from + timedelta(days=span)
     this = c.execute(
         "SELECT COUNT(*) FROM completions WHERE status='completed' AND kid_id=? AND date BETWEEN ? AND ?",
         (kid, monday.isoformat(), today.isoformat())).fetchone()[0]
     last = c.execute(
         "SELECT COUNT(*) FROM completions WHERE status='completed' AND kid_id=? AND date BETWEEN ? AND ?",
-        (kid, last_m.isoformat(), last_s.isoformat())).fetchone()[0]
+        (kid, last_from.isoformat(), last_to.isoformat())).fetchone()[0]
     if last <= 0 or this >= last * (1 - ratio):
         return None
     pct = round((1 - this / last) * 100)

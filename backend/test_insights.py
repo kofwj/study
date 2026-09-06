@@ -50,6 +50,7 @@ def main_fn():
         ins = next(x["insight"] for x in cli.get("/api/admin/insights").json()["kids"] if x["kid_id"] == kid)
         assert ins and ins["type"] == "weak_unit"
         assert "连续 2 次低于 80 分" in ins["text"]
+        assert "语文" in ins["text"] and "cn《" not in ins["text"]
         assert ins["action"] == "单元测试"
 
         r = cli.put("/api/admin/insight-rules", json={"test_fail_score": 60})
@@ -76,12 +77,14 @@ def main_fn():
         c = db.connect()
         c.execute("DELETE FROM checkins WHERE kid_id=?", (kid,))
         c.execute("DELETE FROM completions WHERE kid_id=?", (kid,))
-        for i in range(10):
-            d = last_m + timedelta(days=min(i, 6))
+        span = (today - monday).days
+        last_from = monday - timedelta(days=7)
+        last_to = last_from + timedelta(days=span)
+        for i in range(5):
             c.execute(
                 "INSERT INTO completions(task_id,date,status,sunshine,metrics,kind,created_at,kid_id) "
                 "VALUES(?,?,?,?,?,?,?,?)",
-                (f"drop-{i}", d.isoformat(), "completed", 5, None, "unit", db.now(), kid))
+                (f"drop-{i}", last_to.isoformat(), "completed", 5, None, "unit", db.now(), kid))
         c.execute(
             "INSERT INTO completions(task_id,date,status,sunshine,metrics,kind,created_at,kid_id) "
             "VALUES(?,?,?,?,?,?,?,?)",
@@ -104,6 +107,7 @@ def main_fn():
         c.commit(); c.close()
         ins = next(x["insight"] for x in cli.get("/api/admin/insights").json()["kids"] if x["kid_id"] == kid)
         assert not ins or ins["type"] != "fitness"
+        assert cli.put("/api/admin/kids/" + kid, json={"name": "小测", "term_id": "g5s1", "gender": "不明"}).status_code == 400
         assert cli.put("/api/admin/kids/" + kid, json={"name": "小测", "term_id": "g5s1", "gender": "男"}).status_code == 200
         ins = next(x["insight"] for x in cli.get("/api/admin/insights").json()["kids"] if x["kid_id"] == kid)
         assert ins and ins["type"] == "fitness"
