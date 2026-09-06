@@ -38,6 +38,7 @@ export const api = {
   ranks: () => j('/api/ranks'),
   boxes: () => j('/api/boxes'),
   openBox: () => j('/api/open_box', { method: 'POST' }),
+  reviewDue: () => j('/api/review-due'),
   ledger: () => j('/api/ledger?limit=15'),
   setKidName: (name) => j('/api/kid-name', { method: 'POST', ...body({ name }) }),
   dailyHistory: (id) => j(`/api/daily/${id}/history`),
@@ -84,5 +85,7 @@ export const api = {
     unitTags: (unit_id) => j('/api/admin/unit-tags' + (unit_id ? '?unit_id=' + encodeURIComponent(unit_id) : '')),
     weakPoints: (unit_id) => j('/api/admin/weak-points?unit_id=' + encodeURIComponent(unit_id)),
     setWeakPoints: (o) => j('/api/admin/weak-points', { method: 'PUT', ...body(o) }),
+    reviewDue: () => j('/api/admin/review-due'),
+    judgeWeak: (id, ok) => j(`/api/admin/weak-points/${id}/judge`, { method: 'POST', ...body({ ok }) }),
   },
 }

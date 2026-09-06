@@ -35,6 +35,7 @@ const boxOpen = ref(false)
 const boxResult = ref(null)
 const rankMapOpen = ref(false)
 const rankMap = ref(null)
+const reviewDue = ref([])
 const updateReady = ref(false)
 const celebrate = ref(null)
 const chartOpen = reactive({ open: false, task: null, history: [] })
@@ -152,7 +153,7 @@ async function doLogout() {
 
 async function refresh() {
   try {
-    const [t, r, bx] = await Promise.all([api.tasks(), api.rewards(), api.boxes()])
+    const [t, r, bx, rv] = await Promise.all([api.tasks(), api.rewards(), api.boxes(), api.reviewDue().catch(() => [])])
     const prevId = data.level && data.level.level_id
     const prevEarned = data.level && (data.level.earned || 0)
     Object.assign(data, t)
@@ -163,6 +164,7 @@ async function refresh() {
     }
     rewards.value = r
     boxes.value = bx
+    reviewDue.value = rv || []
     err.value = ''
   } catch (e) {
     if (e.status === 401) { me.value = null; authed.value = false }
@@ -464,6 +466,17 @@ function reloadApp() {
         <template v-if="activeTab === '今日推荐'">
           <h1><Sparkles class="ico" :size="20" /> 今日推荐</h1>
           <p class="hint">完成一项 +5 <Sun class="ico sun" :size="13" />，取消勾选会扣回哦。</p>
+          <div v-if="reviewDue.length" class="unit">
+            <h2><i></i> 今日复习</h2>
+            <div class="grid">
+              <div v-for="x in reviewDue" :key="x.id" class="card enter">
+                <div class="card-body">
+                  <div class="card-title">重练 {{ x.unit_name }} · {{ x.tag_name }}</div>
+                  <div class="card-detail">翻练习册再做一遍，让家长看过关。</div>
+                </div>
+              </div>
+            </div>
+          </div>
           <div v-if="!recommend.length" class="empty"><PartyPopper class="ico" :size="16" /> 今天都完成啦，太棒了！</div>
           <div class="grid">
             <div v-for="t in recommend" :key="t.id || t.name" class="card enter" :class="{ done: t.done }">

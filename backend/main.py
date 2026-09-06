@@ -1383,16 +1383,32 @@ def test_delete(tid: str):
     return {"ok": True}
 
 
+WEAKPOINT_INTERVALS = [1, 3, 7, 14, 30]
+
+
+def _due_date(start, idx=0):
+    d = datetime.strptime(start, "%Y-%m-%d").date() if isinstance(start, str) else start
+    i = max(0, min(int(idx or 0), len(WEAKPOINT_INTERVALS) - 1))
+    return (d + timedelta(days=WEAKPOINT_INTERVALS[i])).isoformat()
+
+
 def _wp_rows(c, kid, unit_id=None):
-    q = ("SELECT wp.id, wp.unit_id, wp.tag_id, wp.note, wp.status, kt.name AS tag_name "
+    q = ("SELECT wp.id, wp.kid_id, wp.unit_id, wp.tag_id, wp.note, wp.status, wp.interval_idx, wp.review_due_at, "
+         "kt.name AS tag_name, u.name AS unit_name, u.subject_id "
          "FROM weak_points wp LEFT JOIN knowledge_tags kt ON kt.id=wp.tag_id "
+         "LEFT JOIN units u ON u.id=wp.unit_id "
          "WHERE wp.kid_id=? AND wp.status='open'")
     args = [kid]
     if unit_id:
         q += " AND wp.unit_id=?"
         args.append(unit_id)
-    q += " ORDER BY wp.id"
+    q += " ORDER BY CASE WHEN wp.review_due_at IS NULL OR wp.review_due_at='' THEN 1 ELSE 0 END, wp.review_due_at, wp.id"
     return [dict(r) for r in c.execute(q, args).fetchall()]
+
+
+def _due_queue(c, kid, today=None):
+    today = today or db.today()
+    return [r for r in _wp_rows(c, kid) if r.get("review_due_at") and r["review_due_at"] <= today]
 
 
 def _own_kid(c, kid, fam):
@@ -1420,11 +1436,11 @@ def admin_unit_tags(request: Request, unit_id: str = ""):
 
 
 @app.get("/api/admin/weak-points")
-def admin_weak_points(request: Request, unit_id: str = "", kid_q: str = ""):
+def admin_weak_points(request: Request, unit_id: str = ""):
     require_parent(request)
     c = get_conn()
     fam = _fam.get()
-    kid = _own_kid(c, kid_q or kid_id(), fam)
+    kid = _own_kid(c, kid_id(), fam)
     db.apply_scope(c, fam, kid)
     rows = _wp_rows(c, kid, unit_id or None)
     c.close()
@@ -1436,6 +1452,7 @@ class WeakIn(BaseModel):
     tag_ids: list[str]
     note: str = ""
     kid_id: str = ""
+    first_review: str = ""  # YYYY-MM-DD，首次到期；空=明天
 
 
 @app.put("/api/admin/weak-points")
@@ -1452,14 +1469,28 @@ def admin_weak_put(b: WeakIn, request: Request):
         if not c.execute("SELECT 1 FROM knowledge_tags WHERE id=?", (tid,)).fetchone():
             db.apply_scope(c, fam, kid_id()); c.close()
             raise HTTPException(400, "没有这个考点")
+    old = {r["tag_id"]: r for r in c.execute(
+        "SELECT * FROM weak_points WHERE kid_id=? AND unit_id=? AND status='open'", (kid, b.unit_id)).fetchall()}
     c.execute("DELETE FROM weak_points WHERE kid_id=? AND unit_id=? AND status='open'", (kid, b.unit_id))
     note = (b.note or "").strip()[:40]
     now = db.now()
+    first = (b.first_review or "").strip()
+    if first:
+        try:
+            datetime.strptime(first, "%Y-%m-%d")
+        except ValueError:
+            db.apply_scope(c, fam, kid_id()); c.close()
+            raise HTTPException(400, "日期写成 2026-09-07 这种")
+    else:
+        first = (datetime.now().date() + timedelta(days=1)).isoformat()
     for tid in tags:
+        prev = old.get(tid)
+        due = prev["review_due_at"] if prev and prev["review_due_at"] else first
+        idx = prev["interval_idx"] if prev else 0
         c.execute(
-            "INSERT INTO weak_points(kid_id,unit_id,tag_id,note,status,interval_idx,created_at,updated_at) "
-            "VALUES(?,?,?,?,?,?,?,?)",
-            (kid, b.unit_id, tid, note, "open", 0, now, now))
+            "INSERT INTO weak_points(kid_id,unit_id,tag_id,note,status,interval_idx,review_due_at,created_at,updated_at) "
+            "VALUES(?,?,?,?,?,?,?,?,?)",
+            (kid, b.unit_id, tid, note, "open", idx or 0, due, now, now))
     c.commit()
     rows = _wp_rows(c, kid, b.unit_id)
     db.apply_scope(c, fam, kid_id())
@@ -1500,6 +1531,56 @@ def kid_weak_points(unit_id: str = ""):
     rows = _wp_rows(c, kid_id(), unit_id or None)
     c.close()
     return rows
+
+
+@app.get("/api/review-due")
+def kid_review_due():
+    c = get_conn()
+    rows = _due_queue(c, kid_id())
+    c.close()
+    return rows
+
+
+@app.get("/api/admin/review-due")
+def admin_review_due(request: Request):
+    require_parent(request)
+    c = get_conn()
+    fam = _fam.get()
+    kid = _own_kid(c, kid_id(), fam)
+    db.apply_scope(c, fam, kid)
+    rows = _due_queue(c, kid)
+    c.close()
+    return rows
+
+
+class ReviewJudgeIn(BaseModel):
+    ok: bool  # True=已巩固 False=还在错
+
+
+@app.post("/api/admin/weak-points/{wid}/judge")
+def admin_wp_judge(wid: str, b: ReviewJudgeIn, request: Request):
+    require_parent(request)
+    c = get_conn()
+    fam = _fam.get()
+    row = None
+    for kr in c.execute("SELECT id FROM users WHERE family_id=? AND role='kid'", (fam,)).fetchall():
+        db.apply_scope(c, fam, kr["id"])
+        row = c.execute("SELECT * FROM weak_points WHERE id=?", (wid,)).fetchone()
+        if row:
+            break
+    if not row:
+        db.apply_scope(c, fam, kid_id()); c.close()
+        raise HTTPException(404, "没找到这条")
+    now, today = db.now(), db.today()
+    if b.ok:
+        c.execute("UPDATE weak_points SET status='resolved', updated_at=? WHERE id=?", (now, wid))
+    else:
+        due = _due_date(today, 0)
+        c.execute("UPDATE weak_points SET interval_idx=0, review_due_at=?, updated_at=? WHERE id=?", (due, now, wid))
+    c.commit()
+    db.apply_scope(c, fam, kid_id())
+    c.close()
+    return {"ok": True, "resolved": bool(b.ok)}
 
 
 # --- 等级 ---

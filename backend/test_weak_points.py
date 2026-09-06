@@ -40,6 +40,19 @@ def main_fn():
         assert r0.status_code == 200 and r0.json() == []
         r = p.put("/api/admin/weak-points", json={"kid_id": a, "unit_id": uid, "tag_ids": [t2]})
         assert [x["tag_id"] for x in r.json()] == [t2]
+        from datetime import date
+        today = date.today().isoformat()
+        p.put("/api/admin/weak-points", json={"kid_id": a, "unit_id": uid, "tag_ids": []})
+        r = p.put("/api/admin/weak-points", json={"kid_id": a, "unit_id": uid, "tag_ids": [t2], "first_review": today})
+        assert r.status_code == 200
+        due = p.get("/api/admin/review-due", params={"selected_kid": a}).json()
+        assert any(x["tag_id"] == t2 for x in due)
+        wid = next(x["id"] for x in due if x["tag_id"] == t2)
+        assert p.post(f"/api/admin/weak-points/{wid}/judge", json={"ok": False}).status_code == 200
+        due2 = p.get("/api/admin/review-due", params={"selected_kid": a}).json()
+        assert not any(x["id"] == wid for x in due2)
+        assert p.post(f"/api/admin/weak-points/{wid}/judge", json={"ok": True}).status_code == 200
+        r = p.put("/api/admin/weak-points", json={"kid_id": a, "unit_id": uid, "tag_ids": [t2], "first_review": today})
         with TestClient(main.app) as k:
             assert k.post("/api/auth/login", json={"account": "jia", "pin": "1111"}).status_code == 200
             mine = k.get("/api/weak-points?unit_id=" + uid).json()

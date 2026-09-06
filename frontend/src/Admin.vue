@@ -2,7 +2,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { api, setSelectedKid } from './api.js'
 import { rankIcon } from './icons.js'
-import { ChartColumn, Eye, Baby, Users, KeyRound, Lock, Store, Trophy, ClipboardCheck, BookOpen, RefreshCw, MapPinned, FileText, Settings, Sun, Star, Check, ArrowLeft } from '@lucide/vue'
+import { ChartColumn, Eye, Baby, Users, KeyRound, Lock, Store, Trophy, ClipboardCheck, BookOpen, RefreshCw, MapPinned, FileText, Settings, Sun, Star, Check, ArrowLeft, BookMarked } from '@lucide/vue'
 
 const emit = defineEmits(['exit', 'switched'])
 const kids = ref([])
@@ -15,6 +15,7 @@ const section = ref('insights')
 const SECTIONS = [
   { group: '概览', items: [
     { id: 'insights', icon: Eye, label: '本周盯点' },
+    { id: 'review', icon: BookMarked, label: '今日复习' },
     { id: 'weekly', icon: ChartColumn, label: '周报' },
   ] },
   { group: '家庭', items: [
@@ -51,6 +52,8 @@ const tests = ref([])
 const newTest = reactive({ subject_id: '', unit_id: '', score: '', note: '' })
 const catalog = ref({ tags: [], unit_tags: [] })
 const weakByUnit = ref({})
+const reviewDue = ref([])
+const firstReview = ref('')
 const TEST_BANDS = [[100, 30], [95, 20], [90, 15], [85, 10], [0, 5]]
 const weekly = ref({ days: [], weeks: [], by_subject: [], kids: [], total_earned: 0, total_spent: 0, net: 0, balance: 0, earned_all: 0, streak: 0, checkins: 0, week_start: '', week_end: '' })
 const insights = ref({ rules: { test_fail_count: 2, test_fail_score: 80, drop_ratio: 0.3, streak_break: 2 }, kids: [] })
@@ -84,7 +87,7 @@ async function load() {
     selectedKid.value = ks[0].id
     setSelectedKid(ks[0].id)
   }
-  const [r, rk, t, rd, wk, ts, ig, cat, wps] = await Promise.all([api.rewards(), api.admin.ranks(), api.tasks(), api.admin.redemptions(), api.admin.weekly(), api.admin.tests(), api.admin.insights(), api.admin.unitTags(), api.admin.weakPoints('')])
+  const [r, rk, t, rd, wk, ts, ig, cat, wps, rv] = await Promise.all([api.rewards(), api.admin.ranks(), api.tasks(), api.admin.redemptions(), api.admin.weekly(), api.admin.tests(), api.admin.insights(), api.admin.unitTags(), api.admin.weakPoints(''), api.admin.reviewDue()])
   rewards.value = r
   ranks.value = rk
   subjects.value = t.subjects
@@ -107,6 +110,7 @@ async function load() {
     wb[x.unit_id][x.tag_id] = true
   }
   weakByUnit.value = wb
+  reviewDue.value = rv || []
 }
 
 // —— 商店 ——
@@ -207,7 +211,7 @@ async function toggleTag(uid, tid) {
   else cur[tid] = true
   weakByUnit.value = { ...weakByUnit.value, [uid]: cur }
   try {
-    await api.admin.setWeakPoints({ unit_id: uid, tag_ids: Object.keys(cur), kid_id: selectedKid.value })
+    await api.admin.setWeakPoints({ unit_id: uid, tag_ids: Object.keys(cur), kid_id: selectedKid.value, first_review: firstReview.value })
   } catch (e) {
     weakByUnit.value = { ...weakByUnit.value, [uid]: prev }
     showToast(e.message)
@@ -297,6 +301,14 @@ function goInsight(row) {
     setSelectedKid(row.kid_id)
     section.value = 'test'
   } else if (a === '每日打卡' || a === '运动打卡') emit('exit')
+  else if (a === '今日复习') section.value = 'review'
+}
+async function judge(id, ok) {
+  try {
+    await api.admin.judgeWeak(id, ok)
+    showToast(ok ? '记下了，过关' : '还得练，明天再来')
+    await load()
+  } catch (e) { showToast(e.message) }
 }
 
 async function toggleLock() {
@@ -386,6 +398,23 @@ onMounted(load)
         </template>
       </aside>
       <main class="a-main">
+
+    <!-- 今日复习 -->
+    <section v-if="section === 'review'" class="a-card enter">
+      <h3>今日复习</h3>
+      <p class="lead">到期该练的。过关记下；还在错就明天再来。</p>
+      <div v-if="!reviewDue.length" class="dim">今天没有到期的。</div>
+      <div v-for="x in reviewDue" :key="x.id" class="apv-row">
+        <div class="apv-info">
+          <span class="apv-name">{{ x.unit_name }} · {{ x.tag_name }}</span>
+          <span class="dim">{{ x.subject_id }} · {{ x.review_due_at }}</span>
+        </div>
+        <div class="ops">
+          <button class="ok" @click="judge(x.id, true)">过关</button>
+          <button class="del" @click="judge(x.id, false)">还在错</button>
+        </div>
+      </div>
+    </section>
 
     <!-- 本周盯点 -->
     <section v-if="section === 'insights'" class="a-card enter">
@@ -548,7 +577,10 @@ onMounted(load)
     <!-- 任务 -->
     <section v-if="section === 'unit-task'" class="a-card enter">
       <h3>单元任务</h3>
-      <p class="lead">只看当前学期。勾考点立刻记下（自动建议，请核对）。</p>
+      <p class="lead">只看当前学期。勾考点立刻记下（自动建议，请核对）。新勾的第一次复习日：</p>
+      <label class="fld" style="max-width:220px;margin-bottom:10px"><span>第一次复习</span>
+        <input type="date" v-model="firstReview" />
+      </label>
       <div class="subj-tabs">
         <button v-for="(arr, sid) in unitsBySubject" :key="sid" type="button"
           :class="['subj-tab', { on: activeSubject === sid }]"
