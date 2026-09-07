@@ -615,8 +615,32 @@ onMounted(load)
     <!-- 任务 -->
     <section v-if="section === 'unit-task'" class="a-card enter">
       <h3>任务与考点</h3>
-      <p class="lead">先找到孩子没掌握的单元，再点亮对应考点。点亮=记录，取消点亮=取消记录；记录后会按日期进入复习清单。</p>
-      <label class="fld" style="max-width:220px;margin-bottom:10px"><span>第一次复习</span>
+      <p class="lead">教材任务由系统提供，不需要家长修改。孩子哪一项没掌握，就在对应单元点亮考点；家长自己的额外任务可以在这里新增。</p>
+      <div class="add-box task-add-box">
+        <div class="add-title">新增家长任务</div>
+        <p class="form-help">给孩子补充一项自己的练习，完成后也会出现在孩子端。</p>
+        <div class="frm-row">
+          <label class="fld grow"><span>哪一科</span>
+            <select v-model="newTask.subject_id" @change="pickSubject">
+              <option value="" disabled>先选科</option>
+              <option v-for="s in subjects" :key="s.id" :value="s.id">{{ subjectName(s.id) }}</option>
+            </select>
+          </label>
+          <label class="fld grow"><span>放在哪个单元</span>
+            <select v-model="newTask.unit_id">
+              <option value="" disabled>{{ newTask.subject_id ? '选单元' : '先选科' }}</option>
+              <option v-for="u in unitOptions" :key="u.id" :value="u.id">{{ u.name }}</option>
+            </select>
+          </label>
+        </div>
+        <div class="frm-row">
+          <label class="fld grow"><span>任务名称</span><input v-model="newTask.title" placeholder="如：订正今天的错题" /></label>
+          <label class="fld w84"><span>怎么做</span><input v-model="newTask.action" placeholder="读 / 写 / 练" /></label>
+          <label class="fld w64"><span>阳光</span><input v-model.number="newTask.sunshine" type="number" min="0" /></label>
+        </div>
+        <button class="ok wide" @click="addTask">＋新增任务</button>
+      </div>
+      <label class="fld" style="max-width:220px;margin-bottom:10px"><span>新记录第一次复习</span>
         <input type="date" v-model="firstReview" />
       </label>
       <div class="subj-tabs">
@@ -636,38 +660,22 @@ onMounted(load)
             <span v-if="!tagsFor(u.id).length" class="dim">无考点</span>
           </div>
           <div class="task-row" v-for="t in (tasksBySubject[sid] || []).filter(x => x.unit_id === u.id)" :key="t.id">
-            <label class="fld grow"><span>标题</span><input v-model="t.title" /></label>
-            <label class="fld w84"><span>动作</span><input v-model="t.action" /></label>
-            <label class="fld w64"><span>阳光</span><input v-model.number="t.sunshine" type="number" /></label>
-            <div class="ops">
-              <button class="ok" @click="saveTask(t)">保存</button>
-              <button class="del" @click="delTask(t.id)">删</button>
-            </div>
+            <template v-if="t.custom">
+              <label class="fld grow"><span>家长任务名称</span><input v-model="t.title" /></label>
+              <label class="fld w84"><span>怎么做</span><input v-model="t.action" /></label>
+              <label class="fld w64"><span>阳光</span><input v-model.number="t.sunshine" type="number" min="0" /></label>
+              <div class="ops">
+                <button class="ok" @click="saveTask(t)">保存</button>
+                <button class="del" @click="delTask(t.id)">删</button>
+              </div>
+            </template>
+            <template v-else>
+              <span class="task-readonly-title">{{ t.title }}</span>
+              <span class="badge">{{ t.action }}</span>
+              <span class="dim">+{{ t.sunshine }} 阳光 · 教材任务</span>
+            </template>
           </div>
         </div>
-      </div>
-      <div class="add-box">
-        <div class="add-title">新增单元任务（针对当前学期）</div>
-        <div class="frm-row">
-          <label class="fld grow"><span>哪一科</span>
-            <select v-model="newTask.subject_id" @change="pickSubject">
-              <option value="" disabled>先选科</option>
-              <option v-for="s in subjects" :key="s.id" :value="s.id">{{ s.name }}</option>
-            </select>
-          </label>
-          <label class="fld grow"><span>哪一单元</span>
-            <select v-model="newTask.unit_id">
-              <option value="" disabled>{{ newTask.subject_id ? '选单元' : '先选科' }}</option>
-              <option v-for="u in unitOptions" :key="u.id" :value="u.id">{{ u.name }}</option>
-            </select>
-          </label>
-        </div>
-        <div class="frm-row">
-          <label class="fld grow"><span>标题</span><input v-model="newTask.title" placeholder="如：背诵第3课" /></label>
-          <label class="fld w84"><span>动作</span><input v-model="newTask.action" placeholder="读 / 写 / 背" /></label>
-          <label class="fld w64"><span>阳光</span><input v-model.number="newTask.sunshine" type="number" /></label>
-        </div>
-        <button class="ok wide" @click="addTask">＋新增任务</button>
       </div>
     </section>
 
@@ -1020,6 +1028,9 @@ onMounted(load)
 .subj .unit-block:first-child { border-top: none; }
 .unit-block { padding: 10px 14px 12px; border-top: 1px solid var(--surface-2); }
 .unit-h { font-weight: 800; font-size: 13px; margin-bottom: 6px; }
+.task-readonly-title { flex: 1; min-width: 160px; color: var(--ink-2); font-size: 13px; }
+.task-add-box { margin: 0 0 18px; }
+.form-help { margin: -4px 0 10px; color: var(--ink-3); font-size: 11px; }
 .tag-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
 .tag { border: 1px solid var(--line); background: var(--surface); border-radius: 14px; padding: 3px 10px; font-size: 12px; cursor: pointer; font-family: inherit; color: var(--ink-2); }
 .tag.on { background: var(--warm); border-color: var(--accent); color: var(--accent-ink); font-weight: 800; }
