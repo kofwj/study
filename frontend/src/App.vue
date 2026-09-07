@@ -332,17 +332,18 @@ const bySubject = computed(() => {
   }
   return m
 })
-const recommend = computed(() => {
-  // 今天该干啥：跳绳（未打）+ 语数英「当前单元」各 2 条
-  // 当前单元 = 该科第一个还有未完成任务的单元；做完自动滚到下一单元
-  const out = data.daily.filter(d => !d.done_today)
-  for (const subj of ['语文', '数学', '英语']) {
-    const units = (bySubject.value[subj] && bySubject.value[subj].units) || []
-    const cur = units.find(u => u.tasks.some(t => !t.done && !t.past))
-    if (cur) out.push(...cur.tasks.filter(t => !t.done && !t.past).slice(0, 2))
+const dailyTodo = computed(() => data.daily.filter(d => !d.done_today))
+const studyNext = computed(() => {
+  const out = []
+  for (const subject of orderedSubjects.value) {
+    const units = bySubject.value[subject.id]?.units || []
+    const current = units.find(u => u.tasks.some(t => !t.done && !t.past && !t.locked))
+    const task = current?.tasks.find(t => !t.done && !t.past && !t.locked)
+    if (task) out.push({ ...task, unit_name: current.name })
   }
   return out
 })
+const todayRemaining = computed(() => reviewDue.value.length + dailyTodo.value.length + studyNext.value.length)
 const subjectProgress = computed(() => {
   const m = {}
   for (const s of data.subjects) m[s.id] = { done: 0, total: 0 }
@@ -470,44 +471,74 @@ function reloadApp() {
       <!-- 右栏 -->
       <main class="main">
         <template v-if="activeTab === '今日推荐'">
-          <h1><Sparkles class="ico" :size="20" /> 今日推荐</h1>
-          <p class="hint">完成一项 +5 <Sun class="ico sun" :size="13" />，取消勾选会扣回哦。</p>
-          <section v-if="reviewDue.length" class="review-today">
-            <div class="review-today-head">
+          <h1><Sparkles class="ico" :size="20" /> 今天怎么做</h1>
+          <p class="hint">按顺序做就行。每完成一项，点圆圈领取阳光。</p>
+          <div v-if="todayRemaining" class="today-summary">
+            <strong>今天还有 {{ todayRemaining }} 项</strong>
+            <span v-if="reviewDue.length">复习 {{ reviewDue.length }} 项</span>
+            <span v-if="dailyTodo.length">打卡 {{ dailyTodo.length }} 项</span>
+            <span v-if="studyNext.length">学习 {{ studyNext.length }} 项</span>
+          </div>
+
+          <section v-if="reviewDue.length" class="plan-section review-today">
+            <div class="plan-head">
+              <span class="plan-step">先做</span>
               <div>
-                <h2><BookOpen class="ico" :size="18" /> 今天要复习 {{ reviewDue.length }} 项</h2>
-                <p>照练习册各做一遍，做完告诉家长。家长会帮你安排下次复习。</p>
+                <h2><BookOpen class="ico" :size="18" /> 到期复习</h2>
+                <p>每项照练习册做一遍，再告诉家长结果。</p>
               </div>
-              <span class="review-count">{{ reviewDue.length }} 项</span>
             </div>
-            <div class="grid">
-              <div v-for="x in reviewDue" :key="x.id" class="card review-card enter">
+            <div class="plan-list">
+              <article v-for="x in reviewDue" :key="x.id" class="plan-row review-card enter">
+                <div class="plan-row-main">
+                  <span class="plan-subject">{{ x.subject_id }}</span>
+                  <div><strong>{{ x.tag_name }}</strong><small>{{ x.unit_name }} · 第 {{ (x.interval_idx || 0) + 1 }} 次</small></div>
+                </div>
+                <span class="plan-state">做完告诉家长</span>
+              </article>
+            </div>
+          </section>
+
+          <section v-if="dailyTodo.length" class="plan-section">
+            <div class="plan-head">
+              <span class="plan-step">然后</span>
+              <div><h2><RefreshCw class="ico" :size="18" /> 每日打卡</h2><p>把今天要坚持的事做完。</p></div>
+            </div>
+            <div class="grid plan-grid">
+              <div v-for="d in dailyTodo" :key="d.id" class="card enter">
+                <button class="circle" @click="openDaily(d)">○</button>
                 <div class="card-body">
-                  <div class="review-card-meta"><span>{{ x.subject_id }} · {{ x.unit_name }}</span><span class="wp-round">第 {{ (x.interval_idx || 0) + 1 }} 次</span></div>
-                  <div class="card-title">{{ x.tag_name }}</div>
-                  <div class="card-detail">做一遍，再让家长帮你看看。</div>
+                  <div class="card-title">{{ d.name }}</div>
+                  <div v-if="d.note" class="card-detail">{{ d.note }}</div>
+                  <template v-if="fitnessBar(d)">
+                    <div class="fit-bar"><i :style="{ width: fitnessBar(d).pct + '%' }"></i><em>{{ fitnessBar(d).status }}</em></div>
+                    <div class="fit-std">{{ fitnessBar(d).lines }}</div>
+                  </template>
+                  <div class="plus">{{ d.subject_id || '体育' }} · +{{ d.sunshine || 5 }} <Sun class="ico sun" :size="12" /></div>
+                </div>
+                <button class="trend" @click="openChart(d)" title="看趋势"><TrendingUp :size="15" /></button>
+              </div>
+            </div>
+          </section>
+
+          <section v-if="studyNext.length" class="plan-section">
+            <div class="plan-head">
+              <span class="plan-step">最后</span>
+              <div><h2><BookOpen class="ico" :size="18" /> 本课下一步</h2><p>每科先做一项，做完后会自动出现下一项。</p></div>
+            </div>
+            <div class="grid plan-grid">
+              <div v-for="t in studyNext" :key="t.id" class="card enter">
+                <button class="circle" @click="toggleTask(t, $event)">○</button>
+                <div class="card-body">
+                  <div class="plan-task-meta">{{ t.subject_id }} · {{ t.unit_name }}</div>
+                  <div class="card-title">{{ t.title }}</div>
+                  <div v-if="t.detail" class="card-detail">{{ t.detail }}</div>
+                  <div class="plus">+{{ t.sunshine }} <Sun class="ico sun" :size="12" /></div>
                 </div>
               </div>
             </div>
           </section>
-          <div v-if="!recommend.length && !reviewDue.length" class="empty"><PartyPopper class="ico" :size="16" /> 今天都完成啦，太棒了！</div>
-          <div class="grid">
-            <div v-for="t in recommend" :key="t.id || t.name" class="card enter" :class="{ done: t.done }">
-              <button v-if="t.frequency === 'daily'" class="circle" @click="openDaily(t)">○</button>
-              <button v-else class="circle" :class="{ ok: t.done }" @click="toggleTask(t, $event)"><Check v-if="t.done" :size="15" /></button>
-              <div class="card-body">
-                <div class="card-title">{{ t.frequency === 'daily' ? t.name : t.title }}</div>
-                <div v-if="t.note" class="card-detail">{{ t.note }}</div>
-                <div v-if="t.detail" class="card-detail">{{ t.detail }}</div>
-                <template v-if="t.frequency === 'daily' && fitnessBar(t)">
-                  <div class="fit-bar"><i :style="{ width: fitnessBar(t).pct + '%' }"></i><em>{{ fitnessBar(t).status }}</em></div>
-                  <div class="fit-std">{{ fitnessBar(t).lines }}</div>
-                </template>
-                <div class="plus">{{ t.subject_id || '体育' }} · +{{ t.sunshine || 5 }} <Sun class="ico sun" :size="12" /></div>
-              </div>
-              <button v-if="t.frequency === 'daily'" class="trend" @click="openChart(t)" title="看趋势"><TrendingUp :size="15" /></button>
-            </div>
-          </div>
+          <div v-if="!todayRemaining" class="empty"><PartyPopper class="ico" :size="16" /> 今天安排的事都完成了。</div>
         </template>
 
         <template v-else>
@@ -823,11 +854,24 @@ body {
 .unit-score.gray { background: var(--surface-2); color: var(--ink-3); }
 .unit-weak, .unit-review-status { font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 800; background: var(--warm); color: var(--accent-ink); }
 .unit-review-status { background: var(--accent); color: var(--accent-ink); }
-.review-today { margin: 0 0 22px; padding: 14px; border: 1px solid var(--accent); border-radius: var(--r-card); background: var(--warm-2); }
-.review-today-head { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
-.review-today h2 { margin: 0; font-size: 16px; color: var(--ink); display: flex; align-items: center; gap: 6px; }
-.review-today p { margin: 5px 0 0; color: var(--ink-2); font-size: 12px; line-height: 1.5; }
-.review-count { flex: none; color: var(--accent-ink); font-weight: 800; font-size: 13px; }
+.today-summary { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0 0 18px; padding: 12px 14px; border-left: 4px solid var(--brand); background: var(--surface-2); color: var(--ink-2); }
+.today-summary strong { color: var(--ink); }
+.today-summary span { font-size: 12px; padding-left: 8px; border-left: 1px solid var(--line); }
+.plan-section { margin: 0 0 24px; }
+.plan-section.review-today { padding: 14px; border: 1px solid var(--accent); border-radius: var(--r-card); background: var(--warm-2); }
+.plan-head { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 10px; }
+.plan-step { flex: none; padding: 3px 7px; border-radius: 5px; background: var(--brand); color: #fff; font-size: 11px; font-weight: 800; }
+.plan-head h2 { margin: 0; font-size: 16px; color: var(--ink); display: flex; align-items: center; gap: 6px; }
+.plan-head p { margin: 4px 0 0; color: var(--ink-2); font-size: 12px; line-height: 1.5; }
+.plan-list { display: flex; flex-direction: column; gap: 6px; }
+.plan-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
+.plan-row-main { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.plan-row-main strong { display: block; font-size: 13px; color: var(--ink); }
+.plan-row-main small { display: block; margin-top: 3px; color: var(--ink-3); font-size: 11px; }
+.plan-subject { flex: none; color: var(--brand-deep); font-size: 11px; font-weight: 800; }
+.plan-state { flex: none; color: var(--accent-ink); font-size: 11px; font-weight: 700; }
+.plan-grid { grid-template-columns: repeat(3, 1fr); }
+.plan-task-meta { margin-bottom: 4px; color: var(--brand-deep); font-size: 11px; font-weight: 700; }
 .review-card { background: var(--surface); }
 .review-card-meta { display: flex; justify-content: space-between; gap: 8px; align-items: center; margin-bottom: 5px; color: var(--ink-3); font-size: 11px; }
 .review-card-meta .wp-round { margin-right: 0; }
@@ -980,9 +1024,11 @@ body {
 @keyframes fall { to { transform: translateY(110vh) rotate(720deg); opacity: 0; } }
 
 @media (max-width: 900px) {
-  .review-today { padding: 12px; }
-  .review-today-head { gap: 8px; }
-  .review-today h2 { font-size: 15px; }
+  .plan-section.review-today { padding: 12px; }
+  .plan-grid { grid-template-columns: 1fr; }
+  .plan-row { align-items: flex-start; flex-direction: column; gap: 5px; }
+  .plan-state { padding-left: 38px; }
+  .plan-head h2 { font-size: 15px; }
   .review-card-meta { align-items: flex-start; flex-direction: column; gap: 4px; }
   .desk { padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
   .topbar {
