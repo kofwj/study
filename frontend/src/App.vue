@@ -419,6 +419,7 @@ function reloadApp() {
   </div>
   <div v-else-if="authed" class="desk">
     <button v-if="updateReady" type="button" class="update-bar" @click="reloadApp"><RefreshCw class="ico" :size="15" /> 有新版本，点我刷新</button>
+    <div v-if="toast" class="toast-note global-toast" role="status">{{ toast }}</div>
     <!-- 蓝顶栏 -->
     <header class="topbar">
       <div class="who">
@@ -450,13 +451,6 @@ function reloadApp() {
       </div>
     </header>
 
-    <div class="cta-row">
-      <button class="cta check" :disabled="data.today_checkin" @click="checkin">
-        <CalendarDays class="ico" :size="16" /> {{ data.today_checkin ? '今日已签到' : '每日签到' }}
-      </button>
-      <div v-if="toast" class="cta toast-bar">{{ toast }}</div>
-    </div>
-
     <div class="body">
       <!-- 左栏 -->
       <aside class="side">
@@ -475,11 +469,19 @@ function reloadApp() {
         <template v-if="activeTab === '今日推荐'">
           <h1><Sparkles class="ico" :size="20" /> 今天怎么做</h1>
           <p class="hint">按顺序做就行。每完成一项，点圆圈领取阳光。</p>
-          <div v-if="todayRemaining" class="today-summary">
-            <strong>今天还有 {{ todayRemaining }} 项</strong>
-            <span v-if="reviewDue.length">复习 {{ reviewDue.length }} 项</span>
-            <span v-if="dailyTodo.length">打卡 {{ dailyTodo.length }} 项</span>
-            <span v-if="studyNext.length">学习 {{ studyNext.length }} 项</span>
+          <div class="today-summary">
+            <div class="today-progress">
+              <strong v-if="todayRemaining">今天还有 {{ todayRemaining }} 项</strong>
+              <strong v-else>今天安排的事都完成了</strong>
+              <div class="today-breakdown">
+                <span v-if="reviewDue.length">复习 {{ reviewDue.length }} 项</span>
+                <span v-if="dailyTodo.length">打卡 {{ dailyTodo.length }} 项</span>
+                <span v-if="studyNext.length">学习 {{ studyNext.length }} 项</span>
+              </div>
+            </div>
+            <button class="cta check" :disabled="data.today_checkin" @click="checkin">
+              <CalendarDays class="ico" :size="16" /> {{ data.today_checkin ? '今日已签到' : '每日签到' }}
+            </button>
           </div>
 
           <section v-if="reviewDue.length" class="plan-section review-today">
@@ -830,7 +832,6 @@ body {
 .next-bar { height: 6px; background: rgba(255,255,255,.35); border-radius: 4px; margin-top: 6px; overflow: hidden; }
 .next-bar i { display: block; height: 100%; background: var(--accent); }
 
-.cta-row { background: var(--brand); padding: 0 22px 18px; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
 .cta {
   border: none; border-radius: 22px; padding: 11px 22px; font-weight: 800; font-size: 15px; cursor: pointer;
 }
@@ -841,7 +842,15 @@ body {
 .cta.check:not(:disabled):hover { box-shadow: 0 6px 0 rgba(122,77,3,.18); }
 .cta.check:not(:disabled):active { box-shadow: 0 2px 0 rgba(122,77,3,.18); }
 .cta.check:disabled { background: var(--warm); color: var(--ink-3); cursor: default; }
-.toast-bar { background: var(--accent); color: #fff; }
+.toast-note {
+  background: var(--ink); color: #fff; border-radius: 999px; padding: 9px 16px;
+  font-size: 13px; font-weight: 700; box-shadow: var(--sh-2);
+}
+.global-toast {
+  position: fixed; left: 50%; bottom: calc(78px + 16px + env(safe-area-inset-bottom));
+  z-index: 35; max-width: min(90vw, 520px); transform: translateX(-50%);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; animation: enter .25s var(--ease) both;
+}
 
 .body { display: flex; gap: 18px; padding: 18px 22px; align-items: flex-start; }
 .side {
@@ -877,12 +886,14 @@ body {
 .unit-weak, .unit-review-status { font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 800; background: var(--warm); color: var(--accent-ink); }
 .unit-review-status { background: var(--accent); color: var(--accent-ink); }
 .today-summary {
-  display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0 0 18px;
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin: 0 0 18px;
   padding: 12px 14px; border: 2px dashed var(--accent); border-radius: 16px;
   background: var(--warm-2); color: var(--ink-2);
 }
-.today-summary strong { color: var(--ink); }
-.today-summary span { font-size: 12px; padding-left: 8px; border-left: 1px solid var(--line); }
+.today-progress { flex: 1; min-width: 180px; }
+.today-summary strong { display: block; color: var(--ink); }
+.today-breakdown { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 3px; }
+.today-breakdown span { font-size: 12px; padding-left: 8px; border-left: 1px solid var(--line); }
 .plan-section { margin: 0 0 24px; }
 .plan-section.review-today { padding: 14px; border: 1px solid var(--accent); border-radius: var(--r-card); background: var(--warm-2); }
 .plan-head { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 10px; }
@@ -1096,9 +1107,10 @@ body {
   .pills { width: 100%; justify-content: flex-start; flex-wrap: wrap; gap: 8px; }
   .pill { padding: 6px 10px; font-size: 13px; }
   .next { margin-left: 0; text-align: left; min-width: 0; width: 100%; font-size: 12px; }
-  .cta-row { padding: 0 14px 12px; }
   .cta { width: 100%; padding: 12px; font-size: 15px; }
-  .toast-bar { width: 100%; text-align: center; }
+  .today-summary { align-items: stretch; gap: 10px; }
+  .today-progress { min-width: 100%; }
+  .global-toast { bottom: calc(72px + 12px + env(safe-area-inset-bottom)); }
 
   .body { flex-direction: column; gap: 0; padding: 0; }
   .side {
