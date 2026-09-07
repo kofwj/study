@@ -30,7 +30,7 @@ const SECTIONS = [
     { id: 'approve', icon: ClipboardCheck, label: '兑换审批' },
   ] },
   { group: '学习', items: [
-    { id: 'unit-task', icon: BookOpen, label: '单元任务' },
+    { id: 'unit-task', icon: BookOpen, label: '任务与考点' },
     { id: 'daily', icon: RefreshCw, label: '每日任务' },
     { id: 'cursor', icon: MapPinned, label: '已学到' },
     { id: 'test', icon: FileText, label: '单元测试' },
@@ -52,6 +52,7 @@ const tests = ref([])
 const newTest = reactive({ subject_id: '', unit_id: '', score: '', note: '' })
 const catalog = ref({ tags: [], unit_tags: [] })
 const weakByUnit = ref({})
+const weakPoints = ref([])
 const reviewDue = ref([])
 const firstReview = ref('')
 const TEST_BANDS = [[100, 30], [95, 20], [90, 15], [85, 10], [0, 5]]
@@ -104,11 +105,13 @@ async function load() {
   tests.value = ts
   insights.value = ig
   catalog.value = cat && cat.tags ? cat : { tags: [], unit_tags: [] }
+  const openWeakPoints = wps || []
   const wb = {}
-  for (const x of (wps || [])) {
+  for (const x of openWeakPoints) {
     if (!wb[x.unit_id]) wb[x.unit_id] = {}
     wb[x.unit_id][x.tag_id] = true
   }
+  weakPoints.value = openWeakPoints
   weakByUnit.value = wb
   reviewDue.value = rv || []
 }
@@ -204,6 +207,13 @@ function tagsFor(uid) {
   return (catalog.value.unit_tags || []).filter(x => x.unit_id === uid)
 }
 function tagOn(uid, tid) { return !!(weakByUnit.value[uid] && weakByUnit.value[uid][tid]) }
+function weakTagCount(uid) { return Object.keys(weakByUnit.value[uid] || {}).length }
+function weakPointTiming(x) {
+  if (!x.review_due_at) return '等待安排'
+  if (x.review_due_at <= new Date().toISOString().slice(0, 10)) return '今天要复习'
+  const [, month, day] = x.review_due_at.split('-')
+  return `下次：${Number(month)}月${Number(day)}日`
+}
 async function toggleTag(uid, tid) {
   const prev = { ...(weakByUnit.value[uid] || {}) }
   const cur = { ...prev }
@@ -422,6 +432,22 @@ onMounted(load)
         </div>
       </div>
       <p v-if="reviewDue.length" class="review-help">“会了”会拉长间隔；“还不熟”会缩短到更近；“已经掌握”会结束提醒。</p>
+      <div v-if="weakPoints.length" class="review-recorded">
+        <h4>已记录的薄弱考点</h4>
+        <p>这里是已经记下、但还没结束提醒的考点。到日期后会自动出现在上面的复习清单里。</p>
+        <div v-for="x in weakPoints" :key="x.id" class="review-recorded-row">
+          <div>
+            <strong>{{ x.tag_name }}</strong>
+            <span>{{ x.subject_id }} · {{ x.unit_name }}</span>
+          </div>
+          <em :class="{ due: reviewDue.some(r => r.id === x.id) }">{{ weakPointTiming(x) }}</em>
+        </div>
+      </div>
+      <div v-else class="review-how">
+        <strong>还没有记录薄弱考点</strong>
+        <span>孩子哪一项没掌握时，到左侧“任务与考点”，找到对应单元，点亮考点标签即可。</span>
+        <button class="ghost-s review-link" @click="section = 'unit-task'">去记录薄弱考点 →</button>
+      </div>
     </section>
 
     <!-- 本周盯点 -->
@@ -588,8 +614,8 @@ onMounted(load)
 
     <!-- 任务 -->
     <section v-if="section === 'unit-task'" class="a-card enter">
-      <h3>单元任务</h3>
-      <p class="lead">只看当前学期。勾考点立刻记下（自动建议，请核对）。新勾的第一次复习日：</p>
+      <h3>任务与考点</h3>
+      <p class="lead">先找到孩子没掌握的单元，再点亮对应考点。点亮=记录，取消点亮=取消记录；记录后会按日期进入复习清单。</p>
       <label class="fld" style="max-width:220px;margin-bottom:10px"><span>第一次复习</span>
         <input type="date" v-model="firstReview" />
       </label>
@@ -600,11 +626,13 @@ onMounted(load)
       </div>
       <div v-for="(arr, sid) in unitsBySubject" :key="sid" class="subj" v-show="activeSubject === sid">
         <div v-for="u in arr" :key="u.id" class="unit-block">
-          <div class="unit-h">{{ u.name }}</div>
+          <div class="unit-h">{{ u.name }} <span v-if="weakTagCount(u.id)" class="unit-wp-count">已记录 {{ weakTagCount(u.id) }} 项</span></div>
           <div class="tag-row">
             <button v-for="tg in tagsFor(u.id)" :key="tg.tag_id" type="button"
               :class="['tag', { on: tagOn(u.id, tg.tag_id), auto: tg.auto }]"
-              @click="toggleTag(u.id, tg.tag_id)">{{ tagName(tg.tag_id) }}</button>
+              :aria-pressed="tagOn(u.id, tg.tag_id)"
+              :title="tagOn(u.id, tg.tag_id) ? '已记录，点击取消' : '点击记录这个薄弱考点'"
+              @click="toggleTag(u.id, tg.tag_id)">{{ tagOn(u.id, tg.tag_id) ? '✓ ' : '' }}{{ tagName(tg.tag_id) }}</button>
             <span v-if="!tagsFor(u.id).length" class="dim">无考点</span>
           </div>
           <div class="task-row" v-for="t in (tasksBySubject[sid] || []).filter(x => x.unit_id === u.id)" :key="t.id">
@@ -901,6 +929,19 @@ onMounted(load)
 .review-actions { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 10px; }
 .review-actions button { font-size: 12px; }
 .review-help { margin: 12px 0 0; color: var(--ink-3); font-size: 11px; line-height: 1.5; }
+.review-recorded { margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--line); }
+.review-recorded h4 { margin: 0; font-size: 14px; color: var(--ink); }
+.review-recorded > p { margin: 4px 0 10px; color: var(--ink-3); font-size: 11px; line-height: 1.5; }
+.review-recorded-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 0; border-top: 1px solid var(--surface-2); }
+.review-recorded-row > div { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.review-recorded-row strong { font-size: 13px; color: var(--ink); }
+.review-recorded-row span { color: var(--ink-3); font-size: 11px; }
+.review-recorded-row em { flex: none; font-style: normal; color: var(--ink-3); font-size: 11px; }
+.review-recorded-row em.due { color: var(--danger); font-weight: 800; }
+.review-how { display: flex; flex-direction: column; gap: 5px; margin-top: 18px; padding: 12px; background: var(--surface-2); border-radius: 10px; color: var(--ink-2); }
+.review-how span { color: var(--ink-3); font-size: 12px; line-height: 1.5; }
+.review-link { width: auto; align-self: flex-start; margin-top: 2px; padding: 0; }
+.unit-wp-count { margin-left: 6px; color: var(--accent-ink); font-size: 11px; font-weight: 700; }
 @media (max-width: 560px) {
   .review-steps { align-items: flex-start; flex-direction: column; gap: 5px; }
   .review-steps i { display: none; }
@@ -981,7 +1022,8 @@ onMounted(load)
 .unit-h { font-weight: 800; font-size: 13px; margin-bottom: 6px; }
 .tag-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
 .tag { border: 1px solid var(--line); background: var(--surface); border-radius: 14px; padding: 3px 10px; font-size: 12px; cursor: pointer; font-family: inherit; color: var(--ink-2); }
-.tag.on { background: var(--warm); border-color: var(--warm); color: var(--accent-ink); font-weight: 800; }
+.tag.on { background: var(--warm); border-color: var(--accent); color: var(--accent-ink); font-weight: 800; }
+.tag:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 .tag.auto:not(.on) { opacity: .75; }
 .task-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 8px 14px; border-top: 1px solid var(--surface-2); }
 .task-row .badge { flex: none; }

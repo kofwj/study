@@ -179,13 +179,13 @@
       "id": "cn5-jw",
       "subject_id": "语文",
       "kind": "单元考点",
-      "name": "借物抒情"
+      "name": "借助事物体会感情"
     },
     {
       "id": "cn5-gj",
       "subject_id": "语文",
       "kind": "单元考点",
-      "name": "抓关键语句体会感情"
+      "name": "从关键语句体会感情"
     },
     {
       "id": "cn5-gk",
@@ -194,46 +194,58 @@
       "name": "概括主要内容"
     },
     {
+      "id": "cn5-xxw",
+      "subject_id": "语文",
+      "kind": "单元考点",
+      "name": "写心爱之物（写清特点）"
+    },
+    {
       "id": "cn5-ysd",
       "subject_id": "语文",
       "kind": "单元考点",
-      "name": "提高阅读速度"
+      "name": "带着问题快速阅读"
     },
     {
       "id": "cn5-rw",
       "subject_id": "语文",
       "kind": "单元考点",
-      "name": "结合事例写人物"
+      "name": "抓住特点写人物"
     },
     {
       "id": "cn5-mj",
       "subject_id": "语文",
       "kind": "单元考点",
-      "name": "民间故事特点"
+      "name": "讲清民间故事"
     },
     {
       "id": "cn5-fs",
       "subject_id": "语文",
       "kind": "单元考点",
-      "name": "创造性复述"
+      "name": "创造性复述故事"
+    },
+    {
+      "id": "cn5-gsx",
+      "subject_id": "语文",
+      "kind": "单元考点",
+      "name": "故事新编（保留主线）"
     },
     {
       "id": "cn5-zl",
       "subject_id": "语文",
       "kind": "单元考点",
-      "name": "结合资料体会感情"
+      "name": "结合资料体会爱国情感"
     },
     {
       "id": "cn5-tg",
       "subject_id": "语文",
       "kind": "单元考点",
-      "name": "列提纲分段落"
+      "name": "列提纲写想象作文"
     },
     {
       "id": "cn5-sm",
       "subject_id": "语文",
       "kind": "单元考点",
-      "name": "了解说明方法"
+      "name": "辨认说明方法"
     },
     {
       "id": "cn5-smw",
@@ -245,25 +257,25 @@
       "id": "cn5-xj",
       "subject_id": "语文",
       "kind": "单元考点",
-      "name": "体会场景细节描写"
+      "name": "从场景细节体会父母之爱"
     },
     {
       "id": "cn5-bd",
       "subject_id": "语文",
       "kind": "单元考点",
-      "name": "表达自己看法"
+      "name": "写信表达真情实感"
     },
     {
       "id": "cn5-dj",
       "subject_id": "语文",
       "kind": "单元考点",
-      "name": "体会静态动态描写"
+      "name": "体会静态和动态描写"
     },
     {
       "id": "cn5-sx",
       "subject_id": "语文",
       "kind": "单元考点",
-      "name": "按顺序写景"
+      "name": "按顺序描写景物"
     },
     {
       "id": "cn5-xl",
@@ -275,37 +287,49 @@
       "id": "cn5-fd",
       "subject_id": "语文",
       "kind": "单元考点",
-      "name": "分段表述突出重点"
+      "name": "推荐一本书说明理由"
     },
     {
       "id": "ma5-py",
       "subject_id": "数学",
       "kind": "单元考点",
-      "name": "平移"
+      "name": "按方向和距离平移"
     },
     {
       "id": "ma5-xz",
       "subject_id": "数学",
       "kind": "单元考点",
-      "name": "旋转"
+      "name": "按中心和角度旋转"
     },
     {
       "id": "ma5-dc",
       "subject_id": "数学",
       "kind": "单元考点",
-      "name": "轴对称"
+      "name": "补全轴对称图形"
     },
     {
       "id": "ma5-fbtj",
       "subject_id": "数学",
       "kind": "单元考点",
-      "name": "复式统计表"
+      "name": "读填复式统计表"
     },
     {
       "id": "ma5-fbtu",
       "subject_id": "数学",
       "kind": "单元考点",
-      "name": "复式条形统计图"
+      "name": "读画复式条形统计图"
+    },
+    {
+      "id": "ma5-fbfx",
+      "subject_id": "数学",
+      "kind": "单元考点",
+      "name": "从图表比较数据"
+    },
+    {
+      "id": "ma5-md",
+      "subject_id": "数学",
+      "kind": "单元考点",
+      "name": "面积单位换算"
     },
     {
       "id": "ma5-px",
@@ -326,34 +350,46 @@
       "name": "梯形面积"
     },
     {
+      "id": "ma5-zhmj",
+      "subject_id": "数学",
+      "kind": "单元考点",
+      "name": "组合图形面积"
+    },
+    {
       "id": "ma5-xsc",
       "subject_id": "数学",
       "kind": "单元考点",
-      "name": "小数乘法"
+      "name": "小数乘法（确定小数位数）"
     },
     {
       "id": "ma5-xsch",
       "subject_id": "数学",
       "kind": "单元考点",
-      "name": "小数除法"
+      "name": "小数除法（确定商的小数点）"
+    },
+    {
+      "id": "ma5-xy",
+      "subject_id": "数学",
+      "kind": "单元考点",
+      "name": "用小数乘除解决问题"
     },
     {
       "id": "ma5-kn",
       "subject_id": "数学",
       "kind": "单元考点",
-      "name": "确定与不确定事件"
+      "name": "用一定、可能、不可能描述"
     },
     {
       "id": "ma5-kndx",
       "subject_id": "数学",
       "kind": "单元考点",
-      "name": "可能性大小"
+      "name": "判断可能性大小"
     },
     {
       "id": "ma5-ys",
       "subject_id": "数学",
       "kind": "单元考点",
-      "name": "因数与倍数"
+      "name": "找因数和倍数"
     },
     {
       "id": "ma5-bstz",
@@ -365,43 +401,61 @@
       "id": "ma5-zh",
       "subject_id": "数学",
       "kind": "单元考点",
-      "name": "质数与合数"
+      "name": "判断质数和合数"
+    },
+    {
+      "id": "ma5-jou",
+      "subject_id": "数学",
+      "kind": "单元考点",
+      "name": "判断奇数和偶数"
     },
     {
       "id": "ma5-zm",
       "subject_id": "数学",
       "kind": "单元考点",
-      "name": "用字母表示数"
+      "name": "用字母表示数量关系"
     },
     {
       "id": "ma5-zmsz",
       "subject_id": "数学",
       "kind": "单元考点",
-      "name": "含字母式子的化简"
+      "name": "化简含字母的式子"
+    },
+    {
+      "id": "ma5-drc",
+      "subject_id": "数学",
+      "kind": "单元考点",
+      "name": "代入字母求值"
     },
     {
       "id": "ma5-gc",
       "subject_id": "数学",
       "kind": "单元考点",
-      "name": "从不同方向观察"
+      "name": "从不同方向观察物体"
     },
     {
       "id": "ma5-st",
       "subject_id": "数学",
       "kind": "单元考点",
-      "name": "三视图与空间想象"
+      "name": "根据视图摆小正方体"
     },
     {
       "id": "en5-u1",
       "subject_id": "英语",
       "kind": "单元考点",
-      "name": "一般现在时·三单"
+      "name": "三单动词变化"
+    },
+    {
+      "id": "en5-u1phon",
+      "subject_id": "英语",
+      "kind": "单元考点",
+      "name": "bl 拼读"
     },
     {
       "id": "en5-u1hab",
       "subject_id": "英语",
       "kind": "单元考点",
-      "name": "谈日常习惯"
+      "name": "用英语说日常习惯"
     },
     {
       "id": "en5-u2",
@@ -410,46 +464,142 @@
       "name": "表达感受"
     },
     {
+      "id": "en5-u2phon",
+      "subject_id": "英语",
+      "kind": "单元考点",
+      "name": "cl 拼读"
+    },
+    {
+      "id": "en5-u2gram",
+      "subject_id": "英语",
+      "kind": "单元考点",
+      "name": "Does he/she like ...?"
+    },
+    {
       "id": "en5-u3",
       "subject_id": "英语",
       "kind": "单元考点",
-      "name": "like doing 谈爱好"
+      "name": "用 like doing 谈爱好"
+    },
+    {
+      "id": "en5-u3phon",
+      "subject_id": "英语",
+      "kind": "单元考点",
+      "name": "br 拼读"
+    },
+    {
+      "id": "en5-u3gram",
+      "subject_id": "英语",
+      "kind": "单元考点",
+      "name": "What does he/she like doing?"
     },
     {
       "id": "en5-u4",
       "subject_id": "英语",
       "kind": "单元考点",
-      "name": "谈安全规则"
+      "name": "用英语说安全规则"
+    },
+    {
+      "id": "en5-u4phon",
+      "subject_id": "英语",
+      "kind": "单元考点",
+      "name": "gr 拼读"
+    },
+    {
+      "id": "en5-u4gram",
+      "subject_id": "英语",
+      "kind": "单元考点",
+      "name": "should / shouldn't 提建议"
     },
     {
       "id": "en5-u5",
       "subject_id": "英语",
       "kind": "单元考点",
-      "name": "谈周末活动"
+      "name": "用英语说周末活动"
+    },
+    {
+      "id": "en5-u5phon",
+      "subject_id": "英语",
+      "kind": "单元考点",
+      "name": "tr 拼读"
+    },
+    {
+      "id": "en5-u5gram",
+      "subject_id": "英语",
+      "kind": "单元考点",
+      "name": "频率副词说周末活动"
     },
     {
       "id": "en5-u6",
       "subject_id": "英语",
       "kind": "单元考点",
-      "name": "谈与人相处"
+      "name": "用英语谈相处"
+    },
+    {
+      "id": "en5-u6phon",
+      "subject_id": "英语",
+      "kind": "单元考点",
+      "name": "dr 拼读"
+    },
+    {
+      "id": "en5-u6gram",
+      "subject_id": "英语",
+      "kind": "单元考点",
+      "name": "Why don't ...? 提建议"
     },
     {
       "id": "en5-u7",
       "subject_id": "英语",
       "kind": "单元考点",
-      "name": "购物用语"
+      "name": "用英语购物"
+    },
+    {
+      "id": "en5-u7phon",
+      "subject_id": "英语",
+      "kind": "单元考点",
+      "name": "st / sk / sp 拼读"
+    },
+    {
+      "id": "en5-u7gram",
+      "subject_id": "英语",
+      "kind": "单元考点",
+      "name": "How much is/are ...? 问价"
     },
     {
       "id": "en5-u8",
       "subject_id": "英语",
       "kind": "单元考点",
-      "name": "谈节日"
+      "name": "用英语谈节日"
+    },
+    {
+      "id": "en5-u8phon",
+      "subject_id": "英语",
+      "kind": "单元考点",
+      "name": "ing 拼读"
+    },
+    {
+      "id": "en5-u8gram",
+      "subject_id": "英语",
+      "kind": "单元考点",
+      "name": "in / on / at 说时间"
     },
     {
       "id": "en5-pjt",
       "subject_id": "英语",
       "kind": "单元考点",
-      "name": "综合运用"
+      "name": "完成综合项目"
+    },
+    {
+      "id": "en5-p1",
+      "subject_id": "英语",
+      "kind": "单元考点",
+      "name": "完成 A happy life 海报"
+    },
+    {
+      "id": "en5-p2",
+      "subject_id": "英语",
+      "kind": "单元考点",
+      "name": "完成邀请卡"
     }
   ],
   "unit_tags": [
@@ -2317,15 +2467,16 @@
     {
       "unit_id": "g5s1-cn-1",
       "tag_ids": [
+        "cn-zi",
         "cn5-jw",
-        "cn5-gj",
-        "cn5-gk"
+        "cn5-xxw"
       ],
       "auto": false
     },
     {
       "unit_id": "g5s1-cn-2",
       "tag_ids": [
+        "cn-zi",
         "cn5-ysd",
         "cn5-rw"
       ],
@@ -2334,14 +2485,17 @@
     {
       "unit_id": "g5s1-cn-3",
       "tag_ids": [
+        "cn-zi",
         "cn5-mj",
-        "cn5-fs"
+        "cn5-fs",
+        "cn5-gsx"
       ],
       "auto": false
     },
     {
       "unit_id": "g5s1-cn-4",
       "tag_ids": [
+        "cn-recite",
         "cn5-zl",
         "cn5-tg"
       ],
@@ -2358,6 +2512,7 @@
     {
       "unit_id": "g5s1-cn-6",
       "tag_ids": [
+        "cn-zi",
         "cn5-xj",
         "cn5-bd"
       ],
@@ -2366,6 +2521,7 @@
     {
       "unit_id": "g5s1-cn-7",
       "tag_ids": [
+        "cn-recite",
         "cn5-dj",
         "cn5-sx"
       ],
@@ -2392,16 +2548,19 @@
       "unit_id": "g5s1-ma-2",
       "tag_ids": [
         "ma5-fbtj",
-        "ma5-fbtu"
+        "ma5-fbtu",
+        "ma5-fbfx"
       ],
       "auto": false
     },
     {
       "unit_id": "g5s1-ma-3",
       "tag_ids": [
+        "ma5-md",
         "ma5-px",
         "ma5-sjx",
-        "ma5-tx"
+        "ma5-tx",
+        "ma5-zhmj"
       ],
       "auto": false
     },
@@ -2409,7 +2568,8 @@
       "unit_id": "g5s1-ma-4",
       "tag_ids": [
         "ma5-xsc",
-        "ma5-xsch"
+        "ma5-xsch",
+        "ma5-xy"
       ],
       "auto": false
     },
@@ -2426,7 +2586,8 @@
       "tag_ids": [
         "ma5-ys",
         "ma5-bstz",
-        "ma5-zh"
+        "ma5-zh",
+        "ma5-jou"
       ],
       "auto": false
     },
@@ -2434,7 +2595,8 @@
       "unit_id": "g5s1-ma-7",
       "tag_ids": [
         "ma5-zm",
-        "ma5-zmsz"
+        "ma5-zmsz",
+        "ma5-drc"
       ],
       "auto": false
     },
@@ -2449,6 +2611,9 @@
     {
       "unit_id": "g5s1-en-1",
       "tag_ids": [
+        "en-word",
+        "en5-u1phon",
+        "en-listen",
         "en5-u1",
         "en5-u1hab"
       ],
@@ -2457,6 +2622,10 @@
     {
       "unit_id": "g5s1-en-2",
       "tag_ids": [
+        "en-word",
+        "en5-u2phon",
+        "en-listen",
+        "en5-u2gram",
         "en5-u2"
       ],
       "auto": false
@@ -2464,6 +2633,10 @@
     {
       "unit_id": "g5s1-en-3",
       "tag_ids": [
+        "en-word",
+        "en5-u3phon",
+        "en-listen",
+        "en5-u3gram",
         "en5-u3"
       ],
       "auto": false
@@ -2471,6 +2644,10 @@
     {
       "unit_id": "g5s1-en-4",
       "tag_ids": [
+        "en-word",
+        "en5-u4phon",
+        "en-listen",
+        "en5-u4gram",
         "en5-u4"
       ],
       "auto": false
@@ -2478,6 +2655,10 @@
     {
       "unit_id": "g5s1-en-5",
       "tag_ids": [
+        "en-word",
+        "en5-u5phon",
+        "en-listen",
+        "en5-u5gram",
         "en5-u5"
       ],
       "auto": false
@@ -2485,6 +2666,10 @@
     {
       "unit_id": "g5s1-en-6",
       "tag_ids": [
+        "en-word",
+        "en5-u6phon",
+        "en-listen",
+        "en5-u6gram",
         "en5-u6"
       ],
       "auto": false
@@ -2492,6 +2677,10 @@
     {
       "unit_id": "g5s1-en-7",
       "tag_ids": [
+        "en-word",
+        "en5-u7phon",
+        "en-listen",
+        "en5-u7gram",
         "en5-u7"
       ],
       "auto": false
@@ -2499,6 +2688,10 @@
     {
       "unit_id": "g5s1-en-8",
       "tag_ids": [
+        "en-word",
+        "en5-u8phon",
+        "en-listen",
+        "en5-u8gram",
         "en5-u8"
       ],
       "auto": false
@@ -2506,14 +2699,16 @@
     {
       "unit_id": "g5s1-en-9",
       "tag_ids": [
-        "en5-pjt"
+        "en5-pjt",
+        "en5-p1"
       ],
       "auto": false
     },
     {
       "unit_id": "g5s1-en-10",
       "tag_ids": [
-        "en5-pjt"
+        "en5-pjt",
+        "en5-p2"
       ],
       "auto": false
     }

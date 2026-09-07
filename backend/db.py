@@ -713,6 +713,11 @@ def _migrate_020(conn):
     seed_knowledge_tags(conn)
 
 
+def _migrate_021(conn):
+    # 五上语数英考点改为家长可判断的复习项目：重跑 seed，保留已有弱项记录。
+    seed_knowledge_tags(conn)
+
+
 def _migrate_017(conn):
     conn.execute("""
 CREATE TABLE IF NOT EXISTS knowledge_tags (
@@ -747,6 +752,7 @@ MIGRATIONS = (
     ("018_weak_points", _migrate_018),
     ("019_cn5_tags", _migrate_019),
     ("020_ma_en_tags", _migrate_020),
+    ("021_g5s1_review_tags", _migrate_021),
 )
 
 
