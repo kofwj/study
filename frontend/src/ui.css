@@ -81,5 +81,3 @@ button:focus-visible, input:focus-visible, select:focus-visible {
   *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
   .enter { animation: none; }
 }
-.card.wpflag { position: relative; }
-.card.wpflag:before { content: ""; position: absolute; top:  8px; left: 8px; width: 7px; height: 7px; border-radius: 7px; background: var(--accent); }

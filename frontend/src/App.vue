@@ -71,8 +71,8 @@ function unitWeak(id) {
 function dueUnit(id) {
   return reviewDue.value.some(x => x.unit_id === id)
 }
-function wpFlag(id) {
-  return !!((data.weak_tags[id] || []).length)
+function dueCount(id) {
+  return reviewDue.value.filter(x => x.unit_id === id).length
 }
 function n1(v) {
   if (v == null) return ''
@@ -472,18 +472,25 @@ function reloadApp() {
         <template v-if="activeTab === '今日推荐'">
           <h1><Sparkles class="ico" :size="20" /> 今日推荐</h1>
           <p class="hint">完成一项 +5 <Sun class="ico sun" :size="13" />，取消勾选会扣回哦。</p>
-          <div v-if="reviewDue.length" class="unit">
-            <h2><i></i> 今日复习</h2>
+          <section v-if="reviewDue.length" class="review-today">
+            <div class="review-today-head">
+              <div>
+                <h2><BookOpen class="ico" :size="18" /> 今天要复习 {{ reviewDue.length }} 项</h2>
+                <p>照练习册各做一遍，做完告诉家长。家长会帮你安排下次复习。</p>
+              </div>
+              <span class="review-count">{{ reviewDue.length }} 项</span>
+            </div>
             <div class="grid">
-              <div v-for="x in reviewDue" :key="x.id" class="card enter">
+              <div v-for="x in reviewDue" :key="x.id" class="card review-card enter">
                 <div class="card-body">
-                  <div class="card-title"><span class="wp-round">第 {{ (x.interval_idx || 0) + 1 }} 轮</span> 重练 {{ x.unit_name }} · {{ x.tag_name }}</div>
-                  <div class="card-detail">翻练习册再做一遍，让家长看过关。</div>
+                  <div class="review-card-meta"><span>{{ x.subject_id }} · {{ x.unit_name }}</span><span class="wp-round">第 {{ (x.interval_idx || 0) + 1 }} 次</span></div>
+                  <div class="card-title">{{ x.tag_name }}</div>
+                  <div class="card-detail">做一遍，再让家长帮你看看。</div>
                 </div>
               </div>
             </div>
-          </div>
-          <div v-if="!recommend.length" class="empty"><PartyPopper class="ico" :size="16" /> 今天都完成啦，太棒了！</div>
+          </section>
+          <div v-if="!recommend.length && !reviewDue.length" class="empty"><PartyPopper class="ico" :size="16" /> 今天都完成啦，太棒了！</div>
           <div class="grid">
             <div v-for="t in recommend" :key="t.id || t.name" class="card enter" :class="{ done: t.done }">
               <button v-if="t.frequency === 'daily'" class="circle" @click="openDaily(t)">○</button>
@@ -534,12 +541,12 @@ function reloadApp() {
               <span v-if="data.unit_scores[u.id]" class="unit-score" :class="scoreClass(data.unit_scores[u.id].score)">
                 <Target class="ico" :size="13" /> {{ data.unit_scores[u.id].score }} 分
               </span>
-              <span v-if="unitWeak(u.id)" class="unit-weak">再练练</span>
-              <span v-if="(data.weak_tags[u.id] || []).length" class="unit-weak">薄弱：{{ (data.weak_tags[u.id] || []).join(' / ') }}</span>
-              <span v-if="dueUnit(u.id)" class="unit-weak">该复习了</span>
+              <span v-if="dueUnit(u.id)" class="unit-review-status">今天复习 {{ dueCount(u.id) }} 项</span>
+              <span v-else-if="(data.weak_tags[u.id] || []).length" class="unit-weak">正在巩固</span>
+              <span v-else-if="unitWeak(u.id)" class="unit-weak">这单元还要练</span>
             </h2>
             <div class="grid">
-              <div v-for="t in u.tasks" :key="t.id" class="card enter" :class="{ done: t.done, past: t.past, locked: t.locked, wpflag: wpFlag(u.id) }">
+              <div v-for="t in u.tasks" :key="t.id" class="card enter" :class="{ done: t.done, past: t.past, locked: t.locked }">
                 <button class="circle" :class="{ ok: t.done || t.past }" @click="toggleTask(t, $event)"><Check v-if="t.done || t.past" :size="15" /><Lock v-else-if="t.locked" :size="14" /></button>
                 <div class="card-body">
                   <div class="card-title">{{ t.title }}</div>
@@ -812,9 +819,16 @@ body {
 .unit-score.green { background: var(--ok-bg); color: var(--ok); }
 .unit-score.blue { background: var(--surface-2); color: var(--brand-deep); }
 .unit-score.gray { background: var(--surface-2); color: var(--ink-3); }
-.unit-weak { font-size: 11px; padding:  2px 8px; border-radius: 10px; font-weight: 800; background: var(--warm); color: var(--accent-ink); }
-.wp-round { font-size: 11px; padding: 3px 7px; border-radius: 10px; background: var(--warm); color: var(--accent-ink); font-weight: 800; margin-right: 6px; }
-.card.wpflag:before { content: ''; position: absolute; top: 8px; right: 8px; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+.unit-weak, .unit-review-status { font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 800; background: var(--warm); color: var(--accent-ink); }
+.unit-review-status { background: var(--accent); color: var(--accent-ink); }
+.review-today { margin: 0 0 22px; padding: 14px; border: 1px solid var(--accent); border-radius: var(--r-card); background: var(--warm-2); }
+.review-today-head { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+.review-today h2 { margin: 0; font-size: 16px; color: var(--ink); display: flex; align-items: center; gap: 6px; }
+.review-today p { margin: 5px 0 0; color: var(--ink-2); font-size: 12px; line-height: 1.5; }
+.review-count { flex: none; color: var(--accent-ink); font-weight: 800; font-size: 13px; }
+.review-card { background: var(--surface); }
+.review-card-meta { display: flex; justify-content: space-between; gap: 8px; align-items: center; margin-bottom: 5px; color: var(--ink-3); font-size: 11px; }
+.review-card-meta .wp-round { margin-right: 0; }
 .fit-bar { position: relative; height: 14px; background: var(--surface-2); border-radius: 8px; margin: 6px 0 4px; overflow: hidden; }
 .fit-bar i { display: block; height: 100%; background: var(--brand); border-radius: 8px; }
 .fit-bar em { position: absolute; inset: 0; font-style: normal; font-size: 10px; font-weight: 800; color: var(--ink-2); display: flex; align-items: center; justify-content: center; }
@@ -861,8 +875,8 @@ body {
   font-weight: 800; cursor: pointer; white-space: nowrap;
 }
 
-.mask { position: fixed; inset: 0; background: rgba(20,40,60,.35); display: flex; align-items: center; justify-content: center; z-index: 20; }
-.shop-modal { background: var(--surface); border-radius: var(--r-card); padding: 22px; width: 92%; max-width: 420px; }
+.mask { position: fixed; inset: 0; background: rgba(20,40,60,.35); display: flex; align-items: center; justify-content: center; z-index: 20; padding: 12px; overflow: auto; }
+.shop-modal { background: var(--surface); border-radius: var(--r-card); padding: 22px; width: min(92%, 420px); max-height: calc(100vh - 24px); max-height: calc(100dvh - 24px); overflow: auto; }
 .shop-modal h3 { margin: 0 0 14px; }
 .shop-list { display: flex; flex-direction: column; gap: 10px; }
 .shop-item { display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
@@ -937,8 +951,8 @@ body {
 .box-icon { font-size: 64px; animation: bounce 1s ease-in-out infinite; }
 .box-gain { font-size: 28px; font-weight: 800; color: var(--accent); margin-top: 6px; }
 .box-tip { font-size: 13px; color: var(--ink-3); margin-top: 4px; }
-.map-modal { max-width: 480px; }
-.map-list { display: flex; flex-direction: column; gap: 6px; margin: 14px 0; max-height: 60vh; overflow-y: auto; }
+.map-modal, .ach-modal { max-width: 480px; max-height: calc(100vh - 24px); max-height: calc(100dvh - 24px); overflow: hidden; display: flex; flex-direction: column; }
+.map-list { display: flex; flex: 1 1 auto; flex-direction: column; gap: 6px; margin: 14px 0; min-height: 0; overflow-y: auto; }
 .map-node { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 12px; background: var(--surface-2); opacity: .55; }
 .map-node.done { opacity: 1; background: var(--ok-bg); }
 .map-node.cur { opacity: 1; background: var(--warm-2); border: 2px solid var(--accent); }
@@ -947,13 +961,14 @@ body {
 .map-th { font-size: 12px; color: var(--ink-3); }
 .map-node.cur .map-th { color: var(--accent-ink); }
 .ach-modal { max-width: 460px; }
-.ach-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); gap: 10px; margin: 14px 0; }
+.ach-grid { display: grid; flex: 1 1 auto; min-height: 0; overflow-y: auto; grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); gap: 10px; margin: 14px 0; }
 .ach-cell { background: var(--surface-2); border-radius: 14px; padding: 12px 6px; text-align: center; opacity: .5; }
 .ach-cell.on { opacity: 1; background: var(--warm-2); border: 1px solid var(--accent); }
 .ach-icon { font-size: 30px; }
 .ach-name { font-size: 12px; font-weight: 700; color: var(--ink-2); margin-top: 4px; }
 .ach-prog { font-size: 11px; color: var(--ink-3); margin-top: 2px; }
 .ach-cell.on .ach-prog { color: var(--accent-ink); }
+.map-modal > .ghost, .ach-modal > .ghost { flex: 0 0 auto; }
 .confetti { position: absolute; inset: 0; z-index: 1; overflow: hidden; }
 .confetti span { position: absolute; top: -40px; font-size: 24px; color: var(--accent); animation: fall 2.6s linear forwards; }
 @keyframes pop { from { transform: scale(.4); opacity: 0; } to { transform: scale(1); opacity: 1; } }
@@ -961,6 +976,10 @@ body {
 @keyframes fall { to { transform: translateY(110vh) rotate(720deg); opacity: 0; } }
 
 @media (max-width: 900px) {
+  .review-today { padding: 12px; }
+  .review-today-head { gap: 8px; }
+  .review-today h2 { font-size: 15px; }
+  .review-card-meta { align-items: flex-start; flex-direction: column; gap: 4px; }
   .desk { padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
   .topbar {
     display: flex;
@@ -1000,6 +1019,8 @@ body {
   }
   .nav em { padding: 0; background: none; }
 
+  .mask { padding: 12px; }
+  .shop-modal { width: 100%; max-width: none; }
   .main { padding: 12px 14px 16px; }
   .main h1 { font-size: 20px; margin: 0 0 4px; }
   .hint { font-size: 12px; margin-bottom: 10px; }

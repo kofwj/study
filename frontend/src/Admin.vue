@@ -401,26 +401,33 @@ onMounted(load)
 
     <!-- 今日复习 -->
     <section v-if="section === 'review'" class="a-card enter">
-      <h3>今日复习</h3>
-      <p class="lead">到期该练的：过关间隔拉长，还在错间隔缩短，彻底巩固再点结束。</p>
-      <div v-if="!reviewDue.length" class="dim">今天没有到期的。</div>
-      <div v-for="x in reviewDue" :key="x.id" class="apv-row">
-        <div class="apv-info">
-          <span class="apv-name">{{ x.unit_name }} · {{ x.tag_name }}</span>
-          <span class="dim">{{ x.subject_id }} · {{ x.review_due_at }}</span>
+      <h3>今天帮孩子复习 <span class="review-total">{{ reviewDue.length }} 项</span></h3>
+      <p class="lead">按清单让孩子各练一遍，练完后由你判断，系统会自动安排下次复习时间。</p>
+      <div class="review-steps">
+        <span><b>1</b>孩子练一遍</span><i>→</i><span><b>2</b>家长判断</span><i>→</i><span><b>3</b>系统排下次</span>
+      </div>
+      <div v-if="!reviewDue.length" class="review-empty">
+        <strong>今天没有要复习的内容</strong>
+        <span>新的薄弱点会在“考点”里记录，到了时间会出现在这里。</span>
+      </div>
+      <div v-for="x in reviewDue" :key="x.id" class="review-item">
+        <div class="review-item-info">
+          <span class="review-item-title">{{ x.tag_name }}</span>
+          <span class="dim">{{ x.subject_id }} · {{ x.unit_name }} · 第 {{ (x.interval_idx || 0) + 1 }} 次复习</span>
         </div>
-        <div class="ops">
-          <button class="ok" @click="judge(x.id, 'pass')">过关</button>
-          <button class="del" @click="judge(x.id, 'fail')">还在错</button>
-          <button class="ok ghost-o" @click="judge(x.id, 'done')">已巩固</button>
+        <div class="review-actions">
+          <button class="ok" @click="judge(x.id, 'pass')">会了，晚点再练</button>
+          <button class="del" @click="judge(x.id, 'fail')">还不熟，明天再练</button>
+          <button class="ok ghost-o" @click="judge(x.id, 'done')">已经掌握</button>
         </div>
       </div>
+      <p v-if="reviewDue.length" class="review-help">“会了”会拉长间隔；“还不熟”会缩短到更近；“已经掌握”会结束提醒。</p>
     </section>
 
     <!-- 本周盯点 -->
     <section v-if="section === 'insights'" class="a-card enter">
       <h3><Eye class="ico" :size="16" /> 本周盯点</h3>
-      <p class="lead">每娃一句，点「去解决」跳对应页。</p>
+      <p class="lead">每个孩子一句结论；需要处理时，点“去解决”。</p>
       <div v-if="!(insights.kids || []).length" class="dim">还没有孩子。</div>
       <div v-for="row in insights.kids" :key="row.kid_id" class="apv-row">
         <div class="apv-info">
@@ -472,7 +479,7 @@ onMounted(load)
       </div>
 
       <div v-if="(weekly.mastered || []).length" class="w-mastered">
-        这周孩子把 <b>{{ weekly.mastered.join('、') }}</b> 练牢了，继续保持。
+        本周已掌握：<b>{{ weekly.mastered.join('、') }}</b>
       </div>
 
       <h4 class="w-h">近 4 周阳光趋势</h4>
@@ -882,6 +889,24 @@ onMounted(load)
 .a-card { background: var(--surface); border-radius: var(--r-card); padding: 18px; margin-bottom: 14px; box-shadow: var(--sh-card); border: 1px solid var(--line); }
 .a-card h3 { margin: 0 0 6px; font-size: 16px; color: var(--ink); }
 .lead { color: var(--ink-3); font-size: 12px; margin: 0 0 14px; }
+.review-total { color: var(--accent-ink); font-size: 13px; font-weight: 800; }
+.review-steps { display: flex; align-items: center; gap: 7px; margin: 0 0 16px; padding: 10px 12px; background: var(--surface-2); border-radius: 10px; color: var(--ink-2); font-size: 12px; }
+.review-steps b { display: inline-flex; width: 20px; height: 20px; align-items: center; justify-content: center; margin-right: 4px; border-radius: 50%; background: var(--brand); color: #fff; font-size: 11px; }
+.review-steps i { color: var(--ink-3); font-style: normal; }
+.review-empty { display: flex; flex-direction: column; gap: 4px; padding: 18px 0 8px; color: var(--ink-2); }
+.review-empty span { color: var(--ink-3); font-size: 12px; }
+.review-item { padding: 12px 0; border-top: 1px solid var(--surface-2); }
+.review-item-info { display: flex; flex-direction: column; gap: 4px; }
+.review-item-title { font-size: 15px; font-weight: 800; color: var(--ink); }
+.review-actions { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 10px; }
+.review-actions button { font-size: 12px; }
+.review-help { margin: 12px 0 0; color: var(--ink-3); font-size: 11px; line-height: 1.5; }
+@media (max-width: 560px) {
+  .review-steps { align-items: flex-start; flex-direction: column; gap: 5px; }
+  .review-steps i { display: none; }
+  .review-actions { flex-direction: column; }
+  .review-actions button { width: 100%; }
+}
 .lock-row { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-2); font-weight: 700; }
 .toggle { border: none; background: var(--surface-2); color: var(--ink-2); padding: 7px 16px; border-radius: 16px; font-weight: 800; cursor: pointer; font-family: inherit; }
 .toggle.on { background: var(--accent); color: #fff; }
