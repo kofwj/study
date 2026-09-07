@@ -14,7 +14,7 @@ from fastapi.testclient import TestClient
 import main  # noqa: E402
 
 
-def main_fn():
+def test_family():
     db.init_db()
     with TestClient(main.app) as a, TestClient(main.app) as b:
         r = a.post("/api/auth/register", json={"account": "alice", "pin": "alice888", "family_name": "A家"})
@@ -70,4 +70,4 @@ def main_fn():
 
 
 if __name__ == "__main__":
-    main_fn()
+    test_family()

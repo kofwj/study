@@ -14,7 +14,7 @@ from fastapi.testclient import TestClient
 import main  # noqa: E402
 
 
-def main_fn():
+def test_kids():
     db.init_db()
     with TestClient(main.app) as cli:
         r = cli.post("/api/auth/login", json={"account": "lele", "pin": "8888"})
@@ -115,7 +115,7 @@ def main_fn():
         print("kids ok", lele[:8], didi[:8], "earned", e_lele, e_didi, "cursors", cur_l, cur_d)
 
 
-def streak_fn():
+def test_streak():
     from datetime import date, timedelta
     db.init_db()
     c = db.connect()
@@ -133,5 +133,5 @@ def streak_fn():
 
 
 if __name__ == "__main__":
-    main_fn()
-    streak_fn()
+    test_kids()
+    test_streak()

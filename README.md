@@ -148,25 +148,21 @@ curl -s https://study.anemy.org/api/health
 
 ## 验证
 
-后端当前使用可直接执行的回归脚本：
+部署前在仓库根目录执行：
 
 ```bash
-for f in backend/test_auth.py backend/test_family.py backend/test_dialect.py \
-  backend/test_insights.py backend/test_kids.py backend/test_weak_points.py; do
-  python3 "$f" || exit 1
-done
+bash scripts/pre_deploy.sh
+```
 
+或分开跑：
+
+```bash
+cd backend && python3 -m pytest -q
 python3 -m py_compile backend/*.py scripts/*.py
-git diff --check
+bash scripts/smoke_frontend.sh
 ```
 
-前端构建：
-
-```bash
-npm --prefix frontend run build
-```
-
-当前开发环境如果提示 `env: node: No such file or directory`，说明机器没有可用 Node.js，不代表已发现 Vue 源码错误；需要在完整 Node 环境补跑构建和浏览器验证。
+GitHub Actions 在 push/PR 时会跑编译、pytest、前端 build 和冒烟检查。当前开发环境如果提示没有 `node`，脚本会尝试 `~/.hermes/node/bin`；机器上没有 Node.js 时，不代表 Vue 源码有错。
 
 ## 目录
 
@@ -189,7 +185,6 @@ npm --prefix frontend run build
 - 音乐、美术没有确认本地实际版本，暂不生成教材单元卡
 - 综合实践没有统一教材，继续使用家长自定义任务
 - 电子课本网主要提供目录和页面入口，正文级复核仍应以孩子手上的实物教材为准
-- 正式 pytest 尚未收集现有 `test_*.py`，当前回归通过直接执行脚本完成
-- 浏览器截图、Android WebView 和真实手机布局仍需在有 Node 和设备的环境补做
+- 浏览器截图、Android WebView 和真实手机布局仍需在有设备和完整 Node 环境补做
 
 后续工作按 [PLAN.md](PLAN.md) 执行。

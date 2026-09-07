@@ -22,7 +22,7 @@ def _dates():
     return today, monday, last_m
 
 
-def main_fn():
+def test_insights():
     db.init_db()
     today, monday, last_m = _dates()
     with TestClient(main.app) as cli:
@@ -142,6 +142,8 @@ def main_fn():
         c.commit(); c.close()
         ins = next(x["insight"] for x in cli.get("/api/admin/insights").json()["kids"] if x["kid_id"] == kid)
         assert ins and ins["type"] == "review_due" and ins["action"] == "今日复习"
+        wk_due = cli.get("/api/admin/weekly" + q).json()
+        assert wk_due.get("insight") and wk_due["insight"]["type"] == "review_due"
         c = db.connect()
         c.execute("UPDATE weak_points SET status='resolved', updated_at=? WHERE kid_id=?", (db.now(), kid))
         c.execute(
@@ -155,4 +157,4 @@ def main_fn():
 
 
 if __name__ == "__main__":
-    main_fn()
+    test_insights()

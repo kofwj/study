@@ -14,9 +14,15 @@ from datetime import datetime
 from pathlib import Path
 
 BASE = Path(__file__).parent
-DB_PATH = Path(os.environ.get("SUNSHINE_DB", BASE / "sunshine.db"))
 SEED_JSON = BASE.parent / "data" / "tasks.seed.json"
 SEED_MULTI = BASE.parent / "data" / "tasks.seed.multi.json"
+
+
+def db_path() -> Path:
+    return Path(os.environ.get("SUNSHINE_DB", BASE / "sunshine.db"))
+
+
+DB_PATH = db_path()
 
 # 兑换商店（P0 内置示例，家长后续在管理端增删改）
 REWARDS = [
@@ -221,7 +227,7 @@ def connect(admin=False):
                 raise RuntimeError("DATABASE_APP_URL required (login as sunshine_app; superuser bypasses RLS)")
         raw = psycopg.connect(url, row_factory=_pg_row_factory)
         return _Conn(raw, True)  # 不设 GUC。业务查询用 get_conn()；这里只碰无 RLS 表（users/settings）
-    raw = sqlite3.connect(DB_PATH)
+    raw = sqlite3.connect(db_path())
     raw.row_factory = sqlite3.Row
     return _Conn(raw, False)
 

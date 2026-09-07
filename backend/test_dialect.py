@@ -10,7 +10,7 @@ os.environ["SUNSHINE_DB"] = str(Path(tempfile.mkdtemp()) / "t.db")
 import db  # noqa: E402
 
 
-def main():
+def test_dialect():
     assert db._pg_query("SELECT * FROM t WHERE a=? AND b='?'") == "SELECT * FROM t WHERE a=%s AND b='?'"
     assert db._pg_query("SELECT 'it''s' WHERE x=?") == "SELECT 'it''s' WHERE x=%s"
     assert db._pg_query("SELECT to_char(x,'%Y') WHERE a=?") == "SELECT to_char(x,'%%Y') WHERE a=%s"
@@ -54,4 +54,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    test_dialect()

@@ -58,7 +58,7 @@ const reviewDue = ref([])
 const firstReview = ref('')
 const DEFAULT_TEST_BANDS = [[100, 30], [95, 20], [90, 15], [85, 10], [0, 5]]
 const testBands = ref(DEFAULT_TEST_BANDS.map(x => [...x]))
-const weekly = ref({ days: [], weeks: [], by_subject: [], kids: [], total_earned: 0, total_spent: 0, net: 0, balance: 0, earned_all: 0, streak: 0, checkins: 0, week_start: '', week_end: '' })
+const weekly = ref({ days: [], weeks: [], by_subject: [], kids: [], total_earned: 0, total_spent: 0, net: 0, balance: 0, earned_all: 0, streak: 0, checkins: 0, week_start: '', week_end: '', insight: null })
 const insights = ref({ rules: { test_fail_count: 2, test_fail_score: 80, drop_ratio: 0.3, streak_break: 2 }, kids: [] })
 const RULE_DEFAULTS = { test_fail_count: 2, test_fail_score: 80, drop_ratio: 0.3, streak_break: 2 }
 const toast = ref('')
@@ -95,7 +95,7 @@ async function load() {
   ranks.value = rk
   subjects.value = t.subjects
   units.value = t.units
-  tasks.value = t.tasks
+  tasks.value = (t.tasks || []).map(x => ({ ...x, kid_id: x.kid_id || '' }))
   daily.value = t.daily
   terms.value = t.terms || []
   activeTerm.value = t.active_term || 'g5s1'
@@ -174,17 +174,17 @@ async function delRank(id) {
 }
 
 // —— 单元任务 ——
-const newTask = reactive({ subject_id: '', unit_id: '', action: '', title: '', sunshine: 5 })
+const newTask = reactive({ subject_id: '', unit_id: '', action: '', title: '', sunshine: 5, kid_id: '' })
 const unitOptions = computed(() => units.value.filter(u => u.subject_id === newTask.subject_id && u.term_id === activeTerm.value))
 const testUnitOptions = computed(() => units.value.filter(u => u.subject_id === newTest.subject_id && u.term_id === activeTerm.value))
 function pickSubject() { newTask.unit_id = '' }
 async function addTask() {
   if (!newTask.subject_id || !newTask.unit_id || !newTask.title) return showToast('选科目/单元、填标题')
-  await api.admin.createTask({ ...newTask })
-  Object.assign(newTask, { subject_id: '', unit_id: '', action: '', title: '', sunshine: 5 })
+  await api.admin.createTask({ ...newTask, kid_id: newTask.kid_id || null })
+  Object.assign(newTask, { subject_id: '', unit_id: '', action: '', title: '', sunshine: 5, kid_id: '' })
   showToast('已新增'); await load()
 }
-async function saveTask(t) { await api.admin.updateTask(t.id, t); showToast('已保存') }
+async function saveTask(t) { await api.admin.updateTask(t.id, { ...t, kid_id: t.kid_id || null }); showToast('已保存') }
 async function delTask(id) { if (!confirm('删除这个任务？')) return; await api.admin.delTask(id); await load() }
 
 const tasksBySubject = computed(() => {
@@ -275,6 +275,7 @@ async function setCursor(subj, taskId) {
 
 async function switchKid() {
   setSelectedKid(selectedKid.value)
+  reviewSubject.value = ''
   emit('switched')
   await load()
 }
@@ -337,6 +338,30 @@ function testBandRange(i) {
   const low = Number(testBands.value[i][0])
   const high = i === 0 ? 100 : Number(testBands.value[i - 1][0]) - 1
   return low === high ? `${low} 分` : `${low}～${high} 分`
+}
+const reviewSubject = ref('')
+const reviewSubjects = computed(() => {
+  const ids = [...new Set((reviewDue.value || []).map(x => x.subject_id).filter(Boolean))]
+  return ids
+})
+const filteredReviewDue = computed(() => {
+  const rows = reviewDue.value || []
+  return reviewSubject.value ? rows.filter(x => x.subject_id === reviewSubject.value) : rows
+})
+const testPreview = computed(() => {
+  const sc = Number(newTest.score)
+  if (newTest.score === '' || newTest.score === null || Number.isNaN(sc) || sc < 0 || sc > 100) return null
+  const bands = testBands.value || []
+  for (let i = 0; i < bands.length; i++) {
+    if (sc >= Number(bands[i][0])) return { range: testBandRange(i), sun: Number(bands[i][1]) }
+  }
+  return { range: '', sun: 0 }
+})
+function goWeeklyInsight() {
+  const a = weekly.value.insight?.action
+  if (a === '单元测试') section.value = 'test'
+  else if (a === '每日打卡' || a === '运动打卡') emit('exit')
+  else if (a === '今日复习') section.value = 'review'
 }
 function goInsight(row) {
   const a = row.insight?.action
@@ -450,11 +475,25 @@ onMounted(load)
       <div class="review-steps">
         <span><b>1</b>孩子练一遍</span><i>→</i><span><b>2</b>家长判断</span><i>→</i><span><b>3</b>系统排下次</span>
       </div>
-      <div v-if="!reviewDue.length" class="review-empty">
-        <strong>今天没有要复习的内容</strong>
-        <span>在“任务与考点”点亮一项后，会立刻出现在这里。</span>
+      <div v-if="reviewDue.length && reviewSubjects.length > 1" class="subj-tabs review-filter">
+        <button type="button" :class="['subj-tab', { on: !reviewSubject }]" @click="reviewSubject = ''">全部</button>
+        <button v-for="sid in reviewSubjects" :key="sid" type="button"
+          :class="['subj-tab', { on: reviewSubject === sid }]" @click="reviewSubject = sid">{{ subjectName(sid) }}</button>
       </div>
-      <div v-for="x in reviewDue" :key="x.id" class="review-item">
+      <div v-if="!reviewDue.length && !weakPoints.length" class="review-empty">
+        <strong>还没有记下薄弱考点</strong>
+        <span>孩子哪一项没掌握时，到“任务与考点”点亮，会立刻出现在这里。</span>
+        <button class="ghost-s review-link" @click="section = 'unit-task'">去记录薄弱考点 →</button>
+      </div>
+      <div v-else-if="!reviewDue.length" class="review-empty">
+        <strong>今天没有到期的复习</strong>
+        <span>已经记下的考点还没到复习日，到日期后会自动出现在上面。</span>
+      </div>
+      <div v-else-if="!filteredReviewDue.length" class="review-empty">
+        <strong>这一科今天没有要复习的</strong>
+        <span>换一个科目，或点“全部”看今天的清单。</span>
+      </div>
+      <div v-for="x in filteredReviewDue" :key="x.id" class="review-item">
         <div class="review-item-info">
           <span class="review-item-title">{{ x.tag_name }}</span>
           <span class="dim">{{ x.subject_id }} · {{ x.unit_name }} · 第 {{ (x.interval_idx || 0) + 1 }} 次复习</span>
@@ -465,7 +504,7 @@ onMounted(load)
           <button class="ok ghost-o" @click="judge(x.id, 'done')">已经掌握</button>
         </div>
       </div>
-      <p v-if="reviewDue.length" class="review-help">“会了”会拉长间隔；“还不熟”会缩短到更近；“已经掌握”会结束提醒。</p>
+      <p v-if="filteredReviewDue.length" class="review-help">“会了”会拉长间隔；“还不熟”会缩短到更近；“已经掌握”会结束提醒。</p>
       <div v-if="weakPoints.length" class="review-recorded">
         <h4>已记录的薄弱考点</h4>
         <p>这里是已经记下、但还没结束提醒的考点。到日期后会自动出现在上面的复习清单里。</p>
@@ -476,11 +515,6 @@ onMounted(load)
           </div>
           <em :class="{ due: reviewDue.some(r => r.id === x.id) }">{{ weakPointTiming(x) }}</em>
         </div>
-      </div>
-      <div v-else class="review-how">
-        <strong>还没有记录薄弱考点</strong>
-        <span>孩子哪一项没掌握时，到左侧“任务与考点”，找到对应单元，点亮考点标签即可。</span>
-        <button class="ghost-s review-link" @click="section = 'unit-task'">去记录薄弱考点 →</button>
       </div>
     </section>
 
@@ -523,6 +557,11 @@ onMounted(load)
     <section v-if="section === 'weekly'" class="a-card enter">
       <h3><ChartColumn class="ico" :size="16" /> 本周周报</h3>
       <p class="lead">{{ weekly.week_start }} ~ {{ weekly.week_end }}（周一到周日）</p>
+      <div class="w-next">
+        <strong>本周建议先处理</strong>
+        <span>{{ weekly.insight ? weekly.insight.text : '这周不用特别盯。' }}</span>
+        <button v-if="weekly.insight && weekly.insight.action" class="ok" @click="goWeeklyInsight">去解决</button>
+      </div>
       <div v-if="(weekly.kids || []).length" class="w-kids">
         <div v-for="k in weekly.kids" :key="k.id" class="w-box" :class="{ on: k.current }" @click="pickKid(k.id)">
           <span>{{ k.name }}</span><b>+{{ k.earned }}</b>
@@ -666,6 +705,12 @@ onMounted(load)
               <option v-for="u in unitOptions" :key="u.id" :value="u.id">{{ u.name }}</option>
             </select>
           </label>
+          <label class="fld grow"><span>谁能看到</span>
+            <select v-model="newTask.kid_id">
+              <option value="">全家</option>
+              <option v-for="k in kids" :key="k.id" :value="k.id">{{ k.name }}</option>
+            </select>
+          </label>
         </div>
         <div class="frm-row">
           <label class="fld grow"><span>任务名称</span><input v-model="newTask.title" placeholder="如：订正今天的错题" /></label>
@@ -702,6 +747,12 @@ onMounted(load)
               <label class="fld grow"><span>家长任务名称</span><input v-model="t.title" /></label>
               <label class="fld w84"><span>怎么做</span><input v-model="t.action" /></label>
               <label class="fld w64"><span>阳光</span><input v-model.number="t.sunshine" type="number" min="0" /></label>
+              <label class="fld w104"><span>谁能看到</span>
+                <select v-model="t.kid_id">
+                  <option value="">全家</option>
+                  <option v-for="k in kids" :key="k.id" :value="k.id">{{ k.name }}</option>
+                </select>
+              </label>
               <div class="ops">
                 <button class="ok" @click="saveTask(t)">保存</button>
                 <button class="del" @click="delTask(t.id)">删</button>
@@ -847,6 +898,8 @@ onMounted(load)
           <label class="fld w84"><span>分数</span><input v-model="newTest.score" type="number" placeholder="0~100" /></label>
           <label class="fld w104"><span>备注</span><input v-model="newTest.note" placeholder="如：期中" /></label>
         </div>
+        <p v-if="testPreview" class="test-preview">命中 {{ testPreview.range }}，将发 {{ testPreview.sun }} 阳光。</p>
+        <p v-else class="form-help">填分数后，这里会显示命中哪一档、发多少阳光。只影响这次以后录入的成绩。</p>
         <button class="ok wide" @click="addTest">录成绩并发阳光</button>
       </div>
       <div v-if="!tests.length" class="dim">还没录过测试成绩。</div>
@@ -1094,6 +1147,11 @@ onMounted(load)
 .w104 { width: 104px; flex: none; }
 .ops { display: flex; gap:  6px; align-items: center; flex: none; }
 .w-mastered { margin: 12px 0; padding: 9px 12px; border-radius: 12px; background: var(--brand); color: #fff; font-size: 13px; font-weight: 600; }
+.w-next { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 0 0 14px; padding: 12px 14px; border-radius: 12px; background: var(--warm); }
+.w-next strong { font-size: 13px; }
+.w-next span { flex: 1; min-width: 160px; color: var(--ink-2); font-size: 13px; }
+.test-preview { margin: 0 0 10px; color: var(--accent-ink); font-size: 13px; font-weight: 700; }
+.review-filter { margin: 8px 0 12px; }
 
 .subj-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
 .subj-tab { border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px; font-size: 13px; font-weight: 700; color: var(--ink); background: var(--surface); cursor: pointer; }

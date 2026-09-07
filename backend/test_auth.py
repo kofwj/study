@@ -14,7 +14,7 @@ from fastapi.testclient import TestClient
 import main  # noqa: E402
 
 
-def main_fn():
+def test_auth():
     db.init_db()
     c = db.connect()
     assert not db.get_setting(c, "admin_pin")
@@ -55,4 +55,4 @@ def main_fn():
 
 
 if __name__ == "__main__":
-    main_fn()
+    test_auth()

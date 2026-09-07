@@ -240,10 +240,17 @@ def today_label():
     return "%d年%d月%d日 星期%s" % (d.year, d.month, d.day, WEEKDAYS[d.weekday()])
 
 
+# 系统任务按学期；自定义任务按全家/指定孩子，不因挂在教材单元上漏给别的娃。
+TASK_SCOPE = (
+    "(COALESCE(t.custom,0)=0 AND u.term_id=?) OR "
+    "(COALESCE(t.custom,0)=1 AND (t.kid_id IS NULL OR t.kid_id=?))"
+)
+
+
 def subject_order(c, subject_id):
     rows = c.execute(
         "SELECT t.id FROM tasks t LEFT JOIN units u ON u.id=t.unit_id "
-        "WHERE t.subject_id=? AND (u.term_id=? OR (COALESCE(t.custom,0)=1 AND (t.kid_id IS NULL OR t.kid_id=?))) "
+        "WHERE t.subject_id=? AND (" + TASK_SCOPE + ") "
         "ORDER BY COALESCE(u.seq,99), t.sort", (subject_id, active_term(c), kid_id())).fetchall()
     return [r["id"] for r in rows]
 
@@ -265,13 +272,13 @@ def locked_task_ids(c):
     term = active_term(c)
     tseq = {r["id"]: r["seq"] for r in c.execute(
         "SELECT t.id, COALESCE(u.seq,0) seq FROM tasks t LEFT JOIN units u ON u.id=t.unit_id "
-        "WHERE u.term_id=? OR (COALESCE(t.custom,0)=1 AND (t.kid_id IS NULL OR t.kid_id=?))", (term, kid_id())).fetchall()}
+        "WHERE " + TASK_SCOPE, (term, kid_id())).fetchall()}
     custom_ids = {r["id"] for r in c.execute(
         "SELECT id FROM tasks WHERE custom=1 AND (kid_id IS NULL OR kid_id=?)", (kid_id(),)).fetchall()}
     locked = set()
     for sid in {r[0] for r in c.execute(
             "SELECT DISTINCT t.subject_id FROM tasks t LEFT JOIN units u ON u.id=t.unit_id "
-            "WHERE u.term_id=? OR (COALESCE(t.custom,0)=1 AND (t.kid_id IS NULL OR t.kid_id=?))", (term, kid_id())).fetchall()}:
+            "WHERE " + TASK_SCOPE, (term, kid_id())).fetchall()}:
         ids = subject_order(c, sid)
         cur_seq = None
         for tid in ids:
@@ -640,7 +647,7 @@ def tasks():
     # 单元任务 + 完成状态（只看当前学期 + 自定义）
     tasks_rows = c.execute(
         "SELECT t.* FROM tasks t LEFT JOIN units u ON u.id=t.unit_id "
-        "WHERE u.term_id=? OR (COALESCE(t.custom,0)=1 AND (t.kid_id IS NULL OR t.kid_id=?)) "
+        "WHERE " + TASK_SCOPE + " "
         "ORDER BY t.subject_id, COALESCE(u.seq,99), t.sort", (term, kid_id())).fetchall()
     done_ids = {r["task_id"] for r in c.execute(
         "SELECT DISTINCT task_id FROM completions WHERE status='completed' AND kid_id=? AND NOT EXISTS ("
@@ -1720,23 +1727,45 @@ class TaskIn(BaseModel):
     action: str
     title: str
     sunshine: int = 5
+    kid_id: Optional[str] = None  # None/空=全家
+
+
+def _custom_task_kid(c, kid):
+    owner = (kid or "").strip() or None
+    if owner:
+        _own_kid(c, owner, _fam.get())
+    return owner
 
 
 @app.post("/api/admin/tasks", dependencies=[Depends(require_parent)])
 def task_create(b: TaskIn):
     c = get_conn()
+    owner = _custom_task_kid(c, b.kid_id)
     tid = uuid.uuid4().hex[:8]
-    c.execute("INSERT INTO tasks(id,subject_id,unit_id,action,title,sunshine,sort,custom,family_id) VALUES(?,?,?,?,?,?,99,1,?)",
-              (tid, b.subject_id, b.unit_id, b.action, b.title, _sun(b.sunshine), _fam.get()))
+    c.execute("INSERT INTO tasks(id,subject_id,unit_id,action,title,sunshine,sort,custom,family_id,kid_id) VALUES(?,?,?,?,?,?,99,1,?,?)",
+              (tid, b.subject_id, b.unit_id, b.action, b.title, _sun(b.sunshine), _fam.get(), owner))
     c.commit(); c.close()
     return {"id": tid}
+
+
+def _own_custom_task(c, tid, verb="改"):
+    row = c.execute("SELECT custom, family_id FROM tasks WHERE id=?", (tid,)).fetchone()
+    if not row:
+        c.close(); raise HTTPException(404, "没找到这个任务")
+    if not row["custom"]:
+        c.close(); raise HTTPException(403, "教材任务不能" + verb)
+    if row["family_id"] != _fam.get():
+        c.close(); raise HTTPException(404, "没找到这个任务")
+    return row
 
 
 @app.put("/api/admin/tasks/{tid}", dependencies=[Depends(require_parent)])
 def task_update(tid: str, b: TaskIn):
     c = get_conn()
-    c.execute("UPDATE tasks SET subject_id=?, unit_id=?, action=?, title=?, sunshine=? WHERE id=? AND COALESCE(custom,0)=1 AND family_id=?",
-              (b.subject_id, b.unit_id, b.action, b.title, _sun(b.sunshine), tid, _fam.get()))
+    _own_custom_task(c, tid)
+    owner = _custom_task_kid(c, b.kid_id)
+    c.execute("UPDATE tasks SET subject_id=?, unit_id=?, action=?, title=?, sunshine=?, kid_id=? WHERE id=? AND COALESCE(custom,0)=1 AND family_id=?",
+              (b.subject_id, b.unit_id, b.action, b.title, _sun(b.sunshine), owner, tid, _fam.get()))
     c.commit(); c.close()
     return {"ok": True}
 
@@ -1744,6 +1773,7 @@ def task_update(tid: str, b: TaskIn):
 @app.delete("/api/admin/tasks/{tid}", dependencies=[Depends(require_parent)])
 def task_delete(tid: str):
     c = get_conn()
+    _own_custom_task(c, tid, "删")
     c.execute("DELETE FROM tasks WHERE id=? AND COALESCE(custom,0)=1 AND family_id=?", (tid, _fam.get()))
     c.commit(); c.close()
     return {"ok": True}
@@ -1863,8 +1893,10 @@ def weekly():
             kids_cmp.append({"id": kr["id"], "name": kr["name"], "earned": ke, "spent": ks,
                              "streak": streak(c, kr["id"]), "current": kr["id"] == kid})
         db.apply_scope(c, fam, kid)
+    insight = build_insights(c, kid)
     out = {
         "week_start": w_start, "week_end": w_end,
+        "insight": insight,
         "days": days,
         "total_earned": sum(x["earned"] for x in days),
         "total_spent": sum(x["spent"] for x in days),

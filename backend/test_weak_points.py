@@ -14,7 +14,7 @@ from fastapi.testclient import TestClient
 import main  # noqa: E402
 
 
-def main_fn():
+def test_weak_points():
     db.init_db()
     with TestClient(main.app) as p:
         assert p.post("/api/auth/register", json={"account": "wp", "pin": "weakpt88", "family_name": "薄家"}).status_code == 200
@@ -84,4 +84,4 @@ def main_fn():
 
 
 if __name__ == "__main__":
-    main_fn()
+    test_weak_points()

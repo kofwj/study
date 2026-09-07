@@ -75,7 +75,7 @@ docker run --rm --network sunshine_default \
 
 ```bash
 bash scripts/smoke_frontend.sh          # vite build + 产物/结构冒烟
-bash scripts/pre_deploy.sh              # 后端 4 测 + 上面这条
+bash scripts/pre_deploy.sh              # pytest + 上面这条
 ```
 
 冒烟会拦住「`.login-screen` 套进 `.desk`」那种白屏。不装 Playwright。
