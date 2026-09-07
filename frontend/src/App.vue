@@ -1,5 +1,5 @@
 <script setup>
-import { ref, reactive, computed, onMounted, defineAsyncComponent } from 'vue'
+import { ref, reactive, computed, onMounted, onBeforeUnmount, watch, defineAsyncComponent } from 'vue'
 import { api } from './api.js'
 // ponytail: 家长后台（1147 行）单独切 chunk，孩子端首屏不加载
 const Admin = defineAsyncComponent(() => import('./Admin.vue'))
@@ -27,6 +27,28 @@ const data = reactive({
 const rewards = ref([])
 const loading = ref(true)
 const err = ref('')
+const topbarEl = ref(null)
+const updateBarEl = ref(null)
+const topbarHeight = ref(0)
+const updateBarHeight = ref(0)
+let topbarObserver = null
+function syncTopbarHeight() {
+  updateBarHeight.value = updateBarEl.value?.offsetHeight || 0
+  topbarHeight.value = (topbarEl.value?.offsetHeight || 0) + updateBarHeight.value
+}
+function observeChrome() {
+  topbarObserver?.disconnect()
+  topbarObserver = null
+  const els = [topbarEl.value, updateBarEl.value].filter(Boolean)
+  if (!els.length) return
+  syncTopbarHeight()
+  if (typeof ResizeObserver !== 'undefined') {
+    topbarObserver = new ResizeObserver(syncTopbarHeight)
+    els.forEach(el => topbarObserver.observe(el))
+  }
+}
+watch([topbarEl, updateBarEl], observeChrome)
+onBeforeUnmount(() => topbarObserver?.disconnect())
 const toast = ref('')
 const shopOpen = ref(false)
 const myRedeems = ref([])
@@ -417,11 +439,11 @@ function reloadApp() {
       <p v-if="toast" class="login-note danger">{{ toast }}</p>
     </div>
   </div>
-  <div v-else-if="authed" class="desk">
-    <button v-if="updateReady" type="button" class="update-bar" @click="reloadApp"><RefreshCw class="ico" :size="15" /> 有新版本，点我刷新</button>
+  <div v-else-if="authed" class="desk" :style="{ '--topbar-height': topbarHeight + 'px', '--update-bar-height': updateBarHeight + 'px' }">
+    <button v-if="updateReady" ref="updateBarEl" type="button" class="update-bar" @click="reloadApp"><RefreshCw class="ico" :size="15" /> 有新版本，点我刷新</button>
     <div v-if="toast" class="toast-note global-toast" role="status">{{ toast }}</div>
     <!-- 蓝顶栏 -->
-    <header class="topbar">
+    <header ref="topbarEl" class="topbar">
       <div class="who">
         <div class="avatar" :style="{ background: avatarBg }">{{ avatarLetter }}</div>
         <div>
@@ -786,7 +808,7 @@ body {
   margin: 0;
   font-family: ui-rounded, system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
 }
-.update-bar { width: 100%; border: none; background: var(--accent); color: #fff; padding: 9px 22px; display: flex; justify-content: center; align-items: center; font-weight: 700; font-size: 14px; font-family: inherit; position: sticky; top: env(safe-area-inset-top); z-index: 30; cursor: pointer; }
+.update-bar { width: 100%; border: none; background: var(--accent); color: #fff; padding: calc(9px + env(safe-area-inset-top)) 22px 9px; display: flex; justify-content: center; align-items: center; font-weight: 700; font-size: 14px; font-family: inherit; position: sticky; top: 0; z-index: 30; cursor: pointer; }
 .desk {
   min-height: 100vh;
   padding-bottom: 78px;
@@ -801,7 +823,7 @@ body {
   border-bottom: 4px solid rgba(245,165,36,.9);
   padding-top: calc(14px + env(safe-area-inset-top));
   display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
-  position: sticky; top: 0; z-index: 10;
+  position: sticky; top: var(--update-bar-height, 0px); z-index: 10;
 }
 .who { display: flex; align-items: center; gap: 10px; min-width: 180px; }
 .avatar {
@@ -856,6 +878,7 @@ body {
 .side {
   width: 196px; flex: 0 0 196px; background: var(--surface); border-radius: 22px; padding: 10px;
   box-shadow: 0 8px 24px rgba(60,120,170,.08); border: 2px solid var(--line);
+  position: sticky; top: calc(var(--topbar-height, 0px) + 18px); max-height: calc(100dvh - var(--topbar-height, 0px) - 36px); overflow-y: auto; z-index: 5;
 }
 .nav {
   width: 100%; display: flex; justify-content: space-between; align-items: center;
@@ -1115,6 +1138,8 @@ body {
   .body { flex-direction: column; gap: 0; padding: 0; }
   .side {
     width: 100%; flex: none; border-radius: 0;
+    position: sticky; top: var(--topbar-height, 0px); z-index: 9;
+    max-height: none;
     display: flex; gap: 6px; overflow-x: auto;
     padding: 8px 12px; box-shadow: 0 4px 12px rgba(60,120,170,.08);
     -webkit-overflow-scrolling: touch;

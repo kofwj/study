@@ -99,20 +99,41 @@ def test_kids():
         ids_l = {x["id"] for x in cli.get("/api/tasks?selected_kid=" + lele).json()["tasks"]}
         ids_d = {x["id"] for x in cli.get("/api/tasks?selected_kid=" + didi).json()["tasks"]}
         assert fam_tid in ids_l and fam_tid in ids_d
-        # 取消不改完成状态：再完成应 409，余额不涨
+        # 取消会冲正且标记原记录，允许修正后重新完成，但不会留下额外阳光。
         tid = next(x["id"] for x in cli.get("/api/tasks?selected_kid=" + didi).json()["tasks"] if not x.get("done") and not x.get("locked") and not x.get("past"))
         before = cli.get("/api/overview?selected_kid=" + didi).json()["balance"]
         assert cli.post("/api/complete?selected_kid=" + didi, json={"task_id": tid}).status_code == 200
         mid = cli.get("/api/overview?selected_kid=" + didi).json()["balance"]
+        assert mid > before
         assert cli.post("/api/cancel?selected_kid=" + didi, json={"task_id": tid}).status_code == 200
         assert cli.get("/api/overview?selected_kid=" + didi).json()["balance"] == before
-        assert cli.post("/api/complete?selected_kid=" + didi, json={"task_id": tid}).status_code == 409
-        assert cli.get("/api/overview?selected_kid=" + didi).json()["balance"] == before
+        assert cli.post("/api/complete?selected_kid=" + didi, json={"task_id": tid}).status_code == 200
+        assert cli.get("/api/overview?selected_kid=" + didi).json()["balance"] == mid
+        c = db.connect()
+        rows = c.execute("SELECT status FROM completions WHERE task_id=? AND kid_id=? ORDER BY id", (tid, didi)).fetchall()
+        c.close()
+        assert [r["status"] for r in rows] == ["cancelled", "completed"]
         assert cli.post("/api/admin/rewards", json={"name": "负奖", "price": -10, "category": "测"}).status_code == 400
         assert cli.post("/api/admin/tasks", json={"subject_id": "语文", "unit_id": "g5s1-cn-1", "action": "练", "title": "负任务", "sunshine": -3}).status_code == 400
         assert cli.post("/api/custom-task", json={"subject_id": "语文", "title": "负自定义", "sunshine": -3}).status_code == 400
         assert cli.post("/api/admin/daily", json={"subject_id": "体育", "name": "负bonus", "sunshine": 5, "bonus_per_metric": -2}).status_code == 400
         print("kids ok", lele[:8], didi[:8], "earned", e_lele, e_didi, "cursors", cur_l, cur_d)
+
+
+def test_daily_cancel_allows_recompletion():
+    db.init_db()
+    with TestClient(main.app) as cli:
+        assert cli.post("/api/auth/login", json={"account": "lele", "pin": "8888"}).status_code == 200
+        task_id = cli.get("/api/tasks").json()["daily"][0]["id"]
+        before = cli.get("/api/overview").json()["balance"]
+        first = cli.post("/api/complete", json={"task_id": task_id})
+        assert first.status_code == 200, first.text
+        assert cli.post("/api/cancel", json={"task_id": task_id}).status_code == 200
+        daily = next(x for x in cli.get("/api/tasks").json()["daily"] if x["id"] == task_id)
+        assert not daily["done_today"]
+        second = cli.post("/api/complete", json={"task_id": task_id})
+        assert second.status_code == 200, second.text
+        assert cli.get("/api/overview").json()["balance"] == before + second.json()["delta"]
 
 
 def test_streak():

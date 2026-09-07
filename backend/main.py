@@ -2,7 +2,7 @@
 """阳光学习工作台 — P0 后端。
 
 核心不变式：ledger 是唯一真相源；余额/累计/等级/连击全部由 ledger+日期推导。
-「点错取消」= 一条负 delta 流水 + completion 置 cancelled，不删历史。
+「点错取消」= 一条负 delta 流水 + completion 置 cancelled，不删历史；取消后可重新打卡。
 """
 import contextvars
 import json
@@ -903,8 +903,9 @@ def cancel(body: CompleteBody):
     if c.execute("SELECT 1 FROM ledger WHERE reason='cancel' AND ref_id=?", (f"cmp-{comp['id']}",)).fetchone():
         c.close()
         raise HTTPException(409, "这项已经取消过啦")
-    # 完成记录保持 completed，唯一索引继续挡住再刷；只记一条冲正流水
+    # 保留原完成记录用于审计，但标记为 cancelled，释放唯一索引以便修正后重新打卡。
     delta = -comp["sunshine"]
+    c.execute("UPDATE completions SET status='cancelled' WHERE id=?", (comp["id"],))
     insert_ledger(c, t, delta, "cancel", f"cmp-{comp['id']}", "点错取消")
     c.commit()
     res = {"delta": delta, "level": level_info(c)}

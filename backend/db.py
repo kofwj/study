@@ -735,6 +735,15 @@ def _migrate_023(conn):
     seed_knowledge_tags(conn)
 
 
+def _migrate_024(conn):
+    # 旧版本取消只写冲正流水，历史完成记录仍为 completed，会挡住重新打卡。
+    # 按对应冲正流水将这些记录标为 cancelled，保留完整审计链。
+    conn.execute(
+        "UPDATE completions SET status='cancelled' WHERE status='completed' AND EXISTS ("
+        "SELECT 1 FROM ledger WHERE reason='cancel' AND ref_id='cmp-' || CAST(completions.id AS TEXT))"
+    )
+
+
 def _migrate_017(conn):
     conn.execute("""
 CREATE TABLE IF NOT EXISTS knowledge_tags (
@@ -772,6 +781,7 @@ MIGRATIONS = (
     ("021_g5s1_review_tags", _migrate_021),
     ("022_g5s1_kx_df_tags", _migrate_022),
     ("023_g5s1_unique_review_tags", _migrate_023),
+    ("024_cancelled_recompletion", _migrate_024),
 )
 
 
