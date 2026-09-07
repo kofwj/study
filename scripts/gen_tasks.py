@@ -34,6 +34,125 @@ HINT = {
     "项目": "按课本 Project 要求完成，完成后展示给家长",
 }
 
+# 标题已经说明了复习目标时，提示必须告诉孩子“做什么算完成”。
+# 先按标题匹配，其他年级/旧任务继续使用动作级默认提示。
+def detail_for(action, title):
+    if title.startswith("字词："):
+        return "读课文，圈出生字词；会读、会写，并能说出重点词语的意思。"
+    if title.startswith("关键语句："):
+        return "找出 2~3 处关键语句，读给家长听，并说清它表达了什么感情。"
+    if title.startswith("快速阅读：") or title.startswith("带着问题读："):
+        return "先看问题，再连续读完；不逐字回读，读后用 2~3 句话说出答案和主要内容。"
+    if title.startswith("讲清故事："):
+        return "按起因、经过、结果讲一遍，人物和关键情节不能漏。"
+    if title.startswith("创造性复述："):
+        return "先列出故事主线，再加入人物语言或动作，完整讲给家长听。"
+    if title.startswith("阅读略读") or title.startswith("略读"):
+        return "快速读完，先说主要内容，再说一个你印象最深的情节。"
+    if title.startswith("按起因、经过、结果"):
+        return "不看课文讲一遍，家长能听懂故事顺序和结局。"
+    if title.startswith("故事新编："):
+        return "保留原故事人物和主线，加入合理变化；写完读一遍并修改。"
+    if title.startswith("背诵："):
+        return "先理解诗句或文章意思，再脱稿背给家长听，错处回看后重背。"
+    if title.startswith("结合资料体会感情："):
+        return "先读资料和课文，再说出人物/文字表达的感情，最后脱稿背诵。"
+    if title.startswith("找一找：") or title.startswith("找说明方法："):
+        return "圈出举例子、列数字、作比较等说明方法，并说出它说明了什么。"
+    if title.startswith("整理信息："):
+        return "用表格或提纲整理 3 个要点，再用自己的话说清主要内容。"
+    if title.startswith("用说明方法介绍"):
+        return "选一个熟悉的事物，至少用两种说明方法介绍，写完检查内容是否准确。"
+    if title.startswith("场景细节："):
+        return "圈出动作、语言或场景细节，说说这些细节怎样表现父母之爱。"
+    if title.startswith("结合生活事例"):
+        return "先讲一个真实事例，再说自己的感受或看法，不能只说‘很好’。"
+    if title.startswith("写信："):
+        return "写清一件具体的事和自己的感受，格式完整，写完读给家长听。"
+    if title.startswith("静态描写："):
+        return "找出描写景物形态、颜色和位置的句子，说说景物静态的特点。"
+    if title.startswith("动态描写："):
+        return "找出景物变化、声音或动作的句子，说说画面是怎样动起来的。"
+    if title.startswith("摘抄描写景物"):
+        return "摘抄 3~5 句，并标出是在写静态还是动态；注明课文出处。"
+    if title.startswith("按顺序写："):
+        return "确定观察顺序，按顺序写出景物特点，至少加入两处具体描写。"
+    if title.startswith("课外阅读："):
+        return "读完后说清人物、主要情节和自己的收获。"
+    if title.startswith("推荐一本书："):
+        return "写清书名、主要内容和推荐理由，至少举一个具体理由。"
+    if title.startswith("在方格图中"):
+        return "标出一个对应点，按指定方向数格子平移；检查形状、大小是否改变。"
+    if title.startswith("按中心和角度"):
+        return "找准旋转中心和方向，按指定角度旋转；检查对应点是否正确。"
+    if title.startswith("补全轴对称"):
+        return "先找对称轴，再数对应格子补全；检查两边到对称轴距离是否相等。"
+    if title.startswith("读填复式统计表"):
+        return "补全表格，再说出两组数据的相同点和不同点。"
+    if title.startswith("读画复式条形"):
+        return "看清图例和刻度，按数据画两组柱子，并检查高度是否对应。"
+    if title.startswith("根据图表"):
+        return "从图表找出数据，至少说出一个比较结论，并说明依据。"
+    if title.startswith("面积单位换算"):
+        return "先判断单位大小，再按进率换算；写完检查单位是否正确。"
+    if title.startswith("算平行四边形"):
+        return "先找底和对应的高，再选择公式计算，最后写上面积单位。"
+    if title.startswith("算组合图形"):
+        return "把图形分成已会计算的图形，分别算面积后合并，并检查单位。"
+    if title.startswith("小数乘法"):
+        return "先按整数乘法计算，再数因数小数位确定积的小数点，最后估算检查。"
+    if title.startswith("小数乘除口算"):
+        return "限时完成，错题写出计算过程，说明小数点为什么这样移动。"
+    if title.startswith("小数除法"):
+        return "先判断商的大致大小，再正确定位小数点，最后用乘法或估算检查。"
+    if title.startswith("用小数乘除"):
+        return "先找数量关系和单位，再列式计算，最后检查答案和单位是否合理。"
+    if title.startswith("用一定、可能"):
+        return "对每个事件选择‘一定、可能或不可能’，并用题目条件说出理由。"
+    if title.startswith("判断可能性大小"):
+        return "比较各种结果出现的机会，用‘大/小’或数据说明判断依据。"
+    if title.startswith("用可能性解释"):
+        return "先判断可能性，再用生活中的条件解释为什么。"
+    if title.startswith("找因数和倍数"):
+        return "用乘法算式找全因数和倍数，并说清谁是谁的因数或倍数。"
+    if title.startswith("用 2、3、5"):
+        return "不逐个试除，先看个位或各位数字和，再说明判断理由。"
+    if title.startswith("判断质数"):
+        return "分别判断质数、合数、奇数和偶数，注意 2 是偶数也是质数。"
+    if title.startswith("用字母表示"):
+        return "先找数量关系，再用字母写式子；说清每个字母表示什么。"
+    if title.startswith("化简含字母"):
+        return "先合并同类项，再把给出的数代入；注意运算顺序和单位。"
+    if title.startswith("用含字母式子"):
+        return "读懂题意列出含字母的式子，化简或代入后写完整答句。"
+    if title.startswith("从不同方向"):
+        return "分别从前、侧、上面观察，记录每个方向看到的形状和小正方体数量。"
+    if title.startswith("根据视图"):
+        return "根据每个方向看到的图形摆小正方体，再从三个方向检查是否一致。"
+    if title.startswith("画出物体"):
+        return "先确定观察方向和轮廓，再按小正方体位置画图，最后和实物对照。"
+    if title.startswith("听读并会写"):
+        return "先听音跟读，再遮住中文说英文、遮住英文写中文；错词订正后再读写一次。"
+    if title.startswith("练习拼读"):
+        return "先读字母组合发音，再拼读本单元单词；每个词读三遍并让家长抽查。"
+    if title.startswith("跟读"):
+        return "跟音频逐句读，注意重音和语调；最后不看音频完整读一遍。"
+    if title.startswith("三单练习") or title.startswith("练习 Does") or title.startswith("练习 What"):
+        return "先读例句，再替换人物或活动造 3 句；检查主语、动词形式和问答是否匹配。"
+    if title.startswith("练习 should") or title.startswith("练习 Why"):
+        return "用本单元句型提出 3 条建议，并正确使用动词原形。"
+    if title.startswith("练习 always"):
+        return "用 5 个频率副词各说或写一句周末活动，注意位置和句意。"
+    if title.startswith("练习 How much"):
+        return "分别练习单数和复数问价，能问、能听懂并能用完整句子回答。"
+    if title.startswith("练习 in / on"):
+        return "用 in、on、at 各造句，分别表示月份、日期/星期和具体时刻。"
+    if title.startswith("完成 Wrap-up"):
+        return "准备 3 句以上完整英语表达，脱稿说给家长听，发音和句型都要清楚。"
+    if title.startswith("完成 Project"):
+        return "按课本要求完成作品，检查英文内容和书写，再展示并用英语介绍。"
+    return HINT.get(action, "")
+
 DAILY_TASKS = [
     {"id": "cn-read", "subject": "语文", "name": "课外阅读 20 分钟",
      "sunshine": SUN, "frequency": "daily",
@@ -280,7 +399,7 @@ def pack(subj, seq, name, items):
     tasks = []
     for i, item in enumerate(items, 1):
         action, title = item[:2]
-        detail = item[2] if len(item) > 2 else HINT.get(action, "")
+        detail = item[2] if len(item) > 2 else detail_for(action, title)
         tasks.append({
             "id": f"{uid}-{i}", "subject": subj, "unit_id": uid,
             "action": action, "title": title, "detail": detail,
@@ -307,7 +426,7 @@ def main():
     units, tasks = build()
     os.makedirs("data", exist_ok=True)
     with open("data/tasks.seed.json", "w", encoding="utf-8") as f:
-        json.dump({"term": TERM, "subjects": SUBJECTS, "curriculum_ver": "2026-g5s1-v9",
+        json.dump({"term": TERM, "subjects": SUBJECTS, "curriculum_ver": "2026-g5s1-v10",
                    "units": units, "tasks": tasks, "daily_tasks": DAILY_TASKS},
                   f, ensure_ascii=False, indent=2)
     lines = ["# 2026 新教材任务卡", "",
