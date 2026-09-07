@@ -2761,7 +2761,6 @@
     {
       "unit_id": "g5s1-cn-1",
       "tag_ids": [
-        "cn-zi",
         "cn5-jw",
         "cn5-xxw"
       ],
@@ -2770,7 +2769,6 @@
     {
       "unit_id": "g5s1-cn-2",
       "tag_ids": [
-        "cn-zi",
         "cn5-ysd",
         "cn5-rw"
       ],
@@ -2779,7 +2777,6 @@
     {
       "unit_id": "g5s1-cn-3",
       "tag_ids": [
-        "cn-zi",
         "cn5-mj",
         "cn5-fs",
         "cn5-gsx"
@@ -2789,7 +2786,6 @@
     {
       "unit_id": "g5s1-cn-4",
       "tag_ids": [
-        "cn-recite",
         "cn5-zl",
         "cn5-tg"
       ],
@@ -2806,7 +2802,6 @@
     {
       "unit_id": "g5s1-cn-6",
       "tag_ids": [
-        "cn-zi",
         "cn5-xj",
         "cn5-bd"
       ],
@@ -2815,7 +2810,6 @@
     {
       "unit_id": "g5s1-cn-7",
       "tag_ids": [
-        "cn-recite",
         "cn5-dj",
         "cn5-sx"
       ],
@@ -2905,9 +2899,7 @@
     {
       "unit_id": "g5s1-en-1",
       "tag_ids": [
-        "en-word",
         "en5-u1phon",
-        "en-listen",
         "en5-u1",
         "en5-u1hab"
       ],
@@ -2916,9 +2908,7 @@
     {
       "unit_id": "g5s1-en-2",
       "tag_ids": [
-        "en-word",
         "en5-u2phon",
-        "en-listen",
         "en5-u2gram",
         "en5-u2"
       ],
@@ -2927,9 +2917,7 @@
     {
       "unit_id": "g5s1-en-3",
       "tag_ids": [
-        "en-word",
         "en5-u3phon",
-        "en-listen",
         "en5-u3gram",
         "en5-u3"
       ],
@@ -2938,9 +2926,7 @@
     {
       "unit_id": "g5s1-en-4",
       "tag_ids": [
-        "en-word",
         "en5-u4phon",
-        "en-listen",
         "en5-u4gram",
         "en5-u4"
       ],
@@ -2949,9 +2935,7 @@
     {
       "unit_id": "g5s1-en-5",
       "tag_ids": [
-        "en-word",
         "en5-u5phon",
-        "en-listen",
         "en5-u5gram",
         "en5-u5"
       ],
@@ -2960,9 +2944,7 @@
     {
       "unit_id": "g5s1-en-6",
       "tag_ids": [
-        "en-word",
         "en5-u6phon",
-        "en-listen",
         "en5-u6gram",
         "en5-u6"
       ],
@@ -2971,9 +2953,7 @@
     {
       "unit_id": "g5s1-en-7",
       "tag_ids": [
-        "en-word",
         "en5-u7phon",
-        "en-listen",
         "en5-u7gram",
         "en5-u7"
       ],
@@ -2982,9 +2962,7 @@
     {
       "unit_id": "g5s1-en-8",
       "tag_ids": [
-        "en-word",
         "en5-u8phon",
-        "en-listen",
         "en5-u8gram",
         "en5-u8"
       ],
@@ -2993,7 +2971,6 @@
     {
       "unit_id": "g5s1-en-9",
       "tag_ids": [
-        "en5-pjt",
         "en5-p1"
       ],
       "auto": false
@@ -3001,7 +2978,6 @@
     {
       "unit_id": "g5s1-en-10",
       "tag_ids": [
-        "en5-pjt",
         "en5-p2"
       ],
       "auto": false

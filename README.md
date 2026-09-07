@@ -11,7 +11,7 @@
 - 平板：Android WebView 壳，可从 [Releases](https://github.com/kofwj/study/releases) 下载 APK
 - 部署：Docker Compose + Cloudflare Tunnel
 - 多学期种子：12 个学期、350 个单元、1349 张任务卡
-- 五上当前可用：35 个单元、149 张单元任务卡、10 个每日任务、125 个可点选考点
+- 五上当前可用：35 个单元、149 张单元任务卡、10 个每日任务、101 个单元特有考点
 
 ## 孩子端
 

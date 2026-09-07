@@ -723,6 +723,12 @@ def _migrate_022(conn):
     seed_knowledge_tags(conn)
 
 
+def _migrate_023(conn):
+    # 五上考点区去掉跨单元重复的基础练习，只保留单元特有难点。
+    # weak_points 不动，避免删除家长已经记录的复习历史。
+    seed_knowledge_tags(conn)
+
+
 def _migrate_017(conn):
     conn.execute("""
 CREATE TABLE IF NOT EXISTS knowledge_tags (
@@ -759,6 +765,7 @@ MIGRATIONS = (
     ("020_ma_en_tags", _migrate_020),
     ("021_g5s1_review_tags", _migrate_021),
     ("022_g5s1_kx_df_tags", _migrate_022),
+    ("023_g5s1_unique_review_tags", _migrate_023),
 )
 
 

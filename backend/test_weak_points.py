@@ -29,6 +29,13 @@ def main_fn():
         t1, t2 = tags[0]["tag_id"], tags[-1]["tag_id"]
         all_tags = p.get("/api/admin/unit-tags").json()
         assert len(all_tags["tags"]) >= 20 and len(all_tags["unit_tags"]) >= 50
+        # 五上考点只保留单元特有难点，基础字词/词汇/跟读不应跨单元重复。
+        g5 = [x for x in all_tags["unit_tags"] if x["unit_id"].startswith("g5s1-")]
+        assert len({(x["unit_id"], x["tag_id"]) for x in g5}) == len(g5)
+        seen = {}
+        for x in g5:
+            assert x["tag_id"] not in seen, (x["tag_id"], seen[x["tag_id"]], x["unit_id"])
+            seen[x["tag_id"]] = x["unit_id"]
         r = p.get("/api/admin/weak-points?unit_id=&selected_kid=" + a)
         assert r.status_code == 200, r.text
         r = p.put("/api/admin/weak-points", json={"kid_id": a, "unit_id": uid, "tag_ids": [t1], "note": "默写"})
