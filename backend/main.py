@@ -1531,7 +1531,7 @@ class WeakIn(BaseModel):
     tag_ids: list[str]
     note: str = ""
     kid_id: str = ""
-    first_review: str = ""  # YYYY-MM-DD，首次到期；空=明天
+    first_review: str = ""  # YYYY-MM-DD，首次到期；空=今天
 
 
 @app.put("/api/admin/weak-points")
@@ -1561,7 +1561,7 @@ def admin_weak_put(b: WeakIn, request: Request):
             db.apply_scope(c, fam, kid_id()); c.close()
             raise HTTPException(400, "日期写成 2026-09-07 这种")
     else:
-        first = (datetime.now().date() + timedelta(days=1)).isoformat()
+        first = db.today()
     for tid in tags:
         prev = old.get(tid)
         due = prev["review_due_at"] if prev and prev["review_due_at"] else first

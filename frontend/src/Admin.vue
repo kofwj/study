@@ -2,6 +2,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { api, setSelectedKid } from './api.js'
 import { rankIcon } from './icons.js'
+import { tagHelp } from './tagHelp.js'
 import { ChartColumn, Eye, Baby, Users, KeyRound, Lock, Store, Trophy, ClipboardCheck, BookOpen, RefreshCw, MapPinned, FileText, Settings, Sun, Star, Check, ArrowLeft, BookMarked } from '@lucide/vue'
 
 const emit = defineEmits(['exit', 'switched'])
@@ -209,9 +210,10 @@ const unitsBySubject = computed(() => {
   }
   return m
 })
-const tagName = (id) => (catalog.value.tags || []).find(t => t.id === id)?.name || id
+const tagFor = (id) => (catalog.value.tags || []).find(t => t.id === id) || { id, name: id }
+const tagName = (id) => tagFor(id).name
 function tagsFor(uid) {
-  return (catalog.value.unit_tags || []).filter(x => x.unit_id === uid)
+  return (catalog.value.unit_tags || []).map(x => ({ ...x, ...tagFor(x.tag_id) })).filter(x => x.name)
 }
 function tagOn(uid, tid) { return !!(weakByUnit.value[uid] && weakByUnit.value[uid][tid]) }
 function weakTagCount(uid) { return Object.keys(weakByUnit.value[uid] || {}).length }
@@ -228,7 +230,11 @@ async function toggleTag(uid, tid) {
   else cur[tid] = true
   weakByUnit.value = { ...weakByUnit.value, [uid]: cur }
   try {
-    await api.admin.setWeakPoints({ unit_id: uid, tag_ids: Object.keys(cur), kid_id: selectedKid.value, first_review: firstReview.value })
+    const rows = await api.admin.setWeakPoints({ unit_id: uid, tag_ids: Object.keys(cur), kid_id: selectedKid.value, first_review: firstReview.value })
+    const other = weakPoints.value.filter(x => x.unit_id !== uid)
+    weakPoints.value = [...other, ...rows]
+    reviewDue.value = await api.admin.reviewDue()
+    showToast(cur[tid] ? '已加入今天复习' : '已取消记录')
   } catch (e) {
     weakByUnit.value = { ...weakByUnit.value, [uid]: prev }
     showToast(e.message)
@@ -442,7 +448,7 @@ onMounted(load)
       </div>
       <div v-if="!reviewDue.length" class="review-empty">
         <strong>今天没有要复习的内容</strong>
-        <span>新的薄弱点会在“考点”里记录，到了时间会出现在这里。</span>
+        <span>在“任务与考点”点亮一项后，会立刻出现在这里。</span>
       </div>
       <div v-for="x in reviewDue" :key="x.id" class="review-item">
         <div class="review-item-info">
@@ -639,7 +645,7 @@ onMounted(load)
     <!-- 任务 -->
     <section v-if="section === 'unit-task'" class="a-card enter">
       <h3>任务与考点</h3>
-      <p class="lead">教材任务由系统提供，不需要家长修改。孩子哪一项没掌握，就在对应单元点亮考点；家长自己的额外任务可以在这里新增。</p>
+      <p class="lead">教材任务由系统提供，不需要家长修改。先看“家长怎么检查”，孩子做不出来或说不清时再点亮；点亮后立刻进入“今日复习”。</p>
       <div class="add-box task-add-box">
         <div class="add-title">新增家长任务</div>
         <p class="form-help">给孩子补充一项自己的练习，完成后也会出现在孩子端。</p>
@@ -664,7 +670,8 @@ onMounted(load)
         </div>
         <button class="ok wide" @click="addTask">＋新增任务</button>
       </div>
-      <label class="fld" style="max-width:220px;margin-bottom:10px"><span>新记录第一次复习</span>
+      <p class="form-help review-start-help">点亮后默认今天复习；只有想改日期时才在这里选。</p>
+      <label class="fld" style="max-width:220px;margin-bottom:10px"><span>改成哪天开始复习</span>
         <input type="date" v-model="firstReview" />
       </label>
       <div class="subj-tabs">
@@ -675,12 +682,15 @@ onMounted(load)
       <div v-for="(arr, sid) in unitsBySubject" :key="sid" class="subj" v-show="activeSubject === sid">
         <div v-for="u in arr" :key="u.id" class="unit-block">
           <div class="unit-h">{{ u.name }} <span v-if="weakTagCount(u.id)" class="unit-wp-count">已记录 {{ weakTagCount(u.id) }} 项</span></div>
-          <div class="tag-row">
+          <div class="tag-guide-row">
             <button v-for="tg in tagsFor(u.id)" :key="tg.tag_id" type="button"
-              :class="['tag', { on: tagOn(u.id, tg.tag_id), auto: tg.auto }]"
+              :class="['tag-guide', { on: tagOn(u.id, tg.tag_id), auto: tg.auto }]"
               :aria-pressed="tagOn(u.id, tg.tag_id)"
-              :title="tagOn(u.id, tg.tag_id) ? '已记录，点击取消' : '点击记录这个薄弱考点'"
-              @click="toggleTag(u.id, tg.tag_id)">{{ tagOn(u.id, tg.tag_id) ? '✓ ' : '' }}{{ tagName(tg.tag_id) }}</button>
+              @click="toggleTag(u.id, tg.tag_id)">
+              <span class="tag-guide-title">{{ tagOn(u.id, tg.tag_id) ? '✓ ' : '' }}{{ tg.name }}</span>
+              <span class="tag-guide-help">{{ tagHelp(tg) }}</span>
+              <span class="tag-guide-action">{{ tagOn(u.id, tg.tag_id) ? '已加入今日复习，点此取消' : '孩子做不出来，点此加入今日复习' }}</span>
+            </button>
             <span v-if="!tagsFor(u.id).length" class="dim">无考点</span>
           </div>
           <div class="task-row" v-for="t in (tasksBySubject[sid] || []).filter(x => x.unit_id === u.id)" :key="t.id">
@@ -1061,6 +1071,7 @@ onMounted(load)
 @media (max-width: 560px) {
   .test-band-head { display: none; }
   .band-edit { grid-template-columns: minmax(100px, 1fr) 88px 18px 76px 18px; }
+  .tag-guide-row { grid-template-columns: 1fr; }
 }
 
 /* —— 单元任务 / 每日任务 表单重排 —— */
@@ -1086,11 +1097,16 @@ onMounted(load)
 .task-readonly-title { flex: 1; min-width: 160px; color: var(--ink-2); font-size: 13px; }
 .task-add-box { margin: 0 0 18px; }
 .form-help { margin: -4px 0 10px; color: var(--ink-3); font-size: 11px; }
-.tag-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
-.tag { border: 1px solid var(--line); background: var(--surface); border-radius: 14px; padding: 3px 10px; font-size: 12px; cursor: pointer; font-family: inherit; color: var(--ink-2); }
-.tag.on { background: var(--warm); border-color: var(--accent); color: var(--accent-ink); font-weight: 800; }
-.tag:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
-.tag.auto:not(.on) { opacity: .75; }
+.tag-guide-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 8px; margin-bottom: 10px; }
+.tag-guide { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-width: 0; padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); text-align: left; font-family: inherit; cursor: pointer; }
+.tag-guide:hover { border-color: var(--brand); }
+.tag-guide.on { border-color: var(--accent); background: var(--warm); }
+.tag-guide:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.tag-guide.auto:not(.on) { opacity: .8; }
+.tag-guide-title { font-size: 13px; font-weight: 800; }
+.tag-guide-help { color: var(--ink-2); font-size: 12px; line-height: 1.5; }
+.tag-guide-action { color: var(--brand-deep); font-size: 11px; font-weight: 700; }
+.tag-guide.on .tag-guide-action { color: var(--accent-ink); }
 .task-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 8px 14px; border-top: 1px solid var(--surface-2); }
 .task-row .badge { flex: none; }
 

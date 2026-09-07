@@ -3,6 +3,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { api } from './api.js'
 import Admin from './Admin.vue'
 import { SUBJECT_ICONS as ICONS, rankIcon, achIcon } from './icons.js'
+import { tagHelp } from './tagHelp.js'
 import { Sun, Lock, Gift, Check, TrendingUp, Target, User, ShoppingCart, ScrollText, Medal, ChartColumn, Map, CalendarDays, RefreshCw, PartyPopper, Sparkles, BookOpen, Flame } from '@lucide/vue'
 
 const data = reactive({
@@ -492,7 +493,7 @@ function reloadApp() {
               <article v-for="x in reviewDue" :key="x.id" class="plan-row review-card enter">
                 <div class="plan-row-main">
                   <span class="plan-subject">{{ x.subject_id }}</span>
-                  <div><strong>{{ x.tag_name }}</strong><small>{{ x.unit_name }} · 第 {{ (x.interval_idx || 0) + 1 }} 次</small></div>
+                  <div><strong>{{ x.tag_name }}</strong><small>{{ x.unit_name }} · 第 {{ (x.interval_idx || 0) + 1 }} 次</small><small class="plan-review-help">{{ tagHelp(x) }}</small></div>
                 </div>
                 <span class="plan-state">做完告诉家长</span>
               </article>
@@ -868,6 +869,7 @@ body {
 .plan-row-main { display: flex; align-items: center; gap: 9px; min-width: 0; }
 .plan-row-main strong { display: block; font-size: 13px; color: var(--ink); }
 .plan-row-main small { display: block; margin-top: 3px; color: var(--ink-3); font-size: 11px; }
+.plan-row-main .plan-review-help { max-width: 620px; color: var(--ink-2); line-height: 1.45; }
 .plan-subject { flex: none; color: var(--brand-deep); font-size: 11px; font-weight: 800; }
 .plan-state { flex: none; color: var(--accent-ink); font-size: 11px; font-weight: 700; }
 .plan-grid { grid-template-columns: repeat(3, 1fr); }

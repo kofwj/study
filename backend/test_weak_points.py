@@ -34,6 +34,9 @@ def main_fn():
         r = p.put("/api/admin/weak-points", json={"kid_id": a, "unit_id": uid, "tag_ids": [t1], "note": "默写"})
         assert r.status_code == 200, r.text
         assert [x["tag_id"] for x in r.json()] == [t1]
+        # 新点亮默认今天入队，任务与考点和今日复习不能断开。
+        due = p.get("/api/admin/review-due", params={"selected_kid": a}).json()
+        assert any(x["tag_id"] == t1 for x in due)
         r = p.put("/api/admin/weak-points", json={"kid_id": a, "unit_id": uid, "tag_ids": [t2]})
         assert [x["tag_id"] for x in r.json()] == [t2]
         r0 = p.put("/api/admin/weak-points", json={"kid_id": a, "unit_id": uid, "tag_ids": []})

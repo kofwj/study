@@ -24,12 +24,16 @@ dzkbw 目录 → scripts/fetch_catalog.py(单本) → scripts/gen_catalog.py(批
    ```bash
    cd /Users/jian/Downloads/study && python3 scripts/gen_catalog.py --save
    ```
-2. 重新生成多学期 seed（五上语数英会自动用手工核实版覆盖）：
+2. 重新生成多学期 seed（五上语数英科学道法会自动使用人工核实版覆盖）：
    ```bash
    python3 scripts/gen_seed.py
    ```
-3. 改 `gen_seed.py` 顶部 `curriculum_ver`（或每次重跑自然变，因为内容变了）——**这个值变了，线上才会刷新任务**。
-4. 提交推送 + 部署（见「三、日常更新」）。
+3. 重建考点字典和单元映射：
+   ```bash
+   python3 scripts/gen_knowledge_tags.py
+   ```
+4. 升级 `gen_seed.py` 顶部 `curriculum_ver`——**这个值变了，线上才会刷新系统任务；考点映射变更还需要在 `backend/db.py` 增加迁移**。
+5. 提交推送 + 部署（见「三、日常更新」）。
 
 ### 补 4 科 / 加新学科
 
