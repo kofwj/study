@@ -1,7 +1,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted, onBeforeUnmount, watch, defineAsyncComponent } from 'vue'
 import { api } from './api.js'
-import { APP_LABEL } from './version.js'
+import { APP_LABEL, APP_REVISION } from './version.js'
 // ponytail: 家长后台（1147 行）单独切 chunk，孩子端首屏不加载
 const Admin = defineAsyncComponent(() => import('./Admin.vue'))
 import { SUBJECT_ICONS as ICONS, rankIcon, achIcon } from './icons.js'
@@ -626,7 +626,7 @@ function reloadApp() {
     <footer class="foot">
       <button class="parent" @click="openParent"><User class="ico" :size="15" /> 家长</button>
       <button class="parent" @click="doLogout">退出</button>
-      <span class="app-ver" :title="APP_LABEL">{{ APP_LABEL }}</span>
+      <span class="app-ver" :title="APP_REVISION">{{ APP_LABEL }}</span>
       <span class="grow"></span>
       <button class="shop-fab" @click="openShop"><ShoppingCart class="ico" :size="16" /> 商店</button>
     </footer>
@@ -783,7 +783,7 @@ function reloadApp() {
       <div class="login-logo"><Sun class="ico" :size="36" /></div>
       <h1>阳光学习工作台</h1>
       <p class="login-sub">孩子的每日学习打卡小助手</p>
-      <p class="login-ver">{{ APP_LABEL }}</p>
+      <p class="login-ver" :title="APP_REVISION">{{ APP_LABEL }}</p>
       <div class="login-tabs">
         <button type="button" :class="{ on: pinForm.mode==='login' }" @click="pinForm.mode='login'">登录</button>
         <button type="button" :class="{ on: pinForm.mode==='register' }" @click="pinForm.mode='register'">注册新家</button>

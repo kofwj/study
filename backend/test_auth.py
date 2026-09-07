@@ -30,7 +30,7 @@ def test_auth():
         body = r.json()
         assert body["ok"] is True
         assert body.get("version")
-        assert body.get("label")
+        assert body.get("label") == "V " + body["version"].lstrip("Vv ").strip()
         r = cli.get("/api/tasks")
         assert r.status_code == 401, r.text
         r = cli.post("/api/auth/login", json={"account": "parent", "pin": "0000"})

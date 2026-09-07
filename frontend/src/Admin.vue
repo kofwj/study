@@ -1,7 +1,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { api, setSelectedKid } from './api.js'
-import { APP_LABEL } from './version.js'
+import { APP_LABEL, APP_REVISION } from './version.js'
 import { rankIcon } from './icons.js'
 import { tagHelp } from './tagHelp.js'
 import { ChartColumn, Eye, Baby, Users, KeyRound, Lock, Store, Trophy, ClipboardCheck, BookOpen, RefreshCw, MapPinned, FileText, Settings, Sun, Star, Check, ArrowLeft, BookMarked } from '@lucide/vue'
@@ -448,7 +448,7 @@ onMounted(load)
     <header class="a-head">
       <div>
         <div class="a-title"><Settings class="ico" :size="18" /> 家长管理</div>
-        <div class="a-sub">给孩子配置奖励、等级与任务 · {{ APP_LABEL }}</div>
+        <div class="a-sub" :title="APP_REVISION">给孩子配置奖励、等级与任务 · {{ APP_LABEL }}</div>
         <label class="a-term">正在看
           <select v-model="selectedKid" @change="switchKid">
             <option v-for="k in kids" :key="k.id" :value="k.id">{{ k.name }}</option>

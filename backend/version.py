@@ -38,7 +38,7 @@ def app_revision() -> str:
 
 
 def app_label() -> str:
-    ver, rev = app_version(), app_revision()
-    if rev and rev != "dev":
-        return f"{ver} · {rev}"
-    return ver
+    ver = app_version()
+    if ver.lower().startswith("v"):
+        return "V " + ver[1:].lstrip()
+    return f"V {ver}"
