@@ -55,7 +55,8 @@ const weakByUnit = ref({})
 const weakPoints = ref([])
 const reviewDue = ref([])
 const firstReview = ref('')
-const TEST_BANDS = [[100, 30], [95, 20], [90, 15], [85, 10], [0, 5]]
+const DEFAULT_TEST_BANDS = [[100, 30], [95, 20], [90, 15], [85, 10], [0, 5]]
+const testBands = ref(DEFAULT_TEST_BANDS.map(x => [...x]))
 const weekly = ref({ days: [], weeks: [], by_subject: [], kids: [], total_earned: 0, total_spent: 0, net: 0, balance: 0, earned_all: 0, streak: 0, checkins: 0, week_start: '', week_end: '' })
 const insights = ref({ rules: { test_fail_count: 2, test_fail_score: 80, drop_ratio: 0.3, streak_break: 2 }, kids: [] })
 const RULE_DEFAULTS = { test_fail_count: 2, test_fail_score: 80, drop_ratio: 0.3, streak_break: 2 }
@@ -104,6 +105,7 @@ async function load() {
   weekly.value = wk
   tests.value = ts
   insights.value = ig
+  testBands.value = (ig.rules?.test_bands || DEFAULT_TEST_BANDS).map(x => [...x])
   catalog.value = cat && cat.tags ? cat : { tags: [], unit_tags: [] }
   const openWeakPoints = wps || []
   const wb = {}
@@ -194,6 +196,11 @@ const tasksBySubject = computed(() => {
 })
 const subjectName = (id) => subjects.value.find(s => s.id === id)?.name || id
 const termUnits = computed(() => units.value.filter(u => u.term_id === activeTerm.value || (u.id || '').startsWith(activeTerm.value)))
+const cursorSubjects = computed(() => {
+  const unitIds = new Set(termUnits.value.map(u => u.id))
+  const ids = new Set(tasks.value.filter(t => unitIds.has(t.unit_id)).map(t => t.subject_id))
+  return subjects.value.filter(s => ids.has(s.id))
+})
 const unitsBySubject = computed(() => {
   const m = {}
   for (const u of termUnits.value) {
@@ -231,6 +238,7 @@ async function toggleTag(uid, tid) {
 // —— 每日任务 ——
 const DIRS = [['higher_better', '越多越好'], ['lower_better', '越少越好']]
 const newDaily = reactive({ subject_id: '体育', name: '', sunshine: 5, bonus_per_metric: 3, note: '', metrics: [] })
+const orderedDaily = computed(() => [...daily.value].sort((a, b) => Number(b.family_id != null) - Number(a.family_id != null)))
 function addMetric(arr) { arr.push({ id: 'm' + Date.now(), label: '', unit: '', direction: 'higher_better', note: '' }) }
 const cleanMetrics = (ms) => (ms || []).map(({ id, label, unit, direction, note }) => ({ id, label, unit, direction, note }))
 async function addDaily() {
@@ -303,6 +311,17 @@ async function saveRule(key, val) {
 }
 async function resetRule(key) {
   await saveRule(key, RULE_DEFAULTS[key])
+}
+async function saveTestBands() {
+  try {
+    insights.value.rules = await api.admin.setInsightRules({ test_bands: testBands.value })
+    testBands.value = (insights.value.rules?.test_bands || DEFAULT_TEST_BANDS).map(x => [...x])
+    showToast('奖励标准已保存')
+  } catch (e) { showToast(e.message) }
+}
+async function resetTestBands() {
+  testBands.value = DEFAULT_TEST_BANDS.map(x => [...x])
+  await saveTestBands()
 }
 function goInsight(row) {
   const a = row.insight?.action
@@ -682,8 +701,35 @@ onMounted(load)
     <!-- 每日任务 -->
     <section v-if="section === 'daily'" class="a-card enter">
       <h3>每日任务（循环打卡）</h3>
-      <p class="lead">系统内置任务只读；你自己建的可以改、可加「破纪录」指标。</p>
-      <div class="daily-card" v-for="d in daily" :key="d.id">
+      <p class="lead">你自己加的任务排在前面，系统内置任务排在后面；系统内置任务只读，家长任务可以修改。</p>
+      <div class="add-box task-add-box">
+        <div class="add-title">新增每日任务（你自己家的）</div>
+        <div class="frm-row">
+          <label class="fld grow"><span>哪一科</span>
+            <select v-model="newDaily.subject_id">
+              <option v-for="s in subjects" :key="s.id" :value="s.id">{{ s.name }}</option>
+            </select>
+          </label>
+          <label class="fld grow"><span>名称</span><input v-model="newDaily.name" placeholder="如：跳绳打卡" /></label>
+          <label class="fld w64"><span>基础阳光</span><input v-model.number="newDaily.sunshine" type="number" /></label>
+          <label class="fld w84"><span>破纪录 +</span><input v-model.number="newDaily.bonus_per_metric" type="number" /></label>
+          <label class="fld grow"><span>怎么做</span><input v-model="newDaily.note" placeholder="如：完成后让家长检查" /></label>
+        </div>
+        <div class="m-row" v-for="(m, i) in newDaily.metrics" :key="m.id">
+          <label class="fld grow"><span>指标名</span><input v-model="m.label" placeholder="如：跳绳个数" /></label>
+          <label class="fld w84"><span>单位</span><input v-model="m.unit" placeholder="个" /></label>
+          <label class="fld w104"><span>方向</span>
+            <select v-model="m.direction">
+              <option v-for="[v, n] in DIRS" :key="v" :value="v">{{ n }}</option>
+            </select>
+          </label>
+          <label class="fld grow"><span>记录说明</span><input v-model="m.note" placeholder="如：只记完整正确的次数" /></label>
+          <button class="del" @click="newDaily.metrics.splice(i, 1)">×</button>
+        </div>
+        <button class="ghost-s" @click="addMetric(newDaily.metrics)">＋加破纪录指标</button>
+        <div style="margin-top:10px"><button class="ok wide" @click="addDaily">＋新增任务</button></div>
+      </div>
+      <div class="daily-card" v-for="d in orderedDaily" :key="d.id">
         <div v-if="d.family_id == null" class="sys-row">
           <span class="badge daily">每天</span>
           <span class="sys-name">{{ d.name }}</span>
@@ -724,44 +770,17 @@ onMounted(load)
           <button class="ghost-s" @click="addMetric(d.metrics)">＋加破纪录指标</button>
         </template>
       </div>
-      <div class="add-box">
-        <div class="add-title">新增每日任务（你自己家的）</div>
-        <div class="frm-row">
-          <label class="fld grow"><span>哪一科</span>
-            <select v-model="newDaily.subject_id">
-              <option v-for="s in subjects" :key="s.id" :value="s.id">{{ s.name }}</option>
-            </select>
-          </label>
-          <label class="fld grow"><span>名称</span><input v-model="newDaily.name" placeholder="如：跳绳打卡" /></label>
-          <label class="fld w64"><span>基础阳光</span><input v-model.number="newDaily.sunshine" type="number" /></label>
-          <label class="fld w84"><span>破纪录 +</span><input v-model.number="newDaily.bonus_per_metric" type="number" /></label>
-          <label class="fld grow"><span>怎么做</span><input v-model="newDaily.note" placeholder="如：完成后让家长检查" /></label>
-        </div>
-        <div class="m-row" v-for="(m, i) in newDaily.metrics" :key="m.id">
-          <label class="fld grow"><span>指标名</span><input v-model="m.label" placeholder="如：跳绳个数" /></label>
-          <label class="fld w84"><span>单位</span><input v-model="m.unit" placeholder="个" /></label>
-          <label class="fld w104"><span>方向</span>
-            <select v-model="m.direction">
-              <option v-for="[v, n] in DIRS" :key="v" :value="v">{{ n }}</option>
-            </select>
-          </label>
-          <label class="fld grow"><span>记录说明</span><input v-model="m.note" placeholder="如：只记完整正确的次数" /></label>
-          <button class="del" @click="newDaily.metrics.splice(i, 1)">×</button>
-        </div>
-        <button class="ghost-s" @click="addMetric(newDaily.metrics)">＋加破纪录指标</button>
-        <div style="margin-top:10px"><button class="ok wide" @click="addDaily">＋新增任务</button></div>
-      </div>
     </section>
 
     <!-- 已学到 -->
     <section v-if="section === 'cursor'" class="a-card enter">
       <h3>已学到哪一课</h3>
       <p class="lead">推荐从这里往后，前面的课标灰「已学过」，不再计阳光。</p>
-      <div class="a-item" v-for="s in ['语文','数学','英语']" :key="s">
-        <span class="badge">{{ s }}</span>
-        <select :value="cursors[s] || ''" @change="setCursor(s, $event.target.value)">
+      <div class="a-item" v-for="s in cursorSubjects" :key="s.id">
+        <span class="badge">{{ s.name }}</span>
+        <select :value="cursors[s.id] || ''" @change="setCursor(s.id, $event.target.value)">
           <option value="">从头开始</option>
-          <option v-for="t in (tasksBySubject[s] || [])" :key="t.id" :value="t.id">{{ t.title }}</option>
+          <option v-for="t in (tasksBySubject[s.id] || [])" :key="t.id" :value="t.id">{{ t.title }}</option>
         </select>
       </div>
       <div class="lock-row" style="margin-top:14px">
@@ -775,9 +794,22 @@ onMounted(load)
     <!-- 单元测试成绩 -->
     <section v-if="section === 'test'" class="a-card enter">
       <h3>单元测试成绩奖励</h3>
-      <p class="lead">孩子考完单元测试，你录入分数，按档自动发阳光（孩子不能自己录）。</p>
+      <p class="lead">孩子考完单元测试，你录入分数，按家庭设置的档位发阳光。修改标准只影响以后录入的成绩，历史记录不重算。</p>
+      <div class="test-band-editor">
+        <div class="add-title">奖励标准</div>
+        <div class="band-edit" v-for="(band, i) in testBands" :key="i">
+          <label class="fld w84"><span>分数 ≥</span><input v-model.number="band[0]" type="number" min="0" max="100" :disabled="i === testBands.length - 1" /></label>
+          <span class="band-arrow">发</span>
+          <label class="fld w84"><span>阳光</span><input v-model.number="band[1]" type="number" min="0" /></label>
+          <span v-if="i === testBands.length - 1" class="dim">其余分数</span>
+        </div>
+        <div class="band-actions">
+          <button class="ok" @click="saveTestBands">保存奖励标准</button>
+          <button class="ghost-s" @click="resetTestBands">恢复默认</button>
+        </div>
+      </div>
       <div class="band-box">
-        <span v-for="[th, sun] in TEST_BANDS" :key="th" class="band">{{ th === 0 ? '85 以下' : th + ' 分' }} · +{{ sun }} 阳光</span>
+        <span v-for="[th, sun] in testBands" :key="th" class="band">{{ th === 0 ? '其余分数' : th + ' 分起' }} · +{{ sun }} 阳光</span>
       </div>
       <div class="add-box">
         <div class="add-title">录入成绩</div>
@@ -1012,6 +1044,9 @@ onMounted(load)
 .w-subj-num { flex: none; font-size: 12px; color: var(--ink-2); }
 .band-box { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 14px; }
 .band { font-size: 12px; padding: 4px 10px; border-radius: 12px; background: var(--warm); color: var(--accent-ink); font-weight: 700; }
+.test-band-editor { padding: 12px 0 4px; border-bottom: 1px solid var(--surface-2); margin-bottom: 12px; }
+.band-edit, .band-actions { display: flex; align-items: flex-end; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.band-arrow { padding-bottom: 10px; color: var(--ink-3); font-size: 12px; }
 
 /* —— 单元任务 / 每日任务 表单重排 —— */
 .fld { display: flex; flex-direction: column; gap: 3px; min-width: 0; }

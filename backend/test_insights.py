@@ -60,6 +60,12 @@ def main_fn():
         assert not ins or ins["type"] != "weak_unit"
 
         assert cli.put("/api/admin/insight-rules", json={"test_fail_score": 101}).status_code == 400
+        bands = [[100, 40], [95, 25], [90, 15], [85, 10], [0, 0]]
+        r = cli.put("/api/admin/insight-rules", json={"test_bands": bands})
+        assert r.status_code == 200 and r.json()["test_bands"] == bands
+        r = cli.post("/api/admin/tests" + q, json={"subject_id": "数学", "score": 100})
+        assert r.status_code == 200 and r.json()["sunshine"] == 40
+        assert cli.put("/api/admin/insight-rules", json={"test_bands": [[100, 1], [95, 2]]}).status_code == 400
         assert cli.put("/api/admin/insight-rules", json={"drop_ratio": 0.05}).status_code == 400
         assert cli.put("/api/admin/insight-rules", json={"streak_break": 9}).status_code == 400
 

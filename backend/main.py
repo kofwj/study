@@ -1381,9 +1381,25 @@ def redemption_deliver(rid: str):
 # --- 单元测试成绩奖励 ---
 TEST_BANDS = [(100, 30), (95, 20), (90, 15), (85, 10), (0, 5)]
 
+def test_bands(c):
+    raw = insight_rules(c).get("test_bands")
+    if not isinstance(raw, list) or len(raw) != 5:
+        return [list(x) for x in TEST_BANDS]
+    try:
+        bands = [[int(x[0]), int(x[1])] for x in raw]
+    except (TypeError, ValueError, IndexError):
+        return [list(x) for x in TEST_BANDS]
+    return bands if _valid_test_bands(bands) else [list(x) for x in TEST_BANDS]
 
-def score_sunshine(score):
-    for th, sun in TEST_BANDS:
+
+def _valid_test_bands(bands):
+    return (len(bands) == 5 and bands[-1][0] == 0 and
+            all(0 <= th <= 100 and sun >= 0 for th, sun in bands) and
+            all(bands[i][0] > bands[i + 1][0] for i in range(4)))
+
+
+def score_sunshine(score, bands):
+    for th, sun in bands:
         if score >= th:
             return sun
     return 0
@@ -1400,8 +1416,8 @@ class TestIn(BaseModel):
 def test_create(b: TestIn):
     if not (0 <= b.score <= 100):
         raise HTTPException(400, "分数要在 0~100 之间")
-    sun = score_sunshine(b.score)
     c = get_conn()
+    sun = score_sunshine(b.score, test_bands(c))
     unit_name = ""
     if b.unit_id:
         u = c.execute("SELECT name FROM units WHERE id=?", (b.unit_id,)).fetchone()
@@ -1871,6 +1887,7 @@ class InsightRulesIn(BaseModel):
     test_fail_score: Optional[int] = None
     drop_ratio: Optional[float] = None
     streak_break: Optional[int] = None
+    test_bands: Optional[list] = None
 
 
 def _clamp_rules(b: InsightRulesIn):
@@ -1891,6 +1908,14 @@ def _clamp_rules(b: InsightRulesIn):
         if not (1 <= b.streak_break <= 7):
             raise HTTPException(400, "连击断几天要在 1~7")
         out["streak_break"] = int(b.streak_break)
+    if b.test_bands is not None:
+        try:
+            bands = [[int(x[0]), int(x[1])] for x in b.test_bands]
+        except (TypeError, ValueError, IndexError):
+            raise HTTPException(400, "奖励档位格式不对")
+        if not _valid_test_bands(bands):
+            raise HTTPException(400, "分数线必须从高到低，最后一档为 0 分，阳光不能为负")
+        out["test_bands"] = bands
     return out
 
 
@@ -1899,6 +1924,7 @@ def insights_admin():
     c = get_conn()
     fam = _fam.get()
     rules = insight_rules(c)
+    rules["test_bands"] = test_bands(c)
     roster = c.execute(
         "SELECT id, name FROM users WHERE family_id=? AND role='kid' ORDER BY created_at", (fam,)).fetchall()
     kids = []
@@ -1919,6 +1945,7 @@ def insight_rules_put(b: InsightRulesIn):
     c.execute("UPDATE families SET insight_rules=? WHERE id=?", (json.dumps(merged, ensure_ascii=False), _fam.get()))
     c.commit()
     out = insight_rules(c)
+    out["test_bands"] = test_bands(c)
     c.close()
     return out
 
