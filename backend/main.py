@@ -1739,6 +1739,7 @@ class DailyTaskIn(BaseModel):
     name: str
     sunshine: int = 5
     bonus_per_metric: Optional[int] = 3
+    note: str = ""
     metrics: Optional[list] = None
 
 
@@ -1753,9 +1754,9 @@ def _replace_metrics(c, did, metrics):
 def daily_create(b: DailyTaskIn):
     c = get_conn()
     did = uuid.uuid4().hex[:8]
-    c.execute("INSERT INTO daily_tasks(id,subject_id,name,sunshine,frequency,bonus_type,bonus_per_metric,family_id) "
-              "VALUES(?,?,?,?,'daily','personal_best',?,?)",
-              (did, b.subject_id, b.name, _sun(b.sunshine), _sun(b.bonus_per_metric if b.bonus_per_metric is not None else 0), _fam.get()))
+    c.execute("INSERT INTO daily_tasks(id,subject_id,name,sunshine,frequency,bonus_type,bonus_per_metric,note,family_id) "
+              "VALUES(?,?,?,?,'daily','personal_best',?,?,?)",
+              (did, b.subject_id, b.name, _sun(b.sunshine), _sun(b.bonus_per_metric if b.bonus_per_metric is not None else 0), (b.note or "").strip()[:120], _fam.get()))
     _replace_metrics(c, did, b.metrics)
     c.commit(); c.close()
     return {"id": did}
@@ -1767,8 +1768,8 @@ def daily_update(did: str, b: DailyTaskIn):
     row = c.execute("SELECT family_id FROM daily_tasks WHERE id=?", (did,)).fetchone()
     if not row or not row["family_id"]:
         c.close(); raise HTTPException(403, "系统每日任务不能改")
-    c.execute("UPDATE daily_tasks SET subject_id=?, name=?, sunshine=?, bonus_per_metric=? WHERE id=? AND family_id=?",
-              (b.subject_id, b.name, _sun(b.sunshine), _sun(b.bonus_per_metric if b.bonus_per_metric is not None else 0), did, _fam.get()))
+    c.execute("UPDATE daily_tasks SET subject_id=?, name=?, sunshine=?, bonus_per_metric=?, note=? WHERE id=? AND family_id=?",
+              (b.subject_id, b.name, _sun(b.sunshine), _sun(b.bonus_per_metric if b.bonus_per_metric is not None else 0), (b.note or "").strip()[:120], did, _fam.get()))
     _replace_metrics(c, did, b.metrics)
     c.commit(); c.close()
     return {"ok": True}

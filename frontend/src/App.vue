@@ -601,8 +601,10 @@ function reloadApp() {
     <div v-if="dailyDialog.open" class="mask" @click.self="dailyDialog.open = false">
       <div class="shop-modal enter">
         <h3>{{ dailyDialog.task.name }}</h3>
+        <p v-if="dailyDialog.task.note" class="daily-dialog-note">怎么做：{{ dailyDialog.task.note }}</p>
         <div v-for="m in dailyDialog.task.metrics" :key="m.id" class="metric">
           <label>{{ m.label }}（{{ m.unit }}）</label>
+          <div v-if="m.note" class="metric-note">{{ m.note }}</div>
           <input v-model.number="dailyDialog.vals[m.id]" type="number" inputmode="decimal" :placeholder="m.unit" />
         </div>
         <button class="do big" @click="submitDaily($event)">打卡，赚阳光 <Sun class="ico" :size="15" /></button>
@@ -892,6 +894,8 @@ body {
 .ghost { width: 100%; margin-top: 8px; border: none; background: none; color: var(--ink-3); cursor: pointer; }
 .metric { margin-bottom: 10px; }
 .metric label { display: block; font-size: 13px; margin-bottom: 4px; }
+.daily-dialog-note, .metric-note { margin: -4px 0 8px; color: var(--ink-3); font-size: 12px; line-height: 1.5; }
+.metric-note { margin: -1px 0 4px; }
 .trend { position: absolute; top: 8px; right: 8px; border: none; background: var(--warm); border-radius: 14px; padding: 3px 8px; font-size: 15px; cursor: pointer; line-height: 1; }
 .chart-modal { max-width: 460px; max-height: 86vh; overflow-y: auto; }
 .chart-block { margin-bottom: 12px; padding: 10px 12px; background: var(--surface-2); border-radius: 12px; }

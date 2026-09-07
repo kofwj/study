@@ -17,7 +17,7 @@
     "综合",
     "围棋"
   ],
-  "curriculum_ver": "2026-g5s1-v10",
+  "curriculum_ver": "2026-g5s1-v11",
   "units": [
     {
       "id": "g5s1-cn-1",
@@ -1351,6 +1351,7 @@
       "name": "课外阅读 20 分钟",
       "sunshine": 5,
       "frequency": "daily",
+      "note": "连续阅读 20 分钟，读完说出主要内容或一个收获",
       "bonus_rule": {
         "type": "personal_best",
         "per_metric": 0,
@@ -1364,6 +1365,7 @@
       "name": "练字一页",
       "sunshine": 5,
       "frequency": "daily",
+      "note": "练字一页，注意姿势、笔画和整洁，写完让家长看一眼",
       "bonus_rule": {
         "type": "personal_best",
         "per_metric": 0,
@@ -1382,7 +1384,7 @@
         "per_metric": 0,
         "note": ""
       },
-      "note": "写一篇不少于 250 字的小练笔或日记",
+      "note": "写一篇不少于 250 字的小练笔或日记，写完读一遍并改错",
       "metrics": []
     },
     {
@@ -1391,6 +1393,7 @@
       "name": "每日口算",
       "sunshine": 5,
       "frequency": "daily",
+      "note": "完成一组口算，记录用时和正确率；错题订正后再看一遍",
       "bonus_rule": {
         "type": "personal_best",
         "per_metric": 3,
@@ -1401,13 +1404,15 @@
           "id": "time",
           "label": "用时",
           "unit": "分钟",
-          "direction": "lower_better"
+          "direction": "lower_better",
+          "note": "从第一题做到最后一题计时"
         },
         {
           "id": "acc",
           "label": "正确率",
           "unit": "%",
-          "direction": "higher_better"
+          "direction": "higher_better",
+          "note": "正确题数 ÷ 总题数 × 100%"
         }
       ]
     },
@@ -1417,6 +1422,7 @@
       "name": "自然拼读学习",
       "sunshine": 5,
       "frequency": "daily",
+      "note": "听音读本单元词汇，圈出不会读的词，再拼读给家长听",
       "bonus_rule": {
         "type": "personal_best",
         "per_metric": 0,
@@ -1430,6 +1436,7 @@
       "name": "跳绳打卡",
       "sunshine": 5,
       "frequency": "daily",
+      "note": "先热身，再记录 100 下用时和 1 分钟跳绳个数；量力完成",
       "bonus_rule": {
         "type": "personal_best",
         "per_metric": 3,
@@ -1440,13 +1447,15 @@
           "id": "t100",
           "label": "100下用时",
           "unit": "秒",
-          "direction": "lower_better"
+          "direction": "lower_better",
+          "note": "从第 1 下开始计时，到第 100 下停止"
         },
         {
           "id": "n1m",
           "label": "1分钟跳多少个",
           "unit": "个",
-          "direction": "higher_better"
+          "direction": "higher_better",
+          "note": "连续跳 1 分钟，记录完成的个数"
         }
       ]
     },
@@ -1456,6 +1465,7 @@
       "name": "1分钟仰卧起坐",
       "sunshine": 5,
       "frequency": "daily",
+      "note": "先热身，在动作规范的前提下记录 1 分钟次数；不舒服就停止",
       "bonus_rule": {
         "type": "personal_best",
         "per_metric": 3,
@@ -1466,7 +1476,8 @@
           "id": "cnt",
           "label": "1分钟做多少个",
           "unit": "个",
-          "direction": "higher_better"
+          "direction": "higher_better",
+          "note": "只记录动作完整的次数"
         }
       ]
     },
@@ -1476,6 +1487,7 @@
       "name": "坐位体前屈",
       "sunshine": 5,
       "frequency": "daily",
+      "note": "先热身，坐稳后向前伸展，记录手指超过脚尖的距离；不要用力硬压",
       "bonus_rule": {
         "type": "personal_best",
         "per_metric": 3,
@@ -1486,7 +1498,8 @@
           "id": "cm",
           "label": "手指过脚尖多远",
           "unit": "厘米",
-          "direction": "higher_better"
+          "direction": "higher_better",
+          "note": "以最远位置为准，脚尖前为正数"
         }
       ]
     },
@@ -1496,6 +1509,7 @@
       "name": "做一遍眼保健操",
       "sunshine": 5,
       "frequency": "daily",
+      "note": "按完整节拍认真做一遍，保持手部清洁，结束后看远处放松",
       "bonus_rule": {
         "type": "personal_best",
         "per_metric": 0,
@@ -1509,6 +1523,7 @@
       "name": "围棋对弈",
       "sunshine": 5,
       "frequency": "daily",
+      "note": "完成至少一局对弈，记录赢和输各几局，并说出一处复盘发现",
       "bonus_rule": {
         "type": "personal_best",
         "per_metric": 0,
@@ -1519,13 +1534,15 @@
           "id": "win",
           "label": "赢了几局",
           "unit": "局",
-          "direction": "higher_better"
+          "direction": "higher_better",
+          "note": "记录今天赢下的完整对局数"
         },
         {
           "id": "lose",
           "label": "输了几局",
           "unit": "局",
-          "direction": "higher_better"
+          "direction": "higher_better",
+          "note": "记录今天输掉的完整对局数"
         }
       ]
     }

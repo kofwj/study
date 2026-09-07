@@ -230,17 +230,17 @@ async function toggleTag(uid, tid) {
 
 // —— 每日任务 ——
 const DIRS = [['higher_better', '越多越好'], ['lower_better', '越少越好']]
-const newDaily = reactive({ subject_id: '体育', name: '', sunshine: 5, bonus_per_metric: 3, metrics: [] })
+const newDaily = reactive({ subject_id: '体育', name: '', sunshine: 5, bonus_per_metric: 3, note: '', metrics: [] })
 function addMetric(arr) { arr.push({ id: 'm' + Date.now(), label: '', unit: '', direction: 'higher_better', note: '' }) }
-const cleanMetrics = (ms) => (ms || []).map(({ id, label, unit, direction }) => ({ id, label, unit, direction }))
+const cleanMetrics = (ms) => (ms || []).map(({ id, label, unit, direction, note }) => ({ id, label, unit, direction, note }))
 async function addDaily() {
   if (!newDaily.name) return showToast('填任务名')
   await api.admin.createDaily({ ...newDaily, metrics: cleanMetrics(newDaily.metrics) })
-  Object.assign(newDaily, { subject_id: '体育', name: '', sunshine: 5, bonus_per_metric: 3, metrics: [] })
+  Object.assign(newDaily, { subject_id: '体育', name: '', sunshine: 5, bonus_per_metric: 3, note: '', metrics: [] })
   showToast('已新增'); await load()
 }
 async function saveDaily(d) {
-  await api.admin.updateDaily(d.id, { subject_id: d.subject_id, name: d.name, sunshine: d.sunshine, bonus_per_metric: d.bonus_per_metric, metrics: cleanMetrics(d.metrics) })
+  await api.admin.updateDaily(d.id, { subject_id: d.subject_id, name: d.name, sunshine: d.sunshine, bonus_per_metric: d.bonus_per_metric, note: d.note, metrics: cleanMetrics(d.metrics) })
   showToast('已保存')
 }
 async function delDaily(id) { if (!confirm('删除这个每日任务？')) return; await api.admin.delDaily(id); await load() }
@@ -688,6 +688,7 @@ onMounted(load)
           <span class="badge daily">每天</span>
           <span class="sys-name">{{ d.name }}</span>
           <span class="dim">+{{ d.sunshine }} 阳光 · 系统内置</span>
+          <div v-if="d.note" class="daily-note">怎么做：{{ d.note }}</div>
         </div>
         <template v-else>
           <div class="dc-head">
@@ -700,6 +701,7 @@ onMounted(load)
             </label>
             <label class="fld w64"><span>基础阳光</span><input v-model.number="d.sunshine" type="number" /></label>
             <label class="fld w84"><span>破纪录 +</span><input v-model.number="d.bonus_per_metric" type="number" /></label>
+            <label class="fld grow"><span>怎么做</span><input v-model="d.note" placeholder="如：完成后让家长检查" /></label>
             <div class="ops">
               <button class="ok" @click="saveDaily(d)">保存</button>
               <button class="del" @click="delDaily(d.id)">删</button>
@@ -715,6 +717,7 @@ onMounted(load)
                   <option v-for="[v, n] in DIRS" :key="v" :value="v">{{ n }}</option>
                 </select>
               </label>
+              <label class="fld grow"><span>记录说明</span><input v-model="m.note" placeholder="如：只记完整正确的次数" /></label>
               <button class="del" @click="d.metrics.splice(i, 1)">×</button>
             </div>
           </div>
@@ -732,6 +735,7 @@ onMounted(load)
           <label class="fld grow"><span>名称</span><input v-model="newDaily.name" placeholder="如：跳绳打卡" /></label>
           <label class="fld w64"><span>基础阳光</span><input v-model.number="newDaily.sunshine" type="number" /></label>
           <label class="fld w84"><span>破纪录 +</span><input v-model.number="newDaily.bonus_per_metric" type="number" /></label>
+          <label class="fld grow"><span>怎么做</span><input v-model="newDaily.note" placeholder="如：完成后让家长检查" /></label>
         </div>
         <div class="m-row" v-for="(m, i) in newDaily.metrics" :key="m.id">
           <label class="fld grow"><span>指标名</span><input v-model="m.label" placeholder="如：跳绳个数" /></label>
@@ -741,6 +745,7 @@ onMounted(load)
               <option v-for="[v, n] in DIRS" :key="v" :value="v">{{ n }}</option>
             </select>
           </label>
+          <label class="fld grow"><span>记录说明</span><input v-model="m.note" placeholder="如：只记完整正确的次数" /></label>
           <button class="del" @click="newDaily.metrics.splice(i, 1)">×</button>
         </div>
         <button class="ghost-s" @click="addMetric(newDaily.metrics)">＋加破纪录指标</button>
@@ -1041,8 +1046,9 @@ onMounted(load)
 
 .daily-card { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin-bottom: 10px; background: var(--surface); }
 .dc-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.sys-row { display: flex; align-items: center; gap: 10px; }
+.sys-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .sys-name { font-weight: 700; }
+.daily-note { flex-basis: 100%; color: var(--ink-2); font-size: 12px; padding-left: 58px; }
 .dc-metrics { margin-top: 12px; border-top: 1px dashed var(--line); padding-top: 10px; }
 .dc-m-head { font-size: 11px; color: var(--ink-3); font-weight: 800; margin-bottom: 8px; }
 .m-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
