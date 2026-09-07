@@ -190,7 +190,7 @@ def main():
                       "grade": f"{GRADE_CN[g-1]}年级", "term": "上" if sx == "s" else "下",
                       "version": "江苏南通"})
 
-    seed = {"curriculum_ver": "2026-multi-v1", "subjects": SUBJECTS,
+    seed = {"curriculum_ver": "2026-multi-v2", "subjects": SUBJECTS,
             "terms": terms, "units": units, "tasks": tasks, "daily_tasks": DAILY}
     (DATA / "tasks.seed.multi.json").write_text(
         json.dumps(seed, ensure_ascii=False, indent=2), encoding="utf-8")
