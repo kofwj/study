@@ -675,7 +675,7 @@ onMounted(load)
         <button class="ok wide" @click="addTask">＋新增任务</button>
       </div>
       <p class="form-help review-start-help">点亮后默认今天复习；只有想改日期时才在这里选。</p>
-      <label class="fld" style="max-width:220px;margin-bottom:10px"><span>改成哪天开始复习</span>
+      <label class="fld review-date"><span>改成哪天开始复习</span>
         <input type="date" v-model="firstReview" />
       </label>
       <div class="subj-tabs">
@@ -746,7 +746,7 @@ onMounted(load)
           <button class="del" @click="newDaily.metrics.splice(i, 1)">×</button>
         </div>
         <button class="ghost-s" @click="addMetric(newDaily.metrics)">＋加破纪录指标</button>
-        <div style="margin-top:10px"><button class="ok wide" @click="addDaily">＋新增任务</button></div>
+        <div class="mt10"><button class="ok wide" @click="addDaily">＋新增任务</button></div>
       </div>
       <div class="daily-card" v-for="d in orderedDaily" :key="d.id">
         <div v-if="d.family_id == null" class="sys-row">
@@ -802,12 +802,12 @@ onMounted(load)
           <option v-for="t in (tasksBySubject[s.id] || [])" :key="t.id" :value="t.id">{{ t.title }}</option>
         </select>
       </div>
-      <div class="lock-row" style="margin-top:14px">
+      <div class="lock-row mt14">
         <span class="badge">进度锁</span>
-        <span style="flex:1">只让打「当前单元」</span>
+        <span class="grow">只让打「当前单元」</span>
         <button :class="['toggle', { on: progressLock }]" @click="toggleLock">{{ progressLock ? '开' : '关' }}</button>
       </div>
-      <p class="lead" style="margin-top:8px">开启后，每科只有正在学的那个单元能打卡，后面的课自动锁住（灰显 <Lock class="ico" :size="12" />），防没学就打卡刷阳光。</p>
+      <p class="lead mt8">开启后，每科只有正在学的那个单元能打卡，后面的课自动锁住（灰显 <Lock class="ico" :size="12" />），防没学就打卡刷阳光。</p>
     </section>
 
     <!-- 单元测试成绩 -->
@@ -924,21 +924,21 @@ onMounted(load)
     <!-- 邀请码 -->
     <section v-if="section === 'invites'" class="a-card enter">
       <h3>邀请码</h3>
-      <label style="display:flex;gap:8px;align-items:center;margin:10px 0 4px;font-size:13px;cursor:pointer">
+      <label class="invite-protect">
         <input type="checkbox" :checked="inviteProtect" @change="toggleProtect" />
         <span>邀请码保护（开 = 一次性 + 24h 限时）</span>
       </label>
-      <p class="dim" style="margin-top:8px">
+      <p class="dim mt8">
         <button class="ok" @click="makeInvite()">生成邀请码</button>
       </p>
-      <div class="a-item" v-for="iv in invites" :key="iv.code" style="flex-wrap:wrap">
+      <div class="a-item" v-for="iv in invites" :key="iv.code">
         <span class="badge">家长</span>
-        <code style="font-family:ui-monospace,monospace;font-weight:700;font-size:14px">{{ iv.code }}</code>
+        <code class="invite-code">{{ iv.code }}</code>
         <span class="dim">{{ inviteStatus(iv) }}</span>
         <button class="ok" @click="copyCode(iv.code)">复制</button>
         <button class="del" @click="delInvite(iv.code)">删</button>
       </div>
-      <p v-if="!invites.length" class="dim" style="margin-top:6px">还没有邀请码，点上面生成，再点「复制」分享给家人。</p>
+      <p v-if="!invites.length" class="dim mt6">还没有邀请码，点上面生成，再点「复制」分享给家人。</p>
     </section>
 
     <!-- 密码 -->
@@ -966,6 +966,9 @@ onMounted(load)
 }
 .a-title { font-size: 20px; font-weight: 800; }
 .a-sub { font-size: 12px; opacity: .85; margin-top: 4px; }
+.review-date { max-width: 220px; margin-bottom: 10px; }
+.invite-protect { display: flex; gap: 8px; align-items: center; margin: 10px 0 4px; font-size: 13px; cursor: pointer; }
+.invite-code { font-family: ui-monospace, monospace; font-weight: 700; font-size: 14px; }
 .a-term { display: block; margin-top: 8px; font-size: 12px; }
 .a-term select { margin-left: 6px; padding: 4px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
 .a-exit { background: rgba(255,255,255,.22); border: none; color: #fff; border-radius: 20px; padding: 9px 16px; font-weight: 700; cursor: pointer; font-family: inherit; }

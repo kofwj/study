@@ -74,6 +74,14 @@ button:focus-visible, input:focus-visible, select:focus-visible {
 
 /* 内联图标：与文字基线对齐的统一尺寸 */
 .ico { display: inline-block; vertical-align: -.14em; flex: none; }
+
+/* —— 布局/文本小类（替掉散落的内联 style）—— */
+.grow { flex: 1; }
+.mt6 { margin-top: 6px; }
+.mt8 { margin-top: 8px; }
+.mt10 { margin-top: 10px; }
+.mt14 { margin-top: 14px; }
+.danger { color: var(--danger); }
 .sun { color: var(--accent); }
 
 .enter { animation: enter .45s var(--ease) both; }

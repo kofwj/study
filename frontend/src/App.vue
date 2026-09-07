@@ -1,7 +1,8 @@
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, defineAsyncComponent } from 'vue'
 import { api } from './api.js'
-import Admin from './Admin.vue'
+// ponytail: 家长后台（1147 行）单独切 chunk，孩子端首屏不加载
+const Admin = defineAsyncComponent(() => import('./Admin.vue'))
 import { SUBJECT_ICONS as ICONS, rankIcon, achIcon } from './icons.js'
 import { tagHelp } from './tagHelp.js'
 import { Sun, Lock, Gift, Check, TrendingUp, Target, User, ShoppingCart, ScrollText, Medal, ChartColumn, Map, CalendarDays, RefreshCw, PartyPopper, Sparkles, BookOpen, Flame } from '@lucide/vue'
@@ -413,7 +414,7 @@ function reloadApp() {
       <input v-model="newPin" type="password" placeholder="新密码（至少 8 位）" autocomplete="new-password" />
       <input v-model="newPin2" type="password" placeholder="再输一遍确认" autocomplete="new-password" @keyup.enter="doChangePin" />
       <button class="login-enter" @click="doChangePin">保存新密码</button>
-      <p v-if="toast" class="login-note" style="color: var(--danger)">{{ toast }}</p>
+      <p v-if="toast" class="login-note danger">{{ toast }}</p>
     </div>
   </div>
   <div v-else-if="authed" class="desk">
@@ -600,7 +601,7 @@ function reloadApp() {
     <footer class="foot">
       <button class="parent" @click="openParent"><User class="ico" :size="15" /> 家长</button>
       <button class="parent" @click="doLogout">退出</button>
-      <span style="flex:1"></span>
+      <span class="grow"></span>
       <button class="shop-fab" @click="openShop"><ShoppingCart class="ico" :size="16" /> 商店</button>
     </footer>
 
@@ -772,7 +773,7 @@ function reloadApp() {
         <template v-else-if="pinForm.mode==='join'">邀请码由家庭里已有的家长在设置页生成。</template>
         <template v-else>孩子用 4 位密码；家长注册/改密至少 8 位。</template>
       </p>
-      <p v-if="toast" class="login-note" style="color:var(--danger)">{{ toast }}</p>
+      <p v-if="toast" class="login-note danger">{{ toast }}</p>
     </div>
   </div>
 </template>
