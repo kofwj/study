@@ -214,7 +214,7 @@ const tagFor = (id) => (catalog.value.tags || []).find(t => t.id === id) || { id
 const tagName = (id) => tagFor(id).name
 function tagsFor(uid) {
   // 自动标签只是未精标课程的内部占位，不能当作家长可判断的薄弱考点。
-  return (catalog.value.unit_tags || []).map(x => ({ ...x, ...tagFor(x.tag_id) })).filter(x => x.name && !x.auto)
+  return (catalog.value.unit_tags || []).filter(x => x.unit_id === uid).map(x => ({ ...x, ...tagFor(x.tag_id) })).filter(x => x.name && !x.auto)
 }
 function hasAutoTags(uid) {
   return (catalog.value.unit_tags || []).some(x => x.unit_id === uid && x.auto)
