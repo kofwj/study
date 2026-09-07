@@ -22,6 +22,7 @@ HINT = gen_tasks.HINT
 SUN = gen_tasks.SUN
 SUBJECTS = gen_tasks.SUBJECTS
 DAILY = gen_tasks.DAILY_TASKS
+G5_EXTRA = gen_tasks.G5_EXTRA
 
 SUBJ_ID = {"语文": "cn", "数学": "ma", "英语": "en", "科学": "kx", "道法": "df"}
 GRADE_CN = "一二三四五六"
@@ -150,7 +151,12 @@ def build_book(book):
         uid = f"{tid}-{subj_id}-{seq}"
         units.append({"id": uid, "subject": subject, "term_id": tid,
                       "seq": seq, "name": g["name"]})
-        if subject == "数学":
+        if tid == "g5s1" and subject in G5_EXTRA:
+            for i, (action, title, detail) in enumerate(G5_EXTRA[subject][seq - 1], 1):
+                tasks.append({"id": f"{uid}-{i}", "subject": subject, "unit_id": uid,
+                              "action": action, "title": title, "detail": detail,
+                              "sunshine": SUN, "sort": i, "auto": False})
+        elif subject == "数学":
             for i, (action, title) in enumerate(ma_unit_tasks(g["name"], g["items"]), 1):
                 tasks.append(_task(subject, uid, i, action, title))
         else:
@@ -190,7 +196,7 @@ def main():
                       "grade": f"{GRADE_CN[g-1]}年级", "term": "上" if sx == "s" else "下",
                       "version": "江苏南通"})
 
-    seed = {"curriculum_ver": "2026-multi-v4", "subjects": SUBJECTS,
+    seed = {"curriculum_ver": "2026-multi-v5", "subjects": SUBJECTS,
             "terms": terms, "units": units, "tasks": tasks, "daily_tasks": DAILY}
     (DATA / "tasks.seed.multi.json").write_text(
         json.dumps(seed, ensure_ascii=False, indent=2), encoding="utf-8")

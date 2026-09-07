@@ -718,6 +718,11 @@ def _migrate_021(conn):
     seed_knowledge_tags(conn)
 
 
+def _migrate_022(conn):
+    # 五上科学、道法按 2026 秋教材目录补齐人工考点映射。
+    seed_knowledge_tags(conn)
+
+
 def _migrate_017(conn):
     conn.execute("""
 CREATE TABLE IF NOT EXISTS knowledge_tags (
@@ -753,6 +758,7 @@ MIGRATIONS = (
     ("019_cn5_tags", _migrate_019),
     ("020_ma_en_tags", _migrate_020),
     ("021_g5s1_review_tags", _migrate_021),
+    ("022_g5s1_kx_df_tags", _migrate_022),
 )
 
 

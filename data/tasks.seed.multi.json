@@ -1,5 +1,5 @@
 {
-  "curriculum_ver": "2026-multi-v4",
+  "curriculum_ver": "2026-multi-v5",
   "subjects": [
     "语文",
     "数学",
@@ -13345,243 +13345,243 @@
       "id": "g5s1-kx-1-1",
       "subject": "科学",
       "unit_id": "g5s1-kx-1",
-      "action": "实践",
-      "title": "1 光的传播",
-      "detail": "动手做，做完拍个照或记下结果",
+      "action": "实验",
+      "title": "光的传播：用实验说明光沿直线传播",
+      "detail": "用纸板或遮挡物设计小实验，观察并说出光的传播路线。",
       "sunshine": 5,
       "sort": 1,
-      "auto": true
+      "auto": false
     },
     {
       "id": "g5s1-kx-1-2",
       "subject": "科学",
       "unit_id": "g5s1-kx-1",
-      "action": "实践",
-      "title": "2 光的反射",
-      "detail": "动手做，做完拍个照或记下结果",
+      "action": "实验",
+      "title": "光的反射：用镜子改变光的方向",
+      "detail": "用镜子把光照到指定位置，画出入射和反射的大致方向。",
       "sunshine": 5,
       "sort": 2,
-      "auto": true
+      "auto": false
     },
     {
       "id": "g5s1-kx-1-3",
       "subject": "科学",
       "unit_id": "g5s1-kx-1",
-      "action": "实践",
-      "title": "3 潜望镜与万花筒",
-      "detail": "动手做，做完拍个照或记下结果",
+      "action": "制作",
+      "title": "潜望镜与万花筒：画图解释光路",
+      "detail": "观察或制作一个装置，画出光线经过镜子的路线并说清作用。",
       "sunshine": 5,
       "sort": 3,
-      "auto": true
+      "auto": false
     },
     {
       "id": "g5s1-kx-1-4",
       "subject": "科学",
       "unit_id": "g5s1-kx-1",
-      "action": "实践",
-      "title": "4 七色光",
-      "detail": "动手做，做完拍个照或记下结果",
+      "action": "实验",
+      "title": "七色光：观察白光分解后的颜色",
+      "detail": "用三棱镜、光盘或其他安全方法观察七色光，并按顺序说出看到的颜色。",
       "sunshine": 5,
       "sort": 4,
-      "auto": true
+      "auto": false
     },
     {
       "id": "g5s1-kx-2-1",
       "subject": "科学",
       "unit_id": "g5s1-kx-2",
-      "action": "实践",
-      "title": "5 热传导",
-      "detail": "动手做，做完拍个照或记下结果",
+      "action": "实验",
+      "title": "热传导：比较不同材料传热快慢",
+      "detail": "用相同条件比较两种材料，记录哪种先变热，并说出判断依据。",
       "sunshine": 5,
       "sort": 1,
-      "auto": true
+      "auto": false
     },
     {
       "id": "g5s1-kx-2-2",
       "subject": "科学",
       "unit_id": "g5s1-kx-2",
-      "action": "实践",
-      "title": "6 热对流",
-      "detail": "动手做，做完拍个照或记下结果",
+      "action": "实验",
+      "title": "热对流：观察水受热后的流动",
+      "detail": "安全加热并观察水的流动，用箭头画出热水和冷水的运动方向。",
       "sunshine": 5,
       "sort": 2,
-      "auto": true
+      "auto": false
     },
     {
       "id": "g5s1-kx-2-3",
       "subject": "科学",
       "unit_id": "g5s1-kx-2",
-      "action": "实践",
-      "title": "7 热辐射",
-      "detail": "动手做，做完拍个照或记下结果",
+      "action": "观察",
+      "title": "热辐射：找出生活中的热辐射",
+      "detail": "找出太阳、火或暖气等例子，说清热是怎样传到物体上的。",
       "sunshine": 5,
       "sort": 3,
-      "auto": true
+      "auto": false
     },
     {
       "id": "g5s1-kx-2-4",
       "subject": "科学",
       "unit_id": "g5s1-kx-2",
       "action": "实践",
-      "title": "8 材料的传热本领",
-      "detail": "动手做，做完拍个照或记下结果",
+      "title": "材料的传热本领：做一次保温比较",
+      "detail": "选两种材料包住同样的温水，定时比较温度变化，记录结果并下结论。",
       "sunshine": 5,
       "sort": 4,
-      "auto": true
+      "auto": false
     },
     {
       "id": "g5s1-kx-3-1",
       "subject": "科学",
       "unit_id": "g5s1-kx-3",
-      "action": "实践",
-      "title": "9 弹力",
-      "detail": "动手做，做完拍个照或记下结果",
+      "action": "实验",
+      "title": "弹力：观察物体形变后的弹力",
+      "detail": "让橡皮筋、弹簧等发生形变，观察它怎样恢复，并举一个弹力的用途。",
       "sunshine": 5,
       "sort": 1,
-      "auto": true
+      "auto": false
     },
     {
       "id": "g5s1-kx-3-2",
       "subject": "科学",
       "unit_id": "g5s1-kx-3",
-      "action": "实践",
-      "title": "10 摩擦力",
-      "detail": "动手做，做完拍个照或记下结果",
+      "action": "实验",
+      "title": "摩擦力：比较不同表面的摩擦大小",
+      "detail": "让同一物体在不同表面运动，比较用力大小并记录影响摩擦力的条件。",
       "sunshine": 5,
       "sort": 2,
-      "auto": true
+      "auto": false
     },
     {
       "id": "g5s1-kx-3-3",
       "subject": "科学",
       "unit_id": "g5s1-kx-3",
-      "action": "实践",
-      "title": "11 浮力",
-      "detail": "动手做，做完拍个照或记下结果",
+      "action": "实验",
+      "title": "浮力：观察物体在水中的浮沉",
+      "detail": "把不同物体放入水中，记录浮沉现象，并说出水对物体有向上的力。",
       "sunshine": 5,
       "sort": 3,
-      "auto": true
+      "auto": false
     },
     {
       "id": "g5s1-kx-3-4",
       "subject": "科学",
       "unit_id": "g5s1-kx-3",
-      "action": "实践",
-      "title": "12 力与运动",
-      "detail": "动手做，做完拍个照或记下结果",
+      "action": "实验",
+      "title": "力与运动：观察力怎样改变运动",
+      "detail": "对物体施加不同方向或大小的力，记录运动快慢、方向或状态的变化。",
       "sunshine": 5,
       "sort": 4,
-      "auto": true
+      "auto": false
     },
     {
       "id": "g5s1-kx-4-1",
       "subject": "科学",
       "unit_id": "g5s1-kx-4",
-      "action": "实践",
-      "title": "13 撬重物的窍门",
-      "detail": "动手做，做完拍个照或记下结果",
+      "action": "实验",
+      "title": "撬重物的窍门：找出杠杆的三个点",
+      "detail": "用尺或木条撬物体，标出支点、用力点和阻力点，说说怎样更省力。",
       "sunshine": 5,
       "sort": 1,
-      "auto": true
+      "auto": false
     },
     {
       "id": "g5s1-kx-4-2",
       "subject": "科学",
       "unit_id": "g5s1-kx-4",
-      "action": "实践",
-      "title": "14 拧螺丝的学问",
-      "detail": "动手做，做完拍个照或记下结果",
+      "action": "观察",
+      "title": "拧螺丝的学问：认识轮轴的作用",
+      "detail": "比较直接拧和用螺丝刀拧的差别，说清轮和轴怎样帮助用力。",
       "sunshine": 5,
       "sort": 2,
-      "auto": true
+      "auto": false
     },
     {
       "id": "g5s1-kx-4-3",
       "subject": "科学",
       "unit_id": "g5s1-kx-4",
-      "action": "实践",
-      "title": "15 升旗的方法",
-      "detail": "动手做，做完拍个照或记下结果",
+      "action": "实验",
+      "title": "升旗的方法：观察滑轮怎样工作",
+      "detail": "观察升旗装置，指出滑轮的位置和作用，并说清它是否改变用力方向。",
       "sunshine": 5,
       "sort": 3,
-      "auto": true
+      "auto": false
     },
     {
       "id": "g5s1-kx-4-4",
       "subject": "科学",
       "unit_id": "g5s1-kx-4",
-      "action": "实践",
-      "title": "16 斜坡的启示",
-      "detail": "动手做，做完拍个照或记下结果",
+      "action": "实验",
+      "title": "斜坡的启示：比较斜坡的省力效果",
+      "detail": "用不同坡度把同一物体移到相同高度，记录用力大小并比较结果。",
       "sunshine": 5,
       "sort": 4,
-      "auto": true
+      "auto": false
     },
     {
       "id": "g5s1-kx-5-1",
       "subject": "科学",
       "unit_id": "g5s1-kx-5",
-      "action": "实践",
-      "title": "17 生物的启示",
-      "detail": "动手做，做完拍个照或记下结果",
+      "action": "观察",
+      "title": "生物的启示：从结构找到仿生想法",
+      "detail": "观察一种生物的外形或功能，写下它给生活用品带来的一个设计启示。",
       "sunshine": 5,
       "sort": 1,
-      "auto": true
+      "auto": false
     },
     {
       "id": "g5s1-kx-5-2",
       "subject": "科学",
       "unit_id": "g5s1-kx-5",
-      "action": "实践",
-      "title": "18 蛋壳与薄壳结构",
-      "detail": "动手做，做完拍个照或记下结果",
+      "action": "实验",
+      "title": "蛋壳与薄壳结构：比较形状的承重能力",
+      "detail": "比较平面和拱形/薄壳结构的承重效果，记录现象并说出原因。",
       "sunshine": 5,
       "sort": 2,
-      "auto": true
+      "auto": false
     },
     {
       "id": "g5s1-kx-5-3",
       "subject": "科学",
       "unit_id": "g5s1-kx-5",
-      "action": "实践",
-      "title": "19 海豚与声呐",
-      "detail": "动手做，做完拍个照或记下结果",
+      "action": "解释",
+      "title": "海豚与声呐：用回声解释探测",
+      "detail": "查阅或根据课文画出声波往返路线，说清声呐怎样发现目标。",
       "sunshine": 5,
       "sort": 3,
-      "auto": true
+      "auto": false
     },
     {
       "id": "g5s1-kx-5-4",
       "subject": "科学",
       "unit_id": "g5s1-kx-5",
-      "action": "实践",
-      "title": "20 我们来仿生",
-      "detail": "动手做，做完拍个照或记下结果",
+      "action": "设计",
+      "title": "我们来仿生：完成一个仿生方案",
+      "detail": "从生物特点、模仿对象、解决问题和制作方法四项写出方案，并画草图。",
       "sunshine": 5,
       "sort": 4,
-      "auto": true
+      "auto": false
     },
     {
       "id": "g5s1-kx-5-5",
       "subject": "科学",
       "unit_id": "g5s1-kx-5",
-      "action": "实践",
-      "title": "专项学习",
-      "detail": "动手做，做完拍个照或记下结果",
+      "action": "探究",
+      "title": "专项学习：像科学家一样完成探究",
+      "detail": "提出一个可研究的问题，写出猜想、步骤、记录和结论。",
       "sunshine": 5,
       "sort": 5,
-      "auto": true
+      "auto": false
     },
     {
       "id": "g5s1-kx-5-6",
       "subject": "科学",
       "unit_id": "g5s1-kx-5",
-      "action": "实践",
-      "title": "课后评价",
-      "detail": "动手做，做完拍个照或记下结果",
+      "action": "复盘",
+      "title": "课后评价：说清这学期的科学发现",
+      "detail": "选一个实验或设计，说清现象、结论和一次改进，不只说‘学会了’。",
       "sunshine": 5,
       "sort": 6,
-      "auto": true
+      "auto": false
     },
     {
       "id": "g5x2-kx-1-1",
@@ -15446,144 +15446,144 @@
       "id": "g5s1-df-1-1",
       "subject": "道法",
       "unit_id": "g5s1-df-1",
-      "action": "阅读",
-      "title": "第1课 开天辟地的大事变",
-      "detail": "读一遍圈出生字，能复述主要内容",
+      "action": "时间线",
+      "title": "开天辟地的大事变：说清中国共产党成立的意义",
+      "detail": "按时间、地点、事件和意义四项整理，再用自己的话讲给家长听。",
       "sunshine": 5,
       "sort": 1,
-      "auto": true
+      "auto": false
     },
     {
       "id": "g5s1-df-1-2",
       "subject": "道法",
       "unit_id": "g5s1-df-1",
-      "action": "阅读",
-      "title": "第2课 探索中国革命道路",
-      "detail": "读一遍圈出生字，能复述主要内容",
+      "action": "讲述",
+      "title": "探索中国革命道路：讲清革命道路的探索",
+      "detail": "用时间线说出重要探索和转折，至少讲出两件具体史实。",
       "sunshine": 5,
       "sort": 2,
-      "auto": true
+      "auto": false
     },
     {
       "id": "g5s1-df-1-3",
       "subject": "道法",
       "unit_id": "g5s1-df-1",
-      "action": "阅读",
-      "title": "第3课 抗日战争的中流砥柱",
-      "detail": "读一遍圈出生字，能复述主要内容",
+      "action": "举例",
+      "title": "抗日战争的中流砥柱：用史实说明作用",
+      "detail": "列出两件抗战史实，说明中国共产党为什么是抗日战争的中流砥柱。",
       "sunshine": 5,
       "sort": 3,
-      "auto": true
+      "auto": false
     },
     {
       "id": "g5s1-df-1-4",
       "subject": "道法",
       "unit_id": "g5s1-df-1",
-      "action": "阅读",
-      "title": "第4课 夺取胜利的解放战争",
-      "detail": "读一遍圈出生字，能复述主要内容",
+      "action": "时间线",
+      "title": "夺取胜利的解放战争：按顺序讲清过程",
+      "detail": "按时间线整理重要战役或事件，说清解放战争走向胜利的过程。",
       "sunshine": 5,
       "sort": 4,
-      "auto": true
+      "auto": false
     },
     {
       "id": "g5s1-df-2-1",
       "subject": "道法",
       "unit_id": "g5s1-df-2",
-      "action": "阅读",
-      "title": "第5课 中国人民站起来了",
-      "detail": "读一遍圈出生字，能复述主要内容",
+      "action": "讲述",
+      "title": "中国人民站起来了：说清新中国成立的意义",
+      "detail": "结合课文和一件史实，说清新中国成立后人民生活和国家地位的变化。",
       "sunshine": 5,
       "sort": 1,
-      "auto": true
+      "auto": false
     },
     {
       "id": "g5s1-df-2-2",
       "subject": "道法",
       "unit_id": "g5s1-df-2",
-      "action": "阅读",
-      "title": "第6课 人民当家作主",
-      "detail": "读一遍圈出生字，能复述主要内容",
+      "action": "举例",
+      "title": "人民当家作主：举例说明人民参与国家治理",
+      "detail": "说出一个人民当家作主的制度或生活例子，并解释它怎样发挥作用。",
       "sunshine": 5,
       "sort": 2,
-      "auto": true
+      "auto": false
     },
     {
       "id": "g5s1-df-2-3",
       "subject": "道法",
       "unit_id": "g5s1-df-2",
-      "action": "阅读",
-      "title": "第7课 社会主义好",
-      "detail": "读一遍圈出生字，能复述主要内容",
+      "action": "比较",
+      "title": "社会主义好：用事实说明建设成就",
+      "detail": "从课文中找两项建设成就，说清成就、事实和你的感受。",
       "sunshine": 5,
       "sort": 3,
-      "auto": true
+      "auto": false
     },
     {
       "id": "g5s1-df-3-1",
       "subject": "道法",
       "unit_id": "g5s1-df-3",
-      "action": "阅读",
-      "title": "第8课 改革开放展宏图",
-      "detail": "读一遍圈出生字，能复述主要内容",
+      "action": "比较",
+      "title": "改革开放展宏图：说清前后变化",
+      "detail": "找一项改革开放前后的生活变化，用具体事例说明变化从哪里来。",
       "sunshine": 5,
       "sort": 1,
-      "auto": true
+      "auto": false
     },
     {
       "id": "g5s1-df-3-2",
       "subject": "道法",
       "unit_id": "g5s1-df-3",
-      "action": "阅读",
-      "title": "第9课 综合国力日益提升",
-      "detail": "读一遍圈出生字，能复述主要内容",
+      "action": "整理",
+      "title": "综合国力日益提升：用数据或事例说明实力",
+      "detail": "从课文找三条数据或事例，分成经济、科技、生活等方面并说出结论。",
       "sunshine": 5,
       "sort": 2,
-      "auto": true
+      "auto": false
     },
     {
       "id": "g5s1-df-3-3",
       "subject": "道法",
       "unit_id": "g5s1-df-3",
-      "action": "阅读",
-      "title": "第10课 祖国统一大业不断推进",
-      "detail": "读一遍圈出生字，能复述主要内容",
+      "action": "时间线",
+      "title": "祖国统一大业不断推进：整理统一进展",
+      "detail": "按时间顺序整理课文中的重要进展，说清它们与祖国统一的关系。",
       "sunshine": 5,
       "sort": 3,
-      "auto": true
+      "auto": false
     },
     {
       "id": "g5s1-df-4-1",
       "subject": "道法",
       "unit_id": "g5s1-df-4",
-      "action": "阅读",
-      "title": "第11课 走进新时代",
-      "detail": "读一遍圈出生字，能复述主要内容",
+      "action": "讲述",
+      "title": "走进新时代：说清新时代的历史方位",
+      "detail": "用三句话说清新时代是什么、从哪里开始以及和少年有什么关系。",
       "sunshine": 5,
       "sort": 1,
-      "auto": true
+      "auto": false
     },
     {
       "id": "g5s1-df-4-2",
       "subject": "道法",
       "unit_id": "g5s1-df-4",
-      "action": "阅读",
-      "title": "第12课 历史性成就",
-      "detail": "读一遍圈出生字，能复述主要内容",
+      "action": "举例",
+      "title": "历史性成就：列举新时代的成就",
+      "detail": "从经济、科技、民生或生态中各找例子，至少列举三项并说出依据。",
       "sunshine": 5,
       "sort": 2,
-      "auto": true
+      "auto": false
     },
     {
       "id": "g5s1-df-4-3",
       "subject": "道法",
       "unit_id": "g5s1-df-4",
-      "action": "阅读",
-      "title": "第13课 开启新征程",
-      "detail": "读一遍圈出生字，能复述主要内容",
+      "action": "行动",
+      "title": "开启新征程：说出少年的行动",
+      "detail": "结合自己的学习和生活，写下并说出一项现在就能做到的行动。",
       "sunshine": 5,
       "sort": 3,
-      "auto": true
+      "auto": false
     },
     {
       "id": "g5x2-df-1-1",

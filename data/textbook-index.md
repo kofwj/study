@@ -10,9 +10,9 @@
 |---|---|---|---|---|
 | 语文 | 部编（统编） | 人民教育出版社 | `/books/rjb/yuwen/` | 1–6 |
 | 数学 | 苏教版 | 江苏凤凰教育出版社 | `/books/sjb/shuxue/` | 1–6 |
-| 英语 | 译林版 | 译林出版社 | `/books/sjb/yingyu/` | 3–6（一二年级无英语） |
+| 英语 | 译林版 | 译林出版社 | `/books/yilin/yingyu/` | 3–6（一二年级无英语） |
 | 科学 | 苏教版 | 江苏教育出版社 | `/books/sjb/kexue/` | 1–6 |
-| 道法（道德与法治） | 部编（统编） | 人民教育出版社 | `/books/bbb/zhengzhi/` | 1–6 |
+| 道法（道德与法治） | 部编（统编） | 人民教育出版社 | `/books/rjb/zhengzhi/` | 1–6 |
 | 美术 | 人美版（待本地确认） | 人民美术出版社 | `/books/rmb/meishu/` | 1–6 |
 | 音乐 | 人音/粤教花城（待本地确认） | 人音/花城 | `/books/yjb/yinyue/` | 1–6 |
 | 体育 | 人教（未录入） | 人民教育出版社 | — | —（App 只用每日任务跳绳/仰卧起坐等，无单元卡） |
@@ -52,6 +52,13 @@ xs5s_2026  xs5x_2019  xs6s_2026  xs6x_2019
 # 数学 苏教 (sjb/shuxue) —— 其余年级同理，末位 s=上/x=下
 xs2x_2026  xs3s_2025  xs3x_2026  xs4s_2026
 xs5s_2026  xs6s_2026
+
+# 五上已逐目录核对的完整入口
+语文：/books/rjb/yuwen/xs5s_2026/
+数学：/books/sjb/shuxue/xs5s_2026/
+英语：/books/yilin/yingyu/5a_2026/
+科学：/books/sjb/kexue/5s_2026/
+道法：/books/rjb/zhengzhi/5s_2026/
 ```
 
 ## 4. 覆盖缺口（要手工补的）

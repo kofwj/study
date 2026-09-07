@@ -115,7 +115,45 @@ EN5_TAGS = [
     {"id": "en5-p1", "subject_id": "英语", "kind": "单元考点", "name": "完成 A happy life 海报"},
     {"id": "en5-p2", "subject_id": "英语", "kind": "单元考点", "name": "完成邀请卡"},
 ]
-TAGS += CN5_TAGS + MA5_TAGS + EN5_TAGS
+KX5_TAGS = [
+    {"id": "kx5-cb", "subject_id": "科学", "kind": "单元考点", "name": "用实验判断光的传播"},
+    {"id": "kx5-fs", "subject_id": "科学", "kind": "单元考点", "name": "用镜子改变光的方向"},
+    {"id": "kx5-qg", "subject_id": "科学", "kind": "单元考点", "name": "解释潜望镜和万花筒"},
+    {"id": "kx5-sg", "subject_id": "科学", "kind": "单元考点", "name": "用实验分解或合成七色光"},
+    {"id": "kx5-rd", "subject_id": "科学", "kind": "单元考点", "name": "用实验判断热传导"},
+    {"id": "kx5-dl", "subject_id": "科学", "kind": "单元考点", "name": "用水观察热对流"},
+    {"id": "kx5-fs2", "subject_id": "科学", "kind": "单元考点", "name": "举例说明热辐射"},
+    {"id": "kx5-cl", "subject_id": "科学", "kind": "单元考点", "name": "比较材料传热本领"},
+    {"id": "kx5-tl", "subject_id": "科学", "kind": "单元考点", "name": "用实验认识弹力"},
+    {"id": "kx5-ml", "subject_id": "科学", "kind": "单元考点", "name": "比较摩擦力大小"},
+    {"id": "kx5-fl", "subject_id": "科学", "kind": "单元考点", "name": "用实验认识浮力"},
+    {"id": "kx5-yd", "subject_id": "科学", "kind": "单元考点", "name": "解释力对运动的影响"},
+    {"id": "kx5-gg", "subject_id": "科学", "kind": "单元考点", "name": "用杠杆省力撬重物"},
+    {"id": "kx5-lz", "subject_id": "科学", "kind": "单元考点", "name": "解释轮轴和螺丝的作用"},
+    {"id": "kx5-dl2", "subject_id": "科学", "kind": "单元考点", "name": "用滑轮改变用力方向"},
+    {"id": "kx5-xp", "subject_id": "科学", "kind": "单元考点", "name": "比较斜坡的省力效果"},
+    {"id": "kx5-sw", "subject_id": "科学", "kind": "单元考点", "name": "从生物结构找到仿生启示"},
+    {"id": "kx5-dk", "subject_id": "科学", "kind": "单元考点", "name": "解释蛋壳与薄壳结构"},
+    {"id": "kx5-sz", "subject_id": "科学", "kind": "单元考点", "name": "解释海豚与声呐"},
+    {"id": "kx5-fs3", "subject_id": "科学", "kind": "单元考点", "name": "设计一个仿生方案"},
+]
+
+DF5_TAGS = [
+    {"id": "df5-dj", "subject_id": "道法", "kind": "单元考点", "name": "说清中国共产党成立的意义"},
+    {"id": "df5-gm", "subject_id": "道法", "kind": "单元考点", "name": "讲清中国革命道路"},
+    {"id": "df5-kz", "subject_id": "道法", "kind": "单元考点", "name": "用史实说明抗战中流砥柱"},
+    {"id": "df5-js", "subject_id": "道法", "kind": "单元考点", "name": "按时间线讲清解放战争"},
+    {"id": "df5-jg", "subject_id": "道法", "kind": "单元考点", "name": "说清新中国成立的意义"},
+    {"id": "df5-rm", "subject_id": "道法", "kind": "单元考点", "name": "举例说明人民当家作主"},
+    {"id": "df5-she", "subject_id": "道法", "kind": "单元考点", "name": "用事实说明社会主义建设"},
+    {"id": "df5-gg", "subject_id": "道法", "kind": "单元考点", "name": "说清改革开放带来的变化"},
+    {"id": "df5-gli", "subject_id": "道法", "kind": "单元考点", "name": "用数据或事例说明综合国力"},
+    {"id": "df5-ty", "subject_id": "道法", "kind": "单元考点", "name": "说清祖国统一进展"},
+    {"id": "df5-xd", "subject_id": "道法", "kind": "单元考点", "name": "说清新时代的历史方位"},
+    {"id": "df5-cj", "subject_id": "道法", "kind": "单元考点", "name": "列举新时代历史性成就"},
+    {"id": "df5-zr", "subject_id": "道法", "kind": "单元考点", "name": "说出新时代少年的行动"},
+]
+TAGS += CN5_TAGS + MA5_TAGS + EN5_TAGS + KX5_TAGS + DF5_TAGS
 
 # 五上/五下语数英精标。五上按 2026 秋教材逐单元配置；五下保留原映射。
 HAND = {
@@ -145,6 +183,15 @@ HAND = {
     "g5s1-en-8": ["en-word", "en5-u8phon", "en-listen", "en5-u8gram", "en5-u8"],
     "g5s1-en-9": ["en5-pjt", "en5-p1"],
     "g5s1-en-10": ["en5-pjt", "en5-p2"],
+    "g5s1-kx-1": ["kx5-cb", "kx5-fs", "kx5-qg", "kx5-sg"],
+    "g5s1-kx-2": ["kx5-rd", "kx5-dl", "kx5-fs2", "kx5-cl"],
+    "g5s1-kx-3": ["kx5-tl", "kx5-ml", "kx5-fl", "kx5-yd"],
+    "g5s1-kx-4": ["kx5-gg", "kx5-lz", "kx5-dl2", "kx5-xp"],
+    "g5s1-kx-5": ["kx5-sw", "kx5-dk", "kx5-sz", "kx5-fs3"],
+    "g5s1-df-1": ["df5-dj", "df5-gm", "df5-kz", "df5-js"],
+    "g5s1-df-2": ["df5-jg", "df5-rm", "df5-she"],
+    "g5s1-df-3": ["df5-gg", "df5-gli", "df5-ty"],
+    "g5s1-df-4": ["df5-xd", "df5-cj", "df5-zr"],
     "g5x2-cn-1": ["cn-poem", "cn-recite", "cn-read", "cn-oral", "cn-write"],
     "g5x2-cn-2": ["cn-read", "cn-oral", "cn-write"],
     "g5x2-cn-3": ["cn-zi", "cn-read"],
@@ -223,12 +270,17 @@ def auto_tags(unit, tasks):
 
 def main():
     by_unit = defaultdict(list)
+    core_subjects = ("语文", "数学", "英语")
+    g5_extra_subjects = ("科学", "道法")
+    def has_tags(unit):
+        return unit["subject"] in core_subjects or (
+            unit["id"].startswith("g5s1-") and unit["subject"] in g5_extra_subjects)
     for t in SEED["tasks"]:
-        if t["subject"] in ("语文", "数学", "英语"):
+        if t["subject"] in core_subjects or t["unit_id"].startswith(("g5s1-kx-", "g5s1-df-")):
             by_unit[t["unit_id"]].append(t)
     unit_tags = []
     for u in SEED["units"]:
-        if u["subject"] not in ("语文", "数学", "英语"):
+        if not has_tags(u):
             continue
         uid = u["id"]
         if uid in HAND:
@@ -238,7 +290,7 @@ def main():
         unit_tags.append({"unit_id": uid, "tag_ids": tags, "auto": auto})
     out = {
         "_meta": {
-            "note": "科目级字典 + 单元映射。g5s1/g5x2 语数英 auto=false 精标，其余 auto=true。",
+            "note": "科目级字典 + 单元映射。五上语数英科学道法和五下语数英为人工精标，其余自动生成。",
             "hand_units": sorted(HAND),
         },
         "tags": TAGS,

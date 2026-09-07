@@ -23,9 +23,9 @@ OUT = Path(__file__).parent.parent / "data" / "catalog.json"
 SUBJECTS = [
     ("语文", "rjb", "yuwen", "语文"),
     ("数学", "sjb", "shuxue", "数学"),
-    ("英语", "sjb", "yingyu", "英语"),
+    ("英语", "yilin", "yingyu", "英语"),
     ("科学", "sjb", "kexue", "科学"),
-    ("道法", "bbb", "zhengzhi", "道德与法治"),
+    ("道法", "rjb", "zhengzhi", "道德与法治"),
 ]
 
 GRADE_CN = "一二三四五六"
