@@ -820,6 +820,9 @@ def init_db():
     conn.commit()
     conn.execute("UPDATE completions SET kind='daily' WHERE task_id IN (SELECT id FROM daily_tasks)")
     apply_migrations(conn)
+    # 系统考点映射来自 data/knowledge_tags.json；每次启动同步，避免旧库继续显示旧标签。
+    # weak_points 从不在这里删除，家长已记录的复习历史会保留。
+    seed_knowledge_tags(conn)
     migrate_task_ids(conn)
     if conn.execute("SELECT COUNT(*) FROM subjects").fetchone()[0] == 0:
         seed(conn)

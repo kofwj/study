@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """考点标签：科目字典 + 单元映射。
 
-五上/五下语数英 = 人工精标（HAND）；其余年级按课文 action / 单元名自动标 auto:true。
+五上五科 = 人工精标（HAND）；其余年级只保留自动标签作内部占位，家长端不把它们当作可点选考点。
 输出 data/knowledge_tags.json
 """
 import json
@@ -195,30 +195,6 @@ HAND = {
     "g5s1-df-2": ["df5-jg", "df5-rm", "df5-she"],
     "g5s1-df-3": ["df5-gg", "df5-gli", "df5-ty"],
     "g5s1-df-4": ["df5-xd", "df5-cj", "df5-zr"],
-    "g5x2-cn-1": ["cn-poem", "cn-recite", "cn-read", "cn-oral", "cn-write"],
-    "g5x2-cn-2": ["cn-read", "cn-oral", "cn-write"],
-    "g5x2-cn-3": ["cn-zi", "cn-read"],
-    "g5x2-cn-4": ["cn-poem", "cn-recite", "cn-read", "cn-write"],
-    "g5x2-cn-5": ["cn-read", "cn-write"],
-    "g5x2-cn-6": ["cn-read", "cn-write"],
-    "g5x2-cn-7": ["cn-read", "cn-oral", "cn-write"],
-    "g5x2-cn-8": ["cn-read", "cn-oral", "cn-write"],
-    "g5x2-ma-1": ["ma-idea", "ma-calc", "ma-word"],
-    "g5x2-ma-2": ["ma-stat"],
-    "g5x2-ma-3": ["ma-idea"],
-    "g5x2-ma-4": ["ma-idea"],
-    "g5x2-ma-5": ["ma-calc"],
-    "g5x2-ma-6": ["ma-shape", "ma-calc"],
-    "g5x2-ma-7": ["ma-word"],
-    "g5x2-ma-8": ["ma-idea", "ma-calc", "ma-word", "ma-shape", "ma-stat"],
-    "g5x2-en-1": ["en-word", "en-listen", "en-sent"],
-    "g5x2-en-2": ["en-word", "en-listen", "en-sent"],
-    "g5x2-en-3": ["en-word", "en-listen", "en-sent"],
-    "g5x2-en-4": ["en-task"],
-    "g5x2-en-5": ["en-word", "en-listen", "en-sent"],
-    "g5x2-en-6": ["en-word", "en-listen", "en-sent"],
-    "g5x2-en-7": ["en-word", "en-listen", "en-sent"],
-    "g5x2-en-8": ["en-word", "en-task"],
 }
 
 CN_ACTION = {

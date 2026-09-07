@@ -36,31 +36,7 @@
       "g5s1-ma-5",
       "g5s1-ma-6",
       "g5s1-ma-7",
-      "g5s1-ma-8",
-      "g5x2-cn-1",
-      "g5x2-cn-2",
-      "g5x2-cn-3",
-      "g5x2-cn-4",
-      "g5x2-cn-5",
-      "g5x2-cn-6",
-      "g5x2-cn-7",
-      "g5x2-cn-8",
-      "g5x2-en-1",
-      "g5x2-en-2",
-      "g5x2-en-3",
-      "g5x2-en-4",
-      "g5x2-en-5",
-      "g5x2-en-6",
-      "g5x2-en-7",
-      "g5x2-en-8",
-      "g5x2-ma-1",
-      "g5x2-ma-2",
-      "g5x2-ma-3",
-      "g5x2-ma-4",
-      "g5x2-ma-5",
-      "g5x2-ma-6",
-      "g5x2-ma-7",
-      "g5x2-ma-8"
+      "g5s1-ma-8"
     ]
   },
   "tags": [
@@ -1411,27 +1387,30 @@
         "cn-poem",
         "cn-recite",
         "cn-read",
+        "cn-skim",
         "cn-oral",
-        "cn-write"
+        "cn-write",
+        "cn-zi"
       ],
-      "auto": false
+      "auto": true
     },
     {
       "unit_id": "g5x2-cn-2",
       "tag_ids": [
         "cn-read",
+        "cn-skim",
         "cn-oral",
-        "cn-write"
+        "cn-write",
+        "cn-zi"
       ],
-      "auto": false
+      "auto": true
     },
     {
       "unit_id": "g5x2-cn-3",
       "tag_ids": [
-        "cn-zi",
         "cn-read"
       ],
-      "auto": false
+      "auto": true
     },
     {
       "unit_id": "g5x2-cn-4",
@@ -1439,9 +1418,11 @@
         "cn-poem",
         "cn-recite",
         "cn-read",
-        "cn-write"
+        "cn-skim",
+        "cn-write",
+        "cn-zi"
       ],
-      "auto": false
+      "auto": true
     },
     {
       "unit_id": "g5x2-cn-5",
@@ -1449,33 +1430,38 @@
         "cn-read",
         "cn-write"
       ],
-      "auto": false
+      "auto": true
     },
     {
       "unit_id": "g5x2-cn-6",
       "tag_ids": [
         "cn-read",
-        "cn-write"
+        "cn-write",
+        "cn-zi"
       ],
-      "auto": false
+      "auto": true
     },
     {
       "unit_id": "g5x2-cn-7",
       "tag_ids": [
         "cn-read",
+        "cn-skim",
         "cn-oral",
-        "cn-write"
+        "cn-write",
+        "cn-zi"
       ],
-      "auto": false
+      "auto": true
     },
     {
       "unit_id": "g5x2-cn-8",
       "tag_ids": [
         "cn-read",
+        "cn-skim",
         "cn-oral",
-        "cn-write"
+        "cn-write",
+        "cn-zi"
       ],
-      "auto": false
+      "auto": true
     },
     {
       "unit_id": "g6s1-cn-1",
@@ -2027,65 +2013,58 @@
     {
       "unit_id": "g5x2-ma-1",
       "tag_ids": [
-        "ma-idea",
-        "ma-calc",
-        "ma-word"
+        "ma-calc"
       ],
-      "auto": false
+      "auto": true
     },
     {
       "unit_id": "g5x2-ma-2",
       "tag_ids": [
         "ma-stat"
       ],
-      "auto": false
+      "auto": true
     },
     {
       "unit_id": "g5x2-ma-3",
       "tag_ids": [
         "ma-idea"
       ],
-      "auto": false
+      "auto": true
     },
     {
       "unit_id": "g5x2-ma-4",
       "tag_ids": [
-        "ma-idea"
+        "ma-calc"
       ],
-      "auto": false
+      "auto": true
     },
     {
       "unit_id": "g5x2-ma-5",
       "tag_ids": [
         "ma-calc"
       ],
-      "auto": false
+      "auto": true
     },
     {
       "unit_id": "g5x2-ma-6",
       "tag_ids": [
-        "ma-shape",
-        "ma-calc"
+        "ma-shape"
       ],
-      "auto": false
+      "auto": true
     },
     {
       "unit_id": "g5x2-ma-7",
       "tag_ids": [
         "ma-word"
       ],
-      "auto": false
+      "auto": true
     },
     {
       "unit_id": "g5x2-ma-8",
       "tag_ids": [
-        "ma-idea",
-        "ma-calc",
-        "ma-word",
-        "ma-shape",
-        "ma-stat"
+        "ma-idea"
       ],
-      "auto": false
+      "auto": true
     },
     {
       "unit_id": "g6s1-ma-1",
@@ -2473,71 +2452,68 @@
     {
       "unit_id": "g5x2-en-1",
       "tag_ids": [
-        "en-word",
         "en-listen",
-        "en-sent"
+        "en-word"
       ],
-      "auto": false
+      "auto": true
     },
     {
       "unit_id": "g5x2-en-2",
       "tag_ids": [
-        "en-word",
         "en-listen",
-        "en-sent"
+        "en-word"
       ],
-      "auto": false
+      "auto": true
     },
     {
       "unit_id": "g5x2-en-3",
       "tag_ids": [
-        "en-word",
         "en-listen",
-        "en-sent"
+        "en-word"
       ],
-      "auto": false
+      "auto": true
     },
     {
       "unit_id": "g5x2-en-4",
       "tag_ids": [
-        "en-task"
+        "en-task",
+        "en-word",
+        "en-listen"
       ],
-      "auto": false
+      "auto": true
     },
     {
       "unit_id": "g5x2-en-5",
       "tag_ids": [
-        "en-word",
         "en-listen",
-        "en-sent"
+        "en-word"
       ],
-      "auto": false
+      "auto": true
     },
     {
       "unit_id": "g5x2-en-6",
       "tag_ids": [
-        "en-word",
         "en-listen",
-        "en-sent"
+        "en-word"
       ],
-      "auto": false
+      "auto": true
     },
     {
       "unit_id": "g5x2-en-7",
       "tag_ids": [
-        "en-word",
         "en-listen",
-        "en-sent"
+        "en-word"
       ],
-      "auto": false
+      "auto": true
     },
     {
       "unit_id": "g5x2-en-8",
       "tag_ids": [
+        "en-task",
         "en-word",
-        "en-task"
+        "en-listen"
       ],
-      "auto": false
+      "auto": true
     },
     {
       "unit_id": "g6s1-en-1",

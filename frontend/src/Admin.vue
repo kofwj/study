@@ -213,7 +213,11 @@ const unitsBySubject = computed(() => {
 const tagFor = (id) => (catalog.value.tags || []).find(t => t.id === id) || { id, name: id }
 const tagName = (id) => tagFor(id).name
 function tagsFor(uid) {
-  return (catalog.value.unit_tags || []).map(x => ({ ...x, ...tagFor(x.tag_id) })).filter(x => x.name)
+  // 自动标签只是未精标课程的内部占位，不能当作家长可判断的薄弱考点。
+  return (catalog.value.unit_tags || []).map(x => ({ ...x, ...tagFor(x.tag_id) })).filter(x => x.name && !x.auto)
+}
+function hasAutoTags(uid) {
+  return (catalog.value.unit_tags || []).some(x => x.unit_id === uid && x.auto)
 }
 function tagOn(uid, tid) { return !!(weakByUnit.value[uid] && weakByUnit.value[uid][tid]) }
 function weakTagCount(uid) { return Object.keys(weakByUnit.value[uid] || {}).length }
@@ -691,7 +695,7 @@ onMounted(load)
               <span class="tag-guide-help">{{ tagHelp(tg) }}</span>
               <span class="tag-guide-action">{{ tagOn(u.id, tg.tag_id) ? '已加入今日复习，点此取消' : '孩子做不出来，点此加入今日复习' }}</span>
             </button>
-            <span v-if="!tagsFor(u.id).length" class="dim">无考点</span>
+            <span v-if="!tagsFor(u.id).length" class="dim">{{ hasAutoTags(u.id) ? '这一册还没人工整理考点，先按下面任务卡练习。' : '无考点' }}</span>
           </div>
           <div class="task-row" v-for="t in (tasksBySubject[sid] || []).filter(x => x.unit_id === u.id)" :key="t.id">
             <template v-if="t.custom">
