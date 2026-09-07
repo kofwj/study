@@ -323,6 +323,11 @@ async function resetTestBands() {
   testBands.value = DEFAULT_TEST_BANDS.map(x => [...x])
   await saveTestBands()
 }
+function testBandRange(i) {
+  const low = Number(testBands.value[i][0])
+  const high = i === 0 ? 100 : Number(testBands.value[i - 1][0]) - 1
+  return low === high ? `${low} 分` : `${low}～${high} 分`
+}
 function goInsight(row) {
   const a = row.insight?.action
   if (a === '单元测试') {
@@ -793,23 +798,22 @@ onMounted(load)
 
     <!-- 单元测试成绩 -->
     <section v-if="section === 'test'" class="a-card enter">
-      <h3>单元测试成绩奖励</h3>
-      <p class="lead">孩子考完单元测试，你录入分数，按家庭设置的档位发阳光。修改标准只影响以后录入的成绩，历史记录不重算。</p>
+      <h3>单元测试</h3>
+      <p class="lead">录入孩子的测试分数，系统按下面的分数区间发放阳光。保存后的新标准只用于之后录入的成绩，已录成绩不变。</p>
       <div class="test-band-editor">
-        <div class="add-title">奖励标准</div>
+        <div class="add-title">成绩对应阳光</div>
+        <div class="test-band-head"><span>分数区间</span><span>发放阳光</span></div>
         <div class="band-edit" v-for="(band, i) in testBands" :key="i">
-          <label class="fld w84"><span>分数 ≥</span><input v-model.number="band[0]" type="number" min="0" max="100" :disabled="i === testBands.length - 1" /></label>
-          <span class="band-arrow">发</span>
-          <label class="fld w84"><span>阳光</span><input v-model.number="band[1]" type="number" min="0" /></label>
-          <span v-if="i === testBands.length - 1" class="dim">其余分数</span>
+          <span class="band-range">{{ testBandRange(i) }}</span>
+          <label class="fld band-threshold"><span>本档最低分</span><input v-model.number="band[0]" type="number" min="0" max="100" :disabled="i === testBands.length - 1" /></label>
+          <span class="band-arrow">→</span>
+          <label class="fld band-sun"><span>阳光</span><input v-model.number="band[1]" type="number" min="0" /></label>
+          <Sun class="ico sun" :size="14" />
         </div>
         <div class="band-actions">
-          <button class="ok" @click="saveTestBands">保存奖励标准</button>
+          <button class="ok" @click="saveTestBands">保存设置</button>
           <button class="ghost-s" @click="resetTestBands">恢复默认</button>
         </div>
-      </div>
-      <div class="band-box">
-        <span v-for="[th, sun] in testBands" :key="th" class="band">{{ th === 0 ? '其余分数' : th + ' 分起' }} · +{{ sun }} 阳光</span>
       </div>
       <div class="add-box">
         <div class="add-title">录入成绩</div>
@@ -1044,9 +1048,20 @@ onMounted(load)
 .w-subj-num { flex: none; font-size: 12px; color: var(--ink-2); }
 .band-box { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 14px; }
 .band { font-size: 12px; padding: 4px 10px; border-radius: 12px; background: var(--warm); color: var(--accent-ink); font-weight: 700; }
-.test-band-editor { padding: 12px 0 4px; border-bottom: 1px solid var(--surface-2); margin-bottom: 12px; }
-.band-edit, .band-actions { display: flex; align-items: flex-end; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
-.band-arrow { padding-bottom: 10px; color: var(--ink-3); font-size: 12px; }
+.test-band-editor { padding: 12px 0 4px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); margin-bottom: 14px; }
+.test-band-head, .band-edit { display: grid; grid-template-columns: minmax(120px, 1fr) 112px 20px 92px 18px; align-items: end; gap: 8px; }
+.test-band-head { padding: 0 8px 6px; color: var(--ink-3); font-size: 11px; font-weight: 700; }
+.band-edit { padding: 7px 8px; border-top: 1px solid var(--surface-2); }
+.band-edit .fld { margin: 0; }
+.band-range { color: var(--ink); font-weight: 700; font-size: 13px; padding-bottom: 10px; }
+.band-threshold { grid-column: 2; }
+.band-arrow { color: var(--ink-3); font-size: 12px; text-align: center; padding-bottom: 10px; }
+.band-sun { grid-column: 4; }
+.band-actions { display: flex; align-items: center; gap: 8px; margin: 10px 0 4px; }
+@media (max-width: 560px) {
+  .test-band-head { display: none; }
+  .band-edit { grid-template-columns: minmax(100px, 1fr) 88px 18px 76px 18px; }
+}
 
 /* —— 单元任务 / 每日任务 表单重排 —— */
 .fld { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
