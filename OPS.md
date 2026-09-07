@@ -89,6 +89,8 @@ ssh -o BatchMode=yes root@192.168.100.5 \
 
 或直接跑本地脚本 `scripts/deploy_vps.sh`（同样先备份再构建）。前端烘焙进镜像，**改前端必须 build**。部署后等 3 秒，手机/PWA 会自动检测新版本并提示刷新（不用手动清缓存）。孩子端底栏、家长端顶栏和 `curl https://study.anemy.org/api/health` 都能看到当前版本号。
 
+本机首次克隆后执行一次 `bash scripts/install_git_hooks.sh`。之后每次提交会自动把 `VERSION` 最后一位加 1（`0.1.0` → `0.1.1`，`0.1.99` → `0.2.0`）。如果这次已经手动改并暂存了 `VERSION`，就不会再自动加。跳过用 `SKIP_VERSION_BUMP=1 git commit`。
+
 ## 四、重置数据（清打卡，回到零起点）
 
 清空所有活动数据（流水/完成/签到/每日记录/兑换/测试/里程碑/宝箱），**保留课程、商店、等级、游标**。

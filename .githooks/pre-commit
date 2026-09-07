@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# 每次提交自动把 VERSION 最后一位 +1（0.1.0 → 0.1.1；0.1.99 → 0.2.0）。
+# 手动改 VERSION 并暂存后，这次提交不再自动加。SKIP_VERSION_BUMP=1 可跳过。
+set -euo pipefail
+ROOT="$(git rev-parse --show-toplevel)"
+cd "$ROOT"
+python3 "$ROOT/scripts/bump_version.py"
