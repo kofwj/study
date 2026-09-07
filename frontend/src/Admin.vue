@@ -958,7 +958,7 @@ onMounted(load)
 </template>
 
 <style scoped>
-.admin { max-width: 780px; margin: 0 auto; padding: 14px; padding-top: calc(14px + env(safe-area-inset-top)); font-family: system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; color: var(--ink); }
+.admin { max-width: 1080px; margin: 0 auto; padding: 14px 24px; padding-top: calc(14px + env(safe-area-inset-top)); font-family: system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; color: var(--ink); }
 .a-head {
   background: linear-gradient(180deg, var(--brand) 0%, var(--brand) 100%);
   color: #fff; border-radius: 20px; padding: 16px 20px;
@@ -972,8 +972,8 @@ onMounted(load)
 .a-term { display: block; margin-top: 8px; font-size: 12px; }
 .a-term select { margin-left: 6px; padding: 4px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
 .a-exit { background: rgba(255,255,255,.22); border: none; color: #fff; border-radius: 20px; padding: 9px 16px; font-weight: 700; cursor: pointer; font-family: inherit; }
-.a-body { display: flex; gap: 16px; align-items: flex-start; }
-.a-side { width: 164px; flex: none; background: var(--surface); border-radius: 16px; padding: 10px 8px; box-shadow: 0 4px 14px rgba(60,120,170,.07); border: 1px solid var(--line); position: sticky; top: calc(8px + env(safe-area-inset-top)); }
+.a-body { display: flex; gap: 20px; align-items: flex-start; }
+.a-side { width: 180px; flex: none; background: var(--surface); border-radius: 16px; padding: 10px 8px; box-shadow: 0 4px 14px rgba(60,120,170,.07); border: 1px solid var(--line); position: sticky; top: calc(8px + env(safe-area-inset-top)); }
 .a-group { font-size: 11px; color: var(--ink-3); font-weight: 800; padding: 10px 10px 4px; letter-spacing: .5px; }
 .a-nav { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 10px; border: none; background: none; border-radius: 10px; color: var(--ink-2); font-weight: 700; font-size: 13px; cursor: pointer; text-align: left; font-family: inherit; }
 .a-nav:hover { background: var(--surface-2); }
@@ -1009,6 +1009,7 @@ onMounted(load)
 .review-link { width: auto; align-self: flex-start; margin-top: 2px; padding: 0; }
 .unit-wp-count { margin-left: 6px; color: var(--accent-ink); font-size: 11px; font-weight: 700; }
 @media (max-width: 560px) {
+  .admin { padding: 10px; padding-top: calc(10px + env(safe-area-inset-top)); }
   .review-steps { align-items: flex-start; flex-direction: column; gap: 5px; }
   .review-steps i { display: none; }
   .review-actions { flex-direction: column; }
