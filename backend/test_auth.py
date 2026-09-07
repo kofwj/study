@@ -25,6 +25,12 @@ def test_auth():
     c.close()
 
     with TestClient(main.app) as cli:
+        r = cli.get("/api/health")
+        assert r.status_code == 200, r.text
+        body = r.json()
+        assert body["ok"] is True
+        assert body.get("version")
+        assert body.get("label")
         r = cli.get("/api/tasks")
         assert r.status_code == 401, r.text
         r = cli.post("/api/auth/login", json={"account": "parent", "pin": "0000"})

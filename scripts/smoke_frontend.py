@@ -69,7 +69,8 @@ def check_dist():
         if not p.exists():
             fail(f"缺产物 {rel}")
     bundle = (DIST / js[0].lstrip("/")).read_text(encoding="utf-8", errors="replace")
-    for needle in ("阳光学习工作台", "login-enter", "createApp"):
+    ver = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
+    for needle in ("阳光学习工作台", "login-enter", "createApp", ver):
         if needle not in bundle:
             fail(f"js 包里没有 {needle!r}")
 

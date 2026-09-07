@@ -11,7 +11,8 @@ python3 scripts/backup_db.py
 
 git pull --ff-only
 
-docker compose build
+export APP_REVISION="$(git rev-parse --short=7 HEAD)"
+docker compose build --build-arg APP_REVISION="$APP_REVISION"
 docker compose up -d
 
 for i in $(seq 1 30); do

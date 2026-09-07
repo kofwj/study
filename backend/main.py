@@ -21,6 +21,7 @@ from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 from pydantic import BaseModel
 
 import db
+from version import app_label, app_revision, app_version
 
 _kid = contextvars.ContextVar("kid", default=None)
 _fam = contextvars.ContextVar("fam", default=None)
@@ -605,7 +606,7 @@ def ranks_public():
 
 @app.get("/api/health")
 def health():
-    return {"ok": True}
+    return {"ok": True, "version": app_version(), "revision": app_revision(), "label": app_label()}
 
 
 @app.get("/api/overview")

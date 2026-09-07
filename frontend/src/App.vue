@@ -1,6 +1,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted, onBeforeUnmount, watch, defineAsyncComponent } from 'vue'
 import { api } from './api.js'
+import { APP_LABEL } from './version.js'
 // ponytail: 家长后台（1147 行）单独切 chunk，孩子端首屏不加载
 const Admin = defineAsyncComponent(() => import('./Admin.vue'))
 import { SUBJECT_ICONS as ICONS, rankIcon, achIcon } from './icons.js'
@@ -625,6 +626,7 @@ function reloadApp() {
     <footer class="foot">
       <button class="parent" @click="openParent"><User class="ico" :size="15" /> 家长</button>
       <button class="parent" @click="doLogout">退出</button>
+      <span class="app-ver" :title="APP_LABEL">{{ APP_LABEL }}</span>
       <span class="grow"></span>
       <button class="shop-fab" @click="openShop"><ShoppingCart class="ico" :size="16" /> 商店</button>
     </footer>
@@ -781,6 +783,7 @@ function reloadApp() {
       <div class="login-logo"><Sun class="ico" :size="36" /></div>
       <h1>阳光学习工作台</h1>
       <p class="login-sub">孩子的每日学习打卡小助手</p>
+      <p class="login-ver">{{ APP_LABEL }}</p>
       <div class="login-tabs">
         <button type="button" :class="{ on: pinForm.mode==='login' }" @click="pinForm.mode='login'">登录</button>
         <button type="button" :class="{ on: pinForm.mode==='register' }" @click="pinForm.mode='register'">注册新家</button>
@@ -998,6 +1001,11 @@ body {
   border: none; background: var(--accent); color: var(--accent-ink); border-radius: 22px; padding: 10px 18px;
   font-weight: 800; cursor: pointer; white-space: nowrap;
 }
+.app-ver {
+  color: var(--ink-3); font-size: 11px; font-weight: 700; letter-spacing: .02em;
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.login-ver { margin: -8px 0 14px; color: var(--ink-3); font-size: 12px; font-weight: 700; }
 
 .mask { position: fixed; inset: 0; background: rgba(20,40,60,.35); display: flex; align-items: center; justify-content: center; z-index: 20; padding: 12px; overflow: auto; }
 .shop-modal { background: var(--surface); border-radius: var(--r-card); padding: 22px; width: min(92%, 420px); max-height: calc(100vh - 24px); max-height: calc(100dvh - 24px); overflow: auto; }

@@ -17,7 +17,10 @@ services:
       retries: 10
 
   sunshine:
-    build: .
+    build:
+      context: .
+      args:
+        APP_REVISION: ${APP_REVISION:-dev}
     container_name: sunshine-workbench
     restart: unless-stopped
     ports:
@@ -25,6 +28,7 @@ services:
     environment:
       - SUNSHINE_DB=/data/sunshine.db
       - TZ=Asia/Shanghai
+      - APP_REVISION=${APP_REVISION:-}
       # 空=SQLite。VPS .env 设 DATABASE_URL + DATABASE_APP_URL + COMPOSE_PROFILES=postgres 才切 PG
       - DATABASE_URL=${DATABASE_URL:-}
       - DATABASE_APP_URL=${DATABASE_APP_URL:-}

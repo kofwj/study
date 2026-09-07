@@ -84,10 +84,10 @@ bash scripts/pre_deploy.sh              # pytest + 上面这条
 
 ```bash
 ssh -o BatchMode=yes root@192.168.100.5 \
-  'su - kofwj -c "cd ~/sunshine && python3 scripts/backup_db.py && git pull --ff-only origin main && docker compose build --no-cache && docker compose up -d"'
+  'su - kofwj -c "cd ~/sunshine && python3 scripts/backup_db.py && git pull --ff-only origin main && export APP_REVISION=\$(git rev-parse --short=7 HEAD) && docker compose build --no-cache --build-arg APP_REVISION=\$APP_REVISION && docker compose up -d"'
 ```
 
-或直接跑本地脚本 `scripts/deploy_vps.sh`（同样先备份再构建）。前端烘焙进镜像，**改前端必须 build**。部署后等 3 秒，手机/PWA 会自动检测新版本并提示刷新（不用手动清缓存）。
+或直接跑本地脚本 `scripts/deploy_vps.sh`（同样先备份再构建）。前端烘焙进镜像，**改前端必须 build**。部署后等 3 秒，手机/PWA 会自动检测新版本并提示刷新（不用手动清缓存）。孩子端底栏、家长端顶栏和 `curl https://study.anemy.org/api/health` 都能看到当前版本号。
 
 ## 四、重置数据（清打卡，回到零起点）
 
