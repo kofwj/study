@@ -901,8 +901,18 @@ body {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   font-weight: 700;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
   box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+  position: relative;
+}
+.nav-checkin::after {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  left: 12px;
+  right: 12px;
+  height: 1px;
+  background: linear-gradient(to right, transparent, var(--border), transparent);
 }
 .nav-checkin:hover:not(:disabled) {
   background: linear-gradient(135deg, #5568d3 0%, #63408a 100%);
@@ -921,8 +931,19 @@ body {
 
 /* 导航分组 - 视觉分隔 */
 .nav-group {
-  padding-top: 8px;
-  border-top: 2px solid var(--border);
+  padding-bottom: 12px;
+  margin-bottom: 12px;
+  position: relative;
+}
+.nav-group::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 12px;
+  right: 12px;
+  height: 1px;
+  background: linear-gradient(to right, transparent, var(--border), transparent);
+  box-shadow: 0 1px 0 rgba(255,255,255,0.5);
 }
 .nav:first-of-type {
   margin-top: 0;
@@ -930,9 +951,19 @@ body {
 
 /* 左侧阳光样式 */
 .side-sunshine {
-  margin-top: 16px;
+  margin-top: 0;
   padding-top: 16px;
-  border-top: 2px solid var(--border);
+  position: relative;
+}
+.side-sunshine::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 12px;
+  right: 12px;
+  height: 1px;
+  background: linear-gradient(to right, transparent, var(--border), transparent);
+  box-shadow: 0 1px 0 rgba(255,255,255,0.5);
 }
 .side-sunshine-header {
   display: flex;
