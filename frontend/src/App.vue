@@ -123,6 +123,7 @@ const isAdmin = ref(false)
 const me = ref(null)
 const authed = ref(false)
 const mustChangePin = ref(false)
+const oldPin = ref('')
 const newPin = ref('')
 const newPin2 = ref('')
 const pinForm = reactive({ mode: 'login', account: 'lele', val: '', name: '', family: '我家', code: '' })
@@ -135,13 +136,15 @@ async function afterLogin(r) {
   if (!isAdmin.value) await refresh()
 }
 async function doChangePin() {
+  const cur = oldPin.value.trim()
   const p = newPin.value.trim()
+  if (!cur) { showToast('请输入当前密码'); return }
   if (p.length < 8) { showToast('家长密码至少 8 位'); return }
-  if (p !== newPin2.value) { showToast('两次输入不一致'); return }
+  if (p !== newPin2.value) { showToast('两次新密码不一致'); return }
   try {
-    await api.admin.changePin(p)
+    await api.admin.changePin(p, cur)
     mustChangePin.value = false
-    newPin.value = ''; newPin2.value = ''
+    oldPin.value = ''; newPin.value = ''; newPin2.value = ''
     me.value = await api.me().catch(() => me.value)
     showToast('密码已更新')
   } catch (e) { showToast(e.message) }
@@ -454,6 +457,7 @@ function reloadApp() {
       <div class="login-logo"><Lock class="ico" :size="36" /></div>
       <h1>改一下家长密码</h1>
       <p class="login-sub">家长密码现在至少 8 位，改完才能继续。</p>
+      <input v-model="oldPin" type="password" placeholder="当前密码" autocomplete="current-password" />
       <input v-model="newPin" type="password" placeholder="新密码（至少 8 位）" autocomplete="new-password" />
       <input v-model="newPin2" type="password" placeholder="再输一遍确认" autocomplete="new-password" @keyup.enter="doChangePin" />
       <button class="login-enter" @click="doChangePin">保存新密码</button>

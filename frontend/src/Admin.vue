@@ -292,7 +292,7 @@ async function saveDaily(d) {
 async function delDaily(id) { if (!confirm('删除这个每日任务？')) return; await api.admin.delDaily(id); await load() }
 
 // —— 密码 / 游标 ——
-const pinForm = reactive({ cur: '', next: '' })
+const pinForm = reactive({ cur: '', next: '', confirm: '' })
 async function setCursor(subj, taskId) {
   try {
     await api.admin.setCursor({ subject_id: subj, task_id: taskId })
@@ -459,11 +459,16 @@ async function toggleLock() {
 }
 
 async function changePin() {
-  if (!pinForm.next) return showToast('填新密码')
+  const cur = pinForm.cur.trim()
+  const next = pinForm.next.trim()
+  if (!cur) return showToast('请输入当前密码')
+  if (!next) return showToast('请输入新密码')
+  if (next.length < 8) return showToast('家长密码至少 8 位')
+  if (next !== pinForm.confirm) return showToast('两次新密码不一致')
   try {
-    await api.admin.changePin(pinForm.next)
-    pinForm.cur = pinForm.next = ''
-    showToast('密码已改')
+    await api.admin.changePin(next, cur)
+    pinForm.cur = pinForm.next = pinForm.confirm = ''
+    showToast('密码已改，其他设备需要重新登录')
   } catch (e) { showToast(e.message) }
 }
 async function refreshInvites() { invites.value = await api.admin.invites() }
@@ -1108,7 +1113,7 @@ onMounted(load)
             <option value="女">女</option>
           </select>
         </label>
-        <label class="fld w84"><span>改密码</span><input v-model="k._pin" type="password" placeholder="不改就空着" /></label>
+        <label class="fld grow"><span>改密码</span><input v-model="k._pin" type="password" autocomplete="new-password" placeholder="不改就空着，至少 6 位" /></label>
         <div class="ops">
           <button class="ok" @click="saveKid(k)">存</button>
           <button class="del" @click="delKid(k)">删</button>
@@ -1119,7 +1124,7 @@ onMounted(load)
         <div class="frm-row">
           <label class="fld grow"><span>家里怎么叫</span><input v-model="newKid.name" placeholder="如：弟弟" /></label>
           <label class="fld grow"><span>登录账号</span><input v-model="newKid.account" placeholder="如：didi" /></label>
-          <label class="fld w84"><span>密码</span><input v-model="newKid.pin" placeholder="至少 4 位" /></label>
+          <label class="fld grow"><span>密码</span><input v-model="newKid.pin" type="password" autocomplete="new-password" placeholder="至少 6 位，不要重复或连续数字" /></label>
         </div>
         <div class="frm-row">
           <label class="fld grow"><span>现在读哪册</span>
@@ -1143,41 +1148,59 @@ onMounted(load)
     <section v-if="section === 'members'" class="a-card enter">
       <h3>家长成员</h3>
       <p class="lead">另一位家长用邀请码加入，共同管理。</p>
-      <div class="a-item" v-for="m in members" :key="m.id">
-        <span class="badge">{{ m.name }}</span>
-        <span class="dim">{{ m.account }} · {{ m.role }}</span>
-        <button class="del" @click="delMember(m)">删</button>
+      <div class="member-row" v-for="m in members" :key="m.id">
+        <div class="member-info">
+          <strong>{{ m.name }}</strong>
+          <span class="dim">{{ m.account }}</span>
+        </div>
+        <span class="badge" :class="{ daily: m.parent_role === 'owner' }">{{ m.parent_role === 'owner' ? '创建者' : '成员' }}</span>
+        <button v-if="isOwner && m.account !== me.account" class="del" @click="delMember(m)">删</button>
       </div>
+      <p v-if="!members.length" class="dim">还没有家长成员。</p>
     </section>
 
     <!-- 邀请码 -->
     <section v-if="section === 'invites'" class="a-card enter">
       <h3>邀请码</h3>
+      <p class="lead">生成后复制给家人。打开保护后，每个码只能用一次，24 小时过期。</p>
       <label class="invite-protect">
-        <input type="checkbox" :checked="inviteProtect" @change="toggleProtect" />
-        <span>邀请码保护（开 = 一次性 + 24h 限时）</span>
+        <input type="checkbox" :checked="inviteProtect" @change="toggleProtect" :disabled="!isOwner" />
+        <span>邀请码保护（一次性 + 24 小时）</span>
       </label>
-      <p class="dim mt8">
-        <button class="ok" @click="makeInvite()">生成邀请码</button>
-      </p>
-      <div class="a-item" v-for="iv in invites" :key="iv.code">
-        <span class="badge">家长</span>
-        <code class="invite-code">{{ iv.code }}</code>
-        <span class="dim">{{ inviteStatus(iv) }}</span>
-        <button class="ok" @click="copyCode(iv.code)">复制</button>
-        <button class="del" @click="delInvite(iv.code)">删</button>
+      <p v-if="!isOwner" class="dim">只有创建者能开关保护和生成邀请码。</p>
+      <div class="frm-row mt8">
+        <button v-if="isOwner" class="ok" @click="makeInvite()">生成邀请码</button>
       </div>
-      <p v-if="!invites.length" class="dim mt6">还没有邀请码，点上面生成，再点「复制」分享给家人。</p>
+      <div class="member-row" v-for="iv in invites" :key="iv.code">
+        <div class="member-info">
+          <code class="invite-code">{{ iv.code }}</code>
+          <span class="dim">{{ inviteStatus(iv) }}</span>
+        </div>
+        <button class="ok" @click="copyCode(iv.code)">复制</button>
+        <button v-if="isOwner" class="del" @click="delInvite(iv.code)">删</button>
+      </div>
+      <p v-if="!invites.length" class="dim mt6">还没有邀请码。</p>
     </section>
 
-    <!-- 密码 -->
     <section v-if="section === 'pin'" class="a-card enter">
       <h3>修改家长密码</h3>
-      <div class="a-item">
-        <input v-model="pinForm.next" type="password" placeholder="新密码（家长至少 8 位）" class="w-name" />
-        <button class="ok" @click="changePin">改密码</button>
-      </div>
-      <p class="dim">账号 parent；改密后旧设备要重新登录。首登请改掉迁移来的旧密码。</p>
+      <p class="lead">改密后其他已登录设备会退出。家长密码至少 8 位。</p>
+      <p class="dim">当前账号 {{ me.account || '—' }}</p>
+      <form class="settings-form" @submit.prevent="changePin">
+        <label class="fld">
+          <span>当前密码</span>
+          <input v-model="pinForm.cur" type="password" autocomplete="current-password" />
+        </label>
+        <label class="fld">
+          <span>新密码</span>
+          <input v-model="pinForm.next" type="password" autocomplete="new-password" placeholder="至少 8 位" />
+        </label>
+        <label class="fld">
+          <span>确认新密码</span>
+          <input v-model="pinForm.confirm" type="password" autocomplete="new-password" />
+        </label>
+        <button class="ok" type="submit">保存新密码</button>
+      </form>
     </section>
       </main>
     </div>
@@ -1251,7 +1274,7 @@ onMounted(load)
 .a-item { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 8px 0; border-bottom: 1px solid var(--surface-2); }
 .a-item.add { border-top: 1px dashed var(--line); margin-top: 8px; padding-top: 12px; }
 .a-subject-h { font-weight: 800; color: var(--brand-deep); margin-top: 8px; font-size: 14px; }
-.a-item input, .a-item select { border: 1px solid var(--line); border-radius: var(--radius-md); padding: 7px 9px; font-size: 13px; color: var(--ink); font-family: inherit; }
+.a-item input, .a-item select { border: 1px solid var(--line); border-radius: var(--radius-md); padding: 8px 10px; font-size: 15px; color: var(--ink); background: var(--surface); font-family: inherit; min-height: 40px; }
 .a-item input:focus, .a-item select:focus { outline: none; border-color: var(--brand); }
 .w-name { flex: 1; min-width: 120px; }
 .w-num { width: 70px; }
@@ -1326,6 +1349,10 @@ onMounted(load)
 .fld { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .fld > span { font-size: 11px; color: var(--ink-3); font-weight: 700; }
 .fld input, .fld select { border: 1px solid var(--line); border-radius: var(--radius-md); padding: 8px 10px; font-size: 15px; color: var(--ink); background: var(--surface); font-family: inherit; width: 100%; min-height: 40px; }
+.settings-form { display: flex; flex-direction: column; gap: 12px; max-width: 380px; margin-top: 12px; }
+.settings-form .ok { align-self: flex-start; }
+.member-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 12px 0; border-bottom: 1px solid var(--surface-2); }
+.member-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
 .kid-card { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; padding: 12px 0; border-bottom: 1px solid var(--surface-2); }
 .fld input:focus, .fld select:focus { outline: none; border-color: var(--brand); }
 .grow { flex: 1 1 120px; }

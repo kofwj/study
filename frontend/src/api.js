@@ -44,7 +44,7 @@ export const api = {
   dailyHistory: (id) => j(`/api/daily/${id}/history`),
 
   admin: {
-    changePin: (pin) => j('/api/admin/pin', { method: 'POST', ...body({ pin }) }),
+    changePin: (pin, current) => j('/api/admin/pin', { method: 'POST', ...body({ pin, current }) }),
     ranks: () => j('/api/admin/ranks'),
     createReward: (o) => j('/api/admin/rewards', { method: 'POST', ...body(o) }),
     updateReward: (id, o) => j(`/api/admin/rewards/${id}`, { method: 'PUT', ...body(o) }),

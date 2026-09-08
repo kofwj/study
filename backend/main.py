@@ -1103,6 +1103,7 @@ class LoginBody(BaseModel):
 
 class PinBody(BaseModel):
     pin: str
+    current: str = ""
 
 
 @app.post("/api/auth/login")
@@ -1478,7 +1479,7 @@ def members_list(request: Request):
     u = request.state.user
     c = get_conn()
     rows = c.execute(
-        "SELECT id, name, account, role FROM users WHERE family_id=? AND role='parent' ORDER BY created_at",
+        "SELECT id, name, account, role, parent_role FROM users WHERE family_id=? AND role='parent' ORDER BY created_at",
         (u["family_id"],)).fetchall()
     c.close()
     return [dict(r) for r in rows]
@@ -1554,14 +1555,25 @@ def auth_me(request: Request):
 
 @app.post("/api/admin/pin", dependencies=[Depends(require_parent)])
 def admin_change_pin(b: PinBody, request: Request):
-    pin = _check_pin(b.pin, parent=True)
     u = request.state.user
+    current = (b.current or "").strip()
+    if not current:
+        raise HTTPException(400, "请输入当前密码")
     c = get_conn()
-    c.execute("UPDATE users SET pin_hash=?, force_pin_change='' WHERE id=?", (db.hash_pin(pin), u["id"]))
-    # ponytail: created_at 存 unix 浮点串，和 token.iat 比；别改成 ISO
-    c.execute("INSERT INTO revoked(jti,created_at) VALUES(?,?) ON CONFLICT(jti) DO UPDATE SET created_at=excluded.created_at",
-              ("u:" + u["id"], str(time.time())))
-    c.commit(); c.close()
+    try:
+        row = c.execute("SELECT pin_hash FROM users WHERE id=?", (u["id"],)).fetchone()
+        if not row or not db.verify_pin(current, row["pin_hash"] or ""):
+            raise HTTPException(400, "当前密码不对")
+        pin = _check_pin(b.pin, parent=True)
+        if pin == current:
+            raise HTTPException(400, "新密码不能和当前密码一样")
+        c.execute("UPDATE users SET pin_hash=?, force_pin_change='' WHERE id=?", (db.hash_pin(pin), u["id"]))
+        # ponytail: created_at 存 unix 浮点串，和 token.iat 比；别改成 ISO
+        c.execute("INSERT INTO revoked(jti,created_at) VALUES(?,?) ON CONFLICT(jti) DO UPDATE SET created_at=excluded.created_at",
+                  ("u:" + u["id"], str(time.time())))
+        c.commit()
+    finally:
+        c.close()
     payload = {"user_id": u["id"], "family_id": u["family_id"], "role": u["role"],
                "term_id": u.get("term_id"), "iat": time.time()}
     resp = JSONResponse({"ok": True})

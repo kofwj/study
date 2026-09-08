@@ -41,9 +41,13 @@ def test_auth():
         assert "pid" in r.cookies
         r = cli.get("/api/tasks")
         assert r.status_code == 200, r.text
-        r = cli.post("/api/admin/pin", json={"pin": "4321"})
-        assert r.status_code == 400
         r = cli.post("/api/admin/pin", json={"pin": "parent88"})
+        assert r.status_code == 400, r.text
+        r = cli.post("/api/admin/pin", json={"pin": "parent88", "current": "0000"})
+        assert r.status_code == 400, r.text
+        r = cli.post("/api/admin/pin", json={"pin": "4321", "current": "8888"})
+        assert r.status_code == 400
+        r = cli.post("/api/admin/pin", json={"pin": "parent88", "current": "8888"})
         assert r.status_code == 200, r.text
         r = cli.post("/api/auth/logout")
         assert r.status_code == 200
