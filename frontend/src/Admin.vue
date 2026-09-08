@@ -424,6 +424,7 @@ const pendingRedeem = computed(() => (redemptions.value || []).filter(r => r.sta
 const reviewCount = computed(() => (reviewDue.value || []).length)
 const checkinCount = computed(() => (familyToday.value.kids || []).filter(k => k.checkin).length)
 const kidCount = computed(() => (familyToday.value.kids || []).length)
+const isMultiKid = computed(() => kids.value.length > 1)
 const hubs = computed(() => [
   { id: 'review', icon: BookMarked, title: '今日', hint: reviewCount.value ? `${reviewCount.value} 项复习到期` : (pendingRedeem.value ? `${pendingRedeem.value} 笔兑换待同意` : '复习、审批、周报') },
   { id: 'unit-task', icon: BookOpen, title: '学习', hint: '任务、考点、每日打卡、进度' },
@@ -578,9 +579,10 @@ onMounted(load)
         <div class="a-sub" :title="APP_REVISION">{{ me.name || '家长' }} · {{ APP_LABEL }}</div>
       </div>
       <div class="a-head-right">
-        <div v-if="kids.length" class="kid-switch">
+        <div v-if="isMultiKid" class="kid-switch">
           <button v-for="k in kids" :key="k.id" type="button" :class="{ on: selectedKid === k.id }" @click="pickKid(k.id)">{{ k.name }}</button>
         </div>
+        <div v-else-if="currentKidName" class="kid-one">{{ currentKidName }}</div>
         <button class="a-exit" @click="emit('exit')"><ArrowLeft class="ico" :size="14" /> 回到孩子端</button>
       </div>
     </header>
@@ -658,7 +660,7 @@ onMounted(load)
           <span>待审批</span><b>{{ pendingRedeem }}</b>
         </button>
         <div class="dash-stat">
-          <span>今日签到</span><b>{{ checkinCount }}/{{ kidCount || 0 }}</b>
+          <span>今日签到</span><b>{{ isMultiKid ? (checkinCount + '/' + kidCount) : (checkinCount ? '已来' : (kidCount ? '还没来' : '—')) }}</b>
         </div>
         <button type="button" class="dash-stat" @click="section = 'weekly'">
           <span>本周净增</span><b>{{ weekly.net || 0 }}</b>
@@ -671,29 +673,38 @@ onMounted(load)
           <span>{{ h.hint }}</span>
         </button>
       </div>
-      <h4 class="w-h">孩子们</h4>
-      <p class="lead">点卡片切换正在看的孩子。</p>
-      <div v-if="!(familyToday.kids || []).length" class="dim">还没有孩子。</div>
-      <p v-if="familyTodayEmpty" class="review-empty"><strong>{{ familyTodayEmpty }}</strong></p>
-      <div v-if="(familyToday.kids || []).length" class="fam-today">
-        <button v-for="k in familyToday.kids" :key="k.kid_id" type="button"
-          class="fam-card" :class="{ on: selectedKid === k.kid_id }" @click="pickKid(k.kid_id)">
-          <span class="apv-name">{{ k.name }}</span>
-          <em class="fam-st" :class="familyTodayStatus(k).cls">{{ familyTodayStatus(k).text }}</em>
-          <span class="dim">完成 {{ k.completed_today }} · 连击 {{ k.streak }} · 余额 {{ k.balance }}</span>
-          <span v-if="k.review_due > 0" class="ok fam-go" @click.stop="goReviewKid(k)">去复习</span>
-        </button>
-      </div>
-      <h4 class="w-h">本周盯点</h4>
-      <p class="lead">每个孩子一句结论；需要处理时，点“去解决”。</p>
-      <div v-if="!(insights.kids || []).length" class="dim">还没有孩子。</div>
-      <div v-for="row in insights.kids" :key="row.kid_id" class="apv-row">
-        <div class="apv-info">
-          <span class="apv-name">{{ row.name }}</span>
-          <span class="dim">{{ row.insight ? row.insight.text : '这周不用特别盯。' }}</span>
+      <template v-if="kidCount">
+        <h4 class="w-h">{{ isMultiKid ? '孩子们' : '今天' }}</h4>
+        <p v-if="isMultiKid" class="lead">点卡片切换正在看的孩子。</p>
+        <div v-if="isMultiKid" class="fam-today">
+          <button v-for="k in familyToday.kids" :key="k.kid_id" type="button"
+            class="fam-card" :class="{ on: selectedKid === k.kid_id }" @click="pickKid(k.kid_id)">
+            <span class="apv-name">{{ k.name }}</span>
+            <em class="fam-st" :class="familyTodayStatus(k).cls">{{ familyTodayStatus(k).text }}</em>
+            <span class="dim">完成 {{ k.completed_today }} · 连击 {{ k.streak }} · 余额 {{ k.balance }}</span>
+            <span v-if="k.review_due > 0" class="ok fam-go" @click.stop="goReviewKid(k)">去复习</span>
+          </button>
         </div>
-        <button v-if="row.insight && row.insight.action" class="ok" @click="goInsight(row)">去解决</button>
-      </div>
+        <div v-else class="fam-today">
+          <div v-for="k in familyToday.kids" :key="k.kid_id" class="fam-card">
+            <em class="fam-st" :class="familyTodayStatus(k).cls">{{ familyTodayStatus(k).text }}</em>
+            <span class="dim">完成 {{ k.completed_today }} · 连击 {{ k.streak }} · 余额 {{ k.balance }}</span>
+            <span v-if="k.review_due > 0" class="ok fam-go" @click="goReviewKid(k)">去复习</span>
+          </div>
+        </div>
+      </template>
+      <p v-else class="dim">还没有孩子，到「家庭」里添加。</p>
+      <template v-if="(insights.kids || []).length">
+        <h4 class="w-h">本周盯点</h4>
+        <p v-if="isMultiKid" class="lead">每个孩子一句结论；需要处理时，点“去解决”。</p>
+        <div v-for="row in insights.kids" :key="row.kid_id" class="apv-row">
+          <div class="apv-info">
+            <span v-if="isMultiKid" class="apv-name">{{ row.name }}</span>
+            <span class="dim">{{ row.insight ? row.insight.text : '这周不用特别盯。' }}</span>
+          </div>
+          <button v-if="row.insight && row.insight.action" class="ok" @click="goInsight(row)">去解决</button>
+        </div>
+      </template>
       <button type="button" class="ghost-s rules-toggle" @click="rulesOpen = !rulesOpen">{{ rulesOpen ? '收起诊断阈值' : '诊断阈值' }}</button>
       <template v-if="rulesOpen">
       <div class="a-item">
@@ -1268,6 +1279,7 @@ onMounted(load)
   cursor: pointer; font-family: inherit; font-size: 13px;
 }
 .kid-switch button.on { background: #fff; color: var(--brand-deep); }
+.kid-one { font-weight: 700; font-size: 14px; opacity: .95; }
 .review-date { max-width: 220px; margin-bottom: 10px; }
 .invite-protect { display: flex; gap: 8px; align-items: center; margin: 10px 0 4px; font-size: 13px; cursor: pointer; }
 .invite-code { font-family: ui-monospace, monospace; font-weight: 700; font-size: 14px; }
@@ -1363,7 +1375,8 @@ onMounted(load)
 .toast { position: fixed; left: 50%; bottom: 30px; transform: translateX(-50%); background: rgba(31,59,85,.92); color: #fff; padding: 10px 18px; border-radius: var(--radius-pill); font-size: 14px; z-index: 20; }
 
 .fam-today { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 8px; }
-.fam-card { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-width: 150px; flex: 1; padding: 12px; border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--surface); text-align: left; font-family: inherit; cursor: pointer; }
+.fam-card { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-width: 150px; flex: 1; padding: 12px; border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--surface); text-align: left; font-family: inherit; }
+button.fam-card { cursor: pointer; }
 .fam-card.on { outline: 2px solid var(--accent); }
 .fam-st { font-size: 12px; font-weight: 700; font-style: normal; }
 .fam-st.amber { color: var(--accent-ink); }

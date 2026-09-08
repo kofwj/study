@@ -839,7 +839,7 @@ function reloadApp() {
       <p class="login-note">
         <template v-if="pinForm.mode==='register'">注册就是为你家开一个独立空间，不需要邀请码。</template>
         <template v-else-if="pinForm.mode==='join'">邀请码由家庭里已有的家长在设置页生成。</template>
-        <template v-else>孩子用 4 位密码；家长注册/改密至少 8 位。</template>
+        <template v-else>孩子密码至少 6 位；家长至少 8 位。</template>
       </p>
       <p v-if="toast" class="login-note danger">{{ toast }}</p>
     </div>
