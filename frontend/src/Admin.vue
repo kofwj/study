@@ -21,7 +21,7 @@ const isOwner = computed(() => me.value.parent_role === 'owner')
 
 const SECTIONS = [
   { group: '概览', items: [
-    { id: 'insights', icon: Eye, label: '本周盯点' },
+    { id: 'insights', icon: Eye, label: '概览' },
     { id: 'review', icon: BookMarked, label: '今日复习' },
     { id: 'weekly', icon: ChartColumn, label: '周报' },
   ] },
@@ -64,8 +64,10 @@ const reviewDue = ref([])
 const firstReview = ref('')
 const DEFAULT_TEST_BANDS = [[100, 30], [95, 20], [90, 15], [85, 10], [0, 5]]
 const testBands = ref(DEFAULT_TEST_BANDS.map(x => [...x]))
-const weekly = ref({ days: [], weeks: [], by_subject: [], kids: [], total_earned: 0, total_spent: 0, net: 0, balance: 0, earned_all: 0, streak: 0, checkins: 0, week_start: '', week_end: '', insight: null })
+const weekly = ref({ days: [], weeks: [], by_subject: [], kids: [], total_earned: 0, total_spent: 0, net: 0, balance: 0, earned_all: 0, streak: 0, checkins: 0, week_start: '', week_end: '', insight: null, family_insight: null, mastered_by_kid: [] })
 const insights = ref({ rules: { test_fail_count: 2, test_fail_score: 80, drop_ratio: 0.3, streak_break: 2 }, kids: [] })
+const familyToday = ref({ today: '', kids: [] })
+const rulesOpen = ref(false)
 const RULE_DEFAULTS = { test_fail_count: 2, test_fail_score: 80, drop_ratio: 0.3, streak_break: 2 }
 const toast = ref('')
 
@@ -100,7 +102,7 @@ async function load() {
     selectedKid.value = ks[0].id
     setSelectedKid(ks[0].id)
   }
-  const [r, rk, t, rd, wk, ts, ig, cat, wps, rv] = await Promise.all([api.rewards(), api.admin.ranks(), api.tasks(), api.admin.redemptions(), api.admin.weekly(), api.admin.tests(), api.admin.insights(), api.admin.unitTags(), api.admin.weakPoints(''), api.admin.reviewDue()])
+  const [r, rk, t, rd, wk, ts, ig, cat, wps, rv, ft] = await Promise.all([api.rewards(), api.admin.ranks(), api.tasks(), api.admin.redemptions(), api.admin.weekly(), api.admin.tests(), api.admin.insights(), api.admin.unitTags(), api.admin.weakPoints(''), api.admin.reviewDue(), api.admin.familyToday()])
   rewards.value = r
   ranks.value = rk
   subjects.value = t.subjects
@@ -114,6 +116,7 @@ async function load() {
   progressLock.value = t.progress_lock === '1'
   redemptions.value = rd
   weekly.value = wk
+  familyToday.value = ft || { today: '', kids: [] }
   tests.value = ts
   insights.value = ig
   testBands.value = (ig.rules?.test_bands || DEFAULT_TEST_BANDS).map(x => [...x])
@@ -367,20 +370,60 @@ const testPreview = computed(() => {
   }
   return { range: '', sun: 0 }
 })
-function goWeeklyInsight() {
-  const a = weekly.value.insight?.action
+function familyTodayStatus(k) {
+  if (k.review_due > 0) return { cls: 'amber', text: '今日复习 ' + k.review_due + ' 项' }
+  if (!k.checkin) return { cls: 'gray', text: '还没来' }
+  return { cls: 'green', text: '今天来了' }
+}
+const familyTodayEmpty = computed(() => {
+  const ks = familyToday.value.kids || []
+  if (!ks.length) return ''
+  if (ks.some(k => k.review_due > 0 || !k.checkin)) return ''
+  return ks.length === 1 ? '今天来了，没有到期复习。' : '今天都来了，没有到期复习。'
+})
+function goReviewKid(k) {
+  selectedKid.value = k.kid_id
+  setSelectedKid(k.kid_id)
+  section.value = 'review'
+  load()
+}
+function completedDelta(k) {
+  const d = (k.completed || 0) - (k.completed_last || 0)
+  if (d > 0) return '比上周多 ' + d + ' 张'
+  if (d < 0) return '比上周少 ' + (-d) + ' 张'
+  return '和上周差不多'
+}
+const masteredLine = computed(() => {
+  const rows = weekly.value.mastered_by_kid || []
+  if (!rows.length) return ''
+  return rows.map(r => r.name + '：' + (r.items || []).join('、')).join('；')
+})
+const currentKidName = computed(() => kids.value.find(k => k.id === selectedKid.value)?.name || '')
+function goFamilyInsight() {
+  const fi = weekly.value.family_insight || {}
+  if (fi.kid_id) {
+    selectedKid.value = fi.kid_id
+    setSelectedKid(fi.kid_id)
+  }
+  const a = fi.action
   if (a === '单元测试') section.value = 'test'
   else if (a === '每日打卡' || a === '运动打卡') emit('exit')
   else if (a === '今日复习') section.value = 'review'
+  if (fi.kid_id) load()
+}
+function goWeeklyInsight() {
+  goFamilyInsight()
 }
 function goInsight(row) {
   const a = row.insight?.action
-  if (a === '单元测试') {
+  if (row.kid_id) {
     selectedKid.value = row.kid_id
     setSelectedKid(row.kid_id)
-    section.value = 'test'
-  } else if (a === '每日打卡' || a === '运动打卡') emit('exit')
+  }
+  if (a === '单元测试') section.value = 'test'
+  else if (a === '每日打卡' || a === '运动打卡') emit('exit')
   else if (a === '今日复习') section.value = 'review'
+  if (row.kid_id) load()
 }
 async function judge(id, action) {
   try {
@@ -528,9 +571,22 @@ onMounted(load)
       </div>
     </section>
 
-    <!-- 本周盯点 -->
+    <!-- 概览：全家今日 + 本周盯点 -->
     <section v-if="section === 'insights'" class="a-card enter">
-      <h3><Eye class="ico" :size="16" /> 本周盯点</h3>
+      <h3><Eye class="ico" :size="16" /> 全家今日</h3>
+      <p class="lead">看谁还没来、谁有到期复习。点卡片切换正在看的孩子。</p>
+      <div v-if="!(familyToday.kids || []).length" class="dim">还没有孩子。</div>
+      <p v-if="familyTodayEmpty" class="review-empty"><strong>{{ familyTodayEmpty }}</strong></p>
+      <div v-if="(familyToday.kids || []).length" class="fam-today">
+        <button v-for="k in familyToday.kids" :key="k.kid_id" type="button"
+          class="fam-card" :class="{ on: selectedKid === k.kid_id }" @click="pickKid(k.kid_id)">
+          <span class="apv-name">{{ k.name }}</span>
+          <em class="fam-st" :class="familyTodayStatus(k).cls">{{ familyTodayStatus(k).text }}</em>
+          <span class="dim">完成 {{ k.completed_today }} · 连击 {{ k.streak }} · 余额 {{ k.balance }}</span>
+          <span v-if="k.review_due > 0" class="ok fam-go" @click.stop="goReviewKid(k)">去复习</span>
+        </button>
+      </div>
+      <h4 class="w-h">本周盯点</h4>
       <p class="lead">每个孩子一句结论；需要处理时，点“去解决”。</p>
       <div v-if="!(insights.kids || []).length" class="dim">还没有孩子。</div>
       <div v-for="row in insights.kids" :key="row.kid_id" class="apv-row">
@@ -540,7 +596,8 @@ onMounted(load)
         </div>
         <button v-if="row.insight && row.insight.action" class="ok" @click="goInsight(row)">去解决</button>
       </div>
-      <h4 class="w-h">诊断阈值</h4>
+      <button type="button" class="ghost-s rules-toggle" @click="rulesOpen = !rulesOpen">{{ rulesOpen ? '收起诊断阈值' : '诊断阈值' }}</button>
+      <template v-if="rulesOpen">
       <div class="a-item">
         <span class="dim">连续低分次数</span>
         <input class="w-num" type="number" :value="insights.rules.test_fail_count" @change="saveRule('test_fail_count', +$event.target.value)" />
@@ -561,6 +618,7 @@ onMounted(load)
         <input class="w-num" type="number" :value="insights.rules.streak_break" @change="saveRule('streak_break', +$event.target.value)" />
         <button class="ghost" @click="resetRule('streak_break')">默认</button>
       </div>
+      </template>
     </section>
 
     <!-- 周报 -->
@@ -569,12 +627,13 @@ onMounted(load)
       <p class="lead">{{ weekly.week_start }} ~ {{ weekly.week_end }}（周一到周日）</p>
       <div class="w-next">
         <strong>本周建议先处理</strong>
-        <span>{{ weekly.insight ? weekly.insight.text : '这周不用特别盯。' }}</span>
-        <button v-if="weekly.insight && weekly.insight.action" class="ok" @click="goWeeklyInsight">去解决</button>
+        <span>{{ (weekly.family_insight && weekly.family_insight.text) || '这周不用特别盯。' }}</span>
+        <button v-if="weekly.family_insight && weekly.family_insight.action" class="ok" @click="goFamilyInsight">去解决</button>
       </div>
       <div v-if="(weekly.kids || []).length" class="w-kids">
         <div v-for="k in weekly.kids" :key="k.id" class="w-box" :class="{ on: k.current }" @click="pickKid(k.id)">
           <span>{{ k.name }}</span><b>+{{ k.earned }}</b>
+          <i class="dim">完成 {{ k.completed || 0 }} 张 · {{ completedDelta(k) }}</i>
           <i class="dim">花 {{ k.spent }} · 连击 {{ k.streak }}</i>
         </div>
       </div>
@@ -587,11 +646,11 @@ onMounted(load)
         <div class="w-box"><span>本周签到</span><b>{{ weekly.checkins }} 天</b></div>
       </div>
 
-      <div v-if="(weekly.mastered || []).length" class="w-mastered">
-        本周已掌握：<b>{{ weekly.mastered.join('、') }}</b>
+      <div v-if="masteredLine" class="w-mastered">
+        本周已掌握：<b>{{ masteredLine }}</b>
       </div>
 
-      <h4 class="w-h">近 4 周阳光趋势</h4>
+      <h4 class="w-h">近 4 周阳光趋势{{ currentKidName ? ' · ' + currentKidName : '' }}</h4>
       <div class="w-trend">
         <svg viewBox="0 0 288 80" class="w-trend-svg" preserveAspectRatio="none">
           <polyline :points="weekPoints" fill="none" stroke="var(--brand)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
@@ -601,7 +660,7 @@ onMounted(load)
         </div>
       </div>
 
-      <h4 class="w-h">每天赚到的阳光</h4>
+      <h4 class="w-h">每天赚到的阳光{{ currentKidName ? ' · ' + currentKidName : '' }}</h4>
       <div class="w-chart">
         <div v-for="d in weekly.days" :key="d.date" class="w-bar-col">
           <div class="w-bar" :style="{ height: (d.earned / maxDayEarn * 100) + '%' }">
@@ -611,7 +670,7 @@ onMounted(load)
         </div>
       </div>
 
-      <h4 class="w-h">本周各科完成</h4>
+      <h4 class="w-h">本周各科完成{{ currentKidName ? ' · ' + currentKidName : '' }}</h4>
       <div v-if="!weekly.by_subject.length" class="dim">本周还没完成任务。</div>
       <div v-else class="w-subj">
         <div v-for="s in weekly.by_subject" :key="s.name" class="w-subj-row">
@@ -1104,6 +1163,15 @@ onMounted(load)
 .daily .d-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; width: 100%; padding: 4px 0; }
 .toast { position: fixed; left: 50%; bottom: 30px; transform: translateX(-50%); background: rgba(31,59,85,.92); color: #fff; padding: 10px 18px; border-radius: 22px; font-size: 14px; z-index: 20; }
 
+.fam-today { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 8px; }
+.fam-card { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-width: 150px; flex: 1; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); text-align: left; font-family: inherit; cursor: pointer; }
+.fam-card.on { outline: 2px solid var(--accent); }
+.fam-st { font-size: 12px; font-weight: 700; font-style: normal; }
+.fam-st.amber { color: var(--accent-ink); }
+.fam-st.gray { color: var(--ink-3); }
+.fam-st.green { color: var(--ok); }
+.fam-go { margin-top: 4px; }
+.rules-toggle { margin: 12px 0 8px; }
 .w-kids { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 12px; }
 .w-kids .w-box { cursor: pointer; }
 .w-kids .w-box.on { outline: 2px solid var(--accent); }

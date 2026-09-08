@@ -156,5 +156,56 @@ def test_insights():
         print("insights ok")
 
 
+def test_family_today_and_weekly_compare():
+    db.init_db()
+    today = date.today()
+    monday = today - timedelta(days=today.weekday())
+    span = (today - monday).days
+    last_to = monday - timedelta(days=7) + timedelta(days=span)
+    with TestClient(main.app) as cli:
+        assert cli.post("/api/auth/register", json={"account": "famd", "pin": "family88", "family_name": "对比家"}).status_code == 200
+        a = cli.post("/api/admin/kids", json={"name": "乐乐", "account": "lelea", "pin": "111222"}).json()["id"]
+        b = cli.post("/api/admin/kids", json={"name": "弟弟", "account": "didib", "pin": "222333"}).json()["id"]
+        assert cli.post("/api/checkin?selected_kid=" + a).status_code == 200
+        c = db.connect()
+        c.execute(
+            "INSERT INTO weak_points(kid_id,unit_id,tag_id,note,status,interval_idx,review_due_at,created_at,updated_at) "
+            "VALUES(?,?,?,?,?,?,?,?,?)",
+            (a, "g5s1-cn-1", "cn-zi", "", "open", 0, today.isoformat(), db.now(), db.now()))
+        c.execute(
+            "INSERT INTO tests(subject_id,unit_id,score,sunshine,note,date,created_at,kid_id) VALUES(?,?,?,?,?,?,?,?)",
+            ("语文", "g5s1-cn-1", 70, 5, "", today.isoformat(), db.now(), b))
+        c.execute(
+            "INSERT INTO tests(subject_id,unit_id,score,sunshine,note,date,created_at,kid_id) VALUES(?,?,?,?,?,?,?,?)",
+            ("语文", "g5s1-cn-1", 75, 5, "", today.isoformat(), db.now(), b))
+        c.execute(
+            "INSERT INTO completions(task_id,date,status,sunshine,metrics,kind,created_at,kid_id) VALUES(?,?,?,?,?,?,?,?)",
+            ("g5s1-cn-1-1", today.isoformat(), "completed", 5, None, "unit", db.now(), a))
+        c.execute(
+            "INSERT INTO completions(task_id,date,status,sunshine,metrics,kind,created_at,kid_id) VALUES(?,?,?,?,?,?,?,?)",
+            ("g5s1-cn-1-2", last_to.isoformat(), "completed", 5, None, "unit", db.now(), a))
+        c.commit(); c.close()
+        ft = cli.get("/api/admin/family-today").json()
+        kids = {x["name"]: x for x in ft["kids"]}
+        assert [x["name"] for x in ft["kids"]] == ["乐乐", "弟弟"]
+        assert kids["乐乐"]["checkin"] is True and kids["乐乐"]["review_due"] == 1 and kids["乐乐"]["completed_today"] == 1
+        assert kids["弟弟"]["checkin"] is False and kids["弟弟"]["review_due"] == 0
+        wk = cli.get("/api/admin/weekly?selected_kid=" + a).json()
+        fi = wk["family_insight"]
+        assert fi["kid_id"] == a and fi["action"] == "今日复习"
+        assert "先看乐乐的复习" in fi["text"] and "再看弟弟的语文测验" in fi["text"]
+        assert "第一" not in fi["text"] and "冠军" not in fi["text"]
+        row_a = next(x for x in wk["kids"] if x["id"] == a)
+        assert row_a["completed"] == 1 and row_a["completed_last"] == 1
+        assert row_a["insight"]["type"] == "review_due"
+
+
+def test_family_insight_empty():
+    assert main.family_insight_from([])["text"] == "这周不用特别盯。"
+    assert main.family_insight_from([{"kid_id": "x", "name": "甲", "insight": None}])["text"] == "这周不用特别盯。"
+
+
 if __name__ == "__main__":
     test_insights()
+    test_family_today_and_weekly_compare()
+    test_family_insight_empty()

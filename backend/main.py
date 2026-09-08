@@ -518,7 +518,8 @@ def _insight_review_due(c, kid):
         "SELECT COUNT(*) FROM weak_points WHERE kid_id=? AND status='open' AND review_due_at IS NOT NULL AND review_due_at!='' AND review_due_at<=?",
         (kid, db.today())).fetchone()[0]
     if n:
-        return {"type": "review_due", "text": "有 " + str(n) + " 个薄弱点该复习了", "action": "今日复习", "source": {}}
+        return {"type": "review_due", "text": "有 " + str(n) + " 个薄弱点该复习了", "action": "今日复习",
+                "source": {"n": n}}
     return None
 
 
@@ -526,6 +527,60 @@ def build_insights(c, kid):
     rules = insight_rules(c)
     return (_insight_review_due(c, kid) or _insight_weak_unit(c, kid, rules) or _insight_fitness(c, kid)
             or _insight_streak_break(c, kid, rules) or _insight_drop(c, kid, rules))
+
+
+INSIGHT_RANK = {"review_due": 0, "weak_unit": 1, "fitness": 2, "streak_break": 3, "drop": 4}
+
+
+def _completed_between(c, kid, start, end):
+    return c.execute(
+        "SELECT COUNT(*) FROM completions WHERE status='completed' AND kid_id=? AND date BETWEEN ? AND ?",
+        (kid, start, end)).fetchone()[0]
+
+
+def _mastered_names(c, kid, w_start, w_end):
+    return [r[0] for r in c.execute(
+        "SELECT DISTINCT kt.name FROM weak_points wp JOIN knowledge_tags kt ON kt.id=wp.tag_id "
+        "WHERE wp.kid_id=? AND substr(wp.updated_at,1,10) BETWEEN ? AND ? "
+        "AND (wp.status='resolved' OR COALESCE(wp.interval_idx,0) >= 4) "
+        "ORDER BY kt.name", (kid, w_start, w_end)).fetchall()]
+
+
+def _insight_clause(name, ins):
+    t = (ins or {}).get("type")
+    if t == "review_due":
+        n = (ins.get("source") or {}).get("n")
+        if n is None:
+            n = 0
+        return f"{name}的复习（{n} 项到期）"
+    if t == "weak_unit":
+        text = ins.get("text") or ""
+        subj = text.split("《")[0] if "《" in text else "单元"
+        return f"{name}的{subj}测验"
+    if t == "fitness":
+        return f"{name}的体测"
+    if t == "streak_break":
+        return f"{name}的打卡"
+    if t == "drop":
+        return f"{name}的完成量"
+    return name
+
+
+def family_insight_from(rows):
+    ranked = []
+    for r in rows:
+        ins = r.get("insight")
+        if not ins:
+            continue
+        ranked.append((INSIGHT_RANK.get(ins.get("type"), 99), r))
+    ranked.sort(key=lambda x: x[0])
+    top = [r for _, r in ranked[:2]]
+    if not top:
+        return {"text": "这周不用特别盯。", "action": None, "kid_id": ""}
+    parts = [_insight_clause(r["name"], r["insight"]) for r in top]
+    text = "先看" + parts[0] + "。" if len(parts) == 1 else "先看" + parts[0] + "，再看" + parts[1] + "。"
+    first = top[0]["insight"]
+    return {"text": text, "action": first.get("action"), "kid_id": top[0]["kid_id"]}
 
 
 # 连续坚持里程碑（一次性奖励，防通胀）：第 7/14/30 天各发一次
@@ -1983,7 +2038,14 @@ def weekly():
         "AND (wp.status='resolved' OR COALESCE(wp.interval_idx,0) >= 4) "
         "ORDER BY kt.name", (kid, w_start, w_end)).fetchall()]
     fam = _fam.get()
+    today_d = datetime.now().date()
+    span = (today_d - monday).days
+    last_from = (monday - timedelta(days=7)).isoformat()
+    last_to = (monday - timedelta(days=7) + timedelta(days=span)).isoformat()
+    this_from, this_to = monday.isoformat(), today_d.isoformat()
     kids_cmp = []
+    mastered_by_kid = []
+    insight_rows = []
     if fam:
         roster = c.execute(
             "SELECT id, name FROM users WHERE family_id=? AND role='kid' ORDER BY created_at", (fam,)).fetchall()
@@ -1995,13 +2057,22 @@ def weekly():
             ks = c.execute(
                 "SELECT COALESCE(SUM(-delta),0) FROM ledger WHERE kid_id=? AND date BETWEEN ? AND ? AND reason='redeem' AND delta<0",
                 (kr["id"], w_start, w_end)).fetchone()[0]
+            ins = build_insights(c, kr["id"])
+            done = _completed_between(c, kr["id"], this_from, this_to)
+            done_last = _completed_between(c, kr["id"], last_from, last_to)
+            items = _mastered_names(c, kr["id"], w_start, w_end)
             kids_cmp.append({"id": kr["id"], "name": kr["name"], "earned": ke, "spent": ks,
-                             "streak": streak(c, kr["id"]), "current": kr["id"] == kid})
+                             "streak": streak(c, kr["id"]), "current": kr["id"] == kid,
+                             "completed": done, "completed_last": done_last, "insight": ins})
+            insight_rows.append({"kid_id": kr["id"], "name": kr["name"], "insight": ins})
+            if items:
+                mastered_by_kid.append({"kid_id": kr["id"], "name": kr["name"], "items": items})
         db.apply_scope(c, fam, kid)
     insight = build_insights(c, kid)
     out = {
         "week_start": w_start, "week_end": w_end,
         "insight": insight,
+        "family_insight": family_insight_from(insight_rows),
         "days": days,
         "total_earned": sum(x["earned"] for x in days),
         "total_spent": sum(x["spent"] for x in days),
@@ -2013,6 +2084,7 @@ def weekly():
         "weeks": weeks,
         "by_subject": [dict(r) for r in by_subject],
         "mastered": mastered,
+        "mastered_by_kid": mastered_by_kid,
         "kids": kids_cmp,
     }
     c.close()
@@ -2085,6 +2157,35 @@ def insight_rules_put(b: InsightRulesIn):
     out["test_bands"] = test_bands(c)
     c.close()
     return out
+
+
+@app.get("/api/admin/family-today", dependencies=[Depends(require_parent)])
+def family_today():
+    c = get_conn()
+    fam = _fam.get()
+    today = db.today()
+    roster = c.execute(
+        "SELECT id, name FROM users WHERE family_id=? AND role='kid' ORDER BY created_at", (fam,)).fetchall()
+    kids = []
+    for kr in roster:
+        db.apply_scope(c, fam, kr["id"])
+        checkin = c.execute(
+            "SELECT 1 FROM checkins WHERE date=? AND kid_id=?", (today, kr["id"])).fetchone() is not None
+        completed_today = c.execute(
+            "SELECT COUNT(*) FROM completions WHERE status='completed' AND kid_id=? AND date=?",
+            (kr["id"], today)).fetchone()[0]
+        review_due = c.execute(
+            "SELECT COUNT(*) FROM weak_points WHERE kid_id=? AND status='open' AND review_due_at IS NOT NULL "
+            "AND review_due_at!='' AND review_due_at<=?", (kr["id"], today)).fetchone()[0]
+        kids.append({
+            "kid_id": kr["id"], "name": kr["name"], "checkin": checkin,
+            "completed_today": completed_today, "review_due": review_due,
+            "streak": streak(c, kr["id"]), "balance": balance(c, kr["id"]),
+        })
+    if roster:
+        db.apply_scope(c, fam, kid_id())
+    c.close()
+    return {"today": today, "kids": kids}
 
 
 def _gender(val):

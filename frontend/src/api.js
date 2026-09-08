@@ -81,6 +81,7 @@ export const api = {
     updateKid: (id, o) => j(`/api/admin/kids/${id}`, { method: 'PUT', ...body(o) }),
     delKid: (id) => j(`/api/admin/kids/${id}`, { method: 'DELETE' }),
     insights: () => j('/api/admin/insights'),
+    familyToday: () => j('/api/admin/family-today'),
     setInsightRules: (o) => j('/api/admin/insight-rules', { method: 'PUT', ...body(o) }),
     unitTags: (unit_id) => j('/api/admin/unit-tags' + (unit_id ? '?unit_id=' + encodeURIComponent(unit_id) : '')),
     weakPoints: (unit_id) => j('/api/admin/weak-points?unit_id=' + encodeURIComponent(unit_id)),
