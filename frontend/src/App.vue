@@ -901,14 +901,14 @@ body {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   font-weight: 700;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
   box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
   position: relative;
 }
 .nav-checkin::after {
   content: '';
   position: absolute;
-  bottom: -8px;
+  bottom: -10px;
   left: 12px;
   right: 12px;
   height: 1px;
@@ -931,8 +931,8 @@ body {
 
 /* 导航分组 - 视觉分隔 */
 .nav-group {
-  padding-bottom: 12px;
-  margin-bottom: 12px;
+  padding-bottom: 10px;
+  margin-bottom: 10px;
   position: relative;
 }
 .nav-group::after {
@@ -952,7 +952,7 @@ body {
 /* 左侧阳光样式 */
 .side-sunshine {
   margin-top: 0;
-  padding-top: 16px;
+  padding-top: 20px;
   position: relative;
 }
 .side-sunshine::before {
@@ -1048,10 +1048,30 @@ body {
 }
 .nav em { font-style: normal; font-size: 12px; color: var(--ink-3); background: var(--surface-2); padding: 2px 8px; border-radius: 10px; }
 .nav.on {
-  background: var(--warm); color: var(--accent-ink); font-weight: 800;
-  border-left: 4px solid var(--accent); padding-left: 8px;
+  background: linear-gradient(135deg, var(--warm) 0%, var(--warm-2) 100%);
+  color: var(--accent-ink);
+  font-weight: 800;
+  border-left: 4px solid var(--accent);
+  padding-left: 8px;
+  box-shadow: 0 2px 6px rgba(255, 165, 0, 0.12);
+  position: relative;
 }
-.nav.on em { background: var(--line); color: var(--brand-deep); }
+.nav.on::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: linear-gradient(to bottom, var(--accent), var(--brand));
+  border-radius: 0 4px 4px 0;
+}
+.nav.on em { 
+  background: linear-gradient(135deg, var(--accent) 0%, var(--brand) 100%);
+  color: white;
+  font-weight: 700;
+  box-shadow: 0 2px 4px rgba(255, 165, 0, 0.2);
+}
 
 .main { flex: 1; min-width: 0; }
 .main h1 { margin: 4px 0 6px; font-size: 28px; }
