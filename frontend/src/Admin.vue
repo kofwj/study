@@ -7,6 +7,7 @@ import { tagHelp } from './tagHelp.js'
 import { ChartColumn, Eye, Baby, Users, KeyRound, Lock, Store, Trophy, ClipboardCheck, BookOpen, RefreshCw, MapPinned, FileText, Settings, Sun, Star, Check, ArrowLeft, BookMarked } from '@lucide/vue'
 
 const emit = defineEmits(['exit', 'switched'])
+const me = ref({ role: 'parent', parent_role: 'member' })  // 当前家长信息
 const kids = ref([])
 const members = ref([])
 const inviteProtect = ref(false)
@@ -14,6 +15,10 @@ const invites = ref([])
 const selectedKid = ref('')
 const newKid = reactive({ name: '', account: '', pin: '', term_id: 'g5s1', gender: '' })
 const section = ref('insights')
+
+// 计算是否为创建者
+const isOwner = computed(() => me.value.parent_role === 'owner')
+
 const SECTIONS = [
   { group: '概览', items: [
     { id: 'insights', icon: Eye, label: '本周盯点' },
@@ -82,6 +87,10 @@ function showToast(m) { toast.value = m; setTimeout(() => (toast.value = ''), 22
 function unitName(id) { return units.value.find(u => u.id === id)?.name || id }
 
 async function load() {
+  // 获取当前家长信息
+  const userInfo = await api.me()
+  me.value = userInfo
+  
   const [ks, ms, fam, inv] = await Promise.all([api.admin.kids(), api.admin.members(), api.admin.family(), api.admin.invites()])
   kids.value = ks
   members.value = ms

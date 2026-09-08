@@ -196,16 +196,29 @@ for i in range(len(bands) - 1):
 - [x] 输入验证 → 阳光上限10000
 - [x] Docker端口 → 绑定内网IP
 
+## ✅ 已完成（v0.1.3）
+
+- [x] **CSRF保护** - Cookie SameSite 改为 strict
+- [x] **全局异常处理** - 统一错误响应，防止堆栈泄露
+- [x] **家长角色权限区分** - owner(创建者) vs member(普通成员)
+  - [x] 数据库迁移（_migrate_025）
+  - [x] 权限检查函数（require_owner）
+  - [x] 限制API：删除成员、删除孩子、生成邀请码、邀请保护设置
+  - [x] 转让权限API（/api/admin/transfer-owner）
+  - [x] 前端基础支持（me.parent_role, isOwner）
+  - [ ] 前端UI完整调整（见 FRONTEND_UI_PATCH.md）
+
 ---
 
 ## 📅 开发计划
 
-### v0.1.3 (计划)
-- [ ] 家长角色权限区分
-- [ ] CSRF 保护
-- [ ] 全局异常处理
+### v0.1.3 (已完成)
+- [x] 家长角色权限区分（后端完成，前端UI待完善）
+- [x] CSRF 保护
+- [x] 全局异常处理
 
 ### v0.1.4 (计划)
+- [ ] 前端UI权限完善（按FRONTEND_UI_PATCH.md）
 - [ ] 限流持久化（Redis可选）
 - [ ] N+1 查询优化
 - [ ] 密码修改验证

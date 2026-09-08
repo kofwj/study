@@ -404,7 +404,8 @@ CREATE TABLE IF NOT EXISTS schema_migrations (id TEXT PRIMARY KEY, applied_at TE
 CREATE TABLE IF NOT EXISTS families (id TEXT PRIMARY KEY, name TEXT, created_at TEXT);
 CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY, family_id TEXT, role TEXT NOT NULL,
-  name TEXT, avatar TEXT DEFAULT '', pin_hash TEXT, term_id TEXT, created_at TEXT);
+  name TEXT, avatar TEXT DEFAULT '', pin_hash TEXT, term_id TEXT, created_at TEXT,
+  parent_role TEXT DEFAULT 'member');
 CREATE TABLE IF NOT EXISTS profiles (user_id TEXT PRIMARY KEY, family_id TEXT);
 CREATE TABLE IF NOT EXISTS kid_settings (kid_id TEXT, key TEXT, value TEXT, PRIMARY KEY(kid_id, key));
 """)
@@ -416,8 +417,8 @@ CREATE TABLE IF NOT EXISTS kid_settings (kid_id TEXT, key TEXT, value TEXT, PRIM
         "INSERT INTO users(id,family_id,role,name,avatar,pin_hash,term_id,created_at) VALUES(?,?,?,?,?,?,?,?) ON CONFLICT DO NOTHING",
         (DEFAULT_KID, DEFAULT_FAMILY, "kid", name, "", "", term, ts))
     conn.execute(
-        "INSERT INTO users(id,family_id,role,name,avatar,pin_hash,term_id,created_at) VALUES(?,?,?,?,?,?,?,?) ON CONFLICT DO NOTHING",
-        (DEFAULT_PARENT, DEFAULT_FAMILY, "parent", "家长", "", "", None, ts))
+        "INSERT INTO users(id,family_id,role,name,avatar,pin_hash,term_id,created_at,parent_role) VALUES(?,?,?,?,?,?,?,?,?) ON CONFLICT DO NOTHING",
+        (DEFAULT_PARENT, DEFAULT_FAMILY, "parent", "家长", "", "", None, ts, "owner"))
     conn.execute("INSERT INTO profiles(user_id,family_id) VALUES(?,?) ON CONFLICT DO NOTHING",
                  (DEFAULT_KID, DEFAULT_FAMILY))
     conn.execute("INSERT INTO profiles(user_id,family_id) VALUES(?,?) ON CONFLICT DO NOTHING",
@@ -748,6 +749,38 @@ def _migrate_024(conn):
         "UPDATE completions SET status='cancelled' WHERE status='completed' AND EXISTS ("
         "SELECT 1 FROM ledger WHERE reason='cancel' AND ref_id='cmp-' || CAST(completions.id AS TEXT))"
     )
+
+
+def _migrate_025(conn):
+    """家长角色权限区分：owner(创建者) vs member(普通成员)"""
+    _add_column(conn, "users", "parent_role TEXT DEFAULT 'member'")
+    
+    # 每个家庭的第一个家长（注册时间最早）设为创建者
+    if is_postgres():
+        conn.execute("""
+            WITH first_parents AS (
+                SELECT DISTINCT ON (family_id) id
+                FROM users
+                WHERE role='parent'
+                ORDER BY family_id, created_at, id
+            )
+            UPDATE users
+            SET parent_role = 'owner'
+            WHERE id IN (SELECT id FROM first_parents)
+        """)
+    else:
+        # SQLite: 使用 MIN(id) 作为代理（id 是自增的）
+        conn.execute("""
+            UPDATE users
+            SET parent_role = 'owner'
+            WHERE id IN (
+                SELECT MIN(id)
+                FROM users
+                WHERE role='parent'
+                GROUP BY family_id
+            )
+        """)
+
 
 
 def _migrate_017(conn):

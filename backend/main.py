@@ -6,6 +6,7 @@
 """
 import contextvars
 import json
+import logging
 import random
 import time
 import uuid
@@ -22,6 +23,13 @@ from pydantic import BaseModel
 
 import db
 from version import app_label, app_revision, app_version
+
+# 配置日志
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 _kid = contextvars.ContextVar("kid", default=None)
 _fam = contextvars.ContextVar("fam", default=None)
@@ -41,6 +49,28 @@ async def lifespan(app):
 
 
 app = FastAPI(title="阳光学习工作台", lifespan=lifespan)
+
+
+# 全局异常处理器
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """捕获所有未处理的异常，记录详细日志但只返回通用错误给客户端"""
+    logger.error(
+        f"Unhandled exception: {exc}",
+        exc_info=True,
+        extra={
+            "path": request.url.path,
+            "method": request.method,
+            "client": request.client.host if request.client else None,
+            "user_id": getattr(request.state, "user", {}).get("user_id") if hasattr(request.state, "user") else None
+        }
+    )
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "服务器内部错误，请稍后重试"}
+    )
+
+
 # 前端由 StaticFiles 同源托管，无需跨域；删掉 CORS 避免任何外部站点能调用接口
 
 # 签到不发阳光（无门槛白拿会通胀），保留为「今天来过」记录 + 连击兜底
@@ -91,7 +121,7 @@ def _cookie_secure(request: Request) -> bool:
 def _set_auth_cookie(resp: Response, request: Request, name: str, payload: dict):
     resp.set_cookie(
         name, _serializer().dumps(payload),
-        max_age=TOKEN_MAX_AGE, httponly=True, samesite="lax",
+        max_age=TOKEN_MAX_AGE, httponly=True, samesite="strict",
         secure=_cookie_secure(request), path="/")
 
 
@@ -192,6 +222,14 @@ def require_parent(request: Request):
     u = getattr(request.state, "user", None)
     if not u or u["role"] != "parent":
         raise HTTPException(403, "需要家长账号")
+    return u
+
+
+def require_owner(request: Request):
+    """需要家长创建者权限（owner）才能执行的操作"""
+    u = require_parent(request)
+    if u.get("parent_role") != "owner":
+        raise HTTPException(403, "需要家长创建者权限")
     return u
 
 
@@ -1034,10 +1072,15 @@ def auth_login(b: LoginBody, request: Request):
         "user_id": user["id"], "family_id": user["family_id"], "role": user["role"],
         "term_id": user["term_id"], "iat": time.time(),
     }
-    resp = JSONResponse({
+    resp_data = {
         "ok": True, "role": user["role"], "name": user["name"], "account": user["account"],
         "force_pin_change": force,
-    })
+    }
+    # 家长账号返回角色权限
+    if user["role"] == "parent":
+        resp_data["parent_role"] = user.get("parent_role", "member")
+    
+    resp = JSONResponse(resp_data)
     name = COOKIE_PARENT if user["role"] == "parent" else COOKIE_KID
     _set_auth_cookie(resp, request, name, payload)
     other = COOKIE_KID if name == COOKIE_PARENT else COOKIE_PARENT
@@ -1094,8 +1137,8 @@ def auth_register(b: RegisterBody, request: Request):
         uid = "parent-" + uuid.uuid4().hex[:8]
         c.execute("INSERT INTO families(id,name,created_at) VALUES(?,?,?)", (fid, (b.family_name or "我家").strip()[:20], db.now()))
         c.execute(
-            "INSERT INTO users(id,family_id,role,name,avatar,pin_hash,term_id,account,created_at,force_pin_change) VALUES(?,?,?,?,?,?,?,?,?,?)",
-            (uid, fid, "parent", (b.name or "家长").strip()[:12], "", db.hash_pin(pin), None, account, db.now(), ""))
+            "INSERT INTO users(id,family_id,role,name,avatar,pin_hash,term_id,account,created_at,force_pin_change,parent_role) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+            (uid, fid, "parent", (b.name or "家长").strip()[:12], "", db.hash_pin(pin), None, account, db.now(), "", "owner"))
         c.execute("INSERT INTO profiles(user_id,family_id) VALUES(?,?) ON CONFLICT DO NOTHING", (uid, fid))
         db.initialize_family(c, fid)
         c.commit()
@@ -1150,7 +1193,7 @@ def auth_join(b: JoinBody, request: Request):
     return _issue_parent(resp, request, user)
 
 
-@app.post("/api/admin/invite", dependencies=[Depends(require_parent)])
+@app.post("/api/admin/invite", dependencies=[Depends(require_owner)])
 def invite_create(request: Request):
     u = request.state.user
     code = uuid.uuid4().hex[:8].upper()
@@ -1178,7 +1221,7 @@ def family_info(request: Request):
     return {"name": row["name"], "invite_protect": int(row["invite_protect"] or 0)}
 
 
-@app.put("/api/admin/family/invite_protect", dependencies=[Depends(require_parent)])
+@app.put("/api/admin/family/invite_protect", dependencies=[Depends(require_owner)])
 def family_invite_protect(b: InviteProtectIn, request: Request):
     u = request.state.user
     val = 1 if b.enabled else 0
@@ -1226,7 +1269,7 @@ def members_list(request: Request):
     return [dict(r) for r in rows]
 
 
-@app.delete("/api/admin/members/{uid}", dependencies=[Depends(require_parent)])
+@app.delete("/api/admin/members/{uid}", dependencies=[Depends(require_owner)])
 def members_delete(uid: str, request: Request):
     u = request.state.user
     if uid == u["id"]:
@@ -1247,11 +1290,51 @@ def members_delete(uid: str, request: Request):
     return {"ok": True}
 
 
+class TransferOwnerBody(BaseModel):
+    new_owner_id: str
+
+
+@app.post("/api/admin/transfer-owner", dependencies=[Depends(require_owner)])
+def transfer_owner(body: TransferOwnerBody, request: Request):
+    """转让家长创建者权限给其他家长成员"""
+    u = request.state.user
+    new_id = body.new_owner_id
+    
+    if new_id == u["id"]:
+        raise HTTPException(400, "不能转让给自己")
+    
+    c = get_conn()
+    try:
+        # 检查目标是否是同一家庭的家长
+        target = c.execute(
+            "SELECT * FROM users WHERE id=? AND family_id=? AND role='parent'",
+            (new_id, u["family_id"])
+        ).fetchone()
+        
+        if not target:
+            raise HTTPException(404, "目标用户不存在或不是本家庭家长")
+        
+        # 转让权限：旧创建者变成员，新成员变创建者
+        c.execute("UPDATE users SET parent_role='member' WHERE id=?", (u["id"],))
+        c.execute("UPDATE users SET parent_role='owner' WHERE id=?", (new_id,))
+        c.commit()
+        
+        return {"ok": True, "new_owner": target["name"]}
+    finally:
+        c.close()
+
+
+
 @app.get("/api/auth/me")
 def auth_me(request: Request):
     u = getattr(request.state, "user", None)
-    return {"role": u["role"], "name": u["name"], "account": u["account"],
+    result = {"role": u["role"], "name": u["name"], "account": u["account"],
             "force_pin_change": bool(u.get("force_pin_change"))}
+    # 家长账号返回角色权限
+    if u["role"] == "parent":
+        result["parent_role"] = u.get("parent_role", "member")
+    return result
+
 
 
 @app.post("/api/admin/pin", dependencies=[Depends(require_parent)])
@@ -2098,7 +2181,7 @@ def kids_update(kid: str, b: KidIn, request: Request):
     return {"ok": True}
 
 
-@app.delete("/api/admin/kids/{kid}", dependencies=[Depends(require_parent)])
+@app.delete("/api/admin/kids/{kid}", dependencies=[Depends(require_owner)])
 def kids_delete(kid: str, request: Request):
     u = request.state.user
     c = get_conn()
