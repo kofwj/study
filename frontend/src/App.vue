@@ -491,13 +491,6 @@ function reloadApp() {
         </span>
         <span v-else><component :is="rankIcon(data.level.level_icon)" class="ico" :size="14" /> 已是最高等级！</span>
         <div class="next-bar"><i :style="{ width: data.level.progress + '%' }"></i></div>
-        <div v-if="recentLedger.length" class="sun-log">
-          <span class="sun-log-h">最近阳光</span>
-          <div v-for="row in recentLedger" :key="row.id" class="sun-log-row">
-            <span>{{ ledgerLabel(row) }}</span>
-            <b :class="{ down: row.delta < 0 }">{{ ledgerSign(row.delta) }}</b>
-          </div>
-        </div>
       </div>
     </header>
 
@@ -516,6 +509,17 @@ function reloadApp() {
 
       <!-- 右栏 -->
       <main class="main">
+        <!-- 最近阳光 - 固定显示在顶部 -->
+        <div v-if="recentLedger.length" class="recent-sunshine-card">
+          <h3><Sun class="ico" :size="16" /> 最近阳光</h3>
+          <div class="sun-log-list">
+            <div v-for="row in recentLedger" :key="row.id" class="sun-log-item">
+              <span class="sun-log-label">{{ ledgerLabel(row) }}</span>
+              <b class="sun-log-value" :class="{ down: row.delta < 0 }">{{ ledgerSign(row.delta) }}</b>
+            </div>
+          </div>
+        </div>
+
         <template v-if="activeTab === '今日推荐'">
           <h1><Sparkles class="ico" :size="20" /> 今天怎么做</h1>
           <p class="hint">按顺序做就行。每完成一项，点圆圈领取阳光。</p>
@@ -883,12 +887,54 @@ body {
 .next { margin-left: auto; text-align: right; font-size: 13px; min-width: 180px; }
 .next-bar { height: 6px; background: rgba(255,255,255,.35); border-radius: 4px; margin-top: 6px; overflow: hidden; }
 .next-bar i { display: block; height: 100%; background: var(--accent); }
-.sun-log { margin-top: 8px; text-align: left; background: rgba(255,255,255,.12); border-radius: 10px; padding: 6px 8px; }
-.sun-log-h { display: block; font-size: 11px; opacity: .8; margin-bottom: 4px; }
-.sun-log-row { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; line-height: 1.5; }
-.sun-log-row span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sun-log-row b { flex: none; font-variant-numeric: tabular-nums; }
-.sun-log-row b.down { color: #ffe1c4; }
+
+/* 最近阳光卡片 - 移到主内容区 */
+.recent-sunshine-card {
+  background: var(--card-bg);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 20px;
+  box-shadow: var(--sh-1);
+}
+.recent-sunshine-card h3 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 700;
+  margin: 0 0 12px 0;
+  color: var(--ink);
+}
+.recent-sunshine-card h3 .ico { color: #FFA500; }
+.sun-log-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.sun-log-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: var(--warm);
+  border-radius: 10px;
+  font-size: 13px;
+}
+.sun-log-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink-2);
+}
+.sun-log-value {
+  flex: none;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+.sun-log-value.down { color: #e17055; }
 
 .cta {
   border: none; border-radius: 22px; padding: 11px 22px; font-weight: 800; font-size: 15px; cursor: pointer;
