@@ -497,6 +497,11 @@ function reloadApp() {
     <div class="body">
       <!-- 左栏 -->
       <aside class="side">
+        <!-- 每日签到 - 放在最上面 -->
+        <button class="nav nav-checkin" :class="{ done: data.today_checkin }" @click="checkin" :disabled="data.today_checkin">
+          <span><CalendarDays class="ico" :size="15" /> {{ data.today_checkin ? '今日已签到' : '每日签到' }}</span>
+        </button>
+        
         <button class="nav" :class="{ on: activeTab === '今日推荐' }" @click="activeTab = '今日推荐'">
           <span><Sparkles class="ico" :size="15" /> 今日推荐</span>
         </button>
@@ -505,21 +510,24 @@ function reloadApp() {
           <span><component :is="ICONS[s.id] || BookOpen" class="ico" :size="15" /> {{ s.name }}</span>
           <em>{{ subjectProgress[s.id]?.done || 0 }}/{{ subjectProgress[s.id]?.total || 0 }}</em>
         </button>
+        
+        <!-- 最近阳光 - 移到左侧底部 -->
+        <div v-if="recentLedger.length" class="side-sunshine">
+          <div class="side-sunshine-header">
+            <Sun class="ico" :size="14" />
+            <span>最近阳光</span>
+          </div>
+          <div class="side-sunshine-list">
+            <div v-for="row in recentLedger" :key="row.id" class="side-sunshine-item">
+              <span class="side-sunshine-label">{{ ledgerLabel(row) }}</span>
+              <b class="side-sunshine-value" :class="{ down: row.delta < 0 }">{{ ledgerSign(row.delta) }}</b>
+            </div>
+          </div>
+        </div>
       </aside>
 
       <!-- 右栏 -->
       <main class="main">
-        <!-- 最近阳光 - 固定显示在顶部 -->
-        <div v-if="recentLedger.length" class="recent-sunshine-card">
-          <h3><Sun class="ico" :size="16" /> 最近阳光</h3>
-          <div class="sun-log-list">
-            <div v-for="row in recentLedger" :key="row.id" class="sun-log-item">
-              <span class="sun-log-label">{{ ledgerLabel(row) }}</span>
-              <b class="sun-log-value" :class="{ down: row.delta < 0 }">{{ ledgerSign(row.delta) }}</b>
-            </div>
-          </div>
-        </div>
-
         <template v-if="activeTab === '今日推荐'">
           <h1><Sparkles class="ico" :size="20" /> 今天怎么做</h1>
           <p class="hint">按顺序做就行。每完成一项，点圆圈领取阳光。</p>
@@ -533,9 +541,6 @@ function reloadApp() {
                 <span v-if="studyNext.length">学习 {{ studyNext.length }} 项</span>
               </div>
             </div>
-            <button class="cta check" :disabled="data.today_checkin" @click="checkin">
-              <CalendarDays class="ico" :size="16" /> {{ data.today_checkin ? '今日已签到' : '每日签到' }}
-            </button>
           </div>
 
           <section v-if="reviewDue.length" class="plan-section review-today">
@@ -888,53 +893,80 @@ body {
 .next-bar { height: 6px; background: rgba(255,255,255,.35); border-radius: 4px; margin-top: 6px; overflow: hidden; }
 .next-bar i { display: block; height: 100%; background: var(--accent); }
 
-/* 最近阳光卡片 - 移到主内容区 */
-.recent-sunshine-card {
-  background: var(--card-bg);
-  border-radius: 16px;
-  padding: 16px;
-  margin-bottom: 20px;
-  box-shadow: var(--sh-1);
+/* 签到按钮样式 */
+.nav-checkin {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  font-weight: 700;
+  margin-bottom: 8px;
 }
-.recent-sunshine-card h3 {
+.nav-checkin:hover:not(:disabled) {
+  background: linear-gradient(135deg, #5568d3 0%, #63408a 100%);
+}
+.nav-checkin.done {
+  background: var(--warm);
+  color: var(--ink-2);
+  cursor: default;
+}
+.nav-checkin .ico {
+  color: inherit;
+}
+
+/* 左侧阳光样式 */
+.side-sunshine {
+  margin-top: auto;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+.side-sunshine-header {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 700;
-  margin: 0 0 12px 0;
-  color: var(--ink);
+  color: var(--ink-2);
+  margin-bottom: 10px;
+  padding: 0 12px;
 }
-.recent-sunshine-card h3 .ico { color: #FFA500; }
-.sun-log-list {
+.side-sunshine-header .ico {
+  color: #FFA500;
+}
+.side-sunshine-list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
-.sun-log-item {
+.side-sunshine-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 12px;
-  padding: 8px 12px;
-  background: var(--warm);
-  border-radius: 10px;
-  font-size: 13px;
+  gap: 8px;
+  padding: 6px 12px;
+  font-size: 12px;
+  border-radius: 8px;
+  transition: background .2s;
 }
-.sun-log-label {
+.side-sunshine-item:hover {
+  background: var(--warm);
+}
+.side-sunshine-label {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--ink-2);
+  font-size: 11px;
 }
-.sun-log-value {
+.side-sunshine-value {
   flex: none;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: var(--ink);
+  font-size: 12px;
 }
-.sun-log-value.down { color: #e17055; }
+.side-sunshine-value.down {
+  color: #e17055;
+}
 
 .cta {
   border: none; border-radius: 22px; padding: 11px 22px; font-weight: 800; font-size: 15px; cursor: pointer;
