@@ -19,7 +19,7 @@ def test_family():
     with TestClient(main.app) as a, TestClient(main.app) as b:
         r = a.post("/api/auth/register", json={"account": "alice", "pin": "alice888", "family_name": "A家"})
         assert r.status_code == 200, r.text
-        r = a.post("/api/admin/kids", json={"name": "阿乐", "account": "ale", "pin": "1111"})
+        r = a.post("/api/admin/kids", json={"name": "阿乐", "account": "ale", "pin": "111222"})
         assert r.status_code == 200, r.text
         r = a.post("/api/admin/rewards", json={"name": "A家奖", "price": 3, "category": "测"})
         assert r.status_code == 200, r.text
@@ -28,7 +28,7 @@ def test_family():
 
         r = b.post("/api/auth/register", json={"account": "bob", "pin": "bob88888", "family_name": "B家"})
         assert r.status_code == 200, r.text
-        r = b.post("/api/admin/kids", json={"name": "波波", "account": "bobo", "pin": "2222"})
+        r = b.post("/api/admin/kids", json={"name": "波波", "account": "bobo", "pin": "222333"})
         assert r.status_code == 200
         names_b = {x["name"] for x in b.get("/api/rewards").json()}
         assert "A家奖" not in names_b

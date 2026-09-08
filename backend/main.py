@@ -173,8 +173,18 @@ def _check_pin(pin, *, parent):
     if parent:
         if len(pin) < 8:
             raise HTTPException(400, "家长密码至少 8 位")
-    elif len(pin) < 4:
-        raise HTTPException(400, "孩子密码至少 4 位")
+    else:
+        if len(pin) < 6:
+            raise HTTPException(400, "孩子密码至少 6 位")
+        # 禁止弱密码：纯数字连续或重复
+        if pin.isdigit():
+            if len(set(pin)) == 1:  # 全是同一个数字
+                raise HTTPException(400, "密码不能是重复数字（如 000000）")
+            # 检查连续数字
+            is_consecutive = all(int(pin[i]) == int(pin[i-1]) + 1 for i in range(1, len(pin)))
+            is_reverse_consecutive = all(int(pin[i]) == int(pin[i-1]) - 1 for i in range(1, len(pin)))
+            if is_consecutive or is_reverse_consecutive:
+                raise HTTPException(400, "密码不能是连续数字（如 123456）")
     return pin
 
 
@@ -192,6 +202,8 @@ def _sun(n, lo=0):
         raise HTTPException(400, "阳光要填数字")
     if v < lo:
         raise HTTPException(400, "阳光不能是负数")
+    if v > 10000:
+        raise HTTPException(400, "单次阳光数值不能超过 10000")
     return v
 
 
@@ -770,50 +782,47 @@ def compute_daily_bonus(c, d, metrics):
 @app.post("/api/complete")
 def complete(body: CompleteBody):
     c = get_conn()
-    t = db.today()
-    tid = body.task_id
-    row = c.execute("SELECT * FROM tasks WHERE id=?", (tid,)).fetchone()
-    if row:
-        if is_past(c, tid, row["subject_id"]):
-            c.close()
-            raise HTTPException(409, "这课已经学过了，不加阳光")
-        if tid in locked_task_ids(c):
-            c.close()
-            raise HTTPException(409, "这课还没学到，先把前面的学完哦")
-        delta = row["sunshine"]
-        cid = db.insert(c, "INSERT INTO completions(task_id,date,status,sunshine,metrics,kind,created_at,kid_id) "
-                        "VALUES(?,?,?,?,?,?,?,?) ON CONFLICT DO NOTHING",
-                        (tid, t, "completed", delta, None, "unit", db.now(), kid_id()))
-        if cid is None:
-            c.close()
-            raise HTTPException(409, "这项已经完成过啦")
-        insert_ledger(c, t, delta, "task", f"cmp-{cid}", row["title"])
-        m = maybe_milestone(c)
-        c.commit()
-        res = {"delta": delta, "bonus": 0, "milestone": m, "level": level_info(c)}
+    try:
+        t = db.today()
+        tid = body.task_id
+        row = c.execute("SELECT * FROM tasks WHERE id=?", (tid,)).fetchone()
+        if row:
+            if is_past(c, tid, row["subject_id"]):
+                raise HTTPException(409, "这课已经学过了，不加阳光")
+            if tid in locked_task_ids(c):
+                raise HTTPException(409, "这课还没学到，先把前面的学完哦")
+            delta = row["sunshine"]
+            # 使用 ON CONFLICT 防止并发重复完成，检查返回值确保插入成功
+            cid = db.insert(c, "INSERT INTO completions(task_id,date,status,sunshine,metrics,kind,created_at,kid_id) "
+                            "VALUES(?,?,?,?,?,?,?,?) ON CONFLICT DO NOTHING",
+                            (tid, t, "completed", delta, None, "unit", db.now(), kid_id()))
+            if cid is None:
+                raise HTTPException(409, "这项已经完成过啦")
+            insert_ledger(c, t, delta, "task", f"cmp-{cid}", row["title"])
+            m = maybe_milestone(c)
+            c.commit()
+            res = {"delta": delta, "bonus": 0, "milestone": m, "level": level_info(c)}
+            return res
+        d = c.execute("SELECT * FROM daily_tasks WHERE id=? AND (family_id IS NULL OR family_id=?)",
+                      (tid, _fam.get())).fetchone()
+        if d:
+            bonus, detail = compute_daily_bonus(c, d, body.metrics)
+            delta = d["sunshine"] + bonus
+            mj = json.dumps(body.metrics) if body.metrics else None
+            cid = db.insert(c, "INSERT INTO completions(task_id,date,status,sunshine,metrics,kind,created_at,kid_id) "
+                            "VALUES(?,?,?,?,?,?,?,?) ON CONFLICT DO NOTHING",
+                            (tid, t, "completed", delta, mj, "daily", db.now(), kid_id()))
+            if cid is None:
+                raise HTTPException(409, "今天这项已完成过啦")
+            insert_ledger(c, t, delta, "daily", f"cmp-{cid}",
+                             d["name"] + ("（破纪录 +%d）" % bonus if bonus else ""))
+            m = maybe_milestone(c)
+            c.commit()
+            res = {"delta": delta, "bonus": bonus, "bonus_detail": detail, "milestone": m, "level": level_info(c)}
+            return res
+        raise HTTPException(404, "没找到这个任务")
+    finally:
         c.close()
-        return res
-    d = c.execute("SELECT * FROM daily_tasks WHERE id=? AND (family_id IS NULL OR family_id=?)",
-                  (tid, _fam.get())).fetchone()
-    if d:
-        bonus, detail = compute_daily_bonus(c, d, body.metrics)
-        delta = d["sunshine"] + bonus
-        mj = json.dumps(body.metrics) if body.metrics else None
-        cid = db.insert(c, "INSERT INTO completions(task_id,date,status,sunshine,metrics,kind,created_at,kid_id) "
-                        "VALUES(?,?,?,?,?,?,?,?) ON CONFLICT DO NOTHING",
-                        (tid, t, "completed", delta, mj, "daily", db.now(), kid_id()))
-        if cid is None:
-            c.close()
-            raise HTTPException(409, "今天这项已完成过啦")
-        insert_ledger(c, t, delta, "daily", f"cmp-{cid}",
-                         d["name"] + ("（破纪录 +%d）" % bonus if bonus else ""))
-        m = maybe_milestone(c)
-        c.commit()
-        res = {"delta": delta, "bonus": bonus, "bonus_detail": detail, "milestone": m, "level": level_info(c)}
-        c.close()
-        return res
-    c.close()
-    raise HTTPException(404, "没找到这个任务")
 
 
 class KidNameBody(BaseModel):
@@ -845,73 +854,73 @@ def custom_task(body: CustomTaskBody, request: Request):
     if not title:
         raise HTTPException(400, "填一下任务名称")
     c = get_conn()
-    if not c.execute("SELECT 1 FROM subjects WHERE id=?", (body.subject_id,)).fetchone():
+    try:
+        if not c.execute("SELECT 1 FROM subjects WHERE id=?", (body.subject_id,)).fetchone():
+            raise HTTPException(404, "没有这个学科")
+        owner = body.kid_id or None
+        if owner:
+            u = request.state.user
+            row = c.execute("SELECT family_id FROM users WHERE id=? AND role='kid'", (owner,)).fetchone()
+            if not row or row["family_id"] != u["family_id"]:
+                raise HTTPException(404, "没找到这个孩子")
+        unit_id = f"custom-{body.subject_id}"
+        c.execute("INSERT INTO units(id,subject_id,term_id,seq,name) VALUES(?,?,?,?,?) ON CONFLICT DO NOTHING",
+                  (unit_id, body.subject_id, active_term(c), 99, "自定义"))
+        tid = uuid.uuid4().hex[:8]
+        c.execute("INSERT INTO tasks(id,subject_id,unit_id,action,title,sunshine,sort,custom,family_id,kid_id) VALUES(?,?,?,?,?,?,99,1,?,?)",
+                  (tid, body.subject_id, unit_id, "自定义", title, _sun(body.sunshine if body.sunshine is not None else 5), request.state.user["family_id"], owner))
+        c.commit()
+        return {"id": tid}
+    finally:
         c.close()
-        raise HTTPException(404, "没有这个学科")
-    owner = body.kid_id or None
-    if owner:
-        u = request.state.user
-        row = c.execute("SELECT family_id FROM users WHERE id=? AND role='kid'", (owner,)).fetchone()
-        if not row or row["family_id"] != u["family_id"]:
-            c.close(); raise HTTPException(404, "没找到这个孩子")
-    unit_id = f"custom-{body.subject_id}"
-    c.execute("INSERT INTO units(id,subject_id,term_id,seq,name) VALUES(?,?,?,?,?) ON CONFLICT DO NOTHING",
-              (unit_id, body.subject_id, active_term(c), 99, "自定义"))
-    tid = uuid.uuid4().hex[:8]
-    c.execute("INSERT INTO tasks(id,subject_id,unit_id,action,title,sunshine,sort,custom,family_id,kid_id) VALUES(?,?,?,?,?,?,99,1,?,?)",
-              (tid, body.subject_id, unit_id, "自定义", title, _sun(body.sunshine if body.sunshine is not None else 5), request.state.user["family_id"], owner))
-    c.commit()
-    c.close()
-    return {"id": tid}
 
 
 @app.delete("/api/tasks/{tid}", dependencies=[Depends(require_parent)])
 def delete_task_kid(tid: str):
     c = get_conn()
-    row = c.execute("SELECT custom FROM tasks WHERE id=?", (tid,)).fetchone()
-    if not row:
+    try:
+        row = c.execute("SELECT custom FROM tasks WHERE id=?", (tid,)).fetchone()
+        if not row:
+            raise HTTPException(404, "没找到这个任务")
+        if not row["custom"]:
+            raise HTTPException(403, "系统任务请在家长端删除")
+        c.execute("DELETE FROM tasks WHERE id=? AND COALESCE(custom,0)=1 AND family_id=?", (tid, _fam.get()))
+        c.commit()
+        return {"ok": True}
+    finally:
         c.close()
-        raise HTTPException(404, "没找到这个任务")
-    if not row["custom"]:
-        c.close()
-        raise HTTPException(403, "系统任务请在家长端删除")
-    c.execute("DELETE FROM tasks WHERE id=? AND COALESCE(custom,0)=1 AND family_id=?", (tid, _fam.get()))
-    c.commit()
-    c.close()
-    return {"ok": True}
 
 
 @app.post("/api/cancel")
 def cancel(body: CompleteBody):
     c = get_conn()
-    t = db.today()
-    kind = c.execute("SELECT kind FROM completions WHERE task_id=? AND kid_id=? AND status='completed' ORDER BY id DESC LIMIT 1",
-                     (body.task_id, kid_id())).fetchone()
-    if not kind:
+    try:
+        t = db.today()
+        kind = c.execute("SELECT kind FROM completions WHERE task_id=? AND kid_id=? AND status='completed' ORDER BY id DESC LIMIT 1",
+                         (body.task_id, kid_id())).fetchone()
+        if not kind:
+            raise HTTPException(404, "没有可取消的记录")
+        if kind["kind"] == "daily":
+            comp = c.execute(
+                "SELECT * FROM completions WHERE task_id=? AND status='completed' AND kid_id=? AND date=? ORDER BY id DESC LIMIT 1",
+                (body.task_id, kid_id(), t)).fetchone()
+        else:
+            comp = c.execute(
+                "SELECT * FROM completions WHERE task_id=? AND status='completed' AND kid_id=? ORDER BY id DESC LIMIT 1",
+                (body.task_id, kid_id())).fetchone()
+        if not comp:
+            raise HTTPException(404, "没有可取消的记录")
+        if c.execute("SELECT 1 FROM ledger WHERE reason='cancel' AND ref_id=?", (f"cmp-{comp['id']}",)).fetchone():
+            raise HTTPException(409, "这项已经取消过啦")
+        # 保留原完成记录用于审计，但标记为 cancelled，释放唯一索引以便修正后重新打卡。
+        delta = -comp["sunshine"]
+        c.execute("UPDATE completions SET status='cancelled' WHERE id=?", (comp["id"],))
+        insert_ledger(c, t, delta, "cancel", f"cmp-{comp['id']}", "点错取消")
+        c.commit()
+        res = {"delta": delta, "level": level_info(c)}
+        return res
+    finally:
         c.close()
-        raise HTTPException(404, "没有可取消的记录")
-    if kind["kind"] == "daily":
-        comp = c.execute(
-            "SELECT * FROM completions WHERE task_id=? AND status='completed' AND kid_id=? AND date=? ORDER BY id DESC LIMIT 1",
-            (body.task_id, kid_id(), t)).fetchone()
-    else:
-        comp = c.execute(
-            "SELECT * FROM completions WHERE task_id=? AND status='completed' AND kid_id=? ORDER BY id DESC LIMIT 1",
-            (body.task_id, kid_id())).fetchone()
-    if not comp:
-        c.close()
-        raise HTTPException(404, "没有可取消的记录")
-    if c.execute("SELECT 1 FROM ledger WHERE reason='cancel' AND ref_id=?", (f"cmp-{comp['id']}",)).fetchone():
-        c.close()
-        raise HTTPException(409, "这项已经取消过啦")
-    # 保留原完成记录用于审计，但标记为 cancelled，释放唯一索引以便修正后重新打卡。
-    delta = -comp["sunshine"]
-    c.execute("UPDATE completions SET status='cancelled' WHERE id=?", (comp["id"],))
-    insert_ledger(c, t, delta, "cancel", f"cmp-{comp['id']}", "点错取消")
-    c.commit()
-    res = {"delta": delta, "level": level_info(c)}
-    c.close()
-    return res
 
 
 # ---------------- 商店 ----------------
@@ -1344,20 +1353,31 @@ def _own_redemption(c, rid):
 @app.post("/api/admin/redemptions/{rid}/approve", dependencies=[Depends(require_parent)])
 def redemption_approve(rid: str):
     c = get_conn()
-    rd = _own_redemption(c, rid)
-    if not rd:
-        c.close(); raise HTTPException(404, "没找到这条兑换")
-    if rd["status"] != "pending":
-        c.close(); raise HTTPException(409, "这条已处理过")
-    applicant = rd["kid_id"] or kid_id()
-    if balance(c, applicant) < rd["price"]:
-        c.close(); raise HTTPException(409, "阳光不够，还差 %d" % (rd["price"] - balance(c, applicant)))
-    c.execute("UPDATE redemptions SET status='done' WHERE id=?", (rid,))
-    rw = c.execute("SELECT name FROM rewards WHERE id=?", (rd["reward_id"],)).fetchone()
-    insert_ledger(c, db.today(), -rd["price"], "redeem", f"red-{rid}", rw["name"] if rw else "兑换", kid=applicant)
-    maybe_milestone(c, applicant)
-    c.commit(); c.close()
-    return {"ok": True}
+    try:
+        rd = _own_redemption(c, rid)
+        if not rd:
+            raise HTTPException(404, "没找到这条兑换")
+        if rd["status"] != "pending":
+            raise HTTPException(409, "这条已处理过")
+        applicant = rd["kid_id"] or kid_id()
+        
+        # 锁定余额行，防止并发超支
+        if db.is_postgres():
+            # PostgreSQL: 锁定 ledger 表防止并发修改
+            c.execute("SELECT SUM(delta) FROM ledger WHERE kid_id=? FOR UPDATE", (applicant,))
+        
+        bal = balance(c, applicant)
+        if bal < rd["price"]:
+            raise HTTPException(409, "阳光不够，还差 %d" % (rd["price"] - bal))
+        
+        c.execute("UPDATE redemptions SET status='done' WHERE id=?", (rid,))
+        rw = c.execute("SELECT name FROM rewards WHERE id=?", (rd["reward_id"],)).fetchone()
+        insert_ledger(c, db.today(), -rd["price"], "redeem", f"red-{rid}", rw["name"] if rw else "兑换", kid=applicant)
+        maybe_milestone(c, applicant)
+        c.commit()
+        return {"ok": True}
+    finally:
+        c.close()
 
 
 @app.post("/api/admin/redemptions/{rid}/reject", dependencies=[Depends(require_parent)])

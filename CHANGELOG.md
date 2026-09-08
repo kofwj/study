@@ -1,5 +1,76 @@
 # 更新记录
 
+## 2026-09-08 安全加固
+
+### 🔴 高危Bug修复
+
+1. **硬编码数据库密码** (backend/db.py:492)
+   - 修复前: PostgreSQL 应用角色密码硬编码为 'sunshine'
+   - 修复后: 从环境变量 `DATABASE_APP_PASSWORD` 读取，带警告提示
+   - 影响: 防止源码泄露导致数据库被入侵
+
+2. **Secret Key 持久化** (backend/db.py:188)
+   - 修复前: 容器重启时密钥重新生成，导致所有会话失效
+   - 修复后: 持久化到 `/data/.secret_key` 或使用环境变量 `SECRET_KEY`
+   - 影响: 用户无需频繁重新登录
+
+3. **并发余额超支** (backend/main.py:1344)
+   - 修复前: 兑换审批时没有锁定余额行，并发请求可导致余额为负
+   - 修复后: PostgreSQL 使用 `FOR UPDATE` 锁定 ledger 表
+   - 影响: 防止两个家长同时批准导致超支
+
+4. **完成任务并发竞态** (backend/main.py:770)
+   - 修复前: 双击完成可能获得双倍阳光
+   - 修复后: 使用 try-finally 确保事务一致性
+   - 影响: 防止重复发放阳光
+
+### 🟠 中危Bug修复
+
+5. **连接泄漏** (backend/main.py 多处)
+   - 修复前: 多个提前返回路径忘记关闭数据库连接
+   - 修复后: 使用 try-finally 确保连接关闭
+   - 影响: 防止连接池耗尽
+
+6. **弱密码认证** (backend/main.py:170)
+   - 修复前: 孩子账号只需 4 位，允许 '0000', '1234' 这样的弱密码
+   - 修复后: 至少 6 位，禁止重复数字（000000）和连续数字（123456）
+   - 影响: 提高账号安全性
+
+7. **输入验证** (backend/main.py:193)
+   - 修复前: 阳光数值无上限检查，可输入极大值
+   - 修复后: 单次阳光不超过 10000
+   - 影响: 防止整数溢出和业务逻辑错误
+
+### 🟡 低危Bug修复
+
+8. **Docker 端口暴露** (docker-compose.yml:26)
+   - 修复前: `0.0.0.0:9000` 监听所有接口
+   - 修复后: `192.168.100.5:9000` 绑定内网IP，供隧道机器访问
+   - 影响: 避免直接暴露到公网，只允许内网访问
+
+### 部署注意事项
+
+**生产环境必须配置 .env 文件**:
+```bash
+# PostgreSQL 密码（至少16位强密码）
+POSTGRES_PASSWORD=<强密码1>
+DATABASE_APP_PASSWORD=<强密码2>
+
+# Session 密钥（64位hex）
+SECRET_KEY=$(python3 -c "import os; print(os.urandom(32).hex())")
+
+# 数据库连接串
+DATABASE_URL=postgresql://sunshine:<强密码1>@postgres:5432/sunshine
+DATABASE_APP_URL=postgresql://sunshine_app:<强密码2>@postgres:5432/sunshine
+```
+
+详见 `SECURITY.md` 安全检查清单。
+
+### 测试更新
+
+- 更新所有测试用例的孩子密码从4位改为6位
+- 所有回归测试通过: `python3 -m pytest -q` (16 passed)
+
 ## 2026-09-07
 
 ### 质量闸门与家长体验

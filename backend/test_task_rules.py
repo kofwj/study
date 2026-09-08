@@ -18,10 +18,10 @@ def test_system_tasks_readonly_and_custom_kid_scope():
     db.init_db()
     with TestClient(main.app) as cli:
         assert cli.post("/api/auth/register", json={"account": "tr", "pin": "taskrule", "family_name": "规家"}).status_code == 200
-        r = cli.post("/api/admin/kids", json={"name": "甲", "account": "jia2", "pin": "1111"})
+        r = cli.post("/api/admin/kids", json={"name": "甲", "account": "jia2", "pin": "111222"})
         assert r.status_code == 200, r.text
         a = r.json()["id"]
-        r = cli.post("/api/admin/kids", json={"name": "乙", "account": "yi2", "pin": "2222"})
+        r = cli.post("/api/admin/kids", json={"name": "乙", "account": "yi2", "pin": "222333"})
         b = r.json()["id"]
         sys_id = "g5s1-cn-1-1"
         body = {"subject_id": "语文", "unit_id": "g5s1-cn-1", "action": "改", "title": "不该改", "sunshine": 1}
@@ -60,7 +60,7 @@ def test_custom_bands_only_affect_new_scores():
     db.init_db()
     with TestClient(main.app) as cli:
         assert cli.post("/api/auth/register", json={"account": "tb", "pin": "testband", "family_name": "档家"}).status_code == 200
-        r = cli.post("/api/admin/kids", json={"name": "丙", "account": "bing", "pin": "1111"})
+        r = cli.post("/api/admin/kids", json={"name": "丙", "account": "bing", "pin": "111222"})
         kid = r.json()["id"]
         q = "?selected_kid=" + kid
         first = cli.post("/api/admin/tests" + q, json={"subject_id": "数学", "score": 100})

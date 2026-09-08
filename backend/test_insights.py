@@ -28,7 +28,7 @@ def test_insights():
     with TestClient(main.app) as cli:
         r = cli.post("/api/auth/register", json={"account": "ins", "pin": "insight8", "family_name": "诊断家"})
         assert r.status_code == 200, r.text
-        r = cli.post("/api/admin/kids", json={"name": "小测", "account": "xiaoc", "pin": "1111"})
+        r = cli.post("/api/admin/kids", json={"name": "小测", "account": "xiaoc", "pin": "111222"})
         assert r.status_code == 200, r.text
         kid = r.json()["id"]
         q = "?selected_kid=" + kid

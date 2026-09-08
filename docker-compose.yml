@@ -24,14 +24,16 @@ services:
     container_name: sunshine-workbench
     restart: unless-stopped
     ports:
-      - "0.0.0.0:9000:8000"   # 监听所有接口(仅内网)，供另一台机器上的 cloudflared 经内网访问
+      - "192.168.100.5:9000:8000"   # 绑定内网IP，供隧道机器访问
     environment:
       - SUNSHINE_DB=/data/sunshine.db
       - TZ=Asia/Shanghai
       - APP_REVISION=${APP_REVISION:-}
-      # 空=SQLite。VPS .env 设 DATABASE_URL + DATABASE_APP_URL + COMPOSE_PROFILES=postgres 才切 PG
+      # 空=SQLite。VPS .env 设 DATABASE_URL + DATABASE_APP_URL + DATABASE_APP_PASSWORD + COMPOSE_PROFILES=postgres 才切 PG
       - DATABASE_URL=${DATABASE_URL:-}
       - DATABASE_APP_URL=${DATABASE_APP_URL:-}
+      - DATABASE_APP_PASSWORD=${DATABASE_APP_PASSWORD:-}
+      - SECRET_KEY=${SECRET_KEY:-}
     depends_on:
       postgres:
         condition: service_healthy

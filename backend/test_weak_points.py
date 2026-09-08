@@ -18,10 +18,10 @@ def test_weak_points():
     db.init_db()
     with TestClient(main.app) as p:
         assert p.post("/api/auth/register", json={"account": "wp", "pin": "weakpt88", "family_name": "薄家"}).status_code == 200
-        r = p.post("/api/admin/kids", json={"name": "甲", "account": "jia", "pin": "1111"})
+        r = p.post("/api/admin/kids", json={"name": "甲", "account": "jia", "pin": "111222"})
         assert r.status_code == 200, r.text
         a = r.json()["id"]
-        r = p.post("/api/admin/kids", json={"name": "乙", "account": "yi", "pin": "2222"})
+        r = p.post("/api/admin/kids", json={"name": "乙", "account": "yi", "pin": "222333"})
         b = r.json()["id"]
         uid = "g5s1-cn-1"
         tags = p.get("/api/admin/unit-tags?unit_id=" + uid).json()
@@ -71,14 +71,14 @@ def test_weak_points():
         assert p.post(f"/api/admin/weak-points/{wid2}/judge", json={"action": "done"}).status_code == 200
         r = p.put("/api/admin/weak-points", json={"kid_id": a, "unit_id": uid, "tag_ids": [t2], "first_review": today})
         with TestClient(main.app) as k:
-            assert k.post("/api/auth/login", json={"account": "jia", "pin": "1111"}).status_code == 200
+            assert k.post("/api/auth/login", json={"account": "jia", "pin": "111222"}).status_code == 200
             mine = k.get("/api/weak-points?unit_id=" + uid).json()
             assert [x["tag_id"] for x in mine] == [t2]
             assert k.put("/api/weak-points", json={"unit_id": uid, "tag_ids": [t1]}).status_code != 200
             tasks = k.get("/api/tasks").json()
             assert t2 in str(tasks.get("weak_tags", {}).get(uid, [])) or tasks["weak_tags"].get(uid)
         with TestClient(main.app) as k2:
-            assert k2.post("/api/auth/login", json={"account": "yi", "pin": "2222"}).status_code == 200
+            assert k2.post("/api/auth/login", json={"account": "yi", "pin": "222333"}).status_code == 200
             assert k2.get("/api/weak-points?unit_id=" + uid).json() == []
         print("weak_points ok")
 

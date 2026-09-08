@@ -21,7 +21,7 @@ def test_kids():
         assert r.status_code == 200 and r.json()["force_pin_change"] is True
         assert cli.post("/api/auth/logout").status_code == 200
         assert cli.post("/api/auth/login", json={"account": "parent", "pin": "8888"}).status_code == 200
-        r = cli.post("/api/admin/kids", json={"name": "弟弟", "account": "didi", "pin": "2222", "term_id": "g5s1"})
+        r = cli.post("/api/admin/kids", json={"name": "弟弟", "account": "didi", "pin": "222333", "term_id": "g5s1"})
         assert r.status_code == 200, r.text
         didi = r.json()["id"]
         kids = cli.get("/api/admin/kids").json()
@@ -53,7 +53,7 @@ def test_kids():
         d_lele = next(x for x in t_lele["daily"] if x["id"] == daily)
         assert d_didi["done_today"] and d_lele["done_today"]
 
-        r = cli.post("/api/admin/kids", json={"name": "老三", "account": "san", "pin": "3333"})
+        r = cli.post("/api/admin/kids", json={"name": "老三", "account": "san", "pin": "333444"})
         assert r.status_code == 200, r.text
         san = r.json()["id"]
         assert cli.delete("/api/admin/kids/" + san).status_code == 200
@@ -64,10 +64,10 @@ def test_kids():
         cur_l = cli.get("/api/tasks?selected_kid=" + lele).json()["cursors"].get("语文")
         assert cur_d == "g5s1-cn-1-1"
         assert cur_l != cur_d
-        r = cli.put("/api/admin/kids/" + didi, json={"name": "弟弟", "account": "erzi", "term_id": "g5s1", "pin": "2222"})
+        r = cli.put("/api/admin/kids/" + didi, json={"name": "弟弟", "account": "erzi", "term_id": "g5s1", "pin": "222333"})
         assert r.status_code == 200, r.text
         assert cli.post("/api/auth/logout").status_code == 200
-        r = cli.post("/api/auth/login", json={"account": "erzi", "pin": "2222"})
+        r = cli.post("/api/auth/login", json={"account": "erzi", "pin": "222333"})
         assert r.status_code == 200 and r.json()["force_pin_change"] is False
         assert cli.post("/api/auth/logout").status_code == 200
         assert cli.post("/api/auth/login", json={"account": "parent", "pin": "8888"}).status_code == 200

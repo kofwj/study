@@ -188,11 +188,13 @@ def secret_key() -> str:
     env = os.environ.get("SECRET_KEY")
     if env:
         return env
-    path = Path(os.environ.get("SUNSHINE_DB", BASE.parent / "data" / "sunshine.db")).parent / ".secret_key"
+    # 持久化到数据目录，避免容器重启丢失
+    data_dir = Path(os.environ.get("SUNSHINE_DB", BASE / "sunshine.db")).parent
+    data_dir.mkdir(parents=True, exist_ok=True)
+    path = data_dir / ".secret_key"
     if path.exists():
         return path.read_text().strip()
     k = os.urandom(32).hex()
-    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(k)
     return k
 
@@ -486,10 +488,14 @@ def _migrate_003(conn):
         "COALESCE(custom,0)=0 OR (family_id = current_setting('app.family_id', true) "
         "AND (kid_id IS NULL OR kid_id = current_setting('app.kid_id', true))))")
     # FORCE RLS 管不住 superuser。运行时必须 DATABASE_APP_URL 直接以 sunshine_app 登录。
-    conn.execute("""
+    app_password = os.environ.get("DATABASE_APP_PASSWORD", "sunshine")
+    if app_password == "sunshine":
+        import sys
+        print("⚠️  警告: DATABASE_APP_PASSWORD 未设置，使用默认密码 'sunshine'，生产环境必须设置强密码！", file=sys.stderr)
+    conn.execute(f"""
 DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='sunshine_app') THEN
-    CREATE ROLE sunshine_app LOGIN PASSWORD 'sunshine' NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS;
+    CREATE ROLE sunshine_app LOGIN PASSWORD '{app_password}' NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS;
   END IF;
 END $$;
 """)
