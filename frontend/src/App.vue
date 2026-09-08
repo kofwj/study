@@ -1045,32 +1045,26 @@ body {
   width: 100%; display: flex; justify-content: space-between; align-items: center;
   border: none; background: none; padding: 11px 12px; border-radius: 14px;
   color: var(--ink-2); font-size: 15px; cursor: pointer; margin-bottom: 2px;
+  transition: all 0.2s ease;
 }
-.nav em { font-style: normal; font-size: 12px; color: var(--ink-3); background: var(--surface-2); padding: 2px 8px; border-radius: 10px; }
+.nav:hover:not(.on) {
+  background: var(--surface-2);
+}
+.nav em { font-style: normal; font-size: 12px; color: var(--ink-3); background: var(--surface-2); padding: 2px 8px; border-radius: 10px; transition: all 0.2s ease; }
 .nav.on {
-  background: linear-gradient(135deg, var(--warm) 0%, var(--warm-2) 100%);
-  color: var(--accent-ink);
-  font-weight: 800;
-  border-left: 4px solid var(--accent);
-  padding-left: 8px;
-  box-shadow: 0 2px 6px rgba(255, 165, 0, 0.12);
-  position: relative;
+  background: var(--accent);
+  color: white;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(255, 165, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
-.nav.on::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 4px;
-  background: linear-gradient(to bottom, var(--accent), var(--brand));
-  border-radius: 0 4px 4px 0;
+.nav.on .ico {
+  color: white;
 }
 .nav.on em { 
-  background: linear-gradient(135deg, var(--accent) 0%, var(--brand) 100%);
+  background: rgba(255, 255, 255, 0.25);
   color: white;
-  font-weight: 700;
-  box-shadow: 0 2px 4px rgba(255, 165, 0, 0.2);
+  font-weight: 600;
+  backdrop-filter: blur(10px);
 }
 
 .main { flex: 1; min-width: 0; }
