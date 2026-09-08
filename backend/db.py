@@ -787,6 +787,17 @@ def _migrate_026(conn):
     _add_column(conn, "families", "penalty_enabled INTEGER DEFAULT 0")
 
 
+def _migrate_027(conn):
+    """家长一次性找回码哈希 + 登录/注册限流落库。"""
+    _add_column(conn, "families", "recovery_hash TEXT")
+    conn.execute("""
+CREATE TABLE IF NOT EXISTS rate_limits (
+  key TEXT NOT NULL,
+  ts REAL NOT NULL
+)""")
+    conn.execute("CREATE INDEX IF NOT EXISTS ix_rate_limits_key_ts ON rate_limits(key, ts)")
+
+
 def _migrate_017(conn):
     conn.execute("""
 CREATE TABLE IF NOT EXISTS knowledge_tags (
@@ -827,6 +838,7 @@ MIGRATIONS = (
     ("024_cancelled_recompletion", _migrate_024),
     ("025_parent_role", _migrate_025),
     ("026_penalty", _migrate_026),
+    ("027_recovery_rate", _migrate_027),
 )
 
 

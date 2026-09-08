@@ -6,7 +6,8 @@ import { rankIcon } from './icons.js'
 import { tagHelp } from './tagHelp.js'
 import { ChartColumn, Eye, Baby, Users, KeyRound, Lock, Store, Trophy, ClipboardCheck, BookOpen, RefreshCw, MapPinned, FileText, Sun, Star, Check, ArrowLeft, BookMarked } from '@lucide/vue'
 
-const emit = defineEmits(['exit', 'switched'])
+const props = defineProps({ recoveryCode: { type: String, default: '' } })
+const emit = defineEmits(['exit', 'switched', 'consumed-recovery'])
 const me = ref({ role: 'parent', parent_role: 'member' })  // 当前家长信息
 const kids = ref([])
 const members = ref([])
@@ -20,8 +21,12 @@ const PENALTY_REASONS = ['磨蹭', '没完成约定', '没礼貌', '其他']
 const PENALTY_AMOUNTS = [1, 2, 3, 5]
 const invites = ref([])
 const selectedKid = ref('')
-const newKid = reactive({ name: '', account: '', pin: '', term_id: 'g5s1', gender: '' })
+const newKid = reactive({ name: '', account: '', pin: '', pin2: '', term_id: 'g5s1', gender: '' })
+const setupKid = reactive({ name: '', account: '', pin: '', pin2: '', term_id: 'g5s1', gender: '' })
+const setupBusy = ref(false)
+const shownRecovery = ref('')
 const section = ref('insights')
+const needsSetup = computed(() => !kids.value.length)
 
 // 计算是否为创建者
 const isOwner = computed(() => me.value.parent_role === 'owner')
@@ -119,6 +124,10 @@ async function load() {
   inviteProtect.value = !!fam.invite_protect
   penaltyEnabled.value = !!fam.penalty_enabled
   invites.value = inv
+  if (!ks.length) {
+    terms.value = [{ id: 'g5s1', label: '五年级上册' }]
+    return
+  }
   if (!selectedKid.value && ks.length) {
     selectedKid.value = ks[0].id
     setSelectedKid(ks[0].id)
@@ -338,11 +347,30 @@ async function addKid() {
   if (!(newKid.pin || '').trim()) return showToast('设一个密码，至少 6 位')
   try {
     await api.admin.createKid({ ...newKid })
-    newKid.name = newKid.account = newKid.pin = ''
+    newKid.name = newKid.account = newKid.pin = newKid.pin2 = ''
     newKid.gender = ''
     showToast('已添加')
     await load()
   } catch (e) { showToast(e.message) }
+}
+async function finishSetup() {
+  if (!setupKid.name) return showToast('填孩子在家里怎么叫')
+  if (!(setupKid.account || '').trim()) return showToast('填孩子登录账号')
+  if ((setupKid.pin || '').trim().length < 6) return showToast('孩子密码至少 6 位')
+  if (setupKid.pin !== setupKid.pin2) return showToast('两次密码不一致')
+  if (setupBusy.value) return
+  setupBusy.value = true
+  try {
+    await api.admin.createKid({ name: setupKid.name, account: setupKid.account, pin: setupKid.pin, term_id: setupKid.term_id || 'g5s1', gender: setupKid.gender })
+    if (props.recoveryCode) shownRecovery.value = props.recoveryCode
+    showToast('孩子账号已建好')
+    await load()
+  } catch (e) { showToast(e.message) }
+  finally { setupBusy.value = false }
+}
+function dismissRecovery() {
+  shownRecovery.value = ''
+  emit('consumed-recovery')
 }
 
 async function saveKid(k) {
@@ -680,7 +708,40 @@ onMounted(load)
 </script>
 
 <template>
-  <div class="admin">
+  <div v-if="needsSetup && !shownRecovery" class="admin setup">
+    <div class="a-card enter setup-card">
+      <h3>先加第一个孩子</h3>
+      <p class="lead">注册好了。现在给孩子一个打卡账号。教材目前是五年级上册（江苏南通），以后再换学期。</p>
+      <label class="fld"><span>家里怎么叫</span><input v-model="setupKid.name" placeholder="如：乐乐" /></label>
+      <label class="fld"><span>登录账号</span><input v-model="setupKid.account" placeholder="如：lele" autocomplete="username" /></label>
+      <label class="fld"><span>孩子密码</span><input v-model="setupKid.pin" type="password" autocomplete="new-password" placeholder="至少 6 位，不要重复或连续数字" /></label>
+      <label class="fld"><span>再输一遍密码</span><input v-model="setupKid.pin2" type="password" autocomplete="new-password" @keyup.enter="finishSetup" /></label>
+      <label class="fld"><span>现在读哪册</span>
+        <select v-model="setupKid.term_id">
+          <option v-for="tm in (terms.length ? terms : [{ id: 'g5s1', label: '五年级上册' }])" :key="tm.id" :value="tm.id">{{ tm.label }}</option>
+        </select>
+      </label>
+      <label class="fld"><span>性别（对照体测达标线，可后填）</span>
+        <select v-model="setupKid.gender">
+          <option value="">还没填</option>
+          <option value="男">男</option>
+          <option value="女">女</option>
+        </select>
+      </label>
+      <button class="ok wide" :disabled="setupBusy" @click="finishSetup">{{ setupBusy ? '正在创建…' : '创建并进入' }}</button>
+      <p v-if="toast" class="dim">{{ toast }}</p>
+    </div>
+  </div>
+  <div v-else-if="shownRecovery" class="admin setup">
+    <div class="a-card enter setup-card">
+      <h3>把找回码抄下来</h3>
+      <p class="lead">家长忘记密码时，用账号 + 这串码重置。只显示这一次，用过就作废。</p>
+      <p class="recovery-code">{{ shownRecovery }}</p>
+      <p class="dim">建议拍张照片或写在纸上。丢了只能联系帮你安装的人。</p>
+      <button class="ok wide" @click="dismissRecovery">我已抄好，进入工作台</button>
+    </div>
+  </div>
+  <div v-else class="admin">
     <header class="a-head">
       <div>
         <div class="a-title">家长工作台</div>
@@ -1696,5 +1757,13 @@ button.fam-card { cursor: pointer; }
 }
 @media (max-width: 560px) {
   .w-summary { grid-template-columns: repeat(2, 1fr); }
+}
+.setup { min-height: 80vh; display: flex; align-items: center; justify-content: center; }
+.setup-card { max-width: 420px; width: 100%; }
+.setup-card .fld { display: block; margin: 10px 0; }
+.recovery-code {
+  font-family: ui-monospace, Menlo, monospace; font-size: 22px; font-weight: 800;
+  letter-spacing: .18em; text-align: center; padding: 14px; background: var(--surface-2);
+  border-radius: var(--radius-md); margin: 16px 0;
 }
 </style>

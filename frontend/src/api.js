@@ -24,6 +24,7 @@ export const api = {
   login: (account, pin) => j('/api/auth/login', { method: 'POST', ...body({ account, pin }) }),
   register: (o) => j('/api/auth/register', { method: 'POST', ...body(o) }),
   join: (o) => j('/api/auth/join', { method: 'POST', ...body(o) }),
+  recover: (o) => j('/api/auth/recover', { method: 'POST', ...body(o) }),
   logout: () => j('/api/auth/logout', { method: 'POST' }),
   me: () => j('/api/auth/me'),
 

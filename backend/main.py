@@ -35,7 +35,11 @@ _kid = contextvars.ContextVar("kid", default=None)
 _fam = contextvars.ContextVar("fam", default=None)
 COOKIE_PARENT, COOKIE_KID = "pid", "sid"
 TOKEN_MAX_AGE = 7 * 24 * 3600
-_fails = {}
+MAX_KIDS_PER_FAMILY = 5
+RATE_WINDOW = 600
+RATE_MAX = 5
+REGISTER_WINDOW = 24 * 3600
+REGISTER_MAX = 3
 
 
 def _serializer():
@@ -106,12 +110,32 @@ def _client_ip(request: Request) -> str:
             or (request.client.host if request.client else ""))
 
 
-def _rate_ok(key: str):
+def _new_recovery_code() -> str:
+    alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+    return "".join(random.choice(alphabet) for _ in range(10))
+
+
+def _rate_ok(key: str, window: float = RATE_WINDOW, limit: int = RATE_MAX, message: str = "试太多次了，过一会儿再试"):
     now = time.time()
-    xs = [t for t in _fails.get(key, []) if now - t < 600]
-    _fails[key] = xs
-    if len(xs) >= 5:
-        raise HTTPException(429, "试太多次了，过一会儿再试")
+    cutoff = now - window
+    c = db.connect(admin=True)
+    try:
+        c.execute("DELETE FROM rate_limits WHERE ts < ?", (now - REGISTER_WINDOW,))
+        n = c.execute("SELECT COUNT(*) FROM rate_limits WHERE key=? AND ts>=?", (key, cutoff)).fetchone()[0]
+        c.commit()
+    finally:
+        c.close()
+    if n >= limit:
+        raise HTTPException(429, message)
+
+
+def _rate_hit(key: str):
+    c = db.connect(admin=True)
+    try:
+        c.execute("INSERT INTO rate_limits(key, ts) VALUES(?,?)", (key, time.time()))
+        c.commit()
+    finally:
+        c.close()
 
 
 def _cookie_secure(request: Request) -> bool:
@@ -157,7 +181,7 @@ def _user_from_request(request: Request):
     return None
 
 
-PUBLIC_API = {"/api/health", "/api/auth/login", "/api/auth/logout", "/api/auth/register", "/api/auth/join"}
+PUBLIC_API = {"/api/health", "/api/auth/login", "/api/auth/logout", "/api/auth/register", "/api/auth/join", "/api/auth/recover"}
 
 
 @app.middleware("http")
@@ -1121,9 +1145,8 @@ def auth_login(b: LoginBody, request: Request):
     finally:
         c.close()
     if not ok:
-        now = time.time()
-        _fails.setdefault("ip:" + ip, []).append(now)
-        _fails.setdefault("ac:" + account, []).append(now)
+        _rate_hit("ip:" + ip)
+        _rate_hit("ac:" + account)
         raise HTTPException(401, "账号或密码不对")
     payload = {
         "user_id": user["id"], "family_id": user["family_id"], "role": user["role"],
@@ -1186,13 +1209,16 @@ def auth_register(b: RegisterBody, request: Request):
     pin = _check_pin(pin, parent=True)
     ip = _client_ip(request)
     _rate_ok("ip:" + ip)
+    _rate_ok("reg:" + ip, window=REGISTER_WINDOW, limit=REGISTER_MAX, message="今天开的家庭够多了，明天再试")
+    recovery = _new_recovery_code()
     c = db.connect(admin=True)
     try:
         if c.execute("SELECT 1 FROM users WHERE account=?", (account,)).fetchone():
             raise HTTPException(409, "这个账号已经有了")
         fid = "f-" + uuid.uuid4().hex[:8]
         uid = "parent-" + uuid.uuid4().hex[:8]
-        c.execute("INSERT INTO families(id,name,created_at) VALUES(?,?,?)", (fid, (b.family_name or "我家").strip()[:20], db.now()))
+        c.execute("INSERT INTO families(id,name,created_at,recovery_hash) VALUES(?,?,?,?)",
+                  (fid, (b.family_name or "我家").strip()[:20], db.now(), db.hash_pin(recovery)))
         c.execute(
             "INSERT INTO users(id,family_id,role,name,avatar,pin_hash,term_id,account,created_at,force_pin_change,parent_role) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
             (uid, fid, "parent", (b.name or "家长").strip()[:12], "", db.hash_pin(pin), None, account, db.now(), "", "owner"))
@@ -1202,7 +1228,9 @@ def auth_register(b: RegisterBody, request: Request):
         user = {"id": uid, "family_id": fid, "role": "parent", "term_id": None}
     finally:
         c.close()
-    resp = JSONResponse({"ok": True, "role": "parent", "account": account, "force_pin_change": False})
+    _rate_hit("reg:" + ip)
+    resp = JSONResponse({"ok": True, "role": "parent", "account": account, "force_pin_change": False,
+                         "recovery_code": recovery})
     return _issue_parent(resp, request, user)
 
 
@@ -1221,9 +1249,8 @@ def auth_join(b: JoinBody, request: Request):
     try:
         inv = c.execute("SELECT * FROM invites WHERE code=?", (code,)).fetchone()
         if not inv:
-            now = time.time()
-            _fails.setdefault("ip:" + ip, []).append(now)
-            _fails.setdefault("join:" + code, []).append(now)
+            _rate_hit("ip:" + ip)
+            _rate_hit("join:" + code)
             raise HTTPException(404, "邀请码不对")
         expires = inv["expires_at"]
         max_uses = int(inv["max_uses"] or 0)
@@ -1247,6 +1274,52 @@ def auth_join(b: JoinBody, request: Request):
     finally:
         c.close()
     resp = JSONResponse({"ok": True, "role": user["role"], "account": account, "force_pin_change": False})
+    return _issue_parent(resp, request, user)
+
+
+class RecoverBody(BaseModel):
+    account: str
+    code: str
+    pin: str
+
+
+@app.post("/api/auth/recover")
+def auth_recover(b: RecoverBody, request: Request):
+    """用一次性找回码重置家庭创建者的家长密码。"""
+    account = (b.account or "").strip().lower()
+    code = (b.code or "").strip().upper().replace(" ", "")
+    ip = _client_ip(request)
+    _rate_ok("ip:" + ip)
+    _rate_ok("rec:" + account)
+    if len(account) < 2 or len(code) < 8:
+        _rate_hit("ip:" + ip)
+        _rate_hit("rec:" + account)
+        raise HTTPException(400, "账号和找回码都要填")
+    pin = _check_pin(b.pin, parent=True)
+    c = db.connect(admin=True)
+    try:
+        u = c.execute("SELECT * FROM users WHERE account=? AND role='parent'", (account,)).fetchone()
+        fam = None
+        if u:
+            fam = c.execute("SELECT * FROM families WHERE id=?", (u["family_id"],)).fetchone()
+        hashed = (fam["recovery_hash"] if fam else "") or ""
+        ok = bool(u and hashed and db.verify_pin(code, hashed))
+        if not ok:
+            _rate_hit("ip:" + ip)
+            _rate_hit("rec:" + account)
+            raise HTTPException(400, "账号或找回码不对")
+        owner = c.execute(
+            "SELECT * FROM users WHERE family_id=? AND role='parent' AND parent_role='owner' ORDER BY created_at LIMIT 1",
+            (u["family_id"],)).fetchone() or u
+        c.execute("UPDATE users SET pin_hash=?, force_pin_change='' WHERE id=?", (db.hash_pin(pin), owner["id"]))
+        c.execute("UPDATE families SET recovery_hash='' WHERE id=?", (u["family_id"],))
+        c.execute("INSERT INTO revoked(jti,created_at) VALUES(?,?) ON CONFLICT(jti) DO UPDATE SET created_at=excluded.created_at",
+                  ("u:" + owner["id"], str(time.time())))
+        c.commit()
+        user = dict(owner)
+    finally:
+        c.close()
+    resp = JSONResponse({"ok": True, "role": "parent", "account": user["account"], "force_pin_change": False})
     return _issue_parent(resp, request, user)
 
 
@@ -2422,6 +2495,10 @@ def kids_create(b: KidIn, request: Request):
     if taken:
         raise HTTPException(409, "这个账号已经有了")
     c = get_conn()
+    n = c.execute("SELECT COUNT(*) FROM users WHERE family_id=? AND role='kid'", (u["family_id"],)).fetchone()[0]
+    if n >= MAX_KIDS_PER_FAMILY:
+        c.close()
+        raise HTTPException(400, "一家最多 %d 个孩子" % MAX_KIDS_PER_FAMILY)
     if b.term_id and not c.execute("SELECT 1 FROM terms WHERE id=?", (b.term_id,)).fetchone():
         c.close()
         raise HTTPException(404, "没有这个学期")

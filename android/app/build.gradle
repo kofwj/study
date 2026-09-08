@@ -1,6 +1,13 @@
 plugins {
     id 'com.android.application'
 }
+def versionFile = file("${rootDir}/../VERSION")
+def appVer = versionFile.exists() ? versionFile.getText('UTF-8').trim() : '0.2.0'
+def bits = appVer.tokenize('.')
+def code = 1
+if (bits.size() >= 3) {
+    code = bits[0].toInteger() * 10000 + bits[1].toInteger() * 100 + bits[2].toInteger()
+}
 android {
     namespace 'org.anemy.sunshine'
     compileSdk 35
@@ -8,8 +15,8 @@ android {
         applicationId 'org.anemy.sunshine'
         minSdk 24
         targetSdk 35
-        versionCode 1
-        versionName '0.1.0'
+        versionCode code
+        versionName appVer
     }
     buildTypes {
         release { minifyEnabled false }

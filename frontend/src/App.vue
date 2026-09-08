@@ -126,8 +126,22 @@ const mustChangePin = ref(false)
 const oldPin = ref('')
 const newPin = ref('')
 const newPin2 = ref('')
-const pinForm = reactive({ mode: 'login', account: 'lele', val: '', name: '', family: '我家', code: '' })
+const pinForm = reactive({ who: 'kid', mode: 'login', account: '', val: '', name: '', family: '我家', code: '', recoverCode: '', recoverPin: '', recoverPin2: '' })
+const pendingRecovery = ref('')
+function goKidLogin() {
+  pinForm.who = 'kid'
+  pinForm.mode = 'login'
+  pinForm.account = ''
+  pinForm.val = ''
+}
+function goParentLogin() {
+  pinForm.who = 'parent'
+  pinForm.mode = 'login'
+  pinForm.account = ''
+  pinForm.val = ''
+}
 async function afterLogin(r) {
+  if (r && r.recovery_code) pendingRecovery.value = r.recovery_code
   me.value = r
   pinForm.val = ''
   authed.value = true
@@ -151,10 +165,13 @@ async function doChangePin() {
 }
 async function verifyPin() {
   try {
-    if (pinForm.mode === 'register') {
+    if (pinForm.who === 'parent' && pinForm.mode === 'register') {
       await afterLogin(await api.register({ account: pinForm.account, pin: pinForm.val, name: pinForm.name, family_name: pinForm.family }))
-    } else if (pinForm.mode === 'join') {
+    } else if (pinForm.who === 'parent' && pinForm.mode === 'join') {
       await afterLogin(await api.join({ account: pinForm.account, pin: pinForm.val, name: pinForm.name, code: pinForm.code }))
+    } else if (pinForm.who === 'parent' && pinForm.mode === 'recover') {
+      if (pinForm.recoverPin !== pinForm.recoverPin2) return showToast('两次新密码不一致')
+      await afterLogin(await api.recover({ account: pinForm.account, code: pinForm.recoverCode, pin: pinForm.recoverPin }))
     } else {
       await afterLogin(await api.login(pinForm.account, pinForm.val))
     }
@@ -172,18 +189,14 @@ async function openParent() {
   await api.logout().catch(() => {})
   me.value = null
   authed.value = false
-  pinForm.mode = 'login'
-  pinForm.account = 'parent'
-  pinForm.val = ''
+  goParentLogin()
 }
 async function doLogout() {
   await api.logout().catch(() => {})
   me.value = null
   isAdmin.value = false
   authed.value = false
-  pinForm.mode = 'login'
-  pinForm.account = 'lele'
-  pinForm.val = ''
+  goKidLogin()
 }
 
 async function refresh() {
@@ -465,7 +478,7 @@ function reloadApp() {
 </script>
 
 <template>
-  <Admin v-if="isAdmin && !mustChangePin" @exit="exitAdmin" @switched="refresh" />
+  <Admin v-if="isAdmin && !mustChangePin" :recovery-code="pendingRecovery" @exit="exitAdmin" @switched="refresh" @consumed-recovery="pendingRecovery = ''" />
   <div v-else-if="isAdmin && mustChangePin" class="login-screen">
     <div class="login-card">
       <div class="login-logo"><Lock class="ico" :size="36" /></div>
@@ -840,24 +853,48 @@ function reloadApp() {
     <div class="login-card">
       <div class="login-logo"><Sun class="ico" :size="36" /></div>
       <h1>阳光学习工作台</h1>
-      <p class="login-sub">孩子的每日学习打卡小助手</p>
+      <p class="login-sub">{{ pinForm.who === 'kid' ? '孩子每天来打卡的地方' : '家长管理学习和阳光' }}</p>
       <p class="login-ver" :title="APP_REVISION">{{ APP_LABEL }}</p>
-      <div class="login-tabs">
-        <button type="button" :class="{ on: pinForm.mode==='login' }" @click="pinForm.mode='login'">登录</button>
-        <button type="button" :class="{ on: pinForm.mode==='register' }" @click="pinForm.mode='register'">注册新家</button>
-        <button type="button" :class="{ on: pinForm.mode==='join' }" @click="pinForm.mode='join'">邀请码加入</button>
-      </div>
-      <input v-model="pinForm.account" placeholder="账号" autocomplete="username" />
-      <input v-model="pinForm.val" type="password" :placeholder="pinForm.mode==='login' ? '密码' : '家长密码至少 8 位'" autocomplete="current-password" @keyup.enter="verifyPin" />
-      <input v-if="pinForm.mode!=='login'" v-model="pinForm.name" placeholder="你的名字" />
-      <input v-if="pinForm.mode==='register'" v-model="pinForm.family" placeholder="家庭名（如：乐乐的家）" />
-      <input v-if="pinForm.mode==='join'" v-model="pinForm.code" placeholder="邀请码" />
-      <button class="login-enter" @click="verifyPin">进入</button>
-      <p class="login-note">
-        <template v-if="pinForm.mode==='register'">注册就是为你家开一个独立空间，不需要邀请码。</template>
-        <template v-else-if="pinForm.mode==='join'">邀请码由家庭里已有的家长在设置页生成。</template>
-        <template v-else>孩子密码至少 6 位；家长至少 8 位。</template>
-      </p>
+
+      <template v-if="pinForm.who === 'kid'">
+        <input v-model="pinForm.account" placeholder="孩子账号" autocomplete="username" />
+        <input v-model="pinForm.val" type="password" placeholder="孩子密码（至少 6 位）" autocomplete="current-password" @keyup.enter="verifyPin" />
+        <button class="login-enter" @click="verifyPin">进入</button>
+        <p class="login-note">密码至少 6 位，不要重复或连续数字。</p>
+        <button type="button" class="login-switch" @click="goParentLogin">我是家长</button>
+      </template>
+
+      <template v-else>
+        <div class="login-tabs">
+          <button type="button" :class="{ on: pinForm.mode==='login' }" @click="pinForm.mode='login'">登录</button>
+          <button type="button" :class="{ on: pinForm.mode==='register' }" @click="pinForm.mode='register'">注册新家</button>
+          <button type="button" :class="{ on: pinForm.mode==='join' }" @click="pinForm.mode='join'">邀请码加入</button>
+        </div>
+        <template v-if="pinForm.mode !== 'recover'">
+          <input v-model="pinForm.account" placeholder="家长账号" autocomplete="username" />
+          <input v-model="pinForm.val" type="password" :placeholder="pinForm.mode==='login' ? '家长密码' : '家长密码至少 8 位'" autocomplete="current-password" @keyup.enter="verifyPin" />
+          <input v-if="pinForm.mode!=='login'" v-model="pinForm.name" placeholder="你的名字" />
+          <input v-if="pinForm.mode==='register'" v-model="pinForm.family" placeholder="家庭名（如：乐乐的家）" />
+          <input v-if="pinForm.mode==='join'" v-model="pinForm.code" placeholder="邀请码" />
+          <button class="login-enter" @click="verifyPin">{{ pinForm.mode==='register' ? '注册并进入' : '进入' }}</button>
+          <p class="login-note">
+            <template v-if="pinForm.mode==='register'">注册就是为你家开一个独立空间。接下来要加第一个孩子，并抄下找回码。</template>
+            <template v-else-if="pinForm.mode==='join'">邀请码由家里已有的家长在「邀请码」页生成。</template>
+            <template v-else>家长密码至少 8 位。</template>
+          </p>
+          <button v-if="pinForm.mode==='login'" type="button" class="login-switch" @click="pinForm.mode='recover'">忘记密码</button>
+        </template>
+        <template v-else>
+          <input v-model="pinForm.account" placeholder="家长账号" autocomplete="username" />
+          <input v-model="pinForm.recoverCode" placeholder="10 位找回码" autocomplete="off" />
+          <input v-model="pinForm.recoverPin" type="password" placeholder="新密码（至少 8 位）" autocomplete="new-password" />
+          <input v-model="pinForm.recoverPin2" type="password" placeholder="再输一遍新密码" autocomplete="new-password" @keyup.enter="verifyPin" />
+          <button class="login-enter" @click="verifyPin">重置密码并进入</button>
+          <p class="login-note">找回码只在开家时给过一次。用过就作废。没有找回码请联系帮你安装的人。</p>
+          <button type="button" class="login-switch" @click="pinForm.mode='login'">回到登录</button>
+        </template>
+        <button type="button" class="login-switch" @click="goKidLogin">孩子打卡入口</button>
+      </template>
       <p v-if="toast" class="login-note danger">{{ toast }}</p>
     </div>
   </div>
@@ -1177,6 +1214,10 @@ body {
   font-variant-numeric: tabular-nums; white-space: nowrap;
 }
 .login-ver { margin: -8px 0 14px; color: var(--ink-3); font-size: 12px; font-weight: 700; }
+.login-switch {
+  display: block; width: 100%; margin-top: 10px; border: none; background: none;
+  color: var(--ink-3); font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit;
+}
 
 .mask { position: fixed; inset: 0; background: rgba(20,40,60,.35); display: flex; align-items: center; justify-content: center; z-index: 20; padding: 12px; overflow: auto; }
 .shop-modal { background: var(--surface); border-radius: var(--radius-lg); padding: 22px; width: min(92%, 420px); max-height: calc(100vh - 24px); max-height: calc(100dvh - 24px); overflow: auto; }

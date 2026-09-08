@@ -211,7 +211,53 @@ def test_penalty_concurrent_sqlite():
             assert False, f"Both failed: {result1}, {result2}"
 
 
+def test_register_recover_and_kid_cap():
+    db.init_db()
+    with TestClient(main.app) as cli:
+        r = cli.post("/api/auth/register", json={"account": "reca", "pin": "reca8888", "family_name": "找回家", "name": "阿爸"})
+        assert r.status_code == 200, r.text
+        code = r.json()["recovery_code"]
+        assert len(code) == 10
+        c = db.connect(admin=True)
+        names = {r[0] for r in c.execute("SELECT name FROM rewards").fetchall()}
+        c.close()
+        assert "看动画30分钟" in names
+        assert cli.get("/api/admin/kids").json() == []
+        for i in range(5):
+            rr = cli.post("/api/admin/kids", json={"name": "娃%d" % i, "account": "kidcap%d" % i, "pin": "111222"})
+            assert rr.status_code == 200, rr.text
+        r6 = cli.post("/api/admin/kids", json={"name": "老六", "account": "kidcap6", "pin": "111222"})
+        assert r6.status_code == 400
+
+        other = TestClient(main.app)
+        assert other.post("/api/auth/login", json={"account": "reca", "pin": "reca8888"}).status_code == 200
+        bad = cli.post("/api/auth/recover", json={"account": "reca", "code": "WRONGCODE1", "pin": "newpin888"})
+        assert bad.status_code == 400
+        ok = cli.post("/api/auth/recover", json={"account": "reca", "code": code, "pin": "newpin888"})
+        assert ok.status_code == 200, ok.text
+        assert other.get("/api/admin/kids").status_code == 401
+        assert cli.post("/api/auth/login", json={"account": "reca", "pin": "reca8888"}).status_code == 401
+        assert cli.post("/api/auth/login", json={"account": "reca", "pin": "newpin888"}).status_code == 200
+        again = cli.post("/api/auth/recover", json={"account": "reca", "code": code, "pin": "other888"})
+        assert again.status_code == 400
+
+
+def test_register_daily_limit_persists():
+    db.init_db()
+    with TestClient(main.app) as cli:
+        for i in range(3):
+            r = cli.post("/api/auth/register", json={"account": "lim%d" % i, "pin": "limit888", "family_name": "限%d" % i})
+            assert r.status_code == 200, r.text
+        r = cli.post("/api/auth/register", json={"account": "lim3", "pin": "limit888", "family_name": "限3"})
+        assert r.status_code == 429
+    with TestClient(main.app) as cli2:
+        r = cli2.post("/api/auth/register", json={"account": "lim4", "pin": "limit888", "family_name": "限4"})
+        assert r.status_code == 429
+
+
 if __name__ == "__main__":
     test_family()
     test_penalty_switch_and_ledger()
     test_penalty_concurrent_sqlite()
+    test_register_recover_and_kid_cap()
+    test_register_daily_limit_persists()

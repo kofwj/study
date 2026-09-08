@@ -6,7 +6,8 @@
 
 ## 当前状态
 
-- 版本：**v0.1.44**（见 [CHANGELOG.md](CHANGELOG.md)；提交时自动加 1）
+- 版本：**v0.2.0**（见 [CHANGELOG.md](CHANGELOG.md)）
+- 给其他家庭：[FAMILY.md](FAMILY.md)（注册新家、加孩子、平板 APK、找回码）
 - 后端：FastAPI + SQLite
 - 前端：Vue 3 + Vite，移动优先，支持 PWA
 - 平板：Android WebView 壳，可从 [Releases](https://github.com/kofwj/study/releases) 下载 APK
