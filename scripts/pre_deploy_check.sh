@@ -37,8 +37,21 @@ echo ""
 echo "3. 检查数据一致性..."
 SQLITE_PATH="data/sunshine.db"
 if [ -f "$SQLITE_PATH" ]; then
-    SQLITE_COUNT=$(sqlite3 "$SQLITE_PATH" "SELECT COUNT(*) FROM ledger" 2>/dev/null || echo "0")
-    SQLITE_BALANCE=$(sqlite3 "$SQLITE_PATH" "SELECT COALESCE(SUM(delta), 0) FROM ledger" 2>/dev/null || echo "0")
+    # 使用Python代替sqlite3命令（VPS可能没有sqlite3）
+    SQLITE_INFO=$(python3 << EOF
+import sqlite3
+try:
+    conn = sqlite3.connect("$SQLITE_PATH")
+    count = conn.execute("SELECT COUNT(*) FROM ledger").fetchone()[0]
+    balance = conn.execute("SELECT COALESCE(SUM(delta), 0) FROM ledger").fetchone()[0]
+    conn.close()
+    print(f"{count},{balance}")
+except Exception as e:
+    print("0,0")
+EOF
+)
+    SQLITE_COUNT=$(echo $SQLITE_INFO | cut -d',' -f1)
+    SQLITE_BALANCE=$(echo $SQLITE_INFO | cut -d',' -f2)
     echo "   SQLite: $SQLITE_COUNT 条记录, $SQLITE_BALANCE 阳光"
 else
     SQLITE_COUNT=0

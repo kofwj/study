@@ -32,7 +32,18 @@ if [ -f "$SQLITE_PATH" ]; then
     SQLITE_BACKUP="$BACKUP_DIR/sqlite_${TIMESTAMP}.db"
     cp "$SQLITE_PATH" "$SQLITE_BACKUP"
     SQLITE_SIZE=$(du -h "$SQLITE_BACKUP" | cut -f1)
-    SQLITE_RECORDS=$(sqlite3 "$SQLITE_BACKUP" "SELECT COUNT(*) FROM ledger" 2>/dev/null || echo "N/A")
+    # 使用Python查询（VPS可能没有sqlite3命令）
+    SQLITE_RECORDS=$(python3 << EOF
+import sqlite3
+try:
+    conn = sqlite3.connect("$SQLITE_BACKUP")
+    count = conn.execute("SELECT COUNT(*) FROM ledger").fetchone()[0]
+    conn.close()
+    print(count)
+except:
+    print("N/A")
+EOF
+)
     log "✅ SQLite 备份: $SQLITE_BACKUP ($SQLITE_SIZE, $SQLITE_RECORDS 条记录)"
 else
     log "⚠️  SQLite 文件不存在: $SQLITE_PATH"
@@ -52,7 +63,17 @@ fi
 
 # 4. 数据一致性检查
 if [ "$DB_TYPE" = "PostgreSQL" ] && [ -f "$SQLITE_PATH" ]; then
-    SQLITE_COUNT=$(sqlite3 "$SQLITE_PATH" "SELECT COUNT(*) FROM ledger" 2>/dev/null || echo "0")
+    SQLITE_COUNT=$(python3 << EOF
+import sqlite3
+try:
+    conn = sqlite3.connect("$SQLITE_PATH")
+    count = conn.execute("SELECT COUNT(*) FROM ledger").fetchone()[0]
+    conn.close()
+    print(count)
+except:
+    print("0")
+EOF
+)
     PG_COUNT=$(docker compose exec -T postgres psql -U sunshine -d sunshine -t -c "SELECT COUNT(*) FROM ledger" 2>/dev/null | tr -d ' ' || echo "0")
     
     if [ "$SQLITE_COUNT" != "$PG_COUNT" ]; then
