@@ -81,7 +81,8 @@ const rulesOpen = ref(false)
 const RULE_DEFAULTS = { test_fail_count: 2, test_fail_score: 80, drop_ratio: 0.3, streak_break: 2 }
 const toast = ref('')
 
-const maxDayEarn = computed(() => Math.max(1, ...(weekly.value.days || []).map((d) => d.earned)))
+const dayNet = (d) => Number(d && (d.net != null ? d.net : d.earned)) || 0
+const maxDayEarn = computed(() => Math.max(1, ...(weekly.value.days || []).map((d) => Math.abs(dayNet(d)))))
 const maxSubj = computed(() => Math.max(1, ...(weekly.value.by_subject || []).map((s) => s.count)))
 const weekNet = (w) => Number(w && (w.net != null ? w.net : w.earned)) || 0
 const maxWeek = computed(() => {
@@ -780,7 +781,6 @@ onMounted(load)
       </template>
       <template v-if="peCards.length">
         <h4 class="w-h">体测数值</h4>
-        <p class="lead">只对照国家体测三项：跳绳、仰卧起坐、坐位体前屈。口算、围棋等有数字的打卡不在这里。</p>
         <div class="pe-grid">
           <div v-for="c in peCards" :key="c.key" class="pe-card">
             <span class="dim">{{ c.name }}</span>
@@ -811,11 +811,11 @@ onMounted(load)
           </div>
         </div>
         <div class="dash-chart">
-          <h4 class="w-h">本周每天</h4>
+          <h4 class="w-h">本周每天净增</h4>
           <div class="w-chart dash-bars">
             <div v-for="d in weekly.days" :key="d.date" class="w-bar-col">
-              <div class="w-bar" :style="{ height: (d.earned / maxDayEarn * 100) + '%' }">
-                <i v-if="d.earned">{{ d.earned }}</i>
+              <div class="w-bar" :class="{ down: dayNet(d) < 0 }" :style="{ height: (Math.abs(dayNet(d)) / maxDayEarn * 100) + '%' }">
+                <i v-if="dayNet(d)">{{ dayNet(d) > 0 ? '+' : '' }}{{ dayNet(d) }}</i>
               </div>
               <span>周{{ d.weekday }}</span>
             </div>
@@ -922,11 +922,11 @@ onMounted(load)
         </div>
       </div>
 
-      <h4 class="w-h">每天赚到的阳光{{ currentKidName ? ' · ' + currentKidName : '' }}</h4>
+      <h4 class="w-h">每天净增{{ currentKidName ? ' · ' + currentKidName : '' }}</h4>
       <div class="w-chart">
         <div v-for="d in weekly.days" :key="d.date" class="w-bar-col">
-          <div class="w-bar" :style="{ height: (d.earned / maxDayEarn * 100) + '%' }">
-            <i v-if="d.earned">{{ d.earned }}</i>
+          <div class="w-bar" :class="{ down: dayNet(d) < 0 }" :style="{ height: (Math.abs(dayNet(d)) / maxDayEarn * 100) + '%' }">
+            <i v-if="dayNet(d)">{{ dayNet(d) > 0 ? '+' : '' }}{{ dayNet(d) }}</i>
           </div>
           <span>周{{ d.weekday }}</span>
         </div>
@@ -1573,6 +1573,7 @@ button.fam-card { cursor: pointer; }
 .w-chart { display: flex; align-items: flex-end; gap: 8px; height: 140px; padding-top: 20px; }
 .w-bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5px; height: 100%; justify-content: flex-end; }
 .w-bar { width: 100%; max-width: 34px; background: var(--accent); border-radius: var(--radius-xs) var(--radius-xs) 0 0; position: relative; min-height: 2px; }
+.w-bar.down { background: var(--ink-3); }
 .w-bar i { position: absolute; top: -20px; left: 0; width: 100%; text-align: center; font-size: 11px; color: var(--accent-ink); font-style: normal; font-weight: 700; }
 .w-bar-col span { font-size: 11px; color: var(--ink-2); }
 .w-subj-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; }

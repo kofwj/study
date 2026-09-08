@@ -2182,7 +2182,9 @@ def weekly():
             "AND reason NOT IN ('penalty','penalty_cancel')", (d, kid)).fetchone()[0]
         day_spent = c.execute(
             "SELECT COALESCE(SUM(-delta),0) FROM ledger WHERE date=? AND reason='redeem' AND delta<0 AND kid_id=?", (d, kid)).fetchone()[0]
-        days.append({"date": d, "weekday": WEEKDAYS[i], "earned": day_earned, "spent": day_spent})
+        day_net = c.execute(
+            "SELECT COALESCE(SUM(delta),0) FROM ledger WHERE date=? AND kid_id=?", (d, kid)).fetchone()[0]
+        days.append({"date": d, "weekday": WEEKDAYS[i], "earned": day_earned, "spent": day_spent, "net": day_net})
     w_start, w_end = days[0]["date"], days[6]["date"]
     net = c.execute(
         "SELECT COALESCE(SUM(delta),0) FROM ledger WHERE date BETWEEN ? AND ? AND kid_id=?", (w_start, w_end, kid)).fetchone()[0]
