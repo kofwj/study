@@ -501,8 +501,7 @@ function reloadApp() {
         <button class="nav nav-checkin" :class="{ done: data.today_checkin }" @click="checkin" :disabled="data.today_checkin">
           <span><CalendarDays class="ico" :size="15" /> {{ data.today_checkin ? '今日已签到' : '每日签到' }}</span>
         </button>
-        
-        <!-- 导航分组 -->
+        <div class="side-split" role="separator"></div>
         <div class="nav-group">
           <button class="nav" :class="{ on: activeTab === '今日推荐' }" @click="activeTab = '今日推荐'">
             <span><Sparkles class="ico" :size="15" /> 今日推荐</span>
@@ -513,8 +512,7 @@ function reloadApp() {
             <em>{{ subjectProgress[s.id]?.done || 0 }}/{{ subjectProgress[s.id]?.total || 0 }}</em>
           </button>
         </div>
-        
-        <!-- 最近阳光 - 移到左侧底部 -->
+        <div v-if="recentLedger.length" class="side-split" role="separator"></div>
         <div v-if="recentLedger.length" class="side-sunshine">
           <div class="side-sunshine-header">
             <Sun class="ico" :size="14" />
@@ -901,18 +899,9 @@ body {
   background: var(--brand);
   color: #fff;
   font-weight: 700;
-  margin-bottom: 20px;
+  margin-bottom: 0;
   box-shadow: var(--shadow-md);
   position: relative;
-}
-.nav-checkin::after {
-  content: '';
-  position: absolute;
-  bottom: -10px;
-  left: 12px;
-  right: 12px;
-  height: 1px;
-  background: linear-gradient(to right, transparent, var(--border), transparent);
 }
 .nav-checkin:hover:not(:disabled) {
   background: var(--brand-deep);
@@ -929,21 +918,15 @@ body {
   color: inherit;
 }
 
-/* 导航分组 - 视觉分隔 */
-.nav-group {
-  padding-bottom: 10px;
-  margin-bottom: 10px;
-  position: relative;
-}
-.nav-group::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 12px;
-  right: 12px;
+.side-split {
   height: 1px;
-  background: linear-gradient(to right, transparent, var(--border), transparent);
-  box-shadow: var(--shadow-hairline);
+  margin: 8px 10px;
+  background: var(--line);
+  flex: none;
+}
+.nav-group {
+  padding-bottom: 0;
+  margin-bottom: 0;
 }
 .nav:first-of-type {
   margin-top: 0;
@@ -952,18 +935,8 @@ body {
 /* 左侧阳光样式 */
 .side-sunshine {
   margin-top: 0;
-  padding-top: 20px;
+  padding-top: 4px;
   position: relative;
-}
-.side-sunshine::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 12px;
-  right: 12px;
-  height: 1px;
-  background: linear-gradient(to right, transparent, var(--border), transparent);
-  box-shadow: var(--shadow-hairline);
 }
 .side-sunshine-header {
   display: flex;
@@ -1323,6 +1296,12 @@ body {
     display: flex; gap: 6px; overflow-x: auto;
     padding: 8px 12px; box-shadow: var(--shadow-md);
     -webkit-overflow-scrolling: touch;
+  }
+  .side-split {
+    width: 1px;
+    height: auto;
+    align-self: stretch;
+    margin: 4px 6px;
   }
   .nav {
     flex: 0 0 auto; min-width: auto; width: auto; margin: 0;
