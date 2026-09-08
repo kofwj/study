@@ -4,7 +4,7 @@ import { api, setSelectedKid } from './api.js'
 import { APP_LABEL, APP_REVISION } from './version.js'
 import { rankIcon } from './icons.js'
 import { tagHelp } from './tagHelp.js'
-import { ChartColumn, Eye, Baby, Users, KeyRound, Lock, Store, Trophy, ClipboardCheck, BookOpen, RefreshCw, MapPinned, FileText, Settings, Sun, Star, Check, ArrowLeft, BookMarked } from '@lucide/vue'
+import { ChartColumn, Eye, Baby, Users, KeyRound, Lock, Store, Trophy, ClipboardCheck, BookOpen, RefreshCw, MapPinned, FileText, Sun, Star, Check, ArrowLeft, BookMarked } from '@lucide/vue'
 
 const emit = defineEmits(['exit', 'switched'])
 const me = ref({ role: 'parent', parent_role: 'member' })  // 当前家长信息
@@ -26,28 +26,28 @@ const section = ref('insights')
 const isOwner = computed(() => me.value.parent_role === 'owner')
 
 const SECTIONS = [
-  { group: '概览', items: [
-    { id: 'insights', icon: Eye, label: '概览' },
+  { group: '今日', items: [
+    { id: 'insights', icon: Eye, label: '总览' },
     { id: 'review', icon: BookMarked, label: '今日复习' },
-    { id: 'weekly', icon: ChartColumn, label: '周报' },
-  ] },
-  { group: '家庭', items: [
-    { id: 'kids', icon: Baby, label: '孩子账号' },
-    { id: 'members', icon: Users, label: '家长成员' },
-    { id: 'invites', icon: KeyRound, label: '邀请码' },
-    { id: 'pin', icon: Lock, label: '家长密码' },
-  ] },
-  { group: '奖励', items: [
-    { id: 'shop', icon: Store, label: '兑换商店' },
-    { id: 'rank', icon: Trophy, label: '成长等级' },
     { id: 'approve', icon: ClipboardCheck, label: '兑换审批' },
-    { id: 'penalty', icon: FileText, label: '扣分' },
+    { id: 'weekly', icon: ChartColumn, label: '本周周报' },
   ] },
   { group: '学习', items: [
     { id: 'unit-task', icon: BookOpen, label: '任务与考点' },
     { id: 'daily', icon: RefreshCw, label: '每日任务' },
     { id: 'cursor', icon: MapPinned, label: '已学到' },
     { id: 'test', icon: FileText, label: '单元测试' },
+  ] },
+  { group: '阳光', items: [
+    { id: 'shop', icon: Store, label: '兑换商店' },
+    { id: 'rank', icon: Trophy, label: '成长等级' },
+    { id: 'penalty', icon: FileText, label: '扣分' },
+  ] },
+  { group: '家庭', items: [
+    { id: 'kids', icon: Baby, label: '孩子账号' },
+    { id: 'members', icon: Users, label: '家长成员' },
+    { id: 'invites', icon: KeyRound, label: '邀请码' },
+    { id: 'pin', icon: Lock, label: '家长密码' },
   ] },
 ]
 const rewards = ref([])
@@ -414,6 +414,22 @@ const masteredLine = computed(() => {
   return rows.map(r => r.name + '：' + (r.items || []).join('、')).join('；')
 })
 const currentKidName = computed(() => kids.value.find(k => k.id === selectedKid.value)?.name || '')
+const greet = computed(() => {
+  const h = new Date().getHours()
+  if (h < 12) return '上午好'
+  if (h < 18) return '下午好'
+  return '晚上好'
+})
+const pendingRedeem = computed(() => (redemptions.value || []).filter(r => r.status === 'pending').length)
+const reviewCount = computed(() => (reviewDue.value || []).length)
+const checkinCount = computed(() => (familyToday.value.kids || []).filter(k => k.checkin).length)
+const kidCount = computed(() => (familyToday.value.kids || []).length)
+const hubs = computed(() => [
+  { id: 'review', icon: BookMarked, title: '今日', hint: reviewCount.value ? `${reviewCount.value} 项复习到期` : (pendingRedeem.value ? `${pendingRedeem.value} 笔兑换待同意` : '复习、审批、周报') },
+  { id: 'unit-task', icon: BookOpen, title: '学习', hint: '任务、考点、每日打卡、进度' },
+  { id: 'shop', icon: Store, title: '阳光', hint: '商店、等级、扣分' },
+  { id: 'kids', icon: Users, title: '家庭', hint: '孩子账号、成员、密码' },
+])
 const penaltyReasonRows = computed(() => (penaltySummary.value.by_reason || []).filter(x => x.count > 0))
 const maxPenaltyAmount = computed(() => Math.max(1, ...penaltyReasonRows.value.map(x => x.amount || 0)))
 function goFamilyInsight() {
@@ -557,15 +573,16 @@ onMounted(load)
   <div class="admin">
     <header class="a-head">
       <div>
-        <div class="a-title"><Settings class="ico" :size="18" /> 家长管理</div>
-        <div class="a-sub" :title="APP_REVISION">给孩子配置奖励、等级与任务 · {{ APP_LABEL }}</div>
-        <label class="a-term">正在看
-          <select v-model="selectedKid" @change="switchKid">
-            <option v-for="k in kids" :key="k.id" :value="k.id">{{ k.name }}</option>
-          </select>
-        </label>
+        <div class="a-kicker">SUNSHINE</div>
+        <div class="a-title">家长工作台</div>
+        <div class="a-sub" :title="APP_REVISION">{{ me.name || '家长' }} · {{ APP_LABEL }}</div>
       </div>
-      <button class="a-exit" @click="emit('exit')"><ArrowLeft class="ico" :size="14" /> 回到孩子端</button>
+      <div class="a-head-right">
+        <div v-if="kids.length" class="kid-switch">
+          <button v-for="k in kids" :key="k.id" type="button" :class="{ on: selectedKid === k.id }" @click="pickKid(k.id)">{{ k.name }}</button>
+        </div>
+        <button class="a-exit" @click="emit('exit')"><ArrowLeft class="ico" :size="14" /> 回到孩子端</button>
+      </div>
     </header>
 
     <div class="a-body">
@@ -630,9 +647,32 @@ onMounted(load)
     </section>
 
     <!-- 概览：全家今日 + 本周盯点 -->
-    <section v-if="section === 'insights'" class="a-card enter">
-      <h3><Eye class="ico" :size="16" /> 全家今日</h3>
-      <p class="lead">看谁还没来、谁有到期复习。点卡片切换正在看的孩子。</p>
+    <section v-if="section === 'insights'" class="a-card enter dash">
+      <h3>{{ greet }}，{{ me.name || '家长' }}</h3>
+      <p class="lead">先看今天要处理的事，再进下面的类目。</p>
+      <div class="dash-stats">
+        <button type="button" class="dash-stat" @click="section = 'review'">
+          <span>待复习</span><b>{{ reviewCount }}</b>
+        </button>
+        <button type="button" class="dash-stat" @click="section = 'approve'">
+          <span>待审批</span><b>{{ pendingRedeem }}</b>
+        </button>
+        <div class="dash-stat">
+          <span>今日签到</span><b>{{ checkinCount }}/{{ kidCount || 0 }}</b>
+        </div>
+        <button type="button" class="dash-stat" @click="section = 'weekly'">
+          <span>本周净增</span><b>{{ weekly.net || 0 }}</b>
+        </button>
+      </div>
+      <div class="hub-grid">
+        <button v-for="h in hubs" :key="h.id" type="button" class="hub-card" @click="section = h.id">
+          <span class="hub-ico"><component :is="h.icon" :size="18" /></span>
+          <strong>{{ h.title }}</strong>
+          <span>{{ h.hint }}</span>
+        </button>
+      </div>
+      <h4 class="w-h">孩子们</h4>
+      <p class="lead">点卡片切换正在看的孩子。</p>
       <div v-if="!(familyToday.kids || []).length" class="dim">还没有孩子。</div>
       <p v-if="familyTodayEmpty" class="review-empty"><strong>{{ familyTodayEmpty }}</strong></p>
       <div v-if="(familyToday.kids || []).length" class="fam-today">
@@ -1210,31 +1250,60 @@ onMounted(load)
 </template>
 
 <style scoped>
-.admin { max-width: 1080px; margin: 0 auto; padding: 14px 24px; padding-top: calc(14px + env(safe-area-inset-top)); font-family: system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; color: var(--ink); }
+.admin { max-width: 1160px; margin: 0 auto; padding: 20px 24px; padding-top: calc(20px + env(safe-area-inset-top)); font-family: system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; color: var(--ink); }
 .a-head {
-  background: linear-gradient(180deg, var(--brand) 0%, var(--brand) 100%);
-  color: #fff; border-radius: var(--radius-xl); padding: 16px 20px;
-  display: flex; justify-content: space-between; align-items: center;
+  background: linear-gradient(135deg, var(--brand) 0%, var(--brand-deep) 100%);
+  color: #fff; border-radius: var(--radius-xl); padding: 22px 24px;
+  display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap;
+  box-shadow: var(--shadow-md);
 }
-.a-title { font-size: 20px; font-weight: 800; }
-.a-sub { font-size: 12px; opacity: .85; margin-top: 4px; }
+.a-kicker { font-size: 11px; letter-spacing: .18em; font-weight: 700; opacity: .72; }
+.a-title { font-size: 26px; font-weight: 800; letter-spacing: -.02em; margin-top: 2px; }
+.a-sub { font-size: 13px; opacity: .88; margin-top: 4px; }
+.a-head-right { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.kid-switch { display: flex; gap: 6px; flex-wrap: wrap; }
+.kid-switch button {
+  border: none; background: rgba(255,255,255,.18); color: #fff;
+  border-radius: var(--radius-pill); padding: 7px 14px; font-weight: 700;
+  cursor: pointer; font-family: inherit; font-size: 13px;
+}
+.kid-switch button.on { background: #fff; color: var(--brand-deep); }
 .review-date { max-width: 220px; margin-bottom: 10px; }
 .invite-protect { display: flex; gap: 8px; align-items: center; margin: 10px 0 4px; font-size: 13px; cursor: pointer; }
 .invite-code { font-family: ui-monospace, monospace; font-weight: 700; font-size: 14px; }
 .a-term { display: block; margin-top: 8px; font-size: 12px; }
 .a-term select { margin-left: 6px; padding: 4px 8px; border-radius: var(--radius-sm); border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
 .a-exit { background: rgba(255,255,255,.22); border: none; color: #fff; border-radius: var(--radius-pill); padding: 9px 16px; font-weight: 700; cursor: pointer; font-family: inherit; }
-.a-body { display: flex; gap: 20px; align-items: flex-start; }
-.a-side { width: 180px; flex: none; background: var(--surface); border-radius: var(--radius-lg); padding: 10px 8px; box-shadow: var(--shadow-md); border: 1px solid var(--line); position: sticky; top: calc(8px + env(safe-area-inset-top)); }
-.a-group { font-size: 11px; color: var(--ink-3); font-weight: 800; padding: 10px 10px 4px; letter-spacing: .5px; }
-.a-nav { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 10px; border: none; background: none; border-radius: var(--radius-md); color: var(--ink-2); font-weight: 700; font-size: 13px; cursor: pointer; text-align: left; font-family: inherit; }
+.a-body { display: flex; gap: 22px; align-items: flex-start; margin-top: 18px; }
+.a-side { width: 200px; flex: none; background: var(--surface); border-radius: var(--radius-xl); padding: 12px 10px; box-shadow: var(--shadow-md); border: 1px solid var(--line); position: sticky; top: calc(12px + env(safe-area-inset-top)); }
+.a-group { font-size: 11px; color: var(--ink-3); font-weight: 800; padding: 12px 10px 4px; letter-spacing: .08em; }
+.a-group:first-child { padding-top: 4px; }
+.a-nav { display: flex; align-items: center; gap: 8px; width: 100%; padding: 9px 12px; border: none; background: none; border-radius: var(--radius-md); color: var(--ink-2); font-weight: 700; font-size: 13px; cursor: pointer; text-align: left; font-family: inherit; }
 .a-nav:hover { background: var(--surface-2); }
-.a-nav.on { background: var(--brand); color: #fff; }
+.a-nav.on { background: var(--accent); color: #fff; box-shadow: var(--shadow-button); }
 .a-nav-ico { width: 18px; text-align: center; }
 .a-main { flex: 1; min-width: 0; }
-.a-card { background: var(--surface); border-radius: var(--radius-lg); padding: 18px; margin-bottom: 14px; box-shadow: var(--shadow-md); border: 1px solid var(--line); }
-.a-card h3 { margin: 0 0 6px; font-size: 16px; color: var(--ink); }
-.lead { color: var(--ink-3); font-size: 12px; margin: 0 0 14px; }
+.a-card { background: var(--surface); border-radius: var(--radius-xl); padding: 22px; margin-bottom: 14px; box-shadow: var(--shadow-md); border: 1px solid var(--line); }
+.a-card h3 { margin: 0 0 6px; font-size: 22px; color: var(--ink); letter-spacing: -.02em; }
+.dash-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 0 0 18px; }
+.dash-stat {
+  display: block; width: 100%; text-align: left; border: none; cursor: pointer;
+  background: var(--surface-2); border-radius: var(--radius-lg); padding: 14px 16px;
+  font-family: inherit; color: inherit;
+}
+.dash-stat span { display: block; font-size: 12px; color: var(--ink-3); font-weight: 700; }
+.dash-stat b { display: block; margin-top: 4px; font-size: 24px; color: var(--ink); letter-spacing: -.03em; }
+.hub-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin: 0 0 8px; }
+.hub-card {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 4px;
+  text-align: left; border: 1px solid var(--line); background: var(--surface);
+  border-radius: var(--radius-lg); padding: 16px; cursor: pointer; font-family: inherit;
+}
+.hub-card:hover { border-color: var(--accent); box-shadow: var(--shadow-sm); transform: translateY(-1px); }
+.hub-ico { color: var(--brand); }
+.hub-card strong { font-size: 16px; color: var(--ink); }
+.hub-card > span:last-child { color: var(--ink-3); font-size: 12px; }
+.lead { color: var(--ink-2); font-size: 13px; margin: 0 0 16px; line-height: 1.5; }
 .review-total { color: var(--accent-ink); font-size: 13px; font-weight: 800; }
 .review-steps { display: flex; align-items: center; gap: 7px; margin: 0 0 16px; padding: 10px 12px; background: var(--surface-2); border-radius: var(--radius-md); color: var(--ink-2); font-size: 12px; }
 .review-steps b { display: inline-flex; width: 20px; height: 20px; align-items: center; justify-content: center; margin-right: 4px; border-radius: var(--radius-circle); background: var(--brand); color: #fff; font-size: 11px; }
@@ -1417,6 +1486,9 @@ onMounted(load)
   .a-side { width: 100%; position: static; display: flex; gap: 6px; overflow-x: auto; padding: 8px; }
   .a-group { display: none; }
   .a-nav { flex: 0 0 auto; width: auto; white-space: nowrap; }
+  .dash-stats { grid-template-columns: repeat(2, 1fr); }
+  .hub-grid { grid-template-columns: 1fr; }
+  .a-title { font-size: 22px; }
 }
 @media (max-width: 560px) {
   .w-summary { grid-template-columns: repeat(2, 1fr); }
