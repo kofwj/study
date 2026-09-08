@@ -599,10 +599,10 @@ function reloadApp() {
 
           <section v-if="data.daily.length" class="plan-section">
             <div class="plan-head">
-              <div>
-                <h2><RefreshCw class="ico" :size="18" /> 每日打卡</h2>
-                <p>{{ dailyMotto }}</p>
-              </div>
+              <h2>
+                <RefreshCw class="ico" :size="18" /> 每日打卡
+                <em class="daily-motto" :title="dailyMotto">{{ dailyMotto }}</em>
+              </h2>
             </div>
             <div class="grid plan-grid">
               <div v-for="d in dailyTodo" :key="d.id" class="card enter">
@@ -1121,8 +1121,13 @@ body {
 .plan-section { margin: 0 0 24px; }
 .plan-section.review-today { padding: 14px; border: 1px solid var(--accent); border-radius: var(--radius-lg); background: var(--warm-2); }
 .plan-head { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 10px; }
-.plan-head h2 { margin: 0; font-size: 16px; color: var(--ink); display: flex; align-items: center; gap: 6px; }
-.plan-head p { margin: 4px 0 0; color: var(--ink-2); font-size: 12px; line-height: 1.5; }
+.plan-head h2 { margin: 0; font-size: 16px; color: var(--ink); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; min-width: 0; width: 100%; }
+.daily-motto {
+  flex: 1; min-width: 0; margin-left: 4px; font-style: normal; font-weight: 800; font-size: 13px;
+  line-height: 1.3; padding: 4px 10px; border-radius: var(--radius-pill);
+  background: var(--accent); color: var(--accent-ink);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
 .plan-list { display: flex; flex-direction: column; gap: 6px; }
 .plan-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-sm); }
 .plan-row-main { display: flex; align-items: center; gap: 9px; min-width: 0; }
