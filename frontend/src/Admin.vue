@@ -487,10 +487,10 @@ const peCards = computed(() => {
     const metrics = d.metrics || []
     if (!metrics.length) continue
     const g = fitnessGoals.value[d.id]
-    const isPe = d.subject_id === '体育' || !!(g) || String(d.id || '').startsWith('pe-')
-    if (!isPe) continue
+    if (!g) continue
     const hist = dailyHist.value[d.id] || []
     for (const m of metrics) {
+      if (g.metric_id && m.id !== g.metric_id) continue
       const series = hist
         .filter(h => h.metrics && h.metrics[m.id] != null && h.metrics[m.id] !== '')
         .map(h => ({ date: h.date, v: Number(h.metrics[m.id]) }))
@@ -777,7 +777,7 @@ onMounted(load)
       </template>
       <template v-if="peCards.length">
         <h4 class="w-h">体测数值</h4>
-        <p class="lead">对照年级达标线，折线是历次记录。</p>
+        <p class="lead">只对照国家体测三项：跳绳、仰卧起坐、坐位体前屈。口算、围棋等有数字的打卡不在这里。</p>
         <div class="pe-grid">
           <div v-for="c in peCards" :key="c.key" class="pe-card">
             <span class="dim">{{ c.name }}</span>
