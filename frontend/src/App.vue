@@ -1025,7 +1025,7 @@ body {
   font-size: 13px; font-weight: 700; box-shadow: var(--shadow-md);
 }
 .global-toast {
-  position: fixed; left: 50%; bottom: calc(78px + 16px + env(safe-area-inset-bottom));
+  position: fixed; left: 50%; top: calc(var(--topbar-height, 72px) + 12px); bottom: auto;
   z-index: 35; max-width: min(90vw, 520px); transform: translateX(-50%);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; animation: enter .25s var(--ease) both;
 }
@@ -1312,7 +1312,6 @@ body {
   .cta { width: 100%; padding: 12px; font-size: 15px; }
   .today-summary { align-items: stretch; gap: 10px; }
   .today-progress { min-width: 100%; }
-  .global-toast { bottom: calc(72px + 12px + env(safe-area-inset-bottom)); }
 
   .body { flex-direction: column; gap: 0; padding: 0; }
   .side {
