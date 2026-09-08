@@ -487,6 +487,8 @@ const peCards = computed(() => {
     const metrics = d.metrics || []
     if (!metrics.length) continue
     const g = fitnessGoals.value[d.id]
+    const isPe = d.subject_id === '体育' || !!(g) || String(d.id || '').startsWith('pe-')
+    if (!isPe) continue
     const hist = dailyHist.value[d.id] || []
     for (const m of metrics) {
       const series = hist
