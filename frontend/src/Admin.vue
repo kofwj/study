@@ -17,6 +17,7 @@ const penaltySummary = ref({ net: 0, count: 0, amount: 0, by_reason: [] })
 const newPenalty = reactive({ amount: 1, reason: '磨蹭', note: '' })
 const penaltySubmitting = ref(false)  // 扣分提交中
 const PENALTY_REASONS = ['磨蹭', '没完成约定', '没礼貌', '其他']
+const PENALTY_AMOUNTS = [1, 2, 3, 5]
 const invites = ref([])
 const selectedKid = ref('')
 const newKid = reactive({ name: '', account: '', pin: '', term_id: 'g5s1', gender: '' })
@@ -314,6 +315,8 @@ async function pickKid(id) {
 
 async function addKid() {
   if (!newKid.name) return showToast('填名字')
+  if (!(newKid.account || '').trim()) return showToast('填登录账号')
+  if (!(newKid.pin || '').trim()) return showToast('设一个密码，至少 6 位')
   try {
     await api.admin.createKid({ ...newKid })
     newKid.name = newKid.account = newKid.pin = ''
@@ -324,6 +327,10 @@ async function addKid() {
 }
 
 async function saveKid(k) {
+  if (k._pin) {
+    if (String(k._pin).trim().length < 6) return showToast('孩子密码至少 6 位')
+    if (!confirm('要改「' + k.name + '」的登录密码？改完孩子要用新密码登录。')) return
+  }
   try {
     await api.admin.updateKid(k.id, { name: k.name, account: k.account, term_id: k.term_id, pin: k._pin || '', gender: k.gender || '' })
     k._pin = ''
@@ -425,12 +432,16 @@ const reviewCount = computed(() => (reviewDue.value || []).length)
 const checkinCount = computed(() => (familyToday.value.kids || []).filter(k => k.checkin).length)
 const kidCount = computed(() => (familyToday.value.kids || []).length)
 const isMultiKid = computed(() => kids.value.length > 1)
-const hubs = computed(() => [
-  { id: 'review', icon: BookMarked, title: '今日', hint: reviewCount.value ? `${reviewCount.value} 项复习到期` : (pendingRedeem.value ? `${pendingRedeem.value} 笔兑换待同意` : '复习、审批、周报') },
-  { id: 'unit-task', icon: BookOpen, title: '学习', hint: '任务、考点、每日打卡、进度' },
-  { id: 'shop', icon: Store, title: '阳光', hint: '商店、等级、扣分' },
-  { id: 'kids', icon: Users, title: '家庭', hint: '孩子账号、成员、密码' },
-])
+const dashAttention = computed(() => {
+  if (reviewCount.value) return { text: `今天有 ${reviewCount.value} 项复习到期`, go: 'review', label: '去复习' }
+  if (pendingRedeem.value) return { text: `有 ${pendingRedeem.value} 笔兑换待同意`, go: 'approve', label: '去审批' }
+  const fi = weekly.value.family_insight
+  if (fi && fi.text) {
+    const go = fi.action === '单元测试' ? 'test' : fi.action === '今日复习' ? 'review' : ''
+    return { text: fi.text, go, label: go ? '去解决' : '' }
+  }
+  return { text: '', go: '', label: '' }
+})
 const penaltyReasonRows = computed(() => (penaltySummary.value.by_reason || []).filter(x => x.count > 0))
 const maxPenaltyAmount = computed(() => Math.max(1, ...penaltyReasonRows.value.map(x => x.amount || 0)))
 function goFamilyInsight() {
@@ -537,6 +548,8 @@ async function addPenalty() {
   const amount = Number(newPenalty.amount)
   if (!Number.isInteger(amount) || amount < 1) return showToast('扣分要是正整数')
   if (newPenalty.reason === '其他' && !String(newPenalty.note || '').trim()) return showToast('选「其他」时要写备注')
+  const who = currentKidName.value || '这个孩子'
+  if (!confirm(`给「${who}」扣 ${amount} 阳光（${newPenalty.reason}）？余额扣到 0 为止，等级不变。`)) return
   
   penaltySubmitting.value = true
   try {
@@ -651,7 +664,12 @@ onMounted(load)
     <!-- 概览：全家今日 + 本周盯点 -->
     <section v-if="section === 'insights'" class="a-card enter dash">
       <h3>{{ greet }}，{{ me.name || '家长' }}</h3>
-      <p class="lead">先看今天要处理的事，再进下面的类目。</p>
+      <p class="lead">{{ currentKidName ? currentKidName + ' 的今天' : '先看要处理的事，再看这一周。' }}</p>
+      <div v-if="dashAttention.text" class="w-next">
+        <strong>先看这里</strong>
+        <span>{{ dashAttention.text }}</span>
+        <button v-if="dashAttention.go" class="ok" @click="section = dashAttention.go">{{ dashAttention.label }}</button>
+      </div>
       <div class="dash-stats">
         <button type="button" class="dash-stat" @click="section = 'review'">
           <span>待复习</span><b>{{ reviewCount }}</b>
@@ -663,20 +681,47 @@ onMounted(load)
           <span>今日签到</span><b>{{ isMultiKid ? (checkinCount + '/' + kidCount) : (checkinCount ? '已来' : (kidCount ? '还没来' : '—')) }}</b>
         </div>
         <button type="button" class="dash-stat" @click="section = 'weekly'">
-          <span>本周净增</span><b>{{ weekly.net || 0 }}</b>
+          <span>连击</span><b>{{ weekly.streak || 0 }} 天</b>
         </button>
       </div>
-      <div class="hub-grid">
-        <button v-for="h in hubs" :key="h.id" type="button" class="hub-card" @click="section = h.id">
-          <span class="hub-ico"><component :is="h.icon" :size="18" /></span>
-          <strong>{{ h.title }}</strong>
-          <span>{{ h.hint }}</span>
-        </button>
+      <div class="dash-charts">
+        <div class="dash-chart">
+          <h4 class="w-h">近 4 周阳光</h4>
+          <div class="w-trend">
+            <svg viewBox="0 0 288 80" class="w-trend-svg" preserveAspectRatio="none">
+              <polyline :points="weekPoints" fill="none" stroke="var(--brand)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+            <div class="w-trend-labels">
+              <span v-for="w in weekly.weeks" :key="w.week_start">{{ w.label }}<i>+{{ w.earned }}</i></span>
+            </div>
+          </div>
+        </div>
+        <div class="dash-chart">
+          <h4 class="w-h">本周每天</h4>
+          <div class="w-chart dash-bars">
+            <div v-for="d in weekly.days" :key="d.date" class="w-bar-col">
+              <div class="w-bar" :style="{ height: (d.earned / maxDayEarn * 100) + '%' }">
+                <i v-if="d.earned">{{ d.earned }}</i>
+              </div>
+              <span>周{{ d.weekday }}</span>
+            </div>
+          </div>
+        </div>
       </div>
-      <template v-if="kidCount">
-        <h4 class="w-h">{{ isMultiKid ? '孩子们' : '今天' }}</h4>
-        <p v-if="isMultiKid" class="lead">点卡片切换正在看的孩子。</p>
-        <div v-if="isMultiKid" class="fam-today">
+      <div v-if="weekly.by_subject && weekly.by_subject.length" class="dash-chart">
+        <h4 class="w-h">本周各科</h4>
+        <div class="w-subj">
+          <div v-for="s in weekly.by_subject" :key="s.name" class="w-subj-row">
+            <span class="w-subj-name">{{ s.name }}</span>
+            <div class="w-subj-track"><i :style="{ width: (s.count / maxSubj * 100) + '%' }"></i></div>
+            <span class="w-subj-num">{{ s.count }} 次 · +{{ s.sun }}</span>
+          </div>
+        </div>
+      </div>
+      <template v-if="isMultiKid && kidCount">
+        <h4 class="w-h">孩子们</h4>
+        <p class="lead">点卡片切换正在看的孩子。</p>
+        <div class="fam-today">
           <button v-for="k in familyToday.kids" :key="k.kid_id" type="button"
             class="fam-card" :class="{ on: selectedKid === k.kid_id }" @click="pickKid(k.kid_id)">
             <span class="apv-name">{{ k.name }}</span>
@@ -685,15 +730,8 @@ onMounted(load)
             <span v-if="k.review_due > 0" class="ok fam-go" @click.stop="goReviewKid(k)">去复习</span>
           </button>
         </div>
-        <div v-else class="fam-today">
-          <div v-for="k in familyToday.kids" :key="k.kid_id" class="fam-card">
-            <em class="fam-st" :class="familyTodayStatus(k).cls">{{ familyTodayStatus(k).text }}</em>
-            <span class="dim">完成 {{ k.completed_today }} · 连击 {{ k.streak }} · 余额 {{ k.balance }}</span>
-            <span v-if="k.review_due > 0" class="ok fam-go" @click="goReviewKid(k)">去复习</span>
-          </div>
-        </div>
       </template>
-      <p v-else class="dim">还没有孩子，到「家庭」里添加。</p>
+      <p v-else-if="!kidCount" class="dim">还没有孩子，到「家庭」里添加。</p>
       <template v-if="(insights.kids || []).length">
         <h4 class="w-h">本周盯点</h4>
         <p v-if="isMultiKid" class="lead">每个孩子一句结论；需要处理时，点“去解决”。</p>
@@ -818,33 +856,32 @@ onMounted(load)
     <!-- 扣分 -->
     <section v-if="section === 'penalty'" class="a-card enter">
       <h3>记下扣分</h3>
-      <p class="lead">只记家长主动记下的一笔。不自动罚没完成的任务，不改复习，也不掉级。余额扣到 0 为止。正在看：{{ currentKidName || '还没选孩子' }}。</p>
+      <p class="lead">只记家长主动记下的一笔，不自动罚。不改复习、不掉级，余额扣到 0 为止。{{ currentKidName ? '正在看：' + currentKidName : '先在顶栏选孩子。' }}</p>
       <div class="lock-row">
         <span class="badge">扣分开关</span>
-        <span class="grow">{{ penaltyEnabled ? '已开启，任意家长可记下或撤回' : '默认关闭，打开后才能记下' }}</span>
-        <button v-if="isOwner" :class="['toggle', { on: penaltyEnabled }]" @click="togglePenalty">{{ penaltyEnabled ? '开' : '关' }}</button>
+        <span class="grow">{{ penaltyEnabled ? '已开启，任意家长可记下或撤回' : '默认关闭。家里约定好再用，避免随手乱扣。' }}</span>
+        <button v-if="isOwner" :class="['toggle', { on: penaltyEnabled }]" @click="togglePenalty">{{ penaltyEnabled ? '已开' : '未开' }}</button>
         <span v-else class="dim">只有创建者能开关</span>
       </div>
       <template v-if="penaltyEnabled">
         <div class="add-box">
-          <div class="add-title">给 {{ currentKidName || '当前孩子' }} 记一笔</div>
-          <div class="frm-row">
-            <label class="fld w64"><span>阳光</span><input v-model.number="newPenalty.amount" type="number" min="1" /></label>
-            <label class="fld grow"><span>原因</span>
-              <select v-model="newPenalty.reason">
-                <option v-for="r in PENALTY_REASONS" :key="r" :value="r">{{ r }}</option>
-              </select>
-            </label>
+          <div class="add-title">记一笔</div>
+          <div class="chip-row">
+            <span class="chip-label">扣多少</span>
+            <button v-for="n in PENALTY_AMOUNTS" :key="n" type="button" :class="['chip', { on: newPenalty.amount === n }]" @click="newPenalty.amount = n">-{{ n }}</button>
           </div>
-          <div class="frm-row" v-if="newPenalty.reason === '其他' || newPenalty.note">
-            <label class="fld grow"><span>{{ newPenalty.reason === '其他' ? '备注（必填，最多 40 字）' : '备注（可选）' }}</span>
-              <input v-model="newPenalty.note" maxlength="40" placeholder="如：约好 8 点写完还在玩" />
-            </label>
+          <div class="chip-row">
+            <span class="chip-label">原因</span>
+            <button v-for="r in PENALTY_REASONS" :key="r" type="button" :class="['chip', { on: newPenalty.reason === r }]" @click="newPenalty.reason = r">{{ r }}</button>
           </div>
-          <button class="ok wide" @click="addPenalty" :disabled="penaltySubmitting">{{ penaltySubmitting ? '提交中...' : '记下扣分' }}</button>
+          <label class="fld">
+            <span>{{ newPenalty.reason === '其他' ? '说明（必填）' : '说明（可选）' }}</span>
+            <input v-model="newPenalty.note" maxlength="40" placeholder="如：约好 8 点写完还在玩" />
+          </label>
+          <button class="ok wide" @click="addPenalty" :disabled="penaltySubmitting">{{ penaltySubmitting ? '提交中...' : '确认扣 ' + newPenalty.amount + ' 阳光' }}</button>
         </div>
         <div v-if="penaltySummary.count" class="pen-sum">
-          <p class="lead">{{ currentKidName || '当前孩子' }}一共记下 {{ penaltySummary.count }} 笔，有效净扣 {{ penaltySummary.amount }} 阳光。撤回的不算。</p>
+          <p class="lead">一共记下 {{ penaltySummary.count }} 笔，有效净扣 {{ penaltySummary.amount }} 阳光。撤回的不算。</p>
           <div class="w-subj">
             <div v-for="s in penaltyReasonRows" :key="s.reason" class="w-subj-row">
               <span class="w-subj-name">{{ s.reason }}</span>
@@ -857,15 +894,16 @@ onMounted(load)
         <div class="apv-row" v-for="p in penalties" :key="p.id">
           <div class="apv-info">
             <span class="apv-name">{{ p.note || '扣分' }}</span>
-            <span class="dim">{{ p.date }} · {{ p.delta }} 阳光</span>
+            <span class="dim">{{ p.date }}</span>
           </div>
           <div class="apv-right">
+            <span class="pen-amt">{{ p.delta }}</span>
             <span v-if="p.cancelled" class="st delivered">已撤回</span>
             <button v-else class="ghost-s" @click="cancelPenalty(p.id)">撤回</button>
           </div>
         </div>
       </template>
-      <p v-else class="dim mt8">开关关上时不能记账，也不能撤回。孩子端只会在等级旁看到最近阳光，不能自己操作。</p>
+      <p v-else class="dim mt8">关上时不能记账，也不能撤回。孩子端只在最近阳光里看到这笔，不能自己操作。</p>
     </section>
 
     <!-- 审批 -->
@@ -1078,8 +1116,8 @@ onMounted(load)
     <section v-if="section === 'cursor'" class="a-card enter">
       <h3>已学到哪一课</h3>
       <p class="lead">推荐从这里往后，前面的课标灰「已学过」，不再计阳光。</p>
-      <div class="a-item" v-for="s in cursorSubjects" :key="s.id">
-        <span class="badge">{{ s.name }}</span>
+      <div class="cursor-row" v-for="s in cursorSubjects" :key="s.id">
+        <span class="cursor-subj">{{ s.name }}</span>
         <select :value="cursors[s.id] || ''" @change="setCursor(s.id, $event.target.value)">
           <option value="">从头开始</option>
           <option v-for="t in (tasksBySubject[s.id] || [])" :key="t.id" :value="t.id">{{ t.title }}</option>
@@ -1149,25 +1187,25 @@ onMounted(load)
       <p class="lead">名字给家里看，登录账号给孩子打卡用。学期决定学哪册，性别用来对照体测达标线。</p>
       <p v-if="!terms.length" class="dim">学期列表还没载入，退出再进一次家长端。</p>
       <div class="kid-card" v-for="k in kids" :key="k.id">
-        <label class="fld grow"><span>家里怎么叫</span><input v-model="k.name" placeholder="如：乐乐" /></label>
-        <label class="fld grow"><span>登录账号</span><input v-model="k.account" placeholder="如：lele" /></label>
-        <label class="fld grow"><span>现在读哪册</span>
+        <label class="fld"><span>家里怎么叫</span><input v-model="k.name" placeholder="如：乐乐" /></label>
+        <label class="fld"><span>登录账号</span><input v-model="k.account" placeholder="如：lele" /></label>
+        <label class="fld"><span>现在读哪册</span>
           <select v-model="k.term_id">
             <option disabled value="">请选择</option>
             <option v-for="tm in terms" :key="tm.id" :value="tm.id">{{ tm.label }}</option>
           </select>
         </label>
-        <label class="fld w84"><span>性别</span>
+        <label class="fld"><span>性别</span>
           <select v-model="k.gender">
             <option value="">还没填</option>
             <option value="男">男</option>
             <option value="女">女</option>
           </select>
         </label>
-        <label class="fld grow"><span>改密码</span><input v-model="k._pin" type="password" autocomplete="new-password" placeholder="不改就空着，至少 6 位" /></label>
+        <label class="fld kid-pin"><span>改密码（不改就空着）</span><input v-model="k._pin" type="password" autocomplete="new-password" placeholder="至少 6 位，不要重复或连续数字" /></label>
         <div class="ops">
-          <button class="ok" @click="saveKid(k)">存</button>
-          <button class="del" @click="delKid(k)">删</button>
+          <button class="ok" @click="saveKid(k)">保存资料</button>
+          <button class="del" @click="delKid(k)">删除账号</button>
         </div>
       </div>
       <div class="add-box">
@@ -1305,16 +1343,28 @@ onMounted(load)
 }
 .dash-stat span { display: block; font-size: 12px; color: var(--ink-3); font-weight: 700; }
 .dash-stat b { display: block; margin-top: 4px; font-size: 24px; color: var(--ink); letter-spacing: -.03em; }
-.hub-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin: 0 0 8px; }
-.hub-card {
-  display: flex; flex-direction: column; align-items: flex-start; gap: 4px;
-  text-align: left; border: 1px solid var(--line); background: var(--surface);
-  border-radius: var(--radius-lg); padding: 16px; cursor: pointer; font-family: inherit;
+.dash-charts { display: grid; grid-template-columns: 1.2fr 1fr; gap: 16px; margin: 4px 0 8px; }
+.dash-chart .w-h { margin-top: 8px; }
+.dash-bars { height: 100px; padding-top: 18px; }
+.cursor-row {
+  display: grid; grid-template-columns: 88px minmax(0, 1fr); align-items: center; gap: 12px;
+  padding: 10px 0; border-bottom: 1px solid var(--surface-2);
 }
-.hub-card:hover { border-color: var(--accent); box-shadow: var(--shadow-sm); transform: translateY(-1px); }
-.hub-ico { color: var(--brand); }
-.hub-card strong { font-size: 16px; color: var(--ink); }
-.hub-card > span:last-child { color: var(--ink-3); font-size: 12px; }
+.cursor-subj { font-weight: 800; color: var(--brand-deep); }
+.cursor-row select {
+  width: 100%; min-width: 0; border: 1px solid var(--line); border-radius: var(--radius-md);
+  padding: 8px 10px; font-size: 15px; color: var(--ink); background: var(--surface);
+  font-family: inherit; min-height: 40px;
+}
+.chip-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 10px; }
+.chip-label { font-size: 12px; color: var(--ink-3); font-weight: 700; width: 48px; }
+.chip {
+  border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+  border-radius: var(--radius-pill); padding: 6px 12px; font-weight: 700; font-size: 13px;
+  cursor: pointer; font-family: inherit;
+}
+.chip.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+.pen-amt { font-weight: 800; color: var(--danger); font-variant-numeric: tabular-nums; }
 .lead { color: var(--ink-2); font-size: 13px; margin: 0 0 16px; line-height: 1.5; }
 .review-total { color: var(--accent-ink); font-size: 13px; font-weight: 800; }
 .review-steps { display: flex; align-items: center; gap: 7px; margin: 0 0 16px; padding: 10px 12px; background: var(--surface-2); border-radius: var(--radius-md); color: var(--ink-2); font-size: 12px; }
@@ -1435,7 +1485,10 @@ button.fam-card { cursor: pointer; }
 .settings-form .ok { align-self: flex-start; }
 .member-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 12px 0; border-bottom: 1px solid var(--surface-2); }
 .member-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
-.kid-card { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; padding: 12px 0; border-bottom: 1px solid var(--surface-2); }
+.kid-card { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 14px; padding: 16px 0; border-bottom: 1px solid var(--line); }
+.kid-card .fld { min-width: 0; }
+.kid-pin { grid-column: 1 / -1; }
+.kid-card .ops { grid-column: 1 / -1; justify-content: space-between; }
 .fld input:focus, .fld select:focus { outline: none; border-color: var(--brand); }
 .grow { flex: 1 1 120px; }
 .w64 { width: 64px; flex: none; }
@@ -1500,7 +1553,9 @@ button.fam-card { cursor: pointer; }
   .a-group { display: none; }
   .a-nav { flex: 0 0 auto; width: auto; white-space: nowrap; }
   .dash-stats { grid-template-columns: repeat(2, 1fr); }
-  .hub-grid { grid-template-columns: 1fr; }
+  .dash-charts { grid-template-columns: 1fr; }
+  .cursor-row { grid-template-columns: 1fr; gap: 6px; }
+  .kid-card { grid-template-columns: 1fr; }
   .a-title { font-size: 22px; }
 }
 @media (max-width: 560px) {
