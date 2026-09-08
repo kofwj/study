@@ -6,12 +6,14 @@
 
 ## 当前状态
 
+- 版本：**v0.1.2** (2024-09-08 安全加固)
 - 后端：FastAPI + SQLite，支持 PostgreSQL/RLS 运行路径
 - 前端：Vue 3 + Vite，移动优先，支持 PWA
 - 平板：Android WebView 壳，可从 [Releases](https://github.com/kofwj/study/releases) 下载 APK
 - 部署：Docker Compose + Cloudflare Tunnel
 - 多学期种子：12 个学期、350 个单元、1349 张任务卡
 - 五上当前可用：35 个单元、149 张单元任务卡、10 个每日任务、101 个单元特有考点
+- 安全：已修复 8 个重要安全漏洞（详见 [SECURITY.md](SECURITY.md)）
 
 ## 孩子端
 
@@ -130,20 +132,82 @@ python3 scripts/gen_knowledge_tags.py
 
 ## 部署
 
+### 生产环境配置
+
+**首次部署前必须配置 `.env` 文件**（详见 [SECURITY.md](SECURITY.md)）：
+
+```bash
+# 1. SSH 登录 VPS
+ssh root@192.168.100.5
+
+# 2. 进入项目目录
+cd /home/kofwj/sunshine
+
+# 3. 创建 .env 文件
+cat > .env << 'EOF'
+# Session 密钥（必须配置，64位hex）
+SECRET_KEY=$(python3 -c "import os; print(os.urandom(32).hex())")
+
+# 时区
+TZ=Asia/Shanghai
+
+# SQLite 数据库路径
+SUNSHINE_DB=/data/sunshine.db
+EOF
+
+chmod 600 .env
+```
+
+### 部署更新
+
 线上目录默认是 `/home/kofwj/sunshine`。更新前先备份，再拉代码、构建镜像和重启：
 
 ```bash
-ssh -o BatchMode=yes root@192.168.100.5 \
-  'su - kofwj -c "cd ~/sunshine && python3 scripts/backup_db.py && git pull --ff-only origin main && docker compose build --no-cache && docker compose up -d"'
+# 使用部署脚本（推荐）
+ssh root@192.168.100.5 'cd /home/kofwj/sunshine && bash scripts/deploy_vps.sh'
+
+# 或手动部署
+ssh root@192.168.100.5 'cd /home/kofwj/sunshine && \
+  python3 scripts/backup_db.py && \
+  git pull --ff-only origin main && \
+  docker compose build --no-cache && \
+  docker compose up -d'
 ```
 
 健康检查：
 
 ```bash
 curl -s https://study.anemy.org/api/health
+# 应返回: {"ok":true,"version":"0.1.2"}
 ```
 
-应返回 `{"ok":true}`。
+### 账号管理
+
+**默认账号**（首次部署后）：
+- 家长账号: `parent` / 密码: `parent888` (首次登录需修改)
+- 孩子账号: `lele` / 密码: `888888`
+
+**密码要求**：
+- 家长密码：至少 8 位
+- 孩子密码：至少 6 位，禁止重复数字（如 666666）或连续数字（如 123456）
+
+**重置密码**（如果忘记）：
+```bash
+ssh root@192.168.100.5 'cd /home/kofwj/sunshine && docker compose exec -T sunshine python3 << "PYEOF"
+import sys
+sys.path.insert(0, "/app/backend")
+import db
+db.init_db()
+c = db.connect()
+# 重置家长密码
+c.execute("UPDATE users SET pin_hash=?, force_pin_change=\"1\" WHERE account=?", 
+          (db.hash_pin("parent88"), "parent"))
+c.commit()
+c.close()
+print("✅ 家长密码已重置为: parent88")
+PYEOF
+'
+```
 
 前端改动必须重新构建镜像。PWA 或 Android WebView 更新后需要重新打开或刷新页面。
 
