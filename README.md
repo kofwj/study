@@ -6,8 +6,8 @@
 
 ## 当前状态
 
-- 版本：**v0.1.2** (2024-09-08 安全加固)
-- 后端：FastAPI + SQLite，支持 PostgreSQL/RLS 运行路径
+- 版本：**v0.1.11** (2024-09-08 简化架构)
+- 后端：FastAPI + SQLite
 - 前端：Vue 3 + Vite，移动优先，支持 PWA
 - 平板：Android WebView 壳，可从 [Releases](https://github.com/kofwj/study/releases) 下载 APK
 - 部署：Docker Compose + Cloudflare Tunnel

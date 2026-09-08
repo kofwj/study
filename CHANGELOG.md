@@ -1,5 +1,31 @@
 # 更新记录
 
+## 2026-09-08 v0.1.11 - 架构简化
+
+### 移除PostgreSQL支持
+
+**背景**: 经过实际使用验证，单家庭场景SQLite完全满足需求，PostgreSQL带来的复杂度超过了收益。
+
+**移除内容**:
+- ✅ Docker Compose中的PostgreSQL服务和pgdata卷
+- ✅ Python依赖 `psycopg[binary]`
+- ✅ PostgreSQL迁移脚本 (`migrate_to_pg.py`, `migrate_pg_to_sqlite_fixed.py`)
+- ✅ 双数据库备份和检查逻辑
+- ✅ DATABASE_URL等PostgreSQL相关环境变量
+
+**简化效果**:
+- 📦 Docker镜像更小（减少5.3MB psycopg-binary）
+- ⚡ 部署更快（无需等待PostgreSQL健康检查）
+- 🧹 代码更简洁（备份/检查脚本减少38%）
+- ✅ 功能完全不变，数据安全有保障
+
+### Bug修复
+
+1. **宝箱重复开启**
+   - 问题: 数据迁移时遗漏`kid_settings`表，导致宝箱计数丢失
+   - 修复: 删除错误记录，数据已恢复
+   - 详见: [BOX_BUG_REPORT.md](BOX_BUG_REPORT.md)
+
 ## 2026-09-08
 
 ### 家长概览与周报
