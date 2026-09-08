@@ -200,7 +200,7 @@ async function refresh() {
     rewards.value = r
     boxes.value = bx
     reviewDue.value = rv || []
-    recentLedger.value = (led || []).slice(0, 5)
+    recentLedger.value = led || []
     err.value = ''
   } catch (e) {
     if (e.status === 401) { me.value = null; authed.value = false }
@@ -346,8 +346,11 @@ async function openRankMap() {
 }
 function ledgerLabel(row) {
   const note = (row.note || '').trim()
-  if (row.reason === 'penalty') return note || '扣分'
-  if (row.reason === 'penalty_cancel') return '撤回扣分'
+  if (row.reason === 'penalty') {
+    const reason = note.split('：')[0] || '约定'
+    return '约定 · ' + reason
+  }
+  if (row.reason === 'penalty_cancel') return '家长撤回了约定'
   if (row.reason === 'redeem') return note ? '兑换 ' + note : '兑换'
   if (row.reason === 'cancel') return '取消打卡'
   if (row.reason === 'test') return note || '单元测试'
@@ -362,6 +365,17 @@ function ledgerSign(n) {
   const v = Number(n) || 0
   return (v > 0 ? '+' : '') + v
 }
+const todayPenalty = computed(() => {
+  const today = data.today
+  const rows = recentLedger.value || []
+  const cancels = new Set(rows.filter(r => r.reason === 'penalty_cancel').map(r => r.ref_id))
+  const active = rows.filter(r => r.reason === 'penalty' && r.date === today && !cancels.has(r.ref_id))
+  if (!active.length) return null
+  const n = active.reduce((s, r) => s + Math.abs(Number(r.delta) || 0), 0)
+  const reason = ((active[0].note || '').split('：')[0] || '约定').trim()
+  return { n, count: active.length, reason }
+})
+const recentSunshine = computed(() => (recentLedger.value || []).slice(0, 5))
 
 const unitName = (id) => data.units.find(u => u.id === id)?.name || ''
 const bySubject = computed(() => {
@@ -516,14 +530,14 @@ function reloadApp() {
             <em>{{ subjectProgress[s.id]?.done || 0 }}/{{ subjectProgress[s.id]?.total || 0 }}</em>
           </button>
         </div>
-        <div v-if="recentLedger.length" class="side-split" role="separator"></div>
-        <div v-if="recentLedger.length" class="side-sunshine">
+        <div v-if="recentSunshine.length" class="side-split" role="separator"></div>
+        <div v-if="recentSunshine.length" class="side-sunshine">
           <div class="side-sunshine-header">
             <Sun class="ico" :size="14" />
             <span>最近阳光</span>
           </div>
           <div class="side-sunshine-list">
-            <div v-for="row in recentLedger" :key="row.id" class="side-sunshine-item">
+            <div v-for="row in recentSunshine" :key="row.id" class="side-sunshine-item" :class="{ down: row.delta < 0 }">
               <span class="side-sunshine-label">{{ ledgerLabel(row) }}</span>
               <b class="side-sunshine-value" :class="{ down: row.delta < 0 }">{{ ledgerSign(row.delta) }}</b>
             </div>
@@ -547,6 +561,9 @@ function reloadApp() {
               </div>
             </div>
           </div>
+          <p v-if="todayPenalty" class="today-pact">
+            今天有约定：{{ todayPenalty.reason }}。阳光少了 {{ todayPenalty.n }}，等级不会掉。把今天的事做好就能再攒回来。
+          </p>
 
           <section v-if="reviewDue.length" class="plan-section review-today">
             <div class="plan-head">
@@ -988,8 +1005,9 @@ body {
   color: var(--ink);
   font-size: 12px;
 }
+.side-sunshine-item.down { background: var(--warm); }
 .side-sunshine-value.down {
-  color: #e17055;
+  color: var(--accent-ink);
 }
 
 .cta {
@@ -1069,6 +1087,10 @@ body {
 .today-summary strong { display: block; color: var(--ink); }
 .today-breakdown { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 3px; }
 .today-breakdown span { font-size: 12px; padding-left: 8px; border-left: 1px solid var(--line); }
+.today-pact {
+  margin: -6px 0 16px; padding: 10px 14px; border-radius: var(--radius-md);
+  background: var(--warm); color: var(--accent-ink); font-size: 13px; line-height: 1.5;
+}
 .plan-section { margin: 0 0 24px; }
 .plan-section.review-today { padding: 14px; border: 1px solid var(--accent); border-radius: var(--radius-lg); background: var(--warm-2); }
 .plan-head { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 10px; }
