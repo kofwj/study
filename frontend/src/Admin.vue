@@ -4,7 +4,7 @@ import { api, setSelectedKid } from './api.js'
 import { APP_LABEL, APP_REVISION } from './version.js'
 import { rankIcon } from './icons.js'
 import { tagHelp } from './tagHelp.js'
-import { ChartColumn, Eye, Baby, Users, KeyRound, Lock, Store, Trophy, ClipboardCheck, BookOpen, RefreshCw, MapPinned, FileText, Sun, Star, Check, ArrowLeft, BookMarked } from '@lucide/vue'
+import { Eye, Baby, Users, KeyRound, Lock, Store, Trophy, ClipboardCheck, BookOpen, RefreshCw, MapPinned, FileText, Sun, Star, Check, ArrowLeft, BookMarked } from '@lucide/vue'
 
 const props = defineProps({ recoveryCode: { type: String, default: '' } })
 const emit = defineEmits(['exit', 'switched', 'consumed-recovery'])
@@ -36,7 +36,6 @@ const SECTIONS = [
     { id: 'insights', icon: Eye, label: '总览' },
     { id: 'review', icon: BookMarked, label: '今日复习' },
     { id: 'approve', icon: ClipboardCheck, label: '兑换审批' },
-    { id: 'weekly', icon: ChartColumn, label: '本周周报' },
   ] },
   { group: '学习', items: [
     { id: 'unit-task', icon: BookOpen, label: '任务与考点' },
@@ -114,6 +113,7 @@ function showToast(m) { toast.value = m; setTimeout(() => (toast.value = ''), 22
 function unitName(id) { return units.value.find(u => u.id === id)?.name || id }
 
 async function load() {
+  if (section.value === 'weekly') section.value = 'insights'
   // 获取当前家长信息
   const userInfo = await api.me()
   me.value = userInfo
@@ -568,21 +568,6 @@ const peCards = computed(() => {
 })
 const penaltyReasonRows = computed(() => (penaltySummary.value.by_reason || []).filter(x => x.count > 0))
 const maxPenaltyAmount = computed(() => Math.max(1, ...penaltyReasonRows.value.map(x => x.amount || 0)))
-function goFamilyInsight() {
-  const fi = weekly.value.family_insight || {}
-  if (fi.kid_id) {
-    selectedKid.value = fi.kid_id
-    setSelectedKid(fi.kid_id)
-  }
-  const a = fi.action
-  if (a === '单元测试') section.value = 'test'
-  else if (a === '每日打卡' || a === '运动打卡') emit('exit')
-  else if (a === '今日复习') section.value = 'review'
-  if (fi.kid_id) load()
-}
-function goWeeklyInsight() {
-  goFamilyInsight()
-}
 function goInsight(row) {
   const a = row.insight?.action
   if (row.kid_id) {
@@ -836,9 +821,9 @@ onMounted(load)
         <div class="dash-stat">
           <span>今日签到</span><b>{{ isMultiKid ? (checkinCount + '/' + kidCount) : (checkinCount ? '已来' : (kidCount ? '还没来' : '—')) }}</b>
         </div>
-        <button type="button" class="dash-stat" @click="section = 'weekly'">
+        <div class="dash-stat">
           <span>连击</span><b>{{ weekly.streak || 0 }} 天</b>
-        </button>
+        </div>
       </div>
       <template v-if="dashDailies.length">
         <h4 class="w-h">今日打卡</h4>
@@ -869,6 +854,24 @@ onMounted(load)
           </div>
         </div>
       </template>
+      <h4 class="w-h">本周阳光{{ currentKidName ? ' · ' + currentKidName : '' }}</h4>
+      <p class="lead dim">{{ weekly.week_start }} ~ {{ weekly.week_end }}</p>
+      <div class="w-summary">
+        <div class="w-box"><span>本周赚</span><b>+{{ weekly.total_earned }}</b></div>
+        <div class="w-box"><span>兑换花</span><b>-{{ weekly.total_spent }}</b></div>
+        <div v-if="weekly.penalty_net" class="w-box"><span>本周约定</span><b>{{ weekly.penalty_net }}</b></div>
+        <div class="w-box"><span>净增</span><b>{{ weekly.net }}</b></div>
+        <div class="w-box"><span>当前余额</span><b>{{ weekly.balance }}</b></div>
+        <div class="w-box"><span>本周签到</span><b>{{ weekly.checkins }} 天</b></div>
+      </div>
+      <div v-if="masteredLine" class="w-mastered">本周已掌握：<b>{{ masteredLine }}</b></div>
+      <div v-if="isMultiKid && (weekly.kids || []).length" class="w-kids">
+        <div v-for="k in weekly.kids" :key="k.id" class="w-box" :class="{ on: k.current }" @click="pickKid(k.id)">
+          <span>{{ k.name }}</span><b>+{{ k.earned }}</b>
+          <i class="dim">完成 {{ k.completed || 0 }} 张 · {{ completedDelta(k) }}</i>
+          <i class="dim">花 {{ k.spent }} · 连击 {{ k.streak }}</i>
+        </div>
+      </div>
       <div class="dash-charts">
         <div class="dash-chart">
           <h4 class="w-h">近 4 周净增</h4>
@@ -951,67 +954,6 @@ onMounted(load)
         <button class="ghost" @click="resetRule('streak_break')">默认</button>
       </div>
       </template>
-    </section>
-
-    <!-- 周报 -->
-    <section v-if="section === 'weekly'" class="a-card enter">
-      <h3><ChartColumn class="ico" :size="16" /> 本周周报</h3>
-      <p class="lead">{{ weekly.week_start }} ~ {{ weekly.week_end }}（周一到周日）</p>
-      <div class="w-next">
-        <strong>本周建议先处理</strong>
-        <span>{{ (weekly.family_insight && weekly.family_insight.text) || '这周不用特别盯。' }}</span>
-        <button v-if="weekly.family_insight && weekly.family_insight.action" class="ok" @click="goFamilyInsight">去解决</button>
-      </div>
-      <div v-if="(weekly.kids || []).length" class="w-kids">
-        <div v-for="k in weekly.kids" :key="k.id" class="w-box" :class="{ on: k.current }" @click="pickKid(k.id)">
-          <span>{{ k.name }}</span><b>+{{ k.earned }}</b>
-          <i class="dim">完成 {{ k.completed || 0 }} 张 · {{ completedDelta(k) }}</i>
-          <i class="dim">花 {{ k.spent }} · 连击 {{ k.streak }}</i>
-        </div>
-      </div>
-      <div class="w-summary">
-        <div class="w-box"><span>本周赚</span><b>+{{ weekly.total_earned }}</b></div>
-        <div class="w-box"><span>兑换花</span><b>-{{ weekly.total_spent }}</b></div>
-        <div v-if="weekly.penalty_net" class="w-box"><span>本周扣分</span><b>{{ weekly.penalty_net }}</b></div>
-        <div class="w-box"><span>净增</span><b>{{ weekly.net }}</b></div>
-        <div class="w-box"><span>当前余额</span><b>{{ weekly.balance }}</b></div>
-        <div class="w-box"><span>连击</span><b>{{ weekly.streak }} 天</b></div>
-        <div class="w-box"><span>本周签到</span><b>{{ weekly.checkins }} 天</b></div>
-      </div>
-
-      <div v-if="masteredLine" class="w-mastered">
-        本周已掌握：<b>{{ masteredLine }}</b>
-      </div>
-
-      <h4 class="w-h">近 4 周净增{{ currentKidName ? ' · ' + currentKidName : '' }}</h4>
-      <div class="w-trend">
-        <svg viewBox="0 0 288 80" class="w-trend-svg" preserveAspectRatio="none">
-          <polyline :points="weekPoints" fill="none" stroke="var(--brand)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
-        </svg>
-        <div class="w-trend-labels">
-          <span v-for="w in weekly.weeks" :key="w.week_start">{{ w.label }}<i>{{ weekNet(w) > 0 ? '+' : '' }}{{ weekNet(w) }}</i></span>
-        </div>
-      </div>
-
-      <h4 class="w-h">每天净增{{ currentKidName ? ' · ' + currentKidName : '' }}</h4>
-      <div class="w-chart">
-        <div v-for="d in weekly.days" :key="d.date" class="w-bar-col">
-          <div class="w-bar" :class="{ down: dayNet(d) < 0 }" :style="{ height: (Math.abs(dayNet(d)) / maxDayEarn * 100) + '%' }">
-            <i v-if="dayNet(d)">{{ dayNet(d) > 0 ? '+' : '' }}{{ dayNet(d) }}</i>
-          </div>
-          <span>周{{ d.weekday }}</span>
-        </div>
-      </div>
-
-      <h4 class="w-h">本周各科{{ currentKidName ? ' · ' + currentKidName : '' }}</h4>
-      <div v-if="!weekly.by_subject.length" class="dim">本周还没完成任务。</div>
-      <div v-else class="w-subj">
-        <div v-for="s in subjectRows" :key="s.name" class="w-subj-row">
-          <span class="w-subj-name">{{ s.name }}</span>
-          <div class="w-subj-track"><i :style="{ width: ((s.sun || 0) / maxSubj * 100) + '%' }"></i></div>
-          <span class="w-subj-num">+{{ s.sun }}</span>
-        </div>
-      </div>
     </section>
 
     <!-- 商店 -->
