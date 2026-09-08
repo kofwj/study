@@ -57,6 +57,8 @@ const subjects = ref([])
 const units = ref([])
 const tasks = ref([])
 const daily = ref([])
+const fitnessGoals = ref({})
+const dailyHist = ref({})
 const terms = ref([])
 const activeTerm = ref('g5s1')
 const activeSubject = ref('')
@@ -118,6 +120,13 @@ async function load() {
   units.value = t.units
   tasks.value = (t.tasks || []).map(x => ({ ...x, kid_id: x.kid_id || '' }))
   daily.value = t.daily
+  fitnessGoals.value = t.fitness_goals || {}
+  const withM = (t.daily || []).filter(d => (d.metrics || []).length)
+  const histPairs = await Promise.all(withM.map(async d => {
+    try { return [d.id, await api.dailyHistory(d.id)] }
+    catch { return [d.id, []] }
+  }))
+  dailyHist.value = Object.fromEntries(histPairs)
   terms.value = t.terms || []
   activeTerm.value = t.active_term || 'g5s1'
   if (!activeSubject.value || !unitsBySubject.value[activeSubject.value]) activeSubject.value = Object.keys(unitsBySubject.value)[0] || ''
@@ -442,6 +451,76 @@ const dashAttention = computed(() => {
   }
   return { text: '', go: '', label: '' }
 })
+function n1(v) {
+  if (v == null || v === '') return ''
+  const x = Math.round(Number(v) * 10) / 10
+  return x % 1 ? String(x) : String(Math.round(x))
+}
+function lastMetric(d, mid) {
+  if (d.today_metrics && d.today_metrics[mid] != null && d.today_metrics[mid] !== '') return Number(d.today_metrics[mid])
+  const hist = dailyHist.value[d.id] || []
+  for (let i = hist.length - 1; i >= 0; i--) {
+    const v = hist[i].metrics && hist[i].metrics[mid]
+    if (v != null && v !== '') return Number(v)
+  }
+  if (d.pb && d.pb[mid] != null) return Number(d.pb[mid])
+  return null
+}
+function metricLine(series) {
+  if (!series.length) return ''
+  const vals = series.map(s => s.v)
+  const min = Math.min(...vals), max = Math.max(...vals)
+  const span = (max - min) || 1
+  const W = 288, H = 56, pad = 8
+  return series.map((s, i) => {
+    const x = series.length === 1 ? W / 2 : pad + i * (W - 2 * pad) / (series.length - 1)
+    const y = H - pad - (s.v - min) / span * (H - 2 * pad)
+    return `${x.toFixed(1)},${y.toFixed(1)}`
+  }).join(' ')
+}
+const dashDailies = computed(() => (daily.value || []).map(d => ({
+  id: d.id, name: d.name, subject: d.subject_id || '', done: !!d.done_today,
+})))
+const peCards = computed(() => {
+  const cards = []
+  for (const d of daily.value || []) {
+    const metrics = d.metrics || []
+    if (!metrics.length) continue
+    const g = fitnessGoals.value[d.id]
+    const hist = dailyHist.value[d.id] || []
+    for (const m of metrics) {
+      const series = hist
+        .filter(h => h.metrics && h.metrics[m.id] != null && h.metrics[m.id] !== '')
+        .map(h => ({ date: h.date, v: Number(h.metrics[m.id]) }))
+      const last = lastMetric(d, m.id)
+      const pb = d.pb ? d.pb[m.id] : null
+      const unit = m.unit || (g && g.metric_id === m.id ? g.unit : '') || ''
+      let status = '还没记过'
+      let cls = 'gray'
+      let gap = ''
+      let pct = 0
+      const goal = g && g.metric_id === m.id ? g : null
+      if (goal && last != null) {
+        const cap = goal.excellent || goal.pass
+        pct = Math.max(0, Math.min(100, Math.round(last / cap * 100)))
+        if (goal.excellent != null && last >= goal.excellent) { status = '优秀'; cls = 'green' }
+        else if (last >= goal.pass) { status = '达标'; cls = 'green' }
+        else { status = '未达标'; cls = 'amber'; gap = `还差 ${n1(goal.pass - last)}${unit}` }
+      } else if (last != null) {
+        status = '有记录'; cls = 'green'
+      }
+      cards.push({
+        key: d.id + '-' + m.id,
+        name: d.name,
+        label: m.label || (goal && goal.item) || m.id,
+        unit, last, pb, status, cls, gap, pct, goal, series,
+        pts: metricLine(series),
+        today: !!(d.today_metrics && d.today_metrics[m.id] != null),
+      })
+    }
+  }
+  return cards
+})
 const penaltyReasonRows = computed(() => (penaltySummary.value.by_reason || []).filter(x => x.count > 0))
 const maxPenaltyAmount = computed(() => Math.max(1, ...penaltyReasonRows.value.map(x => x.amount || 0)))
 function goFamilyInsight() {
@@ -684,6 +763,36 @@ onMounted(load)
           <span>连击</span><b>{{ weekly.streak || 0 }} 天</b>
         </button>
       </div>
+      <template v-if="dashDailies.length">
+        <h4 class="w-h">今日打卡</h4>
+        <div class="dash-dailies">
+          <div v-for="d in dashDailies" :key="d.id" class="dash-daily" :class="{ on: d.done }">
+            <span class="apv-name">{{ d.name }}</span>
+            <em class="fam-st" :class="d.done ? 'green' : 'gray'">{{ d.done ? '已打卡' : '还没做' }}</em>
+            <span class="dim">{{ d.subject }}</span>
+          </div>
+        </div>
+      </template>
+      <template v-if="peCards.length">
+        <h4 class="w-h">体测数值</h4>
+        <p class="lead">对照年级达标线，折线是历次记录。</p>
+        <div class="pe-grid">
+          <div v-for="c in peCards" :key="c.key" class="pe-card">
+            <span class="dim">{{ c.name }}</span>
+            <strong>{{ c.label }}</strong>
+            <b>{{ c.last == null ? '—' : n1(c.last) }}<small>{{ c.unit }}</small></b>
+            <em class="fam-st" :class="c.cls">{{ c.gap || c.status }}{{ c.today ? ' · 今天记的' : '' }}</em>
+            <div v-if="c.goal" class="w-subj-row pe-std">
+              <div class="w-subj-track"><i :style="{ width: c.pct + '%' }"></i></div>
+              <span class="w-subj-num">达标 {{ n1(c.goal.pass) }}{{ c.unit }}</span>
+            </div>
+            <span class="dim">个人最好 {{ c.pb == null ? '—' : n1(c.pb) }}{{ c.unit }}{{ c.series.length ? ' · ' + c.series.length + ' 次' : '' }}</span>
+            <svg v-if="c.pts" viewBox="0 0 288 56" class="pe-svg" preserveAspectRatio="none">
+              <polyline :points="c.pts" fill="none" stroke="var(--brand)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </div>
+        </div>
+      </template>
       <div class="dash-charts">
         <div class="dash-chart">
           <h4 class="w-h">近 4 周阳光</h4>
@@ -1344,6 +1453,15 @@ onMounted(load)
 .dash-stat span { display: block; font-size: 12px; color: var(--ink-3); font-weight: 700; }
 .dash-stat b { display: block; margin-top: 4px; font-size: 24px; color: var(--ink); letter-spacing: -.03em; }
 .dash-charts { display: grid; grid-template-columns: 1.2fr 1fr; gap: 16px; margin: 4px 0 8px; }
+.dash-dailies { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+.dash-daily { padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--surface); display: flex; flex-direction: column; gap: 2px; }
+.dash-daily.on { background: var(--ok-bg); border-color: var(--ok-bg); }
+.pe-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+.pe-card { display: flex; flex-direction: column; gap: 4px; padding: 14px; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface-2); }
+.pe-card b { font-size: 24px; letter-spacing: -.03em; }
+.pe-card small { font-size: 12px; font-weight: 600; margin-left: 4px; color: var(--ink-3); }
+.pe-std { margin: 6px 0 2px; }
+.pe-svg { width: 100%; height: 56px; display: block; margin-top: 6px; }
 .dash-chart .w-h { margin-top: 8px; }
 .dash-bars { height: 100px; padding-top: 18px; }
 .cursor-row {
