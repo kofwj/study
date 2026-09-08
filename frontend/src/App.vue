@@ -1125,7 +1125,7 @@ body {
 .daily-motto {
   flex: 1; min-width: 0; margin-left: 4px; font-style: normal; font-weight: 800; font-size: 13px;
   line-height: 1.3; padding: 4px 10px; border-radius: var(--radius-pill);
-  background: var(--accent); color: var(--accent-ink);
+  background: var(--brand); color: #fff;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .plan-list { display: flex; flex-direction: column; gap: 6px; }
