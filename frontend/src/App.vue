@@ -601,7 +601,7 @@ function reloadApp() {
             <div class="plan-head">
               <h2>
                 <RefreshCw class="ico" :size="18" /> 每日打卡
-                <em class="daily-motto" :title="dailyMotto">{{ dailyMotto }}</em>
+                <em class="daily-motto" :title="dailyMotto.text + ' · ' + dailyMotto.from">{{ dailyMotto.text }}<i>{{ dailyMotto.from }}</i></em>
               </h2>
             </div>
             <div class="grid plan-grid">
@@ -1128,6 +1128,7 @@ body {
   background: var(--brand); color: #fff;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
+.daily-motto i { font-style: normal; font-weight: 600; opacity: .78; margin-left: 8px; }
 .plan-list { display: flex; flex-direction: column; gap: 6px; }
 .plan-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-sm); }
 .plan-row-main { display: flex; align-items: center; gap: 9px; min-width: 0; }
