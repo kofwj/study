@@ -11,6 +11,12 @@ const me = ref({ role: 'parent', parent_role: 'member' })  // 当前家长信息
 const kids = ref([])
 const members = ref([])
 const inviteProtect = ref(false)
+const penaltyEnabled = ref(false)
+const penalties = ref([])
+const penaltySummary = ref({ net: 0, count: 0, amount: 0, by_reason: [] })
+const newPenalty = reactive({ amount: 1, reason: '磨蹭', note: '' })
+const penaltySubmitting = ref(false)  // 扣分提交中
+const PENALTY_REASONS = ['磨蹭', '没完成约定', '没礼貌', '其他']
 const invites = ref([])
 const selectedKid = ref('')
 const newKid = reactive({ name: '', account: '', pin: '', term_id: 'g5s1', gender: '' })
@@ -35,6 +41,7 @@ const SECTIONS = [
     { id: 'shop', icon: Store, label: '兑换商店' },
     { id: 'rank', icon: Trophy, label: '成长等级' },
     { id: 'approve', icon: ClipboardCheck, label: '兑换审批' },
+    { id: 'penalty', icon: FileText, label: '扣分' },
   ] },
   { group: '学习', items: [
     { id: 'unit-task', icon: BookOpen, label: '任务与考点' },
@@ -64,7 +71,7 @@ const reviewDue = ref([])
 const firstReview = ref('')
 const DEFAULT_TEST_BANDS = [[100, 30], [95, 20], [90, 15], [85, 10], [0, 5]]
 const testBands = ref(DEFAULT_TEST_BANDS.map(x => [...x]))
-const weekly = ref({ days: [], weeks: [], by_subject: [], kids: [], total_earned: 0, total_spent: 0, net: 0, balance: 0, earned_all: 0, streak: 0, checkins: 0, week_start: '', week_end: '', insight: null, family_insight: null, mastered_by_kid: [] })
+const weekly = ref({ days: [], weeks: [], by_subject: [], kids: [], total_earned: 0, total_spent: 0, net: 0, balance: 0, earned_all: 0, streak: 0, checkins: 0, week_start: '', week_end: '', insight: null, family_insight: null, mastered_by_kid: [], penalty_net: 0, penalty_count: 0 })
 const insights = ref({ rules: { test_fail_count: 2, test_fail_score: 80, drop_ratio: 0.3, streak_break: 2 }, kids: [] })
 const familyToday = ref({ today: '', kids: [] })
 const rulesOpen = ref(false)
@@ -97,12 +104,13 @@ async function load() {
   kids.value = ks
   members.value = ms
   inviteProtect.value = !!fam.invite_protect
+  penaltyEnabled.value = !!fam.penalty_enabled
   invites.value = inv
   if (!selectedKid.value && ks.length) {
     selectedKid.value = ks[0].id
     setSelectedKid(ks[0].id)
   }
-  const [r, rk, t, rd, wk, ts, ig, cat, wps, rv, ft] = await Promise.all([api.rewards(), api.admin.ranks(), api.tasks(), api.admin.redemptions(), api.admin.weekly(), api.admin.tests(), api.admin.insights(), api.admin.unitTags(), api.admin.weakPoints(''), api.admin.reviewDue(), api.admin.familyToday()])
+  const [r, rk, t, rd, wk, ts, ig, cat, wps, rv, ft, pn] = await Promise.all([api.rewards(), api.admin.ranks(), api.tasks(), api.admin.redemptions(), api.admin.weekly(), api.admin.tests(), api.admin.insights(), api.admin.unitTags(), api.admin.weakPoints(''), api.admin.reviewDue(), api.admin.familyToday(), api.admin.penalties().catch(() => ({ items: [], summary: null }))])
   rewards.value = r
   ranks.value = rk
   subjects.value = t.subjects
@@ -117,6 +125,13 @@ async function load() {
   redemptions.value = rd
   weekly.value = wk
   familyToday.value = ft || { today: '', kids: [] }
+  if (pn && !Array.isArray(pn) && Array.isArray(pn.items)) {
+    penalties.value = pn.items
+    penaltySummary.value = pn.summary || { net: 0, count: 0, amount: 0, by_reason: [] }
+  } else {
+    penalties.value = Array.isArray(pn) ? pn : []
+    penaltySummary.value = { net: 0, count: 0, amount: 0, by_reason: [] }
+  }
   tests.value = ts
   insights.value = ig
   testBands.value = (ig.rules?.test_bands || DEFAULT_TEST_BANDS).map(x => [...x])
@@ -399,6 +414,8 @@ const masteredLine = computed(() => {
   return rows.map(r => r.name + '：' + (r.items || []).join('、')).join('；')
 })
 const currentKidName = computed(() => kids.value.find(k => k.id === selectedKid.value)?.name || '')
+const penaltyReasonRows = computed(() => (penaltySummary.value.by_reason || []).filter(x => x.count > 0))
+const maxPenaltyAmount = computed(() => Math.max(1, ...penaltyReasonRows.value.map(x => x.amount || 0)))
 function goFamilyInsight() {
   const fi = weekly.value.family_insight || {}
   if (fi.kid_id) {
@@ -482,6 +499,42 @@ async function toggleProtect(e) {
     inviteProtect.value = e.target.checked
     showToast(e.target.checked ? '邀请码保护已开（一次性 + 24h）' : '邀请码保护已关（常驻复用）')
   } catch (err) { showToast(err.message); e.target.checked = inviteProtect.value }
+}
+async function togglePenalty() {
+  if (!isOwner.value) return showToast('只有创建者能开关')
+  try {
+    const r = await api.admin.setPenalty(!penaltyEnabled.value)
+    penaltyEnabled.value = !!r.penalty_enabled
+    showToast(penaltyEnabled.value ? '已开启记下扣分' : '已关闭记下扣分')
+  } catch (e) { showToast(e.message) }
+}
+async function addPenalty() {
+  if (!penaltyEnabled.value) return showToast('扣分未开启')
+  if (penaltySubmitting.value) return  // 防止重复提交
+  
+  const amount = Number(newPenalty.amount)
+  if (!Number.isInteger(amount) || amount < 1) return showToast('扣分要是正整数')
+  if (newPenalty.reason === '其他' && !String(newPenalty.note || '').trim()) return showToast('选「其他」时要写备注')
+  
+  penaltySubmitting.value = true
+  try {
+    await api.admin.createPenalty({ amount, reason: newPenalty.reason, note: newPenalty.note })
+    Object.assign(newPenalty, { amount: 1, reason: '磨蹭', note: '' })
+    showToast('已记下扣分')
+    await load()
+  } catch (e) { 
+    showToast(e.message) 
+  } finally {
+    penaltySubmitting.value = false
+  }
+}
+async function cancelPenalty(id) {
+  if (!confirm('撤回这笔扣分？阳光会加回去，等级不变。')) return
+  try {
+    await api.admin.cancelPenalty(id)
+    showToast('已撤回')
+    await load()
+  } catch (e) { showToast(e.message) }
 }
 async function delMember(m) {
   if (!confirm('删除「' + m.name + '」？立刻失效。')) return
@@ -640,6 +693,7 @@ onMounted(load)
       <div class="w-summary">
         <div class="w-box"><span>本周赚</span><b>+{{ weekly.total_earned }}</b></div>
         <div class="w-box"><span>兑换花</span><b>-{{ weekly.total_spent }}</b></div>
+        <div v-if="weekly.penalty_net" class="w-box"><span>本周扣分</span><b>{{ weekly.penalty_net }}</b></div>
         <div class="w-box"><span>净增</span><b>{{ weekly.net }}</b></div>
         <div class="w-box"><span>当前余额</span><b>{{ weekly.balance }}</b></div>
         <div class="w-box"><span>连击</span><b>{{ weekly.streak }} 天</b></div>
@@ -703,6 +757,59 @@ onMounted(load)
         </div>
         <button class="ok wide" @click="addReward">＋新增奖励</button>
       </div>
+    </section>
+
+    <!-- 扣分 -->
+    <section v-if="section === 'penalty'" class="a-card enter">
+      <h3>记下扣分</h3>
+      <p class="lead">只记家长主动记下的一笔。不自动罚没完成的任务，不改复习，也不掉级。余额扣到 0 为止。正在看：{{ currentKidName || '还没选孩子' }}。</p>
+      <div class="lock-row">
+        <span class="badge">扣分开关</span>
+        <span class="grow">{{ penaltyEnabled ? '已开启，任意家长可记下或撤回' : '默认关闭，打开后才能记下' }}</span>
+        <button v-if="isOwner" :class="['toggle', { on: penaltyEnabled }]" @click="togglePenalty">{{ penaltyEnabled ? '开' : '关' }}</button>
+        <span v-else class="dim">只有创建者能开关</span>
+      </div>
+      <template v-if="penaltyEnabled">
+        <div class="add-box">
+          <div class="add-title">给 {{ currentKidName || '当前孩子' }} 记一笔</div>
+          <div class="frm-row">
+            <label class="fld w64"><span>阳光</span><input v-model.number="newPenalty.amount" type="number" min="1" /></label>
+            <label class="fld grow"><span>原因</span>
+              <select v-model="newPenalty.reason">
+                <option v-for="r in PENALTY_REASONS" :key="r" :value="r">{{ r }}</option>
+              </select>
+            </label>
+          </div>
+          <div class="frm-row" v-if="newPenalty.reason === '其他' || newPenalty.note">
+            <label class="fld grow"><span>{{ newPenalty.reason === '其他' ? '备注（必填，最多 40 字）' : '备注（可选）' }}</span>
+              <input v-model="newPenalty.note" maxlength="40" placeholder="如：约好 8 点写完还在玩" />
+            </label>
+          </div>
+          <button class="ok wide" @click="addPenalty" :disabled="penaltySubmitting">{{ penaltySubmitting ? '提交中...' : '记下扣分' }}</button>
+        </div>
+        <div v-if="penaltySummary.count" class="pen-sum">
+          <p class="lead">{{ currentKidName || '当前孩子' }}一共记下 {{ penaltySummary.count }} 笔，有效净扣 {{ penaltySummary.amount }} 阳光。撤回的不算。</p>
+          <div class="w-subj">
+            <div v-for="s in penaltyReasonRows" :key="s.reason" class="w-subj-row">
+              <span class="w-subj-name">{{ s.reason }}</span>
+              <div class="w-subj-track"><i :style="{ width: (s.amount / maxPenaltyAmount * 100) + '%' }"></i></div>
+              <span class="w-subj-num">{{ s.count }} 笔 · -{{ s.amount }}</span>
+            </div>
+          </div>
+        </div>
+        <div v-if="!penalties.length" class="dim mt8">还没有扣分记录。</div>
+        <div class="apv-row" v-for="p in penalties" :key="p.id">
+          <div class="apv-info">
+            <span class="apv-name">{{ p.note || '扣分' }}</span>
+            <span class="dim">{{ p.date }} · {{ p.delta }} 阳光</span>
+          </div>
+          <div class="apv-right">
+            <span v-if="p.cancelled" class="st delivered">已撤回</span>
+            <button v-else class="ghost-s" @click="cancelPenalty(p.id)">撤回</button>
+          </div>
+        </div>
+      </template>
+      <p v-else class="dim mt8">开关关上时不能记账，也不能撤回。孩子端只会在等级旁看到最近阳光，不能自己操作。</p>
     </section>
 
     <!-- 审批 -->
@@ -1137,7 +1244,7 @@ onMounted(load)
   .review-actions { flex-direction: column; }
   .review-actions button { width: 100%; }
 }
-.lock-row { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-2); font-weight: 700; }
+.lock-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; color: var(--ink-2); font-weight: 700; }
 .toggle { border: none; background: var(--surface-2); color: var(--ink-2); padding: 7px 16px; border-radius: 16px; font-weight: 800; cursor: pointer; font-family: inherit; }
 .toggle.on { background: var(--accent); color: #fff; }
 .dim { color: var(--ink-3); font-size: 12px; }
@@ -1192,6 +1299,8 @@ onMounted(load)
 .w-bar-col span { font-size: 11px; color: var(--ink-2); }
 .w-subj-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
 .w-subj-name { width: 48px; font-weight: 700; color: var(--ink); flex: none; }
+.pen-sum { margin: 12px 0 4px; }
+.pen-sum .w-subj-name { width: 84px; }
 .w-subj-track { flex: 1; background: var(--line); border-radius: 6px; height: 12px; overflow: hidden; }
 .w-subj-track i { display: block; height: 100%; background: linear-gradient(90deg,var(--brand),var(--brand)); border-radius: 6px; }
 .w-subj-num { flex: none; font-size: 12px; color: var(--ink-2); }

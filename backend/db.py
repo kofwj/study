@@ -2,8 +2,8 @@
 """存储 + 初始化 + 种子数据。
 
 默认 SQLite；设 DATABASE_URL=postgres://... 则走 Postgres。
-流水账(ledger)是唯一真相源：余额=SUM(全部 delta)、累计获得=SUM(非 redeem delta)、
-等级/连击都由累计获得与日期推导，不单独硬存，保证「点错取消」公平可审计。
+流水账(ledger)是唯一真相源：余额=SUM(全部 delta)、累计获得=SUM(非 redeem/penalty/penalty_cancel delta)、
+等级/连击都由累计获得与日期推导，不单独硬存，保证「点错取消」公平可审计。兑换和扣分都不掉级。
 """
 import hashlib
 import hmac
@@ -783,6 +783,10 @@ def _migrate_025(conn):
 
 
 
+def _migrate_026(conn):
+    _add_column(conn, "families", "penalty_enabled INTEGER DEFAULT 0")
+
+
 def _migrate_017(conn):
     conn.execute("""
 CREATE TABLE IF NOT EXISTS knowledge_tags (
@@ -821,6 +825,8 @@ MIGRATIONS = (
     ("022_g5s1_kx_df_tags", _migrate_022),
     ("023_g5s1_unique_review_tags", _migrate_023),
     ("024_cancelled_recompletion", _migrate_024),
+    ("025_parent_role", _migrate_025),
+    ("026_penalty", _migrate_026),
 )
 
 
@@ -843,7 +849,7 @@ def fingerprints(conn):
     settings = {r["key"]: r["value"] for r in conn.execute("SELECT key,value FROM settings ORDER BY key")}
     return {
         "ledger_sum": n("SELECT COALESCE(SUM(delta),0) FROM ledger"),
-        "earned_sum": n("SELECT COALESCE(SUM(delta),0) FROM ledger WHERE reason != 'redeem'"),
+        "earned_sum": n("SELECT COALESCE(SUM(delta),0) FROM ledger WHERE reason NOT IN ('redeem','penalty','penalty_cancel')"),
         "ledger_n": n("SELECT COUNT(*) FROM ledger"),
         "completions": n("SELECT COUNT(*) FROM completions"),
         "checkins": n("SELECT COUNT(*) FROM checkins"),

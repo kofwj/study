@@ -246,9 +246,10 @@ def _sun(n, lo=0):
 
 
 def earned(c, kid=None):
-    # 累计获得：赚/取消都算（正负抵消），唯独「兑换消费(redeem)」不算 → 消费不掉级
-    return c.execute("SELECT COALESCE(SUM(delta),0) FROM ledger WHERE reason != 'redeem' AND kid_id=?",
-                     (kid or kid_id(),)).fetchone()[0]
+    # 累计获得：赚/取消都算（正负抵消）；兑换和扣分/冲正都不算 → 消费不掉级、扣分不掉级
+    return c.execute(
+        "SELECT COALESCE(SUM(delta),0) FROM ledger WHERE reason NOT IN ('redeem','penalty','penalty_cancel') AND kid_id=?",
+        (kid or kid_id(),)).fetchone()[0]
 
 
 def balance(c, kid=None):
@@ -1271,9 +1272,10 @@ class InviteProtectIn(BaseModel):
 def family_info(request: Request):
     u = request.state.user
     c = get_conn()
-    row = c.execute("SELECT id, name, invite_protect FROM families WHERE id=?", (u["family_id"],)).fetchone()
+    row = c.execute("SELECT id, name, invite_protect, penalty_enabled FROM families WHERE id=?", (u["family_id"],)).fetchone()
     c.close()
-    return {"name": row["name"], "invite_protect": int(row["invite_protect"] or 0)}
+    return {"name": row["name"], "invite_protect": int(row["invite_protect"] or 0),
+            "penalty_enabled": int(row["penalty_enabled"] or 0)}
 
 
 @app.put("/api/admin/family/invite_protect", dependencies=[Depends(require_owner)])
@@ -1284,6 +1286,164 @@ def family_invite_protect(b: InviteProtectIn, request: Request):
     c.execute("UPDATE families SET invite_protect=? WHERE id=?", (val, u["family_id"]))
     c.commit(); c.close()
     return {"invite_protect": val}
+
+
+class PenaltySwitchIn(BaseModel):
+    enabled: bool = False
+
+
+@app.put("/api/admin/family/penalty", dependencies=[Depends(require_owner)])
+def family_penalty_switch(b: PenaltySwitchIn, request: Request):
+    u = request.state.user
+    val = 1 if b.enabled else 0
+    c = get_conn()
+    c.execute("UPDATE families SET penalty_enabled=? WHERE id=?", (val, u["family_id"]))
+    c.commit(); c.close()
+    return {"penalty_enabled": val}
+
+
+PENALTY_REASONS = ("磨蹭", "没完成约定", "没礼貌", "其他")
+
+
+class PenaltyIn(BaseModel):
+    amount: int
+    reason: str
+    note: str = ""
+
+
+def _penalty_on(c, fam):
+    row = c.execute("SELECT penalty_enabled FROM families WHERE id=?", (fam,)).fetchone()
+    return bool(row and int(row["penalty_enabled"] or 0))
+
+
+def _penalty_note(reason, note):
+    reason = (reason or "").strip()
+    note = (note or "").strip()[:40]
+    if reason not in PENALTY_REASONS:
+        raise HTTPException(400, "选一个原因")
+    if reason == "其他":
+        if not note:
+            raise HTTPException(400, "选「其他」时要写备注")
+        return "其他：" + note
+    return reason if not note else reason + "：" + note
+
+
+@app.post("/api/admin/penalty", dependencies=[Depends(require_parent)])
+def penalty_create(b: PenaltyIn):
+    amount = int(b.amount)
+    if amount < 1:
+        raise HTTPException(400, "扣分要是正整数")
+    note = _penalty_note(b.reason, b.note)
+    c = get_conn()
+    fam = _fam.get()
+    try:
+        if not _penalty_on(c, fam):
+            raise HTTPException(403, "扣分未开启")
+        kid = _kid.get()
+        if not kid:
+            raise HTTPException(400, "没有孩子")
+        _own_kid(c, kid, fam)
+        
+        # 并发保护：PostgreSQL用行锁，SQLite用IMMEDIATE事务
+        if db.is_postgres():
+            c.execute("SELECT SUM(delta) FROM ledger WHERE kid_id=? FOR UPDATE", (kid,))
+        else:
+            # SQLite: 使用IMMEDIATE事务防止并发写入
+            c.execute("BEGIN IMMEDIATE")
+        
+        bal = balance(c, kid)
+        if amount > bal:
+            if not db.is_postgres():
+                c.execute("ROLLBACK")
+            raise HTTPException(400, "最多还能扣 %d" % bal)
+        before = earned(c, kid)
+        ref = "pen-" + uuid.uuid4().hex[:10]
+        lid = db.insert(c, "INSERT INTO ledger(date,delta,reason,ref_id,note,created_at,kid_id) VALUES(?,?,?,?,?,?,?)",
+                        (db.today(), -amount, "penalty", ref, note, db.now(), kid))
+        c.commit()
+        return {"id": lid, "ref_id": ref, "delta": -amount, "balance": balance(c, kid),
+                "earned": earned(c, kid), "earned_before": before, "level": level_info(c)}
+    finally:
+        c.close()
+
+
+def _penalty_reason_key(note):
+    note = (note or "").strip()
+    for r in PENALTY_REASONS:
+        if note == r or note.startswith(r + "："):
+            return r
+    return "其他"
+
+
+@app.get("/api/admin/penalty", dependencies=[Depends(require_parent)])
+def penalty_list():
+    c = get_conn()
+    kid = _kid.get()
+    if not kid:
+        c.close()
+        return {"items": [], "summary": {"net": 0, "count": 0, "amount": 0,
+                                         "by_reason": [{"reason": r, "count": 0, "amount": 0} for r in PENALTY_REASONS]}}
+    
+    # 优化：单次查询使用LEFT JOIN获取扣分和撤回状态
+    all_rows = c.execute("""
+        SELECT p.id, p.date, p.delta, p.reason, p.ref_id, p.note, p.created_at,
+               CASE WHEN c.id IS NOT NULL THEN 1 ELSE 0 END AS cancelled
+        FROM ledger p
+        LEFT JOIN ledger c ON c.reason='penalty_cancel' AND c.ref_id=p.ref_id AND c.kid_id=p.kid_id
+        WHERE p.kid_id=? AND p.reason='penalty'
+        ORDER BY p.id DESC
+    """, (kid,)).fetchall()
+    
+    by = {r: {"reason": r, "count": 0, "amount": 0} for r in PENALTY_REASONS}
+    count = amount = 0
+    items = []
+    
+    for r in all_rows:
+        row = dict(r)
+        row["cancelled"] = bool(row["cancelled"])
+        
+        # 统计未撤回的扣分
+        if not row["cancelled"]:
+            key = _penalty_reason_key(row.get("note"))
+            n = abs(int(row.get("delta") or 0))
+            by[key]["count"] += 1
+            by[key]["amount"] += n
+            count += 1
+            amount += n
+        
+        # 只返回最近30条
+        if len(items) < 30:
+            items.append(row)
+    
+    c.close()
+    return {"items": items, "summary": {"net": -amount, "count": count, "amount": amount,
+                                        "by_reason": [by[r] for r in PENALTY_REASONS]}}
+
+
+@app.post("/api/admin/penalty/{lid}/cancel", dependencies=[Depends(require_parent)])
+def penalty_cancel(lid: int):
+    c = get_conn()
+    fam = _fam.get()
+    try:
+        if not _penalty_on(c, fam):
+            raise HTTPException(403, "扣分未开启")
+        kid = _kid.get()
+        if not kid:
+            raise HTTPException(400, "没有孩子")
+        _own_kid(c, kid, fam)
+        row = c.execute("SELECT * FROM ledger WHERE id=? AND kid_id=? AND reason='penalty'", (lid, kid)).fetchone()
+        if not row:
+            raise HTTPException(404, "没找到这笔扣分")
+        ref = row["ref_id"]
+        if c.execute("SELECT 1 FROM ledger WHERE reason='penalty_cancel' AND ref_id=?", (ref,)).fetchone():
+            raise HTTPException(409, "这笔已经撤回过")
+        before = earned(c, kid)
+        db.insert(c, "INSERT INTO ledger(date,delta,reason,ref_id,note,created_at,kid_id) VALUES(?,?,?,?,?,?,?)",
+                  (db.today(), abs(int(row["delta"])), "penalty_cancel", ref, "撤回扣分", db.now(), kid))
+        c.commit()
+        return {"ok": True, "balance": balance(c, kid), "earned": earned(c, kid), "earned_before": before, "level": level_info(c)}
+    finally:
+        c.close()
 
 
 @app.get("/api/admin/invites", dependencies=[Depends(require_parent)])
@@ -2005,7 +2165,9 @@ def weekly():
     days = []
     for i in range(7):
         d = (monday + timedelta(days=i)).isoformat()
-        day_earned = c.execute("SELECT COALESCE(SUM(delta),0) FROM ledger WHERE date=? AND delta>0 AND kid_id=?", (d, kid)).fetchone()[0]
+        day_earned = c.execute(
+            "SELECT COALESCE(SUM(delta),0) FROM ledger WHERE date=? AND delta>0 AND kid_id=? "
+            "AND reason NOT IN ('penalty','penalty_cancel')", (d, kid)).fetchone()[0]
         day_spent = c.execute(
             "SELECT COALESCE(SUM(-delta),0) FROM ledger WHERE date=? AND reason='redeem' AND delta<0 AND kid_id=?", (d, kid)).fetchone()[0]
         days.append({"date": d, "weekday": WEEKDAYS[i], "earned": day_earned, "spent": day_spent})
@@ -2029,7 +2191,8 @@ def weekly():
         wm = monday - timedelta(weeks=i)
         we = wm + timedelta(days=6)
         wk_earned = c.execute(
-            "SELECT COALESCE(SUM(delta),0) FROM ledger WHERE date BETWEEN ? AND ? AND delta>0 AND kid_id=?",
+            "SELECT COALESCE(SUM(delta),0) FROM ledger WHERE date BETWEEN ? AND ? AND delta>0 AND kid_id=? "
+            "AND reason NOT IN ('penalty','penalty_cancel')",
             (wm.isoformat(), we.isoformat(), kid)).fetchone()[0]
         weeks.append({"label": f"{wm.month}/{wm.day}", "earned": wk_earned, "week_start": wm.isoformat()})
     mastered = [r[0] for r in c.execute(
@@ -2052,7 +2215,8 @@ def weekly():
         for kr in roster:
             db.apply_scope(c, fam, kr["id"])
             ke = c.execute(
-                "SELECT COALESCE(SUM(delta),0) FROM ledger WHERE kid_id=? AND date BETWEEN ? AND ? AND delta>0",
+                "SELECT COALESCE(SUM(delta),0) FROM ledger WHERE kid_id=? AND date BETWEEN ? AND ? AND delta>0 "
+                "AND reason NOT IN ('penalty','penalty_cancel')",
                 (kr["id"], w_start, w_end)).fetchone()[0]
             ks = c.execute(
                 "SELECT COALESCE(SUM(-delta),0) FROM ledger WHERE kid_id=? AND date BETWEEN ? AND ? AND reason='redeem' AND delta<0",
@@ -2069,6 +2233,12 @@ def weekly():
                 mastered_by_kid.append({"kid_id": kr["id"], "name": kr["name"], "items": items})
         db.apply_scope(c, fam, kid)
     insight = build_insights(c, kid)
+    penalty_net = c.execute(
+        "SELECT COALESCE(SUM(delta),0) FROM ledger WHERE kid_id=? AND date BETWEEN ? AND ? "
+        "AND reason IN ('penalty','penalty_cancel')", (kid, this_from, this_to)).fetchone()[0]
+    penalty_count = c.execute(
+        "SELECT COUNT(*) FROM ledger WHERE kid_id=? AND date BETWEEN ? AND ? AND reason='penalty'",
+        (kid, this_from, this_to)).fetchone()[0]
     out = {
         "week_start": w_start, "week_end": w_end,
         "insight": insight,
@@ -2086,6 +2256,8 @@ def weekly():
         "mastered": mastered,
         "mastered_by_kid": mastered_by_kid,
         "kids": kids_cmp,
+        "penalty_net": penalty_net,
+        "penalty_count": penalty_count,
     }
     c.close()
     return out

@@ -94,7 +94,17 @@
    上半：家庭结论一句（对每娃跑 `build_insights()`，按到期复习 > 低分单元 > 体测 > 连击 > 完成量下滑排序，最多两娃，如「先看乐乐的复习（3 项到期），再看弟弟的语文测验。」；都无命中则「这周不用特别盯。」）；对比卡补完成卡数和比上周；本周练牢改为「乐乐：竖式进位；弟弟：like doing」。下半保留单娃图表，标题加当前孩子名。
 
    扩展 `GET /api/admin/weekly`：`kids[]` 增加 `completed`、`completed_last`、`insight`；顶层增加 `family_insight: { text, action, kid_id }`、`mastered_by_kid`。本周窗口=本周一到今天，上周=上周一到上周同一进度日。不做月报、CSV、自动推送。
-3. **B3 扣分**（第二刀，默认可关）：家长端记一笔，`reason='penalty'` 不计入累计获得故不掉级；扣到 0 为止；可冲正为 `penalty_cancel`。不做自动扣、孩子互扣、扣到负。
+3. **B3 扣分**（已完成，默认可关）
+
+   家长主动记一笔，不自动罚未完成任务，不进「今天怎么做」，不改复习队列。默认关。
+
+   累计获得改为 `reason NOT IN ('redeem','penalty','penalty_cancel')`，故扣分和冲正都不掉级、也不刷等级。余额扣到 0 为止。`fingerprints.earned_sum` 同口径。
+
+   迁移 `026_penalty`：`families.penalty_enabled INTEGER DEFAULT 0`。仅 owner 可开关；开启后任意家长可记账、可冲正。关着时记账/冲正 403「扣分未开启」。
+
+   表单用当前顶栏孩子：数量 1–余额（超过则「最多还能扣 N」）；原因 `磨蹭` / `没完成约定` / `没礼貌` / `其他`（选其他必填备注，最多 40 字）。ledger：`reason='penalty'`，`delta=-N`，`ref_id=pen-{uuid}`。冲正写 `penalty_cancel` 正流水，同一 ref 只能一次。Postgres 对 kid ledger `FOR UPDATE`。
+
+   接口：`GET /api/admin/family` 增加 `penalty_enabled`；`PUT /api/admin/family/penalty`；`POST/GET /api/admin/penalty`；`POST /api/admin/penalty/{id}/cancel`。周报增加当前娃 `penalty_net` / `penalty_count`，净扣为 0 不展示。孩子端等级旁「最近阳光」最多 5 条，扣分可见、不可操作。
 4. **B4 家庭共同目标**（第三刀）：同时只 1 个进行中目标；指标只用完成卡数、运动次数、签到天数；达标每人发 0–20 阳光（默认 5，`reason='family_goal'`，只发一次）；过期关闭不扣分。孩子端只在「今天怎么做」顶部显示「全家还差 N 次」。
 
 B1+B2 不改阳光规则。B3 必须有开关、冲正和「不掉级」测试。B4 要防重复发放。

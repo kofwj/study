@@ -69,5 +69,127 @@ def test_family():
         print("family ok")
 
 
+def test_penalty_switch_and_ledger():
+    db.init_db()
+    with TestClient(main.app) as cli, TestClient(main.app) as other, TestClient(main.app) as kidc:
+        assert cli.post("/api/auth/register", json={"account": "pena", "pin": "penalty8", "family_name": "扣分家"}).status_code == 200
+        fam = cli.get("/api/admin/family").json()
+        assert fam.get("penalty_enabled") in (0, False)
+        kid = cli.post("/api/admin/kids", json={"name": "甲", "account": "jia3", "pin": "111222"}).json()["id"]
+        q = "?selected_kid=" + kid
+        assert cli.post("/api/admin/penalty" + q, json={"amount": 5, "reason": "磨蹭"}).status_code == 403
+        assert cli.put("/api/admin/family/penalty", json={"enabled": True}).status_code == 200
+        c = db.connect()
+        db.insert_ledger(c, db.today(), 20, "task", "seed-pen", "测试余额", kid)
+        c.commit(); c.close()
+        ov = cli.get("/api/overview" + q).json()
+        earned0, bal0, level0 = ov["earned"], ov["balance"], ov["level"]
+        assert earned0 == 20 and bal0 == 20
+        r = cli.post("/api/admin/penalty" + q, json={"amount": 5, "reason": "磨蹭"})
+        assert r.status_code == 200, r.text
+        body = r.json()
+        assert body["delta"] == -5 and body["balance"] == bal0 - 5
+        assert body["earned"] == earned0 == body["earned_before"]
+        assert body["level"]["level"] == level0
+        assert cli.post("/api/admin/penalty" + q, json={"amount": body["balance"] + 1, "reason": "磨蹭"}).status_code == 400
+        assert cli.post("/api/admin/penalty" + q, json={"amount": 1, "reason": "其他"}).status_code == 400
+        lid = body["id"]
+        c1 = cli.post(f"/api/admin/penalty/{lid}/cancel" + q)
+        assert c1.status_code == 200, c1.text
+        assert c1.json()["balance"] == bal0 and c1.json()["earned"] == earned0
+        assert cli.post(f"/api/admin/penalty/{lid}/cancel" + q).status_code == 409
+        r2 = cli.post("/api/admin/penalty" + q, json={"amount": 8, "reason": "没礼貌"})
+        assert r2.status_code == 200
+        assert cli.post(f"/api/admin/penalty/{r2.json()['id']}/cancel" + q).status_code == 200
+        wk = cli.get("/api/admin/weekly" + q).json()
+        assert wk["penalty_net"] == 0
+        r3 = cli.post("/api/admin/penalty" + q, json={"amount": 3, "reason": "其他", "note": "约定没做到"})
+        assert r3.status_code == 200, r3.text
+        wk2 = cli.get("/api/admin/weekly" + q).json()
+        assert wk2["penalty_net"] == -3 and wk2["penalty_count"] >= 1
+        ov2 = cli.get("/api/overview" + q).json()
+        assert ov2["earned"] == earned0 and ov2["balance"] == bal0 - 3
+        assert ov2["level"] == level0
+        got = cli.get("/api/admin/penalty" + q).json()
+        rows = got["items"] if isinstance(got, dict) else got
+        assert any(x["id"] == r3.json()["id"] and not x["cancelled"] for x in rows)
+        sm = got["summary"]
+        assert sm["net"] == -3 and sm["count"] == 1 and sm["amount"] == 3
+        other_row = next(x for x in sm["by_reason"] if x["reason"] == "其他")
+        assert other_row["count"] == 1 and other_row["amount"] == 3
+        assert all(x["count"] == 0 for x in sm["by_reason"] if x["reason"] != "其他")
+        assert other.post("/api/auth/register", json={"account": "penb", "pin": "penalty9", "family_name": "别家"}).status_code == 200
+        assert other.post("/api/admin/penalty", json={"amount": 1, "reason": "磨蹭"}).status_code == 403
+        assert kidc.post("/api/auth/login", json={"account": "jia3", "pin": "111222"}).status_code == 200
+        assert kidc.post("/api/admin/penalty", json={"amount": 1, "reason": "磨蹭"}).status_code == 403
+        led = kidc.get("/api/ledger?limit=5").json()
+        assert any(x["reason"] == "penalty" and x["delta"] == -3 for x in led)
+
+
+def test_penalty_concurrent_sqlite():
+    """测试SQLite并发扣分的IMMEDIATE事务保护"""
+    db.init_db()
+    with TestClient(main.app) as cli1, TestClient(main.app) as cli2:
+        # 创建家庭和孩子
+        assert cli1.post("/api/auth/register", json={"account": "concurrent", "pin": "test1234", "family_name": "并发家"}).status_code == 200
+        kid = cli1.post("/api/admin/kids", json={"name": "测试", "account": "test1", "pin": "111222"}).json()["id"]
+        q = "?selected_kid=" + kid
+        
+        # 开启扣分
+        assert cli1.put("/api/admin/family/penalty", json={"enabled": True}).status_code == 200
+        
+        # 给孩子初始余额10阳光
+        c = db.connect()
+        db.insert_ledger(c, db.today(), 10, "task", "init-concurrent", "初始余额", kid)
+        c.commit()
+        c.close()
+        
+        # 验证余额
+        ov = cli1.get("/api/overview" + q).json()
+        assert ov["balance"] == 10
+        
+        # cli2用同一家长账号登录（模拟并发）
+        assert cli2.post("/api/auth/login", json={"account": "concurrent", "pin": "test1234"}).status_code == 200
+        
+        # 同时扣分：cli1扣6，cli2扣6
+        # 由于IMMEDIATE事务，至少有一个会失败或者总余额不会为负
+        import concurrent.futures
+        
+        def penalty_request(client, amount):
+            try:
+                r = client.post("/api/admin/penalty" + q, json={"amount": amount, "reason": "磨蹭"})
+                return r.status_code, r.json() if r.status_code == 200 else r.text
+            except Exception as e:
+                return 500, str(e)
+        
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+            future1 = executor.submit(penalty_request, cli1, 6)
+            future2 = executor.submit(penalty_request, cli2, 6)
+            
+            result1 = future1.result()
+            result2 = future2.result()
+        
+        # 验证结果：至少有一个成功，余额不为负
+        final_balance = cli1.get("/api/overview" + q).json()["balance"]
+        
+        success_count = sum(1 for r in [result1, result2] if r[0] == 200)
+        
+        # 两种合理结果：
+        # 1. 两个都成功但有序执行：10-6-6=-2不可能，所以第二个会失败
+        # 2. 一个成功一个失败：余额=4或4
+        
+        if success_count == 2:
+            # 如果两个都成功，余额应该是负数，这不应该发生
+            assert False, f"Both succeeded but balance is {final_balance}, should not be negative!"
+        elif success_count == 1:
+            # 一个成功，余额应该是4
+            assert final_balance == 4, f"One succeeded, balance should be 4, got {final_balance}"
+        else:
+            # 两个都失败也不对
+            assert False, f"Both failed: {result1}, {result2}"
+
+
 if __name__ == "__main__":
     test_family()
+    test_penalty_switch_and_ledger()
+    test_penalty_concurrent_sqlite()
