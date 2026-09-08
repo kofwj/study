@@ -502,14 +502,17 @@ function reloadApp() {
           <span><CalendarDays class="ico" :size="15" /> {{ data.today_checkin ? '今日已签到' : '每日签到' }}</span>
         </button>
         
-        <button class="nav" :class="{ on: activeTab === '今日推荐' }" @click="activeTab = '今日推荐'">
-          <span><Sparkles class="ico" :size="15" /> 今日推荐</span>
-        </button>
-        <button v-for="s in orderedSubjects" :key="s.id" class="nav"
-          :class="{ on: activeTab === s.id }" @click="activeTab = s.id">
-          <span><component :is="ICONS[s.id] || BookOpen" class="ico" :size="15" /> {{ s.name }}</span>
-          <em>{{ subjectProgress[s.id]?.done || 0 }}/{{ subjectProgress[s.id]?.total || 0 }}</em>
-        </button>
+        <!-- 导航分组 -->
+        <div class="nav-group">
+          <button class="nav" :class="{ on: activeTab === '今日推荐' }" @click="activeTab = '今日推荐'">
+            <span><Sparkles class="ico" :size="15" /> 今日推荐</span>
+          </button>
+          <button v-for="s in orderedSubjects" :key="s.id" class="nav"
+            :class="{ on: activeTab === s.id }" @click="activeTab = s.id">
+            <span><component :is="ICONS[s.id] || BookOpen" class="ico" :size="15" /> {{ s.name }}</span>
+            <em>{{ subjectProgress[s.id]?.done || 0 }}/{{ subjectProgress[s.id]?.total || 0 }}</em>
+          </button>
+        </div>
         
         <!-- 最近阳光 - 移到左侧底部 -->
         <div v-if="recentLedger.length" class="side-sunshine">
@@ -893,30 +896,43 @@ body {
 .next-bar { height: 6px; background: rgba(255,255,255,.35); border-radius: 4px; margin-top: 6px; overflow: hidden; }
 .next-bar i { display: block; height: 100%; background: var(--accent); }
 
-/* 签到按钮样式 */
+/* 签到按钮样式 - 独立显示 */
 .nav-checkin {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   font-weight: 700;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
+  box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
 }
 .nav-checkin:hover:not(:disabled) {
   background: linear-gradient(135deg, #5568d3 0%, #63408a 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 12px rgba(102, 126, 234, 0.4);
 }
 .nav-checkin.done {
   background: var(--warm);
   color: var(--ink-2);
   cursor: default;
+  box-shadow: none;
 }
 .nav-checkin .ico {
   color: inherit;
 }
 
+/* 导航分组 - 视觉分隔 */
+.nav-group {
+  padding-top: 8px;
+  border-top: 2px solid var(--border);
+}
+.nav:first-of-type {
+  margin-top: 0;
+}
+
 /* 左侧阳光样式 */
 .side-sunshine {
-  margin-top: auto;
+  margin-top: 16px;
   padding-top: 16px;
-  border-top: 1px solid var(--border);
+  border-top: 2px solid var(--border);
 }
 .side-sunshine-header {
   display: flex;
