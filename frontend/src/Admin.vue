@@ -83,7 +83,8 @@ const toast = ref('')
 
 const dayNet = (d) => Number(d && (d.net != null ? d.net : d.earned)) || 0
 const maxDayEarn = computed(() => Math.max(1, ...(weekly.value.days || []).map((d) => Math.abs(dayNet(d)))))
-const maxSubj = computed(() => Math.max(1, ...(weekly.value.by_subject || []).map((s) => s.count)))
+const subjectRows = computed(() => [...(weekly.value.by_subject || [])].sort((a, b) => (b.sun || 0) - (a.sun || 0)))
+const maxSubj = computed(() => Math.max(1, ...subjectRows.value.map((s) => s.sun || 0)))
 const weekNet = (w) => Number(w && (w.net != null ? w.net : w.earned)) || 0
 const maxWeek = computed(() => {
   const vals = (weekly.value.weeks || []).map(weekNet)
@@ -672,9 +673,8 @@ onMounted(load)
   <div class="admin">
     <header class="a-head">
       <div>
-        <div class="a-kicker">SUNSHINE</div>
         <div class="a-title">家长工作台</div>
-        <div class="a-sub" :title="APP_REVISION">{{ me.name || '家长' }} · {{ APP_LABEL }}</div>
+        <div class="a-sub" :title="APP_REVISION">{{ APP_LABEL }}</div>
       </div>
       <div class="a-head-right">
         <div v-if="isMultiKid" class="kid-switch">
@@ -825,10 +825,10 @@ onMounted(load)
       <div v-if="weekly.by_subject && weekly.by_subject.length" class="dash-chart">
         <h4 class="w-h">本周各科</h4>
         <div class="w-subj">
-          <div v-for="s in weekly.by_subject" :key="s.name" class="w-subj-row">
+          <div v-for="s in subjectRows" :key="s.name" class="w-subj-row">
             <span class="w-subj-name">{{ s.name }}</span>
-            <div class="w-subj-track"><i :style="{ width: (s.count / maxSubj * 100) + '%' }"></i></div>
-            <span class="w-subj-num">{{ s.count }} 次 · +{{ s.sun }}</span>
+            <div class="w-subj-track"><i :style="{ width: ((s.sun || 0) / maxSubj * 100) + '%' }"></i></div>
+            <span class="w-subj-num">+{{ s.sun }}</span>
           </div>
         </div>
       </div>
@@ -932,13 +932,13 @@ onMounted(load)
         </div>
       </div>
 
-      <h4 class="w-h">本周各科完成{{ currentKidName ? ' · ' + currentKidName : '' }}</h4>
+      <h4 class="w-h">本周各科{{ currentKidName ? ' · ' + currentKidName : '' }}</h4>
       <div v-if="!weekly.by_subject.length" class="dim">本周还没完成任务。</div>
       <div v-else class="w-subj">
-        <div v-for="s in weekly.by_subject" :key="s.name" class="w-subj-row">
+        <div v-for="s in subjectRows" :key="s.name" class="w-subj-row">
           <span class="w-subj-name">{{ s.name }}</span>
-          <div class="w-subj-track"><i :style="{ width: (s.count / maxSubj * 100) + '%' }"></i></div>
-          <span class="w-subj-num">{{ s.count }} 次 · +{{ s.sun }}</span>
+          <div class="w-subj-track"><i :style="{ width: ((s.sun || 0) / maxSubj * 100) + '%' }"></i></div>
+          <span class="w-subj-num">+{{ s.sun }}</span>
         </div>
       </div>
     </section>
@@ -1416,13 +1416,12 @@ onMounted(load)
 .admin { max-width: 1160px; margin: 0 auto; padding: 20px 24px; padding-top: calc(20px + env(safe-area-inset-top)); font-family: system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; color: var(--ink); }
 .a-head {
   background: linear-gradient(135deg, var(--brand) 0%, var(--brand-deep) 100%);
-  color: #fff; border-radius: var(--radius-xl); padding: 22px 24px;
+  color: #fff; border-radius: var(--radius-xl); padding: 16px 20px;
   display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap;
   box-shadow: var(--shadow-md);
 }
-.a-kicker { font-size: 11px; letter-spacing: .18em; font-weight: 700; opacity: .72; }
-.a-title { font-size: 26px; font-weight: 800; letter-spacing: -.02em; margin-top: 2px; }
-.a-sub { font-size: 13px; opacity: .88; margin-top: 4px; }
+.a-title { font-size: 20px; font-weight: 800; letter-spacing: -.02em; }
+.a-sub { font-size: 12px; opacity: .75; margin-top: 2px; }
 .a-head-right { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .kid-switch { display: flex; gap: 6px; flex-wrap: wrap; }
 .kid-switch button {
@@ -1582,7 +1581,7 @@ button.fam-card { cursor: pointer; }
 .pen-sum .w-subj-name { width: 84px; }
 .w-subj-track { flex: 1; background: var(--line); border-radius: var(--radius-xs); height: 12px; overflow: hidden; }
 .w-subj-track i { display: block; height: 100%; background: linear-gradient(90deg,var(--brand),var(--brand)); border-radius: var(--radius-xs); }
-.w-subj-num { flex: none; font-size: 12px; color: var(--ink-2); }
+.w-subj-num { flex: none; min-width: 2.6em; text-align: right; font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--ink-2); }
 .band-box { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 14px; }
 .band { font-size: 12px; padding: 4px 10px; border-radius: var(--radius-pill); background: var(--warm); color: var(--accent-ink); font-weight: 700; }
 .test-band-editor { padding: 12px 0 4px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); margin-bottom: 14px; }

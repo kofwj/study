@@ -2197,7 +2197,7 @@ def weekly():
         "  SELECT s.name, COUNT(*), COALESCE(SUM(c.sunshine),0) "
         "  FROM completions c JOIN daily_tasks t ON t.id=c.task_id JOIN subjects s ON s.id=t.subject_id "
         "  WHERE c.status='completed' AND c.kid_id=? AND c.date BETWEEN ? AND ? GROUP BY s.name "
-        ") GROUP BY name ORDER BY cnt DESC", (kid, w_start, w_end, kid, w_start, w_end)).fetchall()
+        ") GROUP BY name ORDER BY sun DESC, name", (kid, w_start, w_end, kid, w_start, w_end)).fetchall()
     checkins = c.execute(
         "SELECT COUNT(DISTINCT date) FROM checkins WHERE kid_id=? AND date BETWEEN ? AND ?", (kid, w_start, w_end)).fetchone()[0]
     weeks = []
