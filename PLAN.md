@@ -63,9 +63,8 @@
 目标：让更新和恢复可复现。
 
 1. ~~在 CI 或部署前执行 Python 编译、回归测试、前端 build 和前端冒烟检查。~~ 已完成：`.github/workflows/ci.yml` 与 `scripts/pre_deploy.sh`。
-2. 把生产数据库备份、恢复演练和迁移校验写成可执行脚本。
-3. 明确 SQLite 与 PostgreSQL 的生产选择，并为实际选择保留一套已验证部署流程。
-4. 补充版本发布步骤：更新 `CHANGELOG.md`、运行验证、打 tag、发布 APK/WebView 壳。
+2. ~~生产备份与还原~~ 已完成：`enhanced_backup.sh` + cron（`install_backup_cron.sh`）+ `restore_db.sh`。只用 SQLite。
+3. 补充版本发布步骤：更新 `CHANGELOG.md`、运行验证、打 tag、发布 APK/WebView 壳。
 
 验收：任何一次课程或前端更新都能在部署前发现构建失败，并可从备份恢复。
 

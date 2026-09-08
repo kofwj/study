@@ -54,7 +54,29 @@ def test_family():
             assert r.status_code == 200
             names_c = {x["name"] for x in c.get("/api/rewards").json()}
             assert "A家奖" in names_c
-        mid = next(m["id"] for m in a.get("/api/admin/members").json() if m["account"] == "carol")
+        members = a.get("/api/admin/members").json()
+        carol = next(m for m in members if m["account"] == "carol")
+        me = a.get("/api/auth/me").json()
+        assert me["id"] and me.get("parent_role") == "owner"
+        # 成员不能删人、不能转让、不能删孩子
+        with TestClient(main.app) as c:
+            assert c.post("/api/auth/login", json={"account": "carol", "pin": "carol888"}).status_code == 200
+            assert c.get("/api/auth/me").json()["parent_role"] == "member"
+            assert c.delete("/api/admin/members/" + me["id"]).status_code == 403
+            assert c.post("/api/admin/transfer-owner", json={"new_owner_id": me["id"]}).status_code == 403
+            kid_id = a.get("/api/admin/kids").json()[0]["id"]
+            assert c.delete("/api/admin/kids/" + kid_id).status_code == 403
+        # 创建者把权限交给成员
+        r = a.post("/api/admin/transfer-owner", json={"new_owner_id": carol["id"]})
+        assert r.status_code == 200, r.text
+        assert a.get("/api/auth/me").json()["parent_role"] == "member"
+        with TestClient(main.app) as c:
+            assert c.post("/api/auth/login", json={"account": "carol", "pin": "carol888"}).status_code == 200
+            assert c.get("/api/auth/me").json()["parent_role"] == "owner"
+            # 交回去
+            assert c.post("/api/admin/transfer-owner", json={"new_owner_id": me["id"]}).status_code == 200
+        assert a.get("/api/auth/me").json()["parent_role"] == "owner"
+        mid = carol["id"]
         assert a.delete("/api/admin/members/" + mid).status_code == 200
         with TestClient(main.app) as c2:
             r = c2.post("/api/auth/login", json={"account": "carol", "pin": "3333"})

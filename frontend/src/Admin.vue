@@ -358,11 +358,21 @@ async function saveKid(k) {
   } catch (e) { showToast(e.message) }
 }
 async function delKid(k) {
+  if (!isOwner.value) return showToast('只有创建者能删除孩子')
   if (!confirm('删除「' + k.name + '」？打卡记录还在库里，只是账号没了。')) return
   try {
     await api.admin.delKid(k.id)
     if (selectedKid.value === k.id) { selectedKid.value = ''; setSelectedKid('') }
     showToast('已删除')
+    await load()
+  } catch (e) { showToast(e.message) }
+}
+async function transferOwner(m) {
+  if (!isOwner.value) return showToast('只有创建者能转让')
+  if (!confirm(`把创建者交给「${m.name}」？交出去后你变成普通成员，不能再删人、删孩子、发邀请码。`)) return
+  try {
+    await api.admin.transferOwner(m.id)
+    showToast('已交给 ' + m.name)
     await load()
   } catch (e) { showToast(e.message) }
 }
@@ -1319,7 +1329,8 @@ onMounted(load)
         <label class="fld kid-pin"><span>改密码（不改就空着）</span><input v-model="k._pin" type="password" autocomplete="new-password" placeholder="至少 6 位，不要重复或连续数字" /></label>
         <div class="ops">
           <button class="ok" @click="saveKid(k)">保存资料</button>
-          <button class="del" @click="delKid(k)">删除账号</button>
+          <button v-if="isOwner" class="del" @click="delKid(k)">删除账号</button>
+          <span v-else class="dim">只有创建者能删除孩子</span>
         </div>
       </div>
       <div class="add-box">
@@ -1357,7 +1368,9 @@ onMounted(load)
           <span class="dim">{{ m.account }}</span>
         </div>
         <span class="badge" :class="{ daily: m.parent_role === 'owner' }">{{ m.parent_role === 'owner' ? '创建者' : '成员' }}</span>
+        <button v-if="isOwner && m.account !== me.account" class="ok" @click="transferOwner(m)">交给创建者</button>
         <button v-if="isOwner && m.account !== me.account" class="del" @click="delMember(m)">删</button>
+        <span v-else-if="!isOwner" class="dim">只有创建者能改成员</span>
       </div>
       <p v-if="!members.length" class="dim">还没有家长成员。</p>
     </section>

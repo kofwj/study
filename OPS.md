@@ -43,31 +43,38 @@ dzkbw 目录 → scripts/fetch_catalog.py(单本) → scripts/gen_catalog.py(批
 
 > 换学期后旧完成记录自动隔离（任务 ID 带 `g5s1-`/`g5x2-` 等学期前缀），不污染等级/流水。家长端「已学到」游标也带前缀，新学期重新拨。
 
-## 二、备份（只读热备份，留最近 10 份）
+## 二、备份与还原（只用 SQLite）
+
+生产库：`/home/kofwj/sunshine/data/sunshine.db`。不要再启 PostgreSQL，也不要写 `DATABASE_URL`。
+
+**定时备份**（每天 02:15、18:15，保留最近 20 份）：
 
 ```bash
 ssh -o BatchMode=yes root@192.168.100.5 \
-  'su - kofwj -c "cd ~/sunshine && python3 scripts/backup_db.py"'
+  'cd /home/kofwj/sunshine && bash scripts/install_backup_cron.sh'
 ```
 
-备份落在 `~/sunshine/data/backups/`。设了 `DATABASE_URL` 时改走 `pg_dump -Fc`（需本机 `pg_dump` 或 `docker exec sunshine-postgres pg_dump ...`）。
-
-SQLite → Postgres（**只在切流前跑一次**；会清空 PG 重灌，切流后勿重跑）。
-
-前置：postgres 已起且 healthy；`.env` 已写好 `DATABASE_URL`/`DATABASE_APP_URL`（两者都必须是 `@postgres:5432`，容器网络名）。
-
-宿主机没装 psycopg、postgres 也没开 host 端口，所以在 **app 镜像里借 psycopg、走 docker 网络**跑。在 VPS 上（kofwj）执行：
+手动备份：
 
 ```bash
-cd ~/sunshine
-set -a; . ./.env; set +a
-docker run --rm --network sunshine_default \
-  -v /home/kofwj/sunshine:/app -w /app \
-  -e DATABASE_URL -e DATABASE_APP_URL \
-  sunshine-sunshine python3 scripts/migrate_to_pg.py
+ssh -o BatchMode=yes root@192.168.100.5 \
+  'cd /home/kofwj/sunshine && bash scripts/enhanced_backup.sh'
 ```
 
-通过后 `docker compose up -d`（`.env` 的 `COMPOSE_PROFILES=postgres` 会让 postgres 一起起并切流量）。请求必须走 `sunshine_app`，`sunshine` 是 superuser 会绕过 RLS。
+备份落在 `/home/kofwj/sunshine/data/backups/sqlite_YYYYMMDD_HHMMSS.db`。部署脚本也会先备份再拉代码。
+
+**还原**（会先停容器、再把当前库另存为 `pre_restore_*.db`，然后拷回指定备份）：
+
+```bash
+# 列出备份（流水条数 / 阳光）
+ssh root@192.168.100.5 'cd /home/kofwj/sunshine && bash scripts/restore_db.sh'
+
+# 先看会还原哪一份
+ssh root@192.168.100.5 'cd /home/kofwj/sunshine && bash scripts/restore_db.sh --latest --dry-run'
+
+# 真正还原最近一份
+ssh root@192.168.100.5 'cd /home/kofwj/sunshine && bash scripts/restore_db.sh --latest'
+```
 
 ## 2.5 本地前端（改 Vue 必跑，不用上 VPS 才知道白屏）
 
@@ -82,12 +89,14 @@ bash scripts/pre_deploy.sh              # pytest + 上面这条
 
 ## 三、日常更新（备份 → 拉代码 → 重新构建 → 起容器）
 
+在本机仓库根执行（会 SSH 到 VPS 跑检查 → 备份 → 拉代码 → 构建）：
+
 ```bash
 ssh -o BatchMode=yes root@192.168.100.5 \
-  'su - kofwj -c "cd ~/sunshine && python3 scripts/backup_db.py && git pull --ff-only origin main && export APP_REVISION=\$(git rev-parse --short=7 HEAD) && docker compose build --no-cache --build-arg APP_REVISION=\$APP_REVISION && docker compose up -d"'
+  'cd /home/kofwj/sunshine && bash scripts/deploy_vps.sh'
 ```
 
-或直接跑本地脚本 `scripts/deploy_vps.sh`（同样先备份再构建）。前端烘焙进镜像，**改前端必须 build**。部署后等 3 秒，手机/PWA 会自动检测新版本并提示刷新（不用手动清缓存）。孩子端底栏、家长端顶栏和 `curl https://study.anemy.org/api/health` 都能看到当前版本号。
+前端烘焙进镜像，**改前端必须 build**。部署后等几秒，手机/PWA 会提示刷新。孩子端底栏、家长端顶栏和 `curl https://study.anemy.org/api/health` 都能看到当前版本号。健康检查走内网 `http://192.168.100.5:9000/api/health`（端口绑在这台机器上，不是 127.0.0.1）。
 
 本机首次克隆后执行一次 `bash scripts/install_git_hooks.sh`。之后每次提交会自动把 `VERSION` 最后一位加 1（`0.1.0` → `0.1.1`，`0.1.99` → `0.2.0`）。如果这次已经手动改并暂存了 `VERSION`，就不会再自动加。跳过用 `SKIP_VERSION_BUMP=1 git commit`。
 
@@ -106,8 +115,8 @@ ssh -o BatchMode=yes root@192.168.100.5 'cd ~/sunshine && ./scripts/reset_data.p
 ```bash
 # 外网（本地可直接访问）
 curl -s https://study.anemy.org/api/health
-# VPS 内网
-ssh -o BatchMode=yes root@192.168.100.5 'curl -s http://127.0.0.1:9000/api/health'
+# VPS 内网（绑的是 192.168.100.5，不是 127.0.0.1）
+ssh -o BatchMode=yes root@192.168.100.5 'curl -s http://192.168.100.5:9000/api/health'
 ```
 
 期望返回 `{"ok":true}`。
@@ -145,4 +154,4 @@ cd frontend && npm install && npm run dev
 
 ---
 
-**登录（P1）**：账号 `parent`（家长）/ `lele`（娃），密码沿用旧 PIN（当前 **0129**）。HttpOnly Cookie：家长 `pid`、娃 `sid`。公网 HTTPS 带 `Secure`；内网 `http://192.168.100.5:9000` 无 `Secure`。改密后旧会话失效。`SECRET_KEY` 在 `data/.secret_key`（不进 git）。
+**登录**：家长 `parent` / `parent88`（至少 8 位）；孩子 `lele` / `888888`（至少 6 位，不要重复或连续数字）。HttpOnly Cookie：家长 `pid`、娃 `sid`。公网 HTTPS 带 `Secure`；内网 `http://192.168.100.5:9000` 无 `Secure`。改密后旧会话失效。`SECRET_KEY` 写在 VPS `.env`，不进 git。

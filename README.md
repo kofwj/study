@@ -6,7 +6,7 @@
 
 ## 当前状态
 
-- 版本：**v0.1.11** (2024-09-08 简化架构)
+- 版本：**v0.1.44**（见 [CHANGELOG.md](CHANGELOG.md)；提交时自动加 1）
 - 后端：FastAPI + SQLite
 - 前端：Vue 3 + Vite，移动优先，支持 PWA
 - 平板：Android WebView 壳，可从 [Releases](https://github.com/kofwj/study/releases) 下载 APK
@@ -178,7 +178,7 @@ ssh root@192.168.100.5 'cd /home/kofwj/sunshine && \
 
 ```bash
 curl -s https://study.anemy.org/api/health
-# 应返回: {"ok":true,"version":"0.1.2"}
+# 应返回: {"ok":true,"version":"..."}  版本号以 VERSION 为准
 ```
 
 ### 账号管理
@@ -240,10 +240,11 @@ GitHub Actions 在 push/PR 时会跑编译、pytest、前端 build 和冒烟检�
 - `data/knowledge_tags.json`：考点字典和单元映射
 - `data/catalog.json`：电子教材目录缓存
 - `scripts/`：教材生成、备份、部署和重置脚本
-- `OPS.md`：运维速查
+- `OPS.md`：运维速查（备份、还原、部署）
 - `CONTENT.md`：教材版本和目录
 - `PLAN.md`：当前路线和后续计划
 - `CHANGELOG.md`：版本变更记录
+- `TODO.md`：待办（过时条目已勾掉）
 
 ## 已知限制
 

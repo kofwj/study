@@ -72,6 +72,7 @@ export const api = {
     invite: () => j('/api/admin/invite', { method: 'POST' }),
     members: () => j('/api/admin/members'),
     delMember: (id) => j(`/api/admin/members/${id}`, { method: 'DELETE' }),
+    transferOwner: (new_owner_id) => j('/api/admin/transfer-owner', { method: 'POST', ...body({ new_owner_id }) }),
     family: () => j('/api/admin/family'),
     setInviteProtect: (enabled) => j('/api/admin/family/invite_protect', { method: 'PUT', ...body({ enabled }) }),
     invites: () => j('/api/admin/invites'),

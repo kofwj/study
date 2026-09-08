@@ -1544,7 +1544,7 @@ def transfer_owner(body: TransferOwnerBody, request: Request):
 @app.get("/api/auth/me")
 def auth_me(request: Request):
     u = getattr(request.state, "user", None)
-    result = {"role": u["role"], "name": u["name"], "account": u["account"],
+    result = {"id": u["id"], "role": u["role"], "name": u["name"], "account": u["account"],
             "force_pin_change": bool(u.get("force_pin_change"))}
     # 家长账号返回角色权限
     if u["role"] == "parent":
