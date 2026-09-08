@@ -546,7 +546,7 @@ function reloadApp() {
             <em>{{ subjectProgress[s.id]?.done || 0 }}/{{ subjectProgress[s.id]?.total || 0 }}</em>
           </button>
         </div>
-        <div v-if="recentSunshine.length" class="side-split" role="separator"></div>
+        <div v-if="recentSunshine.length" class="side-split side-split-sun" role="separator"></div>
         <div v-if="recentSunshine.length" class="side-sunshine">
           <div class="side-sunshine-header">
             <Sun class="ico" :size="14" />
@@ -1341,28 +1341,6 @@ body {
   .today-summary { align-items: stretch; gap: 10px; }
   .today-progress { min-width: 100%; }
 
-  .body { flex-direction: column; gap: 0; padding: 0; }
-  .side {
-    width: 100%; flex: none; border-radius: 0;
-    position: sticky; top: var(--topbar-height, 0px); z-index: 9;
-    max-height: none;
-    display: flex; gap: 6px; overflow-x: auto;
-    padding: 8px 12px; box-shadow: var(--shadow-md);
-    -webkit-overflow-scrolling: touch;
-  }
-  .side-split {
-    width: 1px;
-    height: auto;
-    align-self: stretch;
-    margin: 4px 6px;
-  }
-  .nav {
-    flex: 0 0 auto; min-width: auto; width: auto; margin: 0;
-    flex-direction: column; align-items: flex-start; gap: 2px;
-    padding: 8px 12px; white-space: nowrap;
-  }
-  .nav em { padding: 0; background: none; }
-
   .mask { padding: 12px; }
   .shop-modal { width: 100%; max-width: none; }
   .main { padding: 12px 14px 16px; }
@@ -1378,5 +1356,42 @@ body {
   .foot-label { display: none; }
   .foot-input { min-width: 0; font-size: 16px; }
   .shop-fab { padding: 10px 12px; }
+}
+
+/* iPad 竖屏：继续左侧栏，略收窄。不要把科目横滑。 */
+@media (max-width: 1100px) and (min-width: 701px) {
+  .side { width: 168px; flex: 0 0 168px; padding: 8px; }
+  .nav { padding: 10px; font-size: 14px; }
+  .nav em { padding: 1px 6px; font-size: 11px; }
+  .side-sunshine-header { padding: 0 8px; }
+}
+
+/* 手机：顶下一行胶囊。最近阳光不挤进横条。 */
+@media (max-width: 700px) {
+  .body { flex-direction: column; gap: 0; padding: 0; }
+  .side {
+    width: 100%; flex: none; border-radius: 0;
+    position: sticky; top: var(--topbar-height, 0px); z-index: 9;
+    max-height: none;
+    display: flex; align-items: center; gap: 8px; overflow-x: auto;
+    padding: 8px 12px; box-shadow: var(--shadow-md);
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .side::-webkit-scrollbar { display: none; }
+  .side-split { width: 1px; height: 28px; align-self: center; margin: 0 2px; }
+  .side-sunshine, .side-split-sun { display: none; }
+  .nav-group {
+    display: flex; flex-direction: row; align-items: center; gap: 8px;
+    padding: 0; margin: 0;
+  }
+  .nav {
+    flex: 0 0 auto; width: auto; margin: 0;
+    flex-direction: row; align-items: center; justify-content: center; gap: 6px;
+    padding: 8px 14px; white-space: nowrap;
+    border-radius: var(--radius-pill);
+    background: var(--surface-2);
+  }
+  .nav em { padding: 1px 6px; font-size: 11px; }
 }
 </style>
