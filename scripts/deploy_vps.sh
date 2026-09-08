@@ -45,7 +45,8 @@ docker compose up -d
 echo ""
 echo "步骤5: 健康检查..."
 for i in $(seq 1 30); do
-  if curl -fsS http://127.0.0.1:9000/api/health >/dev/null 2>&1; then
+  # 使用内网IP而不是127.0.0.1，因为端口绑定在192.168.100.5上
+  if curl -fsS http://192.168.100.5:9000/api/health >/dev/null 2>&1; then
     echo "✅ 已启动并健康: $(git log -1 --oneline)"
     docker compose ps
     echo ""
