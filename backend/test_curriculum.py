@@ -61,7 +61,11 @@ def test_g1_to_g4_s1_hand_tags():
         "g1s1-cn-2": 3, "g1s1-ma-2": 2, "g1s1-kx-1": 2, "g1s1-df-1": 2,
         "g2s1-cn-1": 2, "g2s1-ma-2": 2, "g3s1-en-1": 2, "g4s1-ma-1": 2,
         "g4s1-cn-1": 2, "g4s1-en-1": 2, "g4s1-kx-3": 2, "g4s1-df-4": 2,
+        "g1s1-en-1": 2, "g2s1-en-1": 2,
     }
+    units = {u["id"]: u["name"] for u in SEED["units"]}
+    assert "Liu Tao" in units["g1s1-en-1"]
+    assert "aunt" in units["g2s1-en-1"]
     for uid, n in expect.items():
         row = by[uid]
         assert not row.get("auto"), uid
@@ -72,4 +76,4 @@ def test_g1_to_g4_s1_hand_tags():
     assert by["g1s1-cn-1"].get("auto")
     assert by["g4s1-ma-7"].get("auto")
     g14 = [x for x in TAGS["unit_tags"] if not x.get("auto") and x["unit_id"][:4] in ("g1s1", "g2s1", "g3s1", "g4s1")]
-    assert len(g14) == 107, len(g14)
+    assert len(g14) == 123, len(g14)

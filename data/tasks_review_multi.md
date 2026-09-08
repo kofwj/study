@@ -68,6 +68,18 @@
 | 五 认识 11 ～ 19 | 复习 | 复习「五 认识 11 ～ 19」 |
 | 期末复习 | 复习 | 期末总复习 |
 
+### 英语（8 卡）
+| 单元 | 动作 | 标题 |
+|---|---|---|
+| Unit 1 I'm Liu Tao | 跟读 | 完成「Unit 1 I'm Liu Tao」 |
+| Unit 2 Good morning | 跟读 | 完成「Unit 2 Good morning」 |
+| Unit 3 This is Miss Li | 跟读 | 完成「Unit 3 This is Miss Li」 |
+| Unit 4 Is this a teddy? | 跟读 | 完成「Unit 4 Is this a teddy?」 |
+| Unit 5 A cherry, please | 跟读 | 完成「Unit 5 A cherry, please」 |
+| Unit 6 Look at my balloon | 跟读 | 完成「Unit 6 Look at my balloon」 |
+| Unit 7 I can dance | 跟读 | 完成「Unit 7 I can dance」 |
+| Unit 8 What can you do? | 跟读 | 完成「Unit 8 What can you do?」 |
+
 ### 科学（13 卡）
 | 单元 | 动作 | 标题 |
 |---|---|---|
@@ -153,6 +165,18 @@
 | 数学游戏分享 | 实践 | 综合实践：实践活动 数学连环画 |
 | 数学游戏分享 | 实践 | 综合实践：探索实践与评价反思 |
 | 期末复习 | 复习 | 期末总复习 |
+
+### 英语（8 卡）
+| 单元 | 动作 | 标题 |
+|---|---|---|
+| Unit 1 Let's count! | 跟读 | 完成「Unit 1 Let's count!」 |
+| Unit 2 This is my pencil | 跟读 | 完成「Unit 2 This is my pencil」 |
+| Unit 3 I like carrots | 跟读 | 完成「Unit 3 I like carrots」 |
+| Unit 4 Spring | 跟读 | 完成「Unit 4 Spring」 |
+| Unit 5 What's this? | 跟读 | 完成「Unit 5 What's this?」 |
+| Unit 6 Are you ready? | 跟读 | 完成「Unit 6 Are you ready?」 |
+| Unit 7 What's that? | 跟读 | 完成「Unit 7 What's that?」 |
+| Unit 8 What's in your bag? | 跟读 | 完成「Unit 8 What's in your bag?」 |
 
 ### 科学（13 卡）
 | 单元 | 动作 | 标题 |
@@ -256,6 +280,18 @@
 | 六 有余数的除法 | 复习 | 复习「六 有余数的除法」 |
 | 期末复习 | 复习 | 期末总复习 |
 
+### 英语（8 卡）
+| 单元 | 动作 | 标题 |
+|---|---|---|
+| Unit 1 She's my aunt | 跟读 | 完成「Unit 1 She's my aunt」 |
+| Unit 2 I have a rabbit | 跟读 | 完成「Unit 2 I have a rabbit」 |
+| Unit 3 It has a short tail | 跟读 | 完成「Unit 3 It has a short tail」 |
+| Unit 4 Autumn | 跟读 | 完成「Unit 4 Autumn」 |
+| Unit 5 Have some juice, please! | 跟读 | 完成「Unit 5 Have some juice, please!」 |
+| Unit 6 We like our school | 跟读 | 完成「Unit 6 We like our school」 |
+| Unit 7 Let's clean up! | 跟读 | 完成「Unit 7 Let's clean up!」 |
+| Unit 8 My dad is a doctor | 跟读 | 完成「Unit 8 My dad is a doctor」 |
+
 ### 科学（13 卡）
 | 单元 | 动作 | 标题 |
 |---|---|---|
@@ -356,6 +392,18 @@
 | 七 图形的初步认识（三) | 预习 | 预习「七 图形的初步认识（三)」 |
 | 七 图形的初步认识（三) | 练习 | 完成「七 图形的初步认识（三)」课后练习 |
 | 七 图形的初步认识（三) | 复习 | 复习「七 图形的初步认识（三)」 |
+
+### 英语（8 卡）
+| 单元 | 动作 | 标题 |
+|---|---|---|
+| Unit 1 Where's Kitty? | 跟读 | 完成「Unit 1 Where's Kitty?」 |
+| Unit 2 Dinner is ready | 跟读 | 完成「Unit 2 Dinner is ready」 |
+| Unit 3 We all like PE | 跟读 | 完成「Unit 3 We all like PE」 |
+| Unit 4 I have big eyes | 跟读 | 完成「Unit 4 I have big eyes」 |
+| Unit 5 Can you? | 跟读 | 完成「Unit 5 Can you?」 |
+| Unit 6 Let's go shopping! | 跟读 | 完成「Unit 6 Let's go shopping!」 |
+| Unit 7 Summer | 跟读 | 完成「Unit 7 Summer」 |
+| Unit 8 Don't push, please | 跟读 | 完成「Unit 8 Don't push, please」 |
 
 ### 科学（14 卡）
 | 单元 | 动作 | 标题 |

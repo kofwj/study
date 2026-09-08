@@ -1,5 +1,5 @@
 {
-  "curriculum_ver": "2026-multi-v5",
+  "curriculum_ver": "2026-multi-v6",
   "subjects": [
     "语文",
     "数学",
@@ -1266,6 +1266,230 @@
       "term_id": "g6x2",
       "seq": 7,
       "name": "七 总复习"
+    },
+    {
+      "id": "g1s1-en-1",
+      "subject": "英语",
+      "term_id": "g1s1",
+      "seq": 1,
+      "name": "Unit 1 I'm Liu Tao"
+    },
+    {
+      "id": "g1s1-en-2",
+      "subject": "英语",
+      "term_id": "g1s1",
+      "seq": 2,
+      "name": "Unit 2 Good morning"
+    },
+    {
+      "id": "g1s1-en-3",
+      "subject": "英语",
+      "term_id": "g1s1",
+      "seq": 3,
+      "name": "Unit 3 This is Miss Li"
+    },
+    {
+      "id": "g1s1-en-4",
+      "subject": "英语",
+      "term_id": "g1s1",
+      "seq": 4,
+      "name": "Unit 4 Is this a teddy?"
+    },
+    {
+      "id": "g1s1-en-5",
+      "subject": "英语",
+      "term_id": "g1s1",
+      "seq": 5,
+      "name": "Unit 5 A cherry, please"
+    },
+    {
+      "id": "g1s1-en-6",
+      "subject": "英语",
+      "term_id": "g1s1",
+      "seq": 6,
+      "name": "Unit 6 Look at my balloon"
+    },
+    {
+      "id": "g1s1-en-7",
+      "subject": "英语",
+      "term_id": "g1s1",
+      "seq": 7,
+      "name": "Unit 7 I can dance"
+    },
+    {
+      "id": "g1s1-en-8",
+      "subject": "英语",
+      "term_id": "g1s1",
+      "seq": 8,
+      "name": "Unit 8 What can you do?"
+    },
+    {
+      "id": "g1x2-en-1",
+      "subject": "英语",
+      "term_id": "g1x2",
+      "seq": 1,
+      "name": "Unit 1 Let's count!"
+    },
+    {
+      "id": "g1x2-en-2",
+      "subject": "英语",
+      "term_id": "g1x2",
+      "seq": 2,
+      "name": "Unit 2 This is my pencil"
+    },
+    {
+      "id": "g1x2-en-3",
+      "subject": "英语",
+      "term_id": "g1x2",
+      "seq": 3,
+      "name": "Unit 3 I like carrots"
+    },
+    {
+      "id": "g1x2-en-4",
+      "subject": "英语",
+      "term_id": "g1x2",
+      "seq": 4,
+      "name": "Unit 4 Spring"
+    },
+    {
+      "id": "g1x2-en-5",
+      "subject": "英语",
+      "term_id": "g1x2",
+      "seq": 5,
+      "name": "Unit 5 What's this?"
+    },
+    {
+      "id": "g1x2-en-6",
+      "subject": "英语",
+      "term_id": "g1x2",
+      "seq": 6,
+      "name": "Unit 6 Are you ready?"
+    },
+    {
+      "id": "g1x2-en-7",
+      "subject": "英语",
+      "term_id": "g1x2",
+      "seq": 7,
+      "name": "Unit 7 What's that?"
+    },
+    {
+      "id": "g1x2-en-8",
+      "subject": "英语",
+      "term_id": "g1x2",
+      "seq": 8,
+      "name": "Unit 8 What's in your bag?"
+    },
+    {
+      "id": "g2s1-en-1",
+      "subject": "英语",
+      "term_id": "g2s1",
+      "seq": 1,
+      "name": "Unit 1 She's my aunt"
+    },
+    {
+      "id": "g2s1-en-2",
+      "subject": "英语",
+      "term_id": "g2s1",
+      "seq": 2,
+      "name": "Unit 2 I have a rabbit"
+    },
+    {
+      "id": "g2s1-en-3",
+      "subject": "英语",
+      "term_id": "g2s1",
+      "seq": 3,
+      "name": "Unit 3 It has a short tail"
+    },
+    {
+      "id": "g2s1-en-4",
+      "subject": "英语",
+      "term_id": "g2s1",
+      "seq": 4,
+      "name": "Unit 4 Autumn"
+    },
+    {
+      "id": "g2s1-en-5",
+      "subject": "英语",
+      "term_id": "g2s1",
+      "seq": 5,
+      "name": "Unit 5 Have some juice, please!"
+    },
+    {
+      "id": "g2s1-en-6",
+      "subject": "英语",
+      "term_id": "g2s1",
+      "seq": 6,
+      "name": "Unit 6 We like our school"
+    },
+    {
+      "id": "g2s1-en-7",
+      "subject": "英语",
+      "term_id": "g2s1",
+      "seq": 7,
+      "name": "Unit 7 Let's clean up!"
+    },
+    {
+      "id": "g2s1-en-8",
+      "subject": "英语",
+      "term_id": "g2s1",
+      "seq": 8,
+      "name": "Unit 8 My dad is a doctor"
+    },
+    {
+      "id": "g2x2-en-1",
+      "subject": "英语",
+      "term_id": "g2x2",
+      "seq": 1,
+      "name": "Unit 1 Where's Kitty?"
+    },
+    {
+      "id": "g2x2-en-2",
+      "subject": "英语",
+      "term_id": "g2x2",
+      "seq": 2,
+      "name": "Unit 2 Dinner is ready"
+    },
+    {
+      "id": "g2x2-en-3",
+      "subject": "英语",
+      "term_id": "g2x2",
+      "seq": 3,
+      "name": "Unit 3 We all like PE"
+    },
+    {
+      "id": "g2x2-en-4",
+      "subject": "英语",
+      "term_id": "g2x2",
+      "seq": 4,
+      "name": "Unit 4 I have big eyes"
+    },
+    {
+      "id": "g2x2-en-5",
+      "subject": "英语",
+      "term_id": "g2x2",
+      "seq": 5,
+      "name": "Unit 5 Can you?"
+    },
+    {
+      "id": "g2x2-en-6",
+      "subject": "英语",
+      "term_id": "g2x2",
+      "seq": 6,
+      "name": "Unit 6 Let's go shopping!"
+    },
+    {
+      "id": "g2x2-en-7",
+      "subject": "英语",
+      "term_id": "g2x2",
+      "seq": 7,
+      "name": "Unit 7 Summer"
+    },
+    {
+      "id": "g2x2-en-8",
+      "subject": "英语",
+      "term_id": "g2x2",
+      "seq": 8,
+      "name": "Unit 8 Don't push, please"
     },
     {
       "id": "g3s1-en-1",
@@ -15869,6 +16093,358 @@
       "detail": "读一遍圈出生字，能复述主要内容",
       "sunshine": 5,
       "sort": 2,
+      "auto": true
+    },
+    {
+      "id": "g1s1-en-1-1",
+      "subject": "英语",
+      "unit_id": "g1s1-en-1",
+      "action": "跟读",
+      "title": "完成「Unit 1 I'm Liu Tao」",
+      "detail": "跟音频逐句模仿语音语调，读两遍以上",
+      "sunshine": 5,
+      "sort": 1,
+      "auto": true
+    },
+    {
+      "id": "g1s1-en-2-1",
+      "subject": "英语",
+      "unit_id": "g1s1-en-2",
+      "action": "跟读",
+      "title": "完成「Unit 2 Good morning」",
+      "detail": "跟音频逐句模仿语音语调，读两遍以上",
+      "sunshine": 5,
+      "sort": 1,
+      "auto": true
+    },
+    {
+      "id": "g1s1-en-3-1",
+      "subject": "英语",
+      "unit_id": "g1s1-en-3",
+      "action": "跟读",
+      "title": "完成「Unit 3 This is Miss Li」",
+      "detail": "跟音频逐句模仿语音语调，读两遍以上",
+      "sunshine": 5,
+      "sort": 1,
+      "auto": true
+    },
+    {
+      "id": "g1s1-en-4-1",
+      "subject": "英语",
+      "unit_id": "g1s1-en-4",
+      "action": "跟读",
+      "title": "完成「Unit 4 Is this a teddy?」",
+      "detail": "跟音频逐句模仿语音语调，读两遍以上",
+      "sunshine": 5,
+      "sort": 1,
+      "auto": true
+    },
+    {
+      "id": "g1s1-en-5-1",
+      "subject": "英语",
+      "unit_id": "g1s1-en-5",
+      "action": "跟读",
+      "title": "完成「Unit 5 A cherry, please」",
+      "detail": "跟音频逐句模仿语音语调，读两遍以上",
+      "sunshine": 5,
+      "sort": 1,
+      "auto": true
+    },
+    {
+      "id": "g1s1-en-6-1",
+      "subject": "英语",
+      "unit_id": "g1s1-en-6",
+      "action": "跟读",
+      "title": "完成「Unit 6 Look at my balloon」",
+      "detail": "跟音频逐句模仿语音语调，读两遍以上",
+      "sunshine": 5,
+      "sort": 1,
+      "auto": true
+    },
+    {
+      "id": "g1s1-en-7-1",
+      "subject": "英语",
+      "unit_id": "g1s1-en-7",
+      "action": "跟读",
+      "title": "完成「Unit 7 I can dance」",
+      "detail": "跟音频逐句模仿语音语调，读两遍以上",
+      "sunshine": 5,
+      "sort": 1,
+      "auto": true
+    },
+    {
+      "id": "g1s1-en-8-1",
+      "subject": "英语",
+      "unit_id": "g1s1-en-8",
+      "action": "跟读",
+      "title": "完成「Unit 8 What can you do?」",
+      "detail": "跟音频逐句模仿语音语调，读两遍以上",
+      "sunshine": 5,
+      "sort": 1,
+      "auto": true
+    },
+    {
+      "id": "g1x2-en-1-1",
+      "subject": "英语",
+      "unit_id": "g1x2-en-1",
+      "action": "跟读",
+      "title": "完成「Unit 1 Let's count!」",
+      "detail": "跟音频逐句模仿语音语调，读两遍以上",
+      "sunshine": 5,
+      "sort": 1,
+      "auto": true
+    },
+    {
+      "id": "g1x2-en-2-1",
+      "subject": "英语",
+      "unit_id": "g1x2-en-2",
+      "action": "跟读",
+      "title": "完成「Unit 2 This is my pencil」",
+      "detail": "跟音频逐句模仿语音语调，读两遍以上",
+      "sunshine": 5,
+      "sort": 1,
+      "auto": true
+    },
+    {
+      "id": "g1x2-en-3-1",
+      "subject": "英语",
+      "unit_id": "g1x2-en-3",
+      "action": "跟读",
+      "title": "完成「Unit 3 I like carrots」",
+      "detail": "跟音频逐句模仿语音语调，读两遍以上",
+      "sunshine": 5,
+      "sort": 1,
+      "auto": true
+    },
+    {
+      "id": "g1x2-en-4-1",
+      "subject": "英语",
+      "unit_id": "g1x2-en-4",
+      "action": "跟读",
+      "title": "完成「Unit 4 Spring」",
+      "detail": "跟音频逐句模仿语音语调，读两遍以上",
+      "sunshine": 5,
+      "sort": 1,
+      "auto": true
+    },
+    {
+      "id": "g1x2-en-5-1",
+      "subject": "英语",
+      "unit_id": "g1x2-en-5",
+      "action": "跟读",
+      "title": "完成「Unit 5 What's this?」",
+      "detail": "跟音频逐句模仿语音语调，读两遍以上",
+      "sunshine": 5,
+      "sort": 1,
+      "auto": true
+    },
+    {
+      "id": "g1x2-en-6-1",
+      "subject": "英语",
+      "unit_id": "g1x2-en-6",
+      "action": "跟读",
+      "title": "完成「Unit 6 Are you ready?」",
+      "detail": "跟音频逐句模仿语音语调，读两遍以上",
+      "sunshine": 5,
+      "sort": 1,
+      "auto": true
+    },
+    {
+      "id": "g1x2-en-7-1",
+      "subject": "英语",
+      "unit_id": "g1x2-en-7",
+      "action": "跟读",
+      "title": "完成「Unit 7 What's that?」",
+      "detail": "跟音频逐句模仿语音语调，读两遍以上",
+      "sunshine": 5,
+      "sort": 1,
+      "auto": true
+    },
+    {
+      "id": "g1x2-en-8-1",
+      "subject": "英语",
+      "unit_id": "g1x2-en-8",
+      "action": "跟读",
+      "title": "完成「Unit 8 What's in your bag?」",
+      "detail": "跟音频逐句模仿语音语调，读两遍以上",
+      "sunshine": 5,
+      "sort": 1,
+      "auto": true
+    },
+    {
+      "id": "g2s1-en-1-1",
+      "subject": "英语",
+      "unit_id": "g2s1-en-1",
+      "action": "跟读",
+      "title": "完成「Unit 1 She's my aunt」",
+      "detail": "跟音频逐句模仿语音语调，读两遍以上",
+      "sunshine": 5,
+      "sort": 1,
+      "auto": true
+    },
+    {
+      "id": "g2s1-en-2-1",
+      "subject": "英语",
+      "unit_id": "g2s1-en-2",
+      "action": "跟读",
+      "title": "完成「Unit 2 I have a rabbit」",
+      "detail": "跟音频逐句模仿语音语调，读两遍以上",
+      "sunshine": 5,
+      "sort": 1,
+      "auto": true
+    },
+    {
+      "id": "g2s1-en-3-1",
+      "subject": "英语",
+      "unit_id": "g2s1-en-3",
+      "action": "跟读",
+      "title": "完成「Unit 3 It has a short tail」",
+      "detail": "跟音频逐句模仿语音语调，读两遍以上",
+      "sunshine": 5,
+      "sort": 1,
+      "auto": true
+    },
+    {
+      "id": "g2s1-en-4-1",
+      "subject": "英语",
+      "unit_id": "g2s1-en-4",
+      "action": "跟读",
+      "title": "完成「Unit 4 Autumn」",
+      "detail": "跟音频逐句模仿语音语调，读两遍以上",
+      "sunshine": 5,
+      "sort": 1,
+      "auto": true
+    },
+    {
+      "id": "g2s1-en-5-1",
+      "subject": "英语",
+      "unit_id": "g2s1-en-5",
+      "action": "跟读",
+      "title": "完成「Unit 5 Have some juice, please!」",
+      "detail": "跟音频逐句模仿语音语调，读两遍以上",
+      "sunshine": 5,
+      "sort": 1,
+      "auto": true
+    },
+    {
+      "id": "g2s1-en-6-1",
+      "subject": "英语",
+      "unit_id": "g2s1-en-6",
+      "action": "跟读",
+      "title": "完成「Unit 6 We like our school」",
+      "detail": "跟音频逐句模仿语音语调，读两遍以上",
+      "sunshine": 5,
+      "sort": 1,
+      "auto": true
+    },
+    {
+      "id": "g2s1-en-7-1",
+      "subject": "英语",
+      "unit_id": "g2s1-en-7",
+      "action": "跟读",
+      "title": "完成「Unit 7 Let's clean up!」",
+      "detail": "跟音频逐句模仿语音语调，读两遍以上",
+      "sunshine": 5,
+      "sort": 1,
+      "auto": true
+    },
+    {
+      "id": "g2s1-en-8-1",
+      "subject": "英语",
+      "unit_id": "g2s1-en-8",
+      "action": "跟读",
+      "title": "完成「Unit 8 My dad is a doctor」",
+      "detail": "跟音频逐句模仿语音语调，读两遍以上",
+      "sunshine": 5,
+      "sort": 1,
+      "auto": true
+    },
+    {
+      "id": "g2x2-en-1-1",
+      "subject": "英语",
+      "unit_id": "g2x2-en-1",
+      "action": "跟读",
+      "title": "完成「Unit 1 Where's Kitty?」",
+      "detail": "跟音频逐句模仿语音语调，读两遍以上",
+      "sunshine": 5,
+      "sort": 1,
+      "auto": true
+    },
+    {
+      "id": "g2x2-en-2-1",
+      "subject": "英语",
+      "unit_id": "g2x2-en-2",
+      "action": "跟读",
+      "title": "完成「Unit 2 Dinner is ready」",
+      "detail": "跟音频逐句模仿语音语调，读两遍以上",
+      "sunshine": 5,
+      "sort": 1,
+      "auto": true
+    },
+    {
+      "id": "g2x2-en-3-1",
+      "subject": "英语",
+      "unit_id": "g2x2-en-3",
+      "action": "跟读",
+      "title": "完成「Unit 3 We all like PE」",
+      "detail": "跟音频逐句模仿语音语调，读两遍以上",
+      "sunshine": 5,
+      "sort": 1,
+      "auto": true
+    },
+    {
+      "id": "g2x2-en-4-1",
+      "subject": "英语",
+      "unit_id": "g2x2-en-4",
+      "action": "跟读",
+      "title": "完成「Unit 4 I have big eyes」",
+      "detail": "跟音频逐句模仿语音语调，读两遍以上",
+      "sunshine": 5,
+      "sort": 1,
+      "auto": true
+    },
+    {
+      "id": "g2x2-en-5-1",
+      "subject": "英语",
+      "unit_id": "g2x2-en-5",
+      "action": "跟读",
+      "title": "完成「Unit 5 Can you?」",
+      "detail": "跟音频逐句模仿语音语调，读两遍以上",
+      "sunshine": 5,
+      "sort": 1,
+      "auto": true
+    },
+    {
+      "id": "g2x2-en-6-1",
+      "subject": "英语",
+      "unit_id": "g2x2-en-6",
+      "action": "跟读",
+      "title": "完成「Unit 6 Let's go shopping!」",
+      "detail": "跟音频逐句模仿语音语调，读两遍以上",
+      "sunshine": 5,
+      "sort": 1,
+      "auto": true
+    },
+    {
+      "id": "g2x2-en-7-1",
+      "subject": "英语",
+      "unit_id": "g2x2-en-7",
+      "action": "跟读",
+      "title": "完成「Unit 7 Summer」",
+      "detail": "跟音频逐句模仿语音语调，读两遍以上",
+      "sunshine": 5,
+      "sort": 1,
+      "auto": true
+    },
+    {
+      "id": "g2x2-en-8-1",
+      "subject": "英语",
+      "unit_id": "g2x2-en-8",
+      "action": "跟读",
+      "title": "完成「Unit 8 Don't push, please」",
+      "detail": "跟音频逐句模仿语音语调，读两遍以上",
+      "sunshine": 5,
+      "sort": 1,
       "auto": true
     },
     {

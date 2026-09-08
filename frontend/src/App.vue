@@ -5,7 +5,7 @@ import { APP_LABEL, APP_REVISION } from './version.js'
 // ponytail: 家长后台（1147 行）单独切 chunk，孩子端首屏不加载
 const Admin = defineAsyncComponent(() => import('./Admin.vue'))
 import { SUBJECT_ICONS as ICONS, rankIcon, achIcon } from './icons.js'
-import { tagHelp } from './tagHelp.js'
+import { mottoFor } from './dailyMottos.js'
 import { Sun, Lock, Gift, Check, TrendingUp, Target, User, ShoppingCart, ScrollText, Medal, ChartColumn, Map, CalendarDays, RefreshCw, PartyPopper, Sparkles, BookOpen, Flame } from '@lucide/vue'
 
 const data = reactive({
@@ -14,6 +14,7 @@ const data = reactive({
   kid_name: '乐乐',
   kid_id: '',
   today: '',
+  active_term: '',
   cursors: {},
   today_checkin: false,
   subjects: [],
@@ -226,7 +227,7 @@ async function refresh() {
 async function checkin() {
   try {
     const r = await api.checkin()
-    showToast('已签到，开始学习吧！' + milestoneTxt(r.milestone))
+    showToast('已签到' + milestoneTxt(r.milestone))
     await refresh()
   } catch (e) { showToast(e.message) }
 }
@@ -247,7 +248,7 @@ async function toggleTask(task, event) {
     } else {
       const r = await api.complete(task.id)
       if (event) flyPlus(event.clientX, event.clientY, `+${r.delta} 阳光`)
-      showToast(`太棒了！完成【${task.title}】+${r.delta} 阳光` + milestoneTxt(r.milestone))
+      showToast(`完成【${task.title}】+${r.delta} 阳光` + milestoneTxt(r.milestone))
     }
     await refresh()
   } catch (e) { showToast(e.message) }
@@ -343,7 +344,7 @@ async function openAch() {
 async function openBox() {
   if (boxes.value.avail <= 0) {
     const need = (boxes.value.earned + 1) * 3 - boxes.value.streak
-    showToast(`再连续打卡 ${Math.max(1, need)} 天解锁下一个宝箱！`)
+    showToast(`再连续打卡 ${Math.max(1, need)} 天解锁宝箱`)
     return
   }
   try {
@@ -408,6 +409,10 @@ const bySubject = computed(() => {
   return m
 })
 const dailyTodo = computed(() => data.daily.filter(d => !d.done_today))
+const dailyMotto = computed(() => {
+  const m = /^g(\d)/.exec(data.active_term || '')
+  return mottoFor(data.today, data.kid_id, m ? Number(m[1]) : 0)
+})
 const studyNext = computed(() => {
   const out = []
   for (const subject of orderedSubjects.value) {
@@ -482,8 +487,7 @@ function reloadApp() {
   <div v-else-if="isAdmin && mustChangePin" class="login-screen">
     <div class="login-card">
       <div class="login-logo"><Lock class="ico" :size="36" /></div>
-      <h1>改一下家长密码</h1>
-      <p class="login-sub">家长密码现在至少 8 位，改完才能继续。</p>
+      <h1>改家长密码</h1>
       <input v-model="oldPin" type="password" placeholder="当前密码" autocomplete="current-password" />
       <input v-model="newPin" type="password" placeholder="新密码（至少 8 位）" autocomplete="new-password" />
       <input v-model="newPin2" type="password" placeholder="再输一遍确认" autocomplete="new-password" @keyup.enter="doChangePin" />
@@ -492,7 +496,7 @@ function reloadApp() {
     </div>
   </div>
   <div v-else-if="authed" class="desk" :style="{ '--topbar-height': topbarHeight + 'px', '--update-bar-height': updateBarHeight + 'px' }">
-    <button v-if="updateReady" ref="updateBarEl" type="button" class="update-bar" @click="reloadApp"><RefreshCw class="ico" :size="15" /> 有新版本，点我刷新</button>
+    <button v-if="updateReady" ref="updateBarEl" type="button" class="update-bar" @click="reloadApp"><RefreshCw class="ico" :size="15" /> 有新版本，刷新</button>
     <div v-if="toast" class="toast-note global-toast" role="status">{{ toast }}</div>
     <!-- 蓝顶栏 -->
     <header ref="topbarEl" class="topbar">
@@ -500,7 +504,6 @@ function reloadApp() {
         <div class="avatar" :style="{ background: avatarBg }">{{ avatarLetter }}</div>
         <div>
           <div class="hello">{{ data.today || '今天' }}</div>
-          <div class="hello greet-long">你好呀，五年级的小主人！</div>
           <div class="name-row">
             <b class="kid">{{ data.kid_name }}</b>
           </div>
@@ -520,7 +523,7 @@ function reloadApp() {
           <component :is="rankIcon(data.level.level_icon)" class="ico" :size="14" /> {{ data.level.level }}
           · 再得 {{ data.level.next_need - data.level.earned }} <Sun class="ico sun" :size="13" /> 升级 <component :is="rankIcon(data.level.next_icon)" class="ico" :size="14" /> {{ data.level.next }}
         </span>
-        <span v-else><component :is="rankIcon(data.level.level_icon)" class="ico" :size="14" /> 已是最高等级！</span>
+        <span v-else><component :is="rankIcon(data.level.level_icon)" class="ico" :size="14" /> 最高等级</span>
         <div class="next-bar"><i :style="{ width: data.level.progress + '%' }"></i></div>
       </div>
     </header>
@@ -561,8 +564,7 @@ function reloadApp() {
       <!-- 右栏 -->
       <main class="main">
         <template v-if="activeTab === '今日推荐'">
-          <h1><Sparkles class="ico" :size="20" /> 今天怎么做</h1>
-          <p class="hint">按顺序做就行。每完成一项，点圆圈领取阳光。</p>
+          <h1><Sparkles class="ico" :size="20" /> 今天</h1>
           <div class="today-summary">
             <div class="today-progress">
               <strong v-if="todayRemaining">今天还有 {{ todayRemaining }} 项</strong>
@@ -575,32 +577,32 @@ function reloadApp() {
             </div>
           </div>
           <p v-if="todayPenalty" class="today-pact">
-            今天有约定：{{ todayPenalty.reason }}。阳光少了 {{ todayPenalty.n }}，等级不会掉。把今天的事做好就能再攒回来。
+            今天有约定：{{ todayPenalty.reason }} · {{ todayPenalty.n }}
           </p>
 
           <section v-if="reviewDue.length" class="plan-section review-today">
             <div class="plan-head">
-              <span class="plan-step">先做</span>
               <div>
                 <h2><BookOpen class="ico" :size="18" /> 到期复习</h2>
-                <p>每项照练习册做一遍，再告诉家长结果。</p>
               </div>
             </div>
             <div class="plan-list">
               <article v-for="x in reviewDue" :key="x.id" class="plan-row review-card enter">
                 <div class="plan-row-main">
                   <span class="plan-subject">{{ x.subject_id }}</span>
-                  <div><strong>{{ x.tag_name }}</strong><small>{{ x.unit_name }} · 第 {{ (x.interval_idx || 0) + 1 }} 次</small><small class="plan-review-help">{{ tagHelp(x) }}</small></div>
+                  <div><strong>{{ x.tag_name }}</strong><small>{{ x.unit_name }} · 第 {{ (x.interval_idx || 0) + 1 }} 次</small></div>
                 </div>
                 <span class="plan-state">做完告诉家长</span>
               </article>
             </div>
           </section>
 
-          <section v-if="dailyTodo.length" class="plan-section">
+          <section v-if="data.daily.length" class="plan-section">
             <div class="plan-head">
-              <span class="plan-step">然后</span>
-              <div><h2><RefreshCw class="ico" :size="18" /> 每日打卡</h2><p>把今天要坚持的事做完。</p></div>
+              <div>
+                <h2><RefreshCw class="ico" :size="18" /> 每日打卡</h2>
+                <p>{{ dailyMotto }}</p>
+              </div>
             </div>
             <div class="grid plan-grid">
               <div v-for="d in dailyTodo" :key="d.id" class="card enter">
@@ -621,8 +623,7 @@ function reloadApp() {
 
           <section v-if="studyNext.length" class="plan-section">
             <div class="plan-head">
-              <span class="plan-step">最后</span>
-              <div><h2><BookOpen class="ico" :size="18" /> 本课下一步</h2><p>每科先做一项，做完后会自动出现下一项。</p></div>
+              <div><h2><BookOpen class="ico" :size="18" /> 本课下一步</h2></div>
             </div>
             <div class="grid plan-grid">
               <div v-for="t in studyNext" :key="t.id" class="card enter">
@@ -641,7 +642,6 @@ function reloadApp() {
 
         <template v-else>
           <h1><component :is="ICONS[activeTab] || BookOpen" class="ico" :size="20" /> {{ activeTab }}</h1>
-          <p class="hint">完成一项 +5 <Sun class="ico sun" :size="13" />，再点一次会扣回。</p>
 
           <div class="unit" v-if="data.daily.some(x => x.subject_id === activeTab)">
             <h2><i></i> 每日打卡</h2>
@@ -687,7 +687,7 @@ function reloadApp() {
           </div>
 
           <div v-if="!currentUnits.length && !data.daily.some(x => x.subject_id === activeTab)" class="empty">
-            这科还没任务，家长可以在家长端「任务」里补充。
+            这科没有任务
           </div>
         </template>
       </main>
@@ -799,7 +799,7 @@ function reloadApp() {
       </div>
       <div class="celebrate-card">
         <div class="celebrate-icon"><component :is="rankIcon(celebrate.icon)" class="ico" :size="40" /></div>
-        <div class="celebrate-title"><PartyPopper class="ico" :size="16" /> 升级啦！</div>
+        <div class="celebrate-title"><PartyPopper class="ico" :size="16" /> 升级</div>
         <div class="celebrate-name"><component :is="rankIcon(celebrate.icon)" class="ico" :size="18" /> {{ celebrate.name }}</div>
       </div>
     </div>
@@ -826,7 +826,6 @@ function reloadApp() {
         <div class="box-result">
           <div class="box-icon"><Gift :size="34" /></div>
           <div class="box-gain">+{{ boxResult }} <Sun class="ico sun" :size="16" /></div>
-          <div class="box-tip">太棒了，坚持打卡的奖励！</div>
         </div>
         <button class="do big" @click="boxOpen = false">收下奖励</button>
       </div>
@@ -853,14 +852,12 @@ function reloadApp() {
     <div class="login-card">
       <div class="login-logo"><Sun class="ico" :size="36" /></div>
       <h1>阳光学习工作台</h1>
-      <p class="login-sub">{{ pinForm.who === 'kid' ? '孩子每天来打卡的地方' : '家长管理学习和阳光' }}</p>
       <p class="login-ver" :title="APP_REVISION">{{ APP_LABEL }}</p>
 
       <template v-if="pinForm.who === 'kid'">
         <input v-model="pinForm.account" placeholder="孩子账号" autocomplete="username" />
         <input v-model="pinForm.val" type="password" placeholder="孩子密码（至少 6 位）" autocomplete="current-password" @keyup.enter="verifyPin" />
         <button class="login-enter" @click="verifyPin">进入</button>
-        <p class="login-note">密码至少 6 位，不要重复或连续数字。</p>
         <button type="button" class="login-switch" @click="goParentLogin">我是家长</button>
       </template>
 
@@ -877,11 +874,6 @@ function reloadApp() {
           <input v-if="pinForm.mode==='register'" v-model="pinForm.family" placeholder="家庭名（如：乐乐的家）" />
           <input v-if="pinForm.mode==='join'" v-model="pinForm.code" placeholder="邀请码" />
           <button class="login-enter" @click="verifyPin">{{ pinForm.mode==='register' ? '注册并进入' : '进入' }}</button>
-          <p class="login-note">
-            <template v-if="pinForm.mode==='register'">注册就是为你家开一个独立空间。接下来要加第一个孩子，并抄下找回码。</template>
-            <template v-else-if="pinForm.mode==='join'">邀请码由家里已有的家长在「邀请码」页生成。</template>
-            <template v-else>家长密码至少 8 位。</template>
-          </p>
           <button v-if="pinForm.mode==='login'" type="button" class="login-switch" @click="pinForm.mode='recover'">忘记密码</button>
         </template>
         <template v-else>
@@ -890,7 +882,6 @@ function reloadApp() {
           <input v-model="pinForm.recoverPin" type="password" placeholder="新密码（至少 8 位）" autocomplete="new-password" />
           <input v-model="pinForm.recoverPin2" type="password" placeholder="再输一遍新密码" autocomplete="new-password" @keyup.enter="verifyPin" />
           <button class="login-enter" @click="verifyPin">重置密码并进入</button>
-          <p class="login-note">找回码只在开家时给过一次。用过就作废。没有找回码请联系帮你安装的人。</p>
           <button type="button" class="login-switch" @click="pinForm.mode='login'">回到登录</button>
         </template>
         <button type="button" class="login-switch" @click="goKidLogin">孩子打卡入口</button>
@@ -1102,7 +1093,6 @@ body {
 .main { flex: 1; min-width: 0; }
 .main h1 { margin: 4px 0 6px; font-size: 28px; }
 .main h1 .ico { color: var(--accent); }
-.hint { color: var(--ink-3); font-size: 13px; margin: 0 0 16px; }
 .unit { margin-bottom: 22px; }
 .unit h2 {
   margin: 0 0 10px; font-size: 16px; color: var(--brand-deep); display: flex; align-items: center; gap: 8px;
@@ -1131,10 +1121,6 @@ body {
 .plan-section { margin: 0 0 24px; }
 .plan-section.review-today { padding: 14px; border: 1px solid var(--accent); border-radius: var(--radius-lg); background: var(--warm-2); }
 .plan-head { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 10px; }
-.plan-step {
-  flex: none; padding: 4px 9px; border-radius: var(--radius-pill); background: var(--brand);
-  color: #fff; font-size: 11px; font-weight: 800; box-shadow: var(--shadow-sm);
-}
 .plan-head h2 { margin: 0; font-size: 16px; color: var(--ink); display: flex; align-items: center; gap: 6px; }
 .plan-head p { margin: 4px 0 0; color: var(--ink-2); font-size: 12px; line-height: 1.5; }
 .plan-list { display: flex; flex-direction: column; gap: 6px; }
@@ -1142,7 +1128,6 @@ body {
 .plan-row-main { display: flex; align-items: center; gap: 9px; min-width: 0; }
 .plan-row-main strong { display: block; font-size: 13px; color: var(--ink); }
 .plan-row-main small { display: block; margin-top: 3px; color: var(--ink-3); font-size: 11px; }
-.plan-row-main .plan-review-help { max-width: 620px; color: var(--ink-2); line-height: 1.45; }
 .plan-subject { flex: none; color: var(--brand-deep); font-size: 11px; font-weight: 800; }
 .plan-state { flex: none; color: var(--accent-ink); font-size: 11px; font-weight: 700; }
 .plan-grid { grid-template-columns: repeat(3, 1fr); }
@@ -1262,7 +1247,6 @@ body {
 .login-card { background: var(--surface); border-radius: var(--radius-lg); padding: 32px 28px; width: 92%; max-width: 380px; box-shadow: var(--shadow-md); text-align: center; }
 .login-logo { width: 72px; height: 72px; margin: 0 auto 14px; border-radius: var(--radius-circle); background: var(--warm); color: var(--accent); display: flex; align-items: center; justify-content: center; }
 .login-card h1 { font-size: 22px; margin: 0 0 4px; }
-.login-sub { color: var(--ink-3); font-size: 13px; margin: 0 0 18px; }
 .login-tabs { display: flex; gap: 4px; margin-bottom: 16px; background: var(--surface-2); border-radius: var(--radius-pill); padding: 4px; }
 .login-tabs button { flex: 1; border: none; background: none; padding: 8px 4px; border-radius: var(--radius-pill); font-size: 13px; color: var(--ink-2); cursor: pointer; font-weight: 700; }
 .login-tabs button.on { background: var(--surface); color: var(--brand-deep); box-shadow: var(--shadow-sm); }
@@ -1297,7 +1281,6 @@ body {
 .box-result { padding: 16px 0 8px; }
 .box-icon { font-size: 64px; animation: bounce 1s ease-in-out infinite; }
 .box-gain { font-size: 28px; font-weight: 800; color: var(--accent); margin-top: 6px; }
-.box-tip { font-size: 13px; color: var(--ink-3); margin-top: 4px; }
 .map-modal, .ach-modal { max-width: 480px; max-height: calc(100vh - 24px); max-height: calc(100dvh - 24px); overflow: hidden; display: flex; flex-direction: column; }
 .map-list { display: flex; flex: 1 1 auto; flex-direction: column; gap: 6px; margin: 14px 0; min-height: 0; overflow-y: auto; }
 .map-node { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: var(--radius-md); background: var(--surface-2); opacity: .55; }
@@ -1343,7 +1326,6 @@ body {
   .who > .avatar { width: 40px; height: 40px; font-size: 22px; flex: 0 0 40px; aspect-ratio: 1; }
   .kid { font-size: 18px; white-space: nowrap; }
   .hello { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .greet-long { display: none; }
   .name-row { flex-wrap: nowrap; }
   .rename { font-size: 12px; white-space: nowrap; flex: 0 0 auto; }
   .rename-txt { display: none; }
@@ -1380,7 +1362,6 @@ body {
   .shop-modal { width: 100%; max-width: none; }
   .main { padding: 12px 14px 16px; }
   .main h1 { font-size: 20px; margin: 0 0 4px; }
-  .hint { font-size: 12px; margin-bottom: 10px; }
   .grid { grid-template-columns: 1fr; gap: 8px; }
   .card { min-height: 64px; padding: 12px; align-items: center; max-width: none; }
   .circle { width: 32px; height: 32px; flex: 0 0 32px; }

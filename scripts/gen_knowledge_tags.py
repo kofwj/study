@@ -526,7 +526,43 @@ HAND14 = {
     "g4s1-df-4": ["df4-xf", "df4-gw"],
 }
 
-TAGS += CN1_TAGS + MA1_TAGS + KX1_TAGS + DF1_TAGS + CN2_TAGS + MA2_TAGS + KX2_TAGS + DF2_TAGS + CN3_TAGS + MA3_TAGS + EN3_TAGS + KX3_TAGS + DF3_TAGS + CN4_TAGS + MA4_TAGS + EN4_TAGS + KX4_TAGS + DF4_TAGS
+EN1_TAGS = [
+    {"id": "en1-im", "subject_id": "英语", "kind": "单元考点", "name": "用 I'm ... 介绍自己"},
+    {"id": "en1-hi", "subject_id": "英语", "kind": "单元考点", "name": "用 Hello / Hi 打招呼"},
+    {"id": "en1-gm", "subject_id": "英语", "kind": "单元考点", "name": "用 Good morning 打招呼"},
+    {"id": "en1-ga", "subject_id": "英语", "kind": "单元考点", "name": "分清 morning 和 afternoon"},
+    {"id": "en1-this", "subject_id": "英语", "kind": "单元考点", "name": "用 This is ... 介绍老师"},
+    {"id": "en1-miss", "subject_id": "英语", "kind": "单元考点", "name": "介绍 Miss Li 或家人"},
+    {"id": "en1-teddy", "subject_id": "英语", "kind": "单元考点", "name": "用 Is this a ...? 问物品"},
+    {"id": "en1-yesno", "subject_id": "英语", "kind": "单元考点", "name": "用 Yes / No 回答是不是"},
+    {"id": "en1-please", "subject_id": "英语", "kind": "单元考点", "name": "用 ... please 要水果"},
+    {"id": "en1-fruit", "subject_id": "英语", "kind": "单元考点", "name": "说出常见水果"},
+    {"id": "en1-look", "subject_id": "英语", "kind": "单元考点", "name": "用 Look at ... 让别人看"},
+    {"id": "en1-color", "subject_id": "英语", "kind": "单元考点", "name": "说出气球的颜色"},
+    {"id": "en1-can", "subject_id": "英语", "kind": "单元考点", "name": "用 I can ... 说自己会做的事"},
+    {"id": "en1-act", "subject_id": "英语", "kind": "单元考点", "name": "说出 dance / sing / jump"},
+    {"id": "en1-whatcan", "subject_id": "英语", "kind": "单元考点", "name": "用 What can you do? 提问"},
+    {"id": "en1-cant", "subject_id": "英语", "kind": "单元考点", "name": "用 I can / I can't 回答"},
+]
+EN2_TAGS = [
+    {"id": "en2-aunt", "subject_id": "英语", "kind": "单元考点", "name": "用 She's / He's ... 介绍亲戚"},
+    {"id": "en2-rel", "subject_id": "英语", "kind": "单元考点", "name": "说出 aunt / uncle 等称谓"},
+    {"id": "en2-have", "subject_id": "英语", "kind": "单元考点", "name": "用 I have a ... 说宠物"},
+    {"id": "en2-pet", "subject_id": "英语", "kind": "单元考点", "name": "说出 rabbit 等宠物"},
+    {"id": "en2-has", "subject_id": "英语", "kind": "单元考点", "name": "用 It has ... 说动物特征"},
+    {"id": "en2-part", "subject_id": "英语", "kind": "单元考点", "name": "说出 tail / ear / eye"},
+    {"id": "en2-aut", "subject_id": "英语", "kind": "单元考点", "name": "说出秋天的样子"},
+    {"id": "en2-season", "subject_id": "英语", "kind": "单元考点", "name": "分清春夏秋冬"},
+    {"id": "en2-juice", "subject_id": "英语", "kind": "单元考点", "name": "用 Have some ... please 请客"},
+    {"id": "en2-drink", "subject_id": "英语", "kind": "单元考点", "name": "说出 juice / water 等饮品"},
+    {"id": "en2-school", "subject_id": "英语", "kind": "单元考点", "name": "说出学校里喜欢的事物"},
+    {"id": "en2-like", "subject_id": "英语", "kind": "单元考点", "name": "用 We like ... 表达喜欢"},
+    {"id": "en2-clean", "subject_id": "英语", "kind": "单元考点", "name": "用 Let's ... 提议一起做"},
+    {"id": "en2-tidy", "subject_id": "英语", "kind": "单元考点", "name": "说出收拾教室的动作"},
+    {"id": "en2-job", "subject_id": "英语", "kind": "单元考点", "name": "用 My dad is a ... 说职业"},
+    {"id": "en2-doc", "subject_id": "英语", "kind": "单元考点", "name": "说出 doctor / cook 等职业"},
+]
+TAGS += CN1_TAGS + MA1_TAGS + KX1_TAGS + DF1_TAGS + EN1_TAGS + CN2_TAGS + MA2_TAGS + KX2_TAGS + DF2_TAGS + EN2_TAGS + CN3_TAGS + MA3_TAGS + EN3_TAGS + KX3_TAGS + DF3_TAGS + CN4_TAGS + MA4_TAGS + EN4_TAGS + KX4_TAGS + DF4_TAGS
 
 # 五上/五下语数英精标。五上按 2026 秋教材逐单元配置；五下保留原映射。
 # 五上考点区只放“本单元特有的难点”。
@@ -570,6 +606,24 @@ HAND = {
     "g5s1-df-4": ["df5-xd", "df5-cj", "df5-zr"],
 }
 HAND.update(HAND14)
+HAND.update({
+    "g1s1-en-1": ["en1-im", "en1-hi"],
+    "g1s1-en-2": ["en1-gm", "en1-ga"],
+    "g1s1-en-3": ["en1-this", "en1-miss"],
+    "g1s1-en-4": ["en1-teddy", "en1-yesno"],
+    "g1s1-en-5": ["en1-please", "en1-fruit"],
+    "g1s1-en-6": ["en1-look", "en1-color"],
+    "g1s1-en-7": ["en1-can", "en1-act"],
+    "g1s1-en-8": ["en1-whatcan", "en1-cant"],
+    "g2s1-en-1": ["en2-aunt", "en2-rel"],
+    "g2s1-en-2": ["en2-have", "en2-pet"],
+    "g2s1-en-3": ["en2-has", "en2-part"],
+    "g2s1-en-4": ["en2-aut", "en2-season"],
+    "g2s1-en-5": ["en2-juice", "en2-drink"],
+    "g2s1-en-6": ["en2-school", "en2-like"],
+    "g2s1-en-7": ["en2-clean", "en2-tidy"],
+    "g2s1-en-8": ["en2-job", "en2-doc"],
+})
 
 CN_ACTION = {
     "通读": ["cn-zi", "cn-read"], "听写": ["cn-zi"], "朗读": ["cn-read"],

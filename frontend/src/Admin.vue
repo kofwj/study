@@ -695,8 +695,7 @@ onMounted(load)
 <template>
   <div v-if="needsSetup && !shownRecovery" class="admin setup">
     <div class="a-card enter setup-card">
-      <h3>先加第一个孩子</h3>
-      <p class="lead">注册好了。现在给孩子一个打卡账号。教材目前是五年级上册（江苏南通），以后再换学期。</p>
+      <h3>第一个孩子</h3>
       <label class="fld"><span>家里怎么叫</span><input v-model="setupKid.name" placeholder="如：乐乐" /></label>
       <label class="fld"><span>登录账号</span><input v-model="setupKid.account" placeholder="如：lele" autocomplete="username" /></label>
       <label class="fld"><span>孩子密码</span><input v-model="setupKid.pin" type="password" autocomplete="new-password" placeholder="至少 6 位，不要重复或连续数字" /></label>
@@ -706,7 +705,7 @@ onMounted(load)
           <option v-for="tm in (terms.length ? terms : [{ id: 'g5s1', label: '五年级上册' }])" :key="tm.id" :value="tm.id">{{ tm.label }}</option>
         </select>
       </label>
-      <label class="fld"><span>性别（对照体测达标线，可后填）</span>
+      <label class="fld"><span>性别</span>
         <select v-model="setupKid.gender">
           <option value="">还没填</option>
           <option value="男">男</option>
@@ -719,10 +718,8 @@ onMounted(load)
   </div>
   <div v-else-if="shownRecovery" class="admin setup">
     <div class="a-card enter setup-card">
-      <h3>把找回码抄下来</h3>
-      <p class="lead">家长忘记密码时，用账号 + 这串码重置。只显示这一次，用过就作废。</p>
+      <h3>找回码</h3>
       <p class="recovery-code">{{ shownRecovery }}</p>
-      <p class="dim">建议拍张照片或写在纸上。丢了只能联系帮你安装的人。</p>
       <button class="ok wide" @click="dismissRecovery">我已抄好，进入工作台</button>
     </div>
   </div>
@@ -754,28 +751,21 @@ onMounted(load)
 
     <!-- 今日复习 -->
     <section v-if="section === 'review'" class="a-card enter">
-      <h3>今天帮孩子复习 <span class="review-total">{{ reviewDue.length }} 项</span></h3>
-      <p class="lead">按清单让孩子各练一遍，练完后由你判断，系统会自动安排下次复习时间。</p>
-      <div class="review-steps">
-        <span><b>1</b>孩子练一遍</span><i>→</i><span><b>2</b>家长判断</span><i>→</i><span><b>3</b>系统排下次</span>
-      </div>
+      <h3>今天复习 <span class="review-total">{{ reviewDue.length }} 项</span></h3>
       <div v-if="reviewDue.length && reviewSubjects.length > 1" class="subj-tabs review-filter">
         <button type="button" :class="['subj-tab', { on: !reviewSubject }]" @click="reviewSubject = ''">全部</button>
         <button v-for="sid in reviewSubjects" :key="sid" type="button"
           :class="['subj-tab', { on: reviewSubject === sid }]" @click="reviewSubject = sid">{{ subjectName(sid) }}</button>
       </div>
       <div v-if="!reviewDue.length && !weakPoints.length" class="review-empty">
-        <strong>还没有记下薄弱考点</strong>
-        <span>孩子哪一项没掌握时，到“任务与考点”点亮，会立刻出现在这里。</span>
-        <button class="ghost-s review-link" @click="section = 'unit-task'">去记录薄弱考点 →</button>
+        <strong>没有薄弱考点</strong>
+        <button class="ghost-s review-link" @click="section = 'unit-task'">去记录 →</button>
       </div>
       <div v-else-if="!reviewDue.length" class="review-empty">
-        <strong>今天没有到期的复习</strong>
-        <span>已经记下的考点还没到复习日，到日期后会自动出现在上面。</span>
+        <strong>今天没有到期复习</strong>
       </div>
       <div v-else-if="!filteredReviewDue.length" class="review-empty">
-        <strong>这一科今天没有要复习的</strong>
-        <span>换一个科目，或点“全部”看今天的清单。</span>
+        <strong>这一科今天没有复习</strong>
       </div>
       <div v-for="x in filteredReviewDue" :key="x.id" class="review-item">
         <div class="review-item-info">
@@ -783,15 +773,14 @@ onMounted(load)
           <span class="dim">{{ x.subject_id }} · {{ x.unit_name }} · 第 {{ (x.interval_idx || 0) + 1 }} 次复习</span>
         </div>
         <div class="review-actions">
-          <button class="ok" @click="judge(x.id, 'pass')">会了，晚点再练</button>
-          <button class="del" @click="judge(x.id, 'fail')">还不熟，明天再练</button>
-          <button class="ok ghost-o" @click="judge(x.id, 'done')">已经掌握</button>
+          <button class="ok" @click="judge(x.id, 'pass')">会了</button>
+          <button class="del" @click="judge(x.id, 'fail')">还不熟</button>
+          <button class="ok ghost-o" @click="judge(x.id, 'done')">已掌握</button>
         </div>
       </div>
-      <p v-if="filteredReviewDue.length" class="review-help">“会了”会拉长间隔；“还不熟”会缩短到更近；“已经掌握”会结束提醒。</p>
+
       <div v-if="weakPoints.length" class="review-recorded">
         <h4>已记录的薄弱考点</h4>
-        <p>这里是已经记下、但还没结束提醒的考点。到日期后会自动出现在上面的复习清单里。</p>
         <div v-for="x in weakPoints" :key="x.id" class="review-recorded-row">
           <div>
             <strong>{{ x.tag_name }}</strong>
@@ -805,9 +794,8 @@ onMounted(load)
     <!-- 概览：全家今日 + 本周盯点 -->
     <section v-if="section === 'insights'" class="a-card enter dash">
       <h3>{{ greet }}，{{ me.name || '家长' }}</h3>
-      <p class="lead">{{ currentKidName ? currentKidName + ' 的今天' : '先看要处理的事，再看这一周。' }}</p>
       <div v-if="dashAttention.text" class="w-next">
-        <strong>先看这里</strong>
+        <strong>待处理</strong>
         <span>{{ dashAttention.text }}</span>
         <button v-if="dashAttention.go" class="ok" @click="section = dashAttention.go">{{ dashAttention.label }}</button>
       </div>
@@ -908,7 +896,6 @@ onMounted(load)
       </div>
       <template v-if="isMultiKid && kidCount">
         <h4 class="w-h">孩子们</h4>
-        <p class="lead">点卡片切换正在看的孩子。</p>
         <div class="fam-today">
           <button v-for="k in familyToday.kids" :key="k.kid_id" type="button"
             class="fam-card" :class="{ on: selectedKid === k.kid_id }" @click="pickKid(k.kid_id)">
@@ -922,11 +909,10 @@ onMounted(load)
       <p v-else-if="!kidCount" class="dim">还没有孩子，到「家庭」里添加。</p>
       <template v-if="(insights.kids || []).length">
         <h4 class="w-h">本周盯点</h4>
-        <p v-if="isMultiKid" class="lead">每个孩子一句结论；需要处理时，点“去解决”。</p>
         <div v-for="row in insights.kids" :key="row.kid_id" class="apv-row">
           <div class="apv-info">
             <span v-if="isMultiKid" class="apv-name">{{ row.name }}</span>
-            <span class="dim">{{ row.insight ? row.insight.text : '这周不用特别盯。' }}</span>
+            <span class="dim">{{ row.insight ? row.insight.text : '无' }}</span>
           </div>
           <button v-if="row.insight && row.insight.action" class="ok" @click="goInsight(row)">去解决</button>
         </div>
@@ -959,7 +945,6 @@ onMounted(load)
     <!-- 商店 -->
     <section v-if="section === 'shop'" class="a-card enter">
       <h3>兑换商店</h3>
-      <p class="lead">孩子申请后，家里任意家长在「兑换审批」里同意才扣阳光。</p>
       <div class="task-row" v-for="r in rewards" :key="r.id">
         <label class="fld grow"><span>奖励名</span><input v-model="r.name" /></label>
         <label class="fld w64"><span>阳光</span><input v-model.number="r.price" type="number" /></label>
@@ -982,11 +967,10 @@ onMounted(load)
 
     <!-- 扣分 -->
     <section v-if="section === 'penalty'" class="a-card enter">
-      <h3>记下扣分</h3>
-      <p class="lead">只记家长主动记下的一笔，不自动罚。不改复习、不掉级，余额扣到 0 为止。{{ currentKidName ? '正在看：' + currentKidName : '先在顶栏选孩子。' }}</p>
+      <h3>记下扣分{{ currentKidName ? ' · ' + currentKidName : '' }}</h3>
       <div class="lock-row">
         <span class="badge">扣分开关</span>
-        <span class="grow">{{ penaltyEnabled ? '已开启，任意家长可记下或撤回' : '默认关闭。家里约定好再用，避免随手乱扣。' }}</span>
+        <span class="grow">{{ penaltyEnabled ? '已开' : '未开' }}</span>
         <button v-if="isOwner" :class="['toggle', { on: penaltyEnabled }]" @click="togglePenalty">{{ penaltyEnabled ? '已开' : '未开' }}</button>
         <span v-else class="dim">只有创建者能开关</span>
       </div>
@@ -1008,7 +992,7 @@ onMounted(load)
           <button class="ok wide" @click="addPenalty" :disabled="penaltySubmitting">{{ penaltySubmitting ? '提交中...' : '确认扣 ' + newPenalty.amount + ' 阳光' }}</button>
         </div>
         <div v-if="penaltySummary.count" class="pen-sum">
-          <p class="lead">一共记下 {{ penaltySummary.count }} 笔，有效净扣 {{ penaltySummary.amount }} 阳光。撤回的不算。</p>
+          <p class="dim">{{ penaltySummary.count }} 笔 · 净扣 {{ penaltySummary.amount }}</p>
           <div class="w-subj">
             <div v-for="s in penaltyReasonRows" :key="s.reason" class="w-subj-row">
               <span class="w-subj-name">{{ s.reason }}</span>
@@ -1030,13 +1014,12 @@ onMounted(load)
           </div>
         </div>
       </template>
-      <p v-else class="dim mt8">关上时不能记账，也不能撤回。孩子端只在最近阳光里看到这笔，不能自己操作。</p>
+
     </section>
 
     <!-- 审批 -->
     <section v-if="section === 'approve'" class="a-card enter">
       <h3>兑换审批与兑现</h3>
-      <p class="lead">需家长同意的奖励先到「待同意」；同意后扣阳光，实际给了再点「标记已兑现」。</p>
       <div v-if="!redemptions.length" class="dim">还没有任何兑换记录。</div>
       <div class="apv-row" v-for="rd in redemptions" :key="rd.id">
         <div class="apv-info">
@@ -1060,8 +1043,7 @@ onMounted(load)
 
     <!-- 等级 -->
     <section v-if="section === 'rank'" class="a-card enter">
-      <h3>成长等级（按累计获得阳光）</h3>
-      <p class="lead">等级看「累计获得」，消费不会掉级。</p>
+      <h3>成长等级</h3>
       <div class="task-row" v-for="r in ranks" :key="r.id">
         <span class="rank-icon"><component :is="rankIcon(r.icon)" class="ico" :size="18" /></span>
         <label class="fld grow"><span>等级名</span><input v-model="r.name" /></label>
@@ -1085,10 +1067,8 @@ onMounted(load)
     <!-- 任务 -->
     <section v-if="section === 'unit-task'" class="a-card enter">
       <h3>任务与考点</h3>
-      <p class="lead">教材任务由系统提供，不需要家长修改。先看“家长怎么检查”，孩子做不出来或说不清时再点亮；点亮后立刻进入“今日复习”。</p>
       <div class="add-box task-add-box">
         <div class="add-title">新增家长任务</div>
-        <p class="form-help">给孩子补充一项自己的练习，完成后也会出现在孩子端。</p>
         <div class="frm-row">
           <label class="fld grow"><span>哪一科</span>
             <select v-model="newTask.subject_id" @change="pickSubject">
@@ -1116,7 +1096,7 @@ onMounted(load)
         </div>
         <button class="ok wide" @click="addTask">＋新增任务</button>
       </div>
-      <p class="form-help review-start-help">点亮后默认今天复习；只有想改日期时才在这里选。</p>
+
       <label class="fld review-date"><span>改成哪天开始复习</span>
         <input type="date" v-model="firstReview" />
       </label>
@@ -1135,9 +1115,9 @@ onMounted(load)
               @click="toggleTag(u.id, tg.tag_id)">
               <span class="tag-guide-title">{{ tagOn(u.id, tg.tag_id) ? '✓ ' : '' }}{{ tg.name }}</span>
               <span class="tag-guide-help">{{ tagHelp(tg) }}</span>
-              <span class="tag-guide-action">{{ tagOn(u.id, tg.tag_id) ? '已加入今日复习，点此取消' : '孩子做不出来，点此加入今日复习' }}</span>
+              <span class="tag-guide-action">{{ tagOn(u.id, tg.tag_id) ? '已加入' : '加入复习' }}</span>
             </button>
-            <span v-if="!tagsFor(u.id).length" class="dim">{{ hasAutoTags(u.id) ? '这一册还没人工整理考点，先按下面任务卡练习。' : '无考点' }}</span>
+            <span v-if="!tagsFor(u.id).length" class="dim">无考点</span>
           </div>
           <div class="task-row" v-for="t in (tasksBySubject[sid] || []).filter(x => x.unit_id === u.id)" :key="t.id">
             <template v-if="t.custom">
@@ -1167,10 +1147,9 @@ onMounted(load)
 
     <!-- 每日任务 -->
     <section v-if="section === 'daily'" class="a-card enter">
-      <h3>每日任务（循环打卡）</h3>
-      <p class="lead">你自己加的任务排在前面，系统内置任务排在后面；系统内置任务只读，家长任务可以修改。</p>
+      <h3>每日任务</h3>
       <div class="add-box task-add-box">
-        <div class="add-title">新增每日任务（你自己家的）</div>
+        <div class="add-title">新增每日任务</div>
         <div class="frm-row">
           <label class="fld grow"><span>哪一科</span>
             <select v-model="newDaily.subject_id">
@@ -1242,7 +1221,6 @@ onMounted(load)
     <!-- 已学到 -->
     <section v-if="section === 'cursor'" class="a-card enter">
       <h3>已学到哪一课</h3>
-      <p class="lead">推荐从这里往后，前面的课标灰「已学过」，不再计阳光。</p>
       <div class="cursor-row" v-for="s in cursorSubjects" :key="s.id">
         <span class="cursor-subj">{{ s.name }}</span>
         <select :value="cursors[s.id] || ''" @change="setCursor(s.id, $event.target.value)">
@@ -1255,13 +1233,12 @@ onMounted(load)
         <span class="grow">只让打「当前单元」</span>
         <button :class="['toggle', { on: progressLock }]" @click="toggleLock">{{ progressLock ? '开' : '关' }}</button>
       </div>
-      <p class="lead mt8">开启后，每科只有正在学的那个单元能打卡，后面的课自动锁住（灰显 <Lock class="ico" :size="12" />），防没学就打卡刷阳光。</p>
+
     </section>
 
     <!-- 单元测试成绩 -->
     <section v-if="section === 'test'" class="a-card enter">
       <h3>单元测试</h3>
-      <p class="lead">录入孩子的测试分数，系统按下面的分数区间发放阳光。保存后的新标准只用于之后录入的成绩，已录成绩不变。</p>
       <div class="test-band-editor">
         <div class="add-title">成绩对应阳光</div>
         <div class="test-band-head"><span>分数区间</span><span>发放阳光</span></div>
@@ -1296,7 +1273,7 @@ onMounted(load)
           <label class="fld w104"><span>备注</span><input v-model="newTest.note" placeholder="如：期中" /></label>
         </div>
         <p v-if="testPreview" class="test-preview">命中 {{ testPreview.range }}，将发 {{ testPreview.sun }} 阳光。</p>
-        <p v-else class="form-help">填分数后，这里会显示命中哪一档、发多少阳光。只影响这次以后录入的成绩。</p>
+
         <button class="ok wide" @click="addTest">录成绩并发阳光</button>
       </div>
       <div v-if="!tests.length" class="dim">还没录过测试成绩。</div>
@@ -1311,7 +1288,6 @@ onMounted(load)
 
     <section v-if="section === 'kids'" class="a-card">
       <h3>孩子账号</h3>
-      <p class="lead">名字给家里看，登录账号给孩子打卡用。学期决定学哪册，性别用来对照体测达标线。</p>
       <p v-if="!terms.length" class="dim">学期列表还没载入，退出再进一次家长端。</p>
       <div class="kid-card" v-for="k in kids" :key="k.id">
         <label class="fld"><span>家里怎么叫</span><input v-model="k.name" placeholder="如：乐乐" /></label>
@@ -1329,7 +1305,7 @@ onMounted(load)
             <option value="女">女</option>
           </select>
         </label>
-        <label class="fld kid-pin"><span>改密码（不改就空着）</span><input v-model="k._pin" type="password" autocomplete="new-password" placeholder="至少 6 位，不要重复或连续数字" /></label>
+        <label class="fld kid-pin"><span>改密码</span><input v-model="k._pin" type="password" autocomplete="new-password" placeholder="至少 6 位，不要重复或连续数字" /></label>
         <div class="ops">
           <button class="ok" @click="saveKid(k)">保存资料</button>
           <button v-if="isOwner" class="del" @click="delKid(k)">删除账号</button>
@@ -1364,7 +1340,6 @@ onMounted(load)
     <!-- 家长成员 -->
     <section v-if="section === 'members'" class="a-card enter">
       <h3>家长成员</h3>
-      <p class="lead">另一位家长用邀请码加入，共同管理。</p>
       <div class="member-row" v-for="m in members" :key="m.id">
         <div class="member-info">
           <strong>{{ m.name }}</strong>
@@ -1381,7 +1356,6 @@ onMounted(load)
     <!-- 邀请码 -->
     <section v-if="section === 'invites'" class="a-card enter">
       <h3>邀请码</h3>
-      <p class="lead">生成后复制给家人。打开保护后，每个码只能用一次，24 小时过期。</p>
       <label class="invite-protect">
         <input type="checkbox" :checked="inviteProtect" @change="toggleProtect" :disabled="!isOwner" />
         <span>邀请码保护（一次性 + 24 小时）</span>
@@ -1403,7 +1377,6 @@ onMounted(load)
 
     <section v-if="section === 'pin'" class="a-card enter">
       <h3>修改家长密码</h3>
-      <p class="lead">改密后其他已登录设备会退出。家长密码至少 8 位。</p>
       <p class="dim">当前账号 {{ me.account || '—' }}</p>
       <form class="settings-form" @submit.prevent="changePin">
         <label class="fld">

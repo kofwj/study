@@ -30,6 +30,50 @@ SUBJECTS = [
 
 GRADE_CN = "一二三四五六"
 
+# 译林《英语》（一年级起点）。南通一、二年级用这一套，不是人教新起点，也不是沪教牛津。
+YIQI_EN = {
+    (1, "上"): [
+        "Unit 1 I'm Liu Tao",
+        "Unit 2 Good morning",
+        "Unit 3 This is Miss Li",
+        "Unit 4 Is this a teddy?",
+        "Unit 5 A cherry, please",
+        "Unit 6 Look at my balloon",
+        "Unit 7 I can dance",
+        "Unit 8 What can you do?",
+    ],
+    (1, "下"): [
+        "Unit 1 Let's count!",
+        "Unit 2 This is my pencil",
+        "Unit 3 I like carrots",
+        "Unit 4 Spring",
+        "Unit 5 What's this?",
+        "Unit 6 Are you ready?",
+        "Unit 7 What's that?",
+        "Unit 8 What's in your bag?",
+    ],
+    (2, "上"): [
+        "Unit 1 She's my aunt",
+        "Unit 2 I have a rabbit",
+        "Unit 3 It has a short tail",
+        "Unit 4 Autumn",
+        "Unit 5 Have some juice, please!",
+        "Unit 6 We like our school",
+        "Unit 7 Let's clean up!",
+        "Unit 8 My dad is a doctor",
+    ],
+    (2, "下"): [
+        "Unit 1 Where's Kitty?",
+        "Unit 2 Dinner is ready",
+        "Unit 3 We all like PE",
+        "Unit 4 I have big eyes",
+        "Unit 5 Can you?",
+        "Unit 6 Let's go shopping!",
+        "Unit 7 Summer",
+        "Unit 8 Don't push, please",
+    ],
+}
+
 
 def get(url: str) -> str:
     req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
@@ -72,6 +116,21 @@ def discover():
                 "year": int(year.group(1)) if year else None,
                 "title": title,
             })
+    # 译林国家课程是三年级起点。南通小学一年级就开英语，用的是译林《英语》（一年级起点 / 一起，2015 审定）。
+    # 电子课本网没有 1A/1B/2A/2B 书页，目录按教材单元手补，--save 时不再去抓。
+    have_en = {(b["grade"], b["term"]) for b in books if b["subject"] == "英语"}
+    for (grade, term), chapters in YIQI_EN.items():
+        if (grade, term) in have_en:
+            continue
+        sx = "s" if term == "上" else "x"
+        books.append({
+            "subject": "英语", "grade": grade, "term": term,
+            "slug": f"yiqi{grade}{sx}", "path": "",
+            "edition": "old", "year": None,
+            "title": f"译林版英语（一年级起点）{GRADE_CN[grade-1]}年级{term}册",
+            "chapters": list(chapters),
+            "source": "manual-yiqi2015",
+        })
     books.sort(key=lambda b: ([s[0] for s in SUBJECTS].index(b["subject"]), b["grade"], b["term"]))
     return books
 
@@ -87,13 +146,18 @@ def main():
     # --save：逐本抓目录
     out = {"generated": datetime.now().isoformat(timespec="seconds"), "books": []}
     for b in books:
-        try:
-            b["chapters"] = fc.catalog(b["path"])["chapters"]
-        except Exception as e:
-            b["chapters"] = []
-            b["error"] = repr(e)
+        if b.get("chapters"):
+            note = "手补"
+        else:
+            note = ""
+            try:
+                b["chapters"] = fc.catalog(b["path"])["chapters"]
+            except Exception as e:
+                b["chapters"] = []
+                b["error"] = repr(e)
         out["books"].append(b)
-        print(f'  {b["subject"]}{b["grade"]}{b["term"]}  {len(b["chapters"])}章', flush=True)
+        extra = f"  {note}" if note else ""
+        print(f'  {b["subject"]}{b["grade"]}{b["term"]}  {len(b["chapters"])}章{extra}', flush=True)
     OUT.write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"\n已写 {OUT}，共 {len(books)} 本")
 

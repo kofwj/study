@@ -14,6 +14,14 @@
       "g1s1-df-2",
       "g1s1-df-3",
       "g1s1-df-4",
+      "g1s1-en-1",
+      "g1s1-en-2",
+      "g1s1-en-3",
+      "g1s1-en-4",
+      "g1s1-en-5",
+      "g1s1-en-6",
+      "g1s1-en-7",
+      "g1s1-en-8",
       "g1s1-kx-1",
       "g1s1-kx-2",
       "g1s1-kx-3",
@@ -35,6 +43,14 @@
       "g2s1-df-2",
       "g2s1-df-3",
       "g2s1-df-4",
+      "g2s1-en-1",
+      "g2s1-en-2",
+      "g2s1-en-3",
+      "g2s1-en-4",
+      "g2s1-en-5",
+      "g2s1-en-6",
+      "g2s1-en-7",
+      "g2s1-en-8",
       "g2s1-kx-1",
       "g2s1-kx-2",
       "g2s1-kx-3",
@@ -1180,6 +1196,102 @@
       "name": "排队不插队"
     },
     {
+      "id": "en1-im",
+      "subject_id": "英语",
+      "kind": "单元考点",
+      "name": "用 I'm ... 介绍自己"
+    },
+    {
+      "id": "en1-hi",
+      "subject_id": "英语",
+      "kind": "单元考点",
+      "name": "用 Hello / Hi 打招呼"
+    },
+    {
+      "id": "en1-gm",
+      "subject_id": "英语",
+      "kind": "单元考点",
+      "name": "用 Good morning 打招呼"
+    },
+    {
+      "id": "en1-ga",
+      "subject_id": "英语",
+      "kind": "单元考点",
+      "name": "分清 morning 和 afternoon"
+    },
+    {
+      "id": "en1-this",
+      "subject_id": "英语",
+      "kind": "单元考点",
+      "name": "用 This is ... 介绍老师"
+    },
+    {
+      "id": "en1-miss",
+      "subject_id": "英语",
+      "kind": "单元考点",
+      "name": "介绍 Miss Li 或家人"
+    },
+    {
+      "id": "en1-teddy",
+      "subject_id": "英语",
+      "kind": "单元考点",
+      "name": "用 Is this a ...? 问物品"
+    },
+    {
+      "id": "en1-yesno",
+      "subject_id": "英语",
+      "kind": "单元考点",
+      "name": "用 Yes / No 回答是不是"
+    },
+    {
+      "id": "en1-please",
+      "subject_id": "英语",
+      "kind": "单元考点",
+      "name": "用 ... please 要水果"
+    },
+    {
+      "id": "en1-fruit",
+      "subject_id": "英语",
+      "kind": "单元考点",
+      "name": "说出常见水果"
+    },
+    {
+      "id": "en1-look",
+      "subject_id": "英语",
+      "kind": "单元考点",
+      "name": "用 Look at ... 让别人看"
+    },
+    {
+      "id": "en1-color",
+      "subject_id": "英语",
+      "kind": "单元考点",
+      "name": "说出气球的颜色"
+    },
+    {
+      "id": "en1-can",
+      "subject_id": "英语",
+      "kind": "单元考点",
+      "name": "用 I can ... 说自己会做的事"
+    },
+    {
+      "id": "en1-act",
+      "subject_id": "英语",
+      "kind": "单元考点",
+      "name": "说出 dance / sing / jump"
+    },
+    {
+      "id": "en1-whatcan",
+      "subject_id": "英语",
+      "kind": "单元考点",
+      "name": "用 What can you do? 提问"
+    },
+    {
+      "id": "en1-cant",
+      "subject_id": "英语",
+      "kind": "单元考点",
+      "name": "用 I can / I can't 回答"
+    },
+    {
       "id": "cn2-wssm",
       "subject_id": "语文",
       "kind": "单元考点",
@@ -1460,6 +1572,102 @@
       "subject_id": "道法",
       "kind": "单元考点",
       "name": "说出爱国的一件小事"
+    },
+    {
+      "id": "en2-aunt",
+      "subject_id": "英语",
+      "kind": "单元考点",
+      "name": "用 She's / He's ... 介绍亲戚"
+    },
+    {
+      "id": "en2-rel",
+      "subject_id": "英语",
+      "kind": "单元考点",
+      "name": "说出 aunt / uncle 等称谓"
+    },
+    {
+      "id": "en2-have",
+      "subject_id": "英语",
+      "kind": "单元考点",
+      "name": "用 I have a ... 说宠物"
+    },
+    {
+      "id": "en2-pet",
+      "subject_id": "英语",
+      "kind": "单元考点",
+      "name": "说出 rabbit 等宠物"
+    },
+    {
+      "id": "en2-has",
+      "subject_id": "英语",
+      "kind": "单元考点",
+      "name": "用 It has ... 说动物特征"
+    },
+    {
+      "id": "en2-part",
+      "subject_id": "英语",
+      "kind": "单元考点",
+      "name": "说出 tail / ear / eye"
+    },
+    {
+      "id": "en2-aut",
+      "subject_id": "英语",
+      "kind": "单元考点",
+      "name": "说出秋天的样子"
+    },
+    {
+      "id": "en2-season",
+      "subject_id": "英语",
+      "kind": "单元考点",
+      "name": "分清春夏秋冬"
+    },
+    {
+      "id": "en2-juice",
+      "subject_id": "英语",
+      "kind": "单元考点",
+      "name": "用 Have some ... please 请客"
+    },
+    {
+      "id": "en2-drink",
+      "subject_id": "英语",
+      "kind": "单元考点",
+      "name": "说出 juice / water 等饮品"
+    },
+    {
+      "id": "en2-school",
+      "subject_id": "英语",
+      "kind": "单元考点",
+      "name": "说出学校里喜欢的事物"
+    },
+    {
+      "id": "en2-like",
+      "subject_id": "英语",
+      "kind": "单元考点",
+      "name": "用 We like ... 表达喜欢"
+    },
+    {
+      "id": "en2-clean",
+      "subject_id": "英语",
+      "kind": "单元考点",
+      "name": "用 Let's ... 提议一起做"
+    },
+    {
+      "id": "en2-tidy",
+      "subject_id": "英语",
+      "kind": "单元考点",
+      "name": "说出收拾教室的动作"
+    },
+    {
+      "id": "en2-job",
+      "subject_id": "英语",
+      "kind": "单元考点",
+      "name": "用 My dad is a ... 说职业"
+    },
+    {
+      "id": "en2-doc",
+      "subject_id": "英语",
+      "kind": "单元考点",
+      "name": "说出 doctor / cook 等职业"
     },
     {
       "id": "cn3-hxx",
@@ -3609,6 +3817,262 @@
       "unit_id": "g6x2-ma-7",
       "tag_ids": [
         "ma-idea"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g1s1-en-1",
+      "tag_ids": [
+        "en1-im",
+        "en1-hi"
+      ],
+      "auto": false
+    },
+    {
+      "unit_id": "g1s1-en-2",
+      "tag_ids": [
+        "en1-gm",
+        "en1-ga"
+      ],
+      "auto": false
+    },
+    {
+      "unit_id": "g1s1-en-3",
+      "tag_ids": [
+        "en1-this",
+        "en1-miss"
+      ],
+      "auto": false
+    },
+    {
+      "unit_id": "g1s1-en-4",
+      "tag_ids": [
+        "en1-teddy",
+        "en1-yesno"
+      ],
+      "auto": false
+    },
+    {
+      "unit_id": "g1s1-en-5",
+      "tag_ids": [
+        "en1-please",
+        "en1-fruit"
+      ],
+      "auto": false
+    },
+    {
+      "unit_id": "g1s1-en-6",
+      "tag_ids": [
+        "en1-look",
+        "en1-color"
+      ],
+      "auto": false
+    },
+    {
+      "unit_id": "g1s1-en-7",
+      "tag_ids": [
+        "en1-can",
+        "en1-act"
+      ],
+      "auto": false
+    },
+    {
+      "unit_id": "g1s1-en-8",
+      "tag_ids": [
+        "en1-whatcan",
+        "en1-cant"
+      ],
+      "auto": false
+    },
+    {
+      "unit_id": "g1x2-en-1",
+      "tag_ids": [
+        "en-listen",
+        "en-word"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g1x2-en-2",
+      "tag_ids": [
+        "en-listen",
+        "en-word"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g1x2-en-3",
+      "tag_ids": [
+        "en-listen",
+        "en-word"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g1x2-en-4",
+      "tag_ids": [
+        "en-listen",
+        "en-word"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g1x2-en-5",
+      "tag_ids": [
+        "en-listen",
+        "en-word"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g1x2-en-6",
+      "tag_ids": [
+        "en-listen",
+        "en-word"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g1x2-en-7",
+      "tag_ids": [
+        "en-listen",
+        "en-word"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g1x2-en-8",
+      "tag_ids": [
+        "en-listen",
+        "en-word"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g2s1-en-1",
+      "tag_ids": [
+        "en2-aunt",
+        "en2-rel"
+      ],
+      "auto": false
+    },
+    {
+      "unit_id": "g2s1-en-2",
+      "tag_ids": [
+        "en2-have",
+        "en2-pet"
+      ],
+      "auto": false
+    },
+    {
+      "unit_id": "g2s1-en-3",
+      "tag_ids": [
+        "en2-has",
+        "en2-part"
+      ],
+      "auto": false
+    },
+    {
+      "unit_id": "g2s1-en-4",
+      "tag_ids": [
+        "en2-aut",
+        "en2-season"
+      ],
+      "auto": false
+    },
+    {
+      "unit_id": "g2s1-en-5",
+      "tag_ids": [
+        "en2-juice",
+        "en2-drink"
+      ],
+      "auto": false
+    },
+    {
+      "unit_id": "g2s1-en-6",
+      "tag_ids": [
+        "en2-school",
+        "en2-like"
+      ],
+      "auto": false
+    },
+    {
+      "unit_id": "g2s1-en-7",
+      "tag_ids": [
+        "en2-clean",
+        "en2-tidy"
+      ],
+      "auto": false
+    },
+    {
+      "unit_id": "g2s1-en-8",
+      "tag_ids": [
+        "en2-job",
+        "en2-doc"
+      ],
+      "auto": false
+    },
+    {
+      "unit_id": "g2x2-en-1",
+      "tag_ids": [
+        "en-listen",
+        "en-word"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g2x2-en-2",
+      "tag_ids": [
+        "en-listen",
+        "en-word"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g2x2-en-3",
+      "tag_ids": [
+        "en-listen",
+        "en-word"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g2x2-en-4",
+      "tag_ids": [
+        "en-listen",
+        "en-word"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g2x2-en-5",
+      "tag_ids": [
+        "en-listen",
+        "en-word"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g2x2-en-6",
+      "tag_ids": [
+        "en-listen",
+        "en-word"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g2x2-en-7",
+      "tag_ids": [
+        "en-listen",
+        "en-word"
+      ],
+      "auto": true
+    },
+    {
+      "unit_id": "g2x2-en-8",
+      "tag_ids": [
+        "en-listen",
+        "en-word"
       ],
       "auto": true
     },

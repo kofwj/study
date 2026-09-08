@@ -1213,6 +1213,90 @@
     },
     {
       "subject": "英语",
+      "grade": 1,
+      "term": "上",
+      "slug": "yiqi1s",
+      "path": "",
+      "edition": "old",
+      "year": null,
+      "title": "译林版英语（一年级起点）一年级上册",
+      "chapters": [
+        "Unit 1 I'm Liu Tao",
+        "Unit 2 Good morning",
+        "Unit 3 This is Miss Li",
+        "Unit 4 Is this a teddy?",
+        "Unit 5 A cherry, please",
+        "Unit 6 Look at my balloon",
+        "Unit 7 I can dance",
+        "Unit 8 What can you do?"
+      ],
+      "source": "manual-yiqi2015"
+    },
+    {
+      "subject": "英语",
+      "grade": 1,
+      "term": "下",
+      "slug": "yiqi1x",
+      "path": "",
+      "edition": "old",
+      "year": null,
+      "title": "译林版英语（一年级起点）一年级下册",
+      "chapters": [
+        "Unit 1 Let's count!",
+        "Unit 2 This is my pencil",
+        "Unit 3 I like carrots",
+        "Unit 4 Spring",
+        "Unit 5 What's this?",
+        "Unit 6 Are you ready?",
+        "Unit 7 What's that?",
+        "Unit 8 What's in your bag?"
+      ],
+      "source": "manual-yiqi2015"
+    },
+    {
+      "subject": "英语",
+      "grade": 2,
+      "term": "上",
+      "slug": "yiqi2s",
+      "path": "",
+      "edition": "old",
+      "year": null,
+      "title": "译林版英语（一年级起点）二年级上册",
+      "chapters": [
+        "Unit 1 She's my aunt",
+        "Unit 2 I have a rabbit",
+        "Unit 3 It has a short tail",
+        "Unit 4 Autumn",
+        "Unit 5 Have some juice, please!",
+        "Unit 6 We like our school",
+        "Unit 7 Let's clean up!",
+        "Unit 8 My dad is a doctor"
+      ],
+      "source": "manual-yiqi2015"
+    },
+    {
+      "subject": "英语",
+      "grade": 2,
+      "term": "下",
+      "slug": "yiqi2x",
+      "path": "",
+      "edition": "old",
+      "year": null,
+      "title": "译林版英语（一年级起点）二年级下册",
+      "chapters": [
+        "Unit 1 Where's Kitty?",
+        "Unit 2 Dinner is ready",
+        "Unit 3 We all like PE",
+        "Unit 4 I have big eyes",
+        "Unit 5 Can you?",
+        "Unit 6 Let's go shopping!",
+        "Unit 7 Summer",
+        "Unit 8 Don't push, please"
+      ],
+      "source": "manual-yiqi2015"
+    },
+    {
+      "subject": "英语",
       "grade": 3,
       "term": "上",
       "slug": "3a_2024",
