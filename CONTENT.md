@@ -86,7 +86,11 @@ scripts/gen_knowledge_tags.py
   -> data/knowledge_tags.json
 ```
 
-当前五上结果：35 个单元、149 张单元任务卡、101 个单元特有考点映射。字词、背诵、英语词汇和跟读等重复基础练习保留在各单元任务卡中，不再重复列入考点区。任务 ID 和单元内顺序保持稳定；系统任务内容更新通过 `curriculum_ver` 触发，已有自定义任务、完成记录、阳光流水和薄弱点记录保留。
+当前五上结果：35 个单元、149 张单元任务卡、101 个单元特有考点映射。1–4 年级上册另有 107 个单元精标（入学教育、数学游戏分享、期末复习不标）。字词、背诵、英语词汇和跟读等重复基础练习保留在各单元任务卡中，不再重复列入考点区。任务 ID 和单元内顺序保持稳定；系统任务内容更新通过 `curriculum_ver` 触发，已有自定义任务、完成记录、阳光流水和薄弱点记录保留。
+
+## 1–4 年级上册考点
+
+目录仍来自电子课本网；考点按单元写成可复练动作，例如一年级识字「认读口耳目手足」、四年级数学「两、三位数除以两位数」。科学、道法 1–4 上册同样可勾选。把孩子学期改到对应年级后，家长端「任务与考点」即可点亮。
 
 重新抓目录并生成：
 
@@ -96,7 +100,7 @@ python3 scripts/gen_seed.py
 python3 scripts/gen_knowledge_tags.py
 ```
 
-五上语数英人工任务卡在 `scripts/gen_tasks.py`；五上科学和道法任务卡覆盖在 `scripts/gen_tasks.py` 的 `G5_EXTRA`；五上五科考点映射在 `scripts/gen_knowledge_tags.py` 的 `HAND`。
+五上语数英人工任务卡在 `scripts/gen_tasks.py`；五上科学和道法任务卡覆盖在 `scripts/gen_tasks.py` 的 `G5_EXTRA`；五上五科与 1–4 年级上册考点映射在 `scripts/gen_knowledge_tags.py` 的 `HAND`。
 
 ## 尚未纳入
 

@@ -50,3 +50,26 @@ def test_g5s1_unique_review_tags():
     assert len(flat) == 101, len(flat)
     assert len(set(flat)) == 101
     assert not any(x.get("auto") for x in maps)
+
+
+def test_g1_to_g4_s1_hand_tags():
+    """1–4 年级上册有可点选单元考点，不是「字词/阅读理解」那种自动占位。"""
+    generic = {"cn-zi", "cn-read", "cn-skim", "ma-calc", "ma-idea", "en-word", "en-listen"}
+    by = {x["unit_id"]: x for x in TAGS["unit_tags"]}
+    names = {t["id"]: t["name"] for t in TAGS["tags"]}
+    expect = {
+        "g1s1-cn-2": 3, "g1s1-ma-2": 2, "g1s1-kx-1": 2, "g1s1-df-1": 2,
+        "g2s1-cn-1": 2, "g2s1-ma-2": 2, "g3s1-en-1": 2, "g4s1-ma-1": 2,
+        "g4s1-cn-1": 2, "g4s1-en-1": 2, "g4s1-kx-3": 2, "g4s1-df-4": 2,
+    }
+    for uid, n in expect.items():
+        row = by[uid]
+        assert not row.get("auto"), uid
+        assert len(row["tag_ids"]) == n, (uid, row)
+        assert not (set(row["tag_ids"]) & generic), uid
+        assert all(names.get(i) for i in row["tag_ids"]), uid
+    # 入学教育 / 期末复习仍可以是自动占位，家长端不会当考点勾选
+    assert by["g1s1-cn-1"].get("auto")
+    assert by["g4s1-ma-7"].get("auto")
+    g14 = [x for x in TAGS["unit_tags"] if not x.get("auto") and x["unit_id"][:4] in ("g1s1", "g2s1", "g3s1", "g4s1")]
+    assert len(g14) == 107, len(g14)
