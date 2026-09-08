@@ -83,14 +83,22 @@ const toast = ref('')
 
 const maxDayEarn = computed(() => Math.max(1, ...(weekly.value.days || []).map((d) => d.earned)))
 const maxSubj = computed(() => Math.max(1, ...(weekly.value.by_subject || []).map((s) => s.count)))
-const maxWeek = computed(() => Math.max(1, ...(weekly.value.weeks || []).map((w) => w.earned)))
+const weekNet = (w) => Number(w && (w.net != null ? w.net : w.earned)) || 0
+const maxWeek = computed(() => {
+  const vals = (weekly.value.weeks || []).map(weekNet)
+  return Math.max(1, ...vals.map(Math.abs), 0)
+})
 const weekPoints = computed(() => {
   const ws = weekly.value.weeks || []
   if (!ws.length) return ''
+  const vals = ws.map(weekNet)
+  const min = Math.min(0, ...vals)
+  const max = Math.max(0, ...vals)
+  const span = (max - min) || 1
   const W = 288, H = 80, pad = 14
   return ws.map((w, i) => {
     const x = ws.length === 1 ? pad : pad + i * (W - 2 * pad) / (ws.length - 1)
-    const y = H - pad - (w.earned / maxWeek.value) * (H - 2 * pad)
+    const y = H - pad - (weekNet(w) - min) / span * (H - 2 * pad)
     return `${x.toFixed(1)},${y.toFixed(1)}`
   }).join(' ')
 })
@@ -444,11 +452,6 @@ const isMultiKid = computed(() => kids.value.length > 1)
 const dashAttention = computed(() => {
   if (reviewCount.value) return { text: `今天有 ${reviewCount.value} 项复习到期`, go: 'review', label: '去复习' }
   if (pendingRedeem.value) return { text: `有 ${pendingRedeem.value} 笔兑换待同意`, go: 'approve', label: '去审批' }
-  const fi = weekly.value.family_insight
-  if (fi && fi.text) {
-    const go = fi.action === '单元测试' ? 'test' : fi.action === '今日复习' ? 'review' : ''
-    return { text: fi.text, go, label: go ? '去解决' : '' }
-  }
   return { text: '', go: '', label: '' }
 })
 function n1(v) {
@@ -797,13 +800,13 @@ onMounted(load)
       </template>
       <div class="dash-charts">
         <div class="dash-chart">
-          <h4 class="w-h">近 4 周阳光</h4>
+          <h4 class="w-h">近 4 周净增</h4>
           <div class="w-trend">
             <svg viewBox="0 0 288 80" class="w-trend-svg" preserveAspectRatio="none">
               <polyline :points="weekPoints" fill="none" stroke="var(--brand)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
             </svg>
             <div class="w-trend-labels">
-              <span v-for="w in weekly.weeks" :key="w.week_start">{{ w.label }}<i>+{{ w.earned }}</i></span>
+              <span v-for="w in weekly.weeks" :key="w.week_start">{{ w.label }}<i>{{ weekNet(w) > 0 ? '+' : '' }}{{ weekNet(w) }}</i></span>
             </div>
           </div>
         </div>
@@ -909,13 +912,13 @@ onMounted(load)
         本周已掌握：<b>{{ masteredLine }}</b>
       </div>
 
-      <h4 class="w-h">近 4 周阳光趋势{{ currentKidName ? ' · ' + currentKidName : '' }}</h4>
+      <h4 class="w-h">近 4 周净增{{ currentKidName ? ' · ' + currentKidName : '' }}</h4>
       <div class="w-trend">
         <svg viewBox="0 0 288 80" class="w-trend-svg" preserveAspectRatio="none">
           <polyline :points="weekPoints" fill="none" stroke="var(--brand)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
         </svg>
         <div class="w-trend-labels">
-          <span v-for="w in weekly.weeks" :key="w.week_start">{{ w.label }}<i>+{{ w.earned }}</i></span>
+          <span v-for="w in weekly.weeks" :key="w.week_start">{{ w.label }}<i>{{ weekNet(w) > 0 ? '+' : '' }}{{ weekNet(w) }}</i></span>
         </div>
       </div>
 

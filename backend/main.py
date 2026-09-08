@@ -2206,7 +2206,10 @@ def weekly():
             "SELECT COALESCE(SUM(delta),0) FROM ledger WHERE date BETWEEN ? AND ? AND delta>0 AND kid_id=? "
             "AND reason NOT IN ('penalty','penalty_cancel')",
             (wm.isoformat(), we.isoformat(), kid)).fetchone()[0]
-        weeks.append({"label": f"{wm.month}/{wm.day}", "earned": wk_earned, "week_start": wm.isoformat()})
+        wk_net = c.execute(
+            "SELECT COALESCE(SUM(delta),0) FROM ledger WHERE date BETWEEN ? AND ? AND kid_id=?",
+            (wm.isoformat(), we.isoformat(), kid)).fetchone()[0]
+        weeks.append({"label": f"{wm.month}/{wm.day}", "earned": wk_earned, "net": wk_net, "week_start": wm.isoformat()})
     mastered = [r[0] for r in c.execute(
         "SELECT DISTINCT kt.name FROM weak_points wp JOIN knowledge_tags kt ON kt.id=wp.tag_id "
         "WHERE wp.kid_id=? AND substr(wp.updated_at,1,10) BETWEEN ? AND ? "
