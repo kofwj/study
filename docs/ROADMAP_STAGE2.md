@@ -206,7 +206,7 @@ def pick_def_id(c, kid):
 
 ### 4.4 星尘（全站唯一）
 
-1. 仅 `duplicate=true` 时 `dust += 3`。新精灵 `stars=0`。  
+1. 仅 `duplicate=true` 时 `dust += 6`（§4.7.5 推荐档）。新精灵 `stars=0`。  
 2. `POST .../star`：拥有且 `stars<3` 且 `dust>=12` → `stars+=1`，`dust-=12`。  
 3. 满 3 星按钮消失。尘可继续攒。  
 4. 不自动升（Habitica 也是玩家选喂谁；自动会升错）。  
@@ -225,6 +225,120 @@ def pick_def_id(c, kid):
 伙伴小卡加按钮「阳光图鉴 3/12」。顶栏不新药丸。开关关则隐藏按钮。
 
 2.1 才做：别针（③A 贴纸的归宿）、今日学习掉蛋、阳光换蛋。
+
+### 4.7 秘密基地（选项 A，已定稿）+ 值班精灵（选项 B，已定稿）
+
+星尘的意义问题（「卡片角落的 ★ 对孩子没意义」）已定案：**A+B**。星尘买基地物件（A），最喜欢的精灵值班到主屏（B）。两条出口都"每天看得见"，机制与 Neko Atsume 庭院 / 动森岛屿建设 / 星露谷同构。C（星星不封顶）不做。
+
+#### 4.7.1 基地是什么：会动的学习日记（v2 定稿）
+
+图鉴**本身就是三个基地**：日光系住天台、绿意系住树屋、天气系住云上营地。图鉴页每个系不是一列卡片，而是一块约 300×200 的场景（CSS 画，色板沿用现有变量），该系已拥有的精灵直接住在场景里。
+
+v2 与 v1 的本质差别：**基地不是摆件橱窗，是会动的学习日记**。六层：
+
+| 层 | 内容 | 学谁 | 学习目的 | 可玩性 |
+|---|---|---|---|---|
+| ① 活基地（免费） | 昼夜循环（按真实时间，天黑萤火虫/星星灯亮）、风车云叶空转 | 动森 | 无 | 看着就活 |
+| ② 精灵入住 | 已拥有的住进去，各有小动作（叶叶躲叶子后偷看、滴滴弹跳）；**点它有反应**（挥手/跳/躲） | Neko Atsume | 无 | 轻互动 |
+| ③ 学习留痕（核心） | 今日打卡→风车转；单元卡完成→纸飞机从树屋飞到天台；单词 session→夜空点亮一颗星；到期复习清空→云散月圆 | Forest / 动森 | **基地是 ② 三环的视觉版**：今天学没学、学了多少，一眼看见 | 每次打卡基地都有反应 |
+| ④ 周记角落 | 基地一角：纸飞机数=本周完成卡，星星数=本周单词 session | 蚂蚁森林 | 复盘「这周我做了几张卡」 | 回顾 |
+| ⑤ 晨间惊喜 | 昨天学完，今早开屏一条小故事：「昨晚果果试飞了你的纸飞机，给你留了句话：今天也加油」 | 旅行青蛙 / Neko Atsume | 无（纯情感） | 每天想回来看看 |
+| ⑥ 回忆物 + 玩具商店 | 里程碑**免费**贴进基地（首次单词全对→「全对小奖状」、连击 7 天→小旗）；尘物件是**会动的玩具**（火箭点击发射、吊床会摇、热气球把精灵载上去） | 蚂蚁森林证书 / Duolingo 皮肤 | 里程碑纪念 | 摆+玩 |
+
+闭环：开箱→精灵住进基地→基地变热闹→重复变尘→尘买会动的玩具/升星→学习给基地留痕→早上回来看故事。与 Neko Atsume「鱼买玩具吸引猫」同构，并补上 Forest 的「努力变成看得见的东西」。
+
+**学习留痕的数据口径（只读，不碰 ledger、不发明新货币）**——与 ② 三格的 rings 同源，服务端在 `GET /api/sprites` 里顺带返回 `today` 字段：
+
+```json
+"today": { "unit_done": 2, "word_done": false, "daily_done": 1, "review_clear": true }
+```
+
+- `unit_done`：今日 `kind='unit'` 完成且未被 cancel 对冲的条数 → 纸飞机起飞 1 架/条
+- `word_done`：今日单词 session `state='completed'` → 夜空亮一颗星
+- `daily_done`：今日 `kind='daily'` 完成条数 ≥1 → 风车转起来
+- `review_clear`：`_due_queue` 为空 → 云散月圆
+
+**明确不做**：不惩罚（没学基地只是安静，不枯萎、不黑脸）、不新货币、不碰 ledger、无对战。③ 若 ② 三格已上，两者数据同源、动画各自播，互不阻塞。
+
+#### 4.7.2 三个主题（细化）
+
+**日光 · 天台基地**
+- 场景：晚霞渐变天 + 楼顶栏杆剪影，一角有圆圆的落日。免费基础：天台地面、栏杆、落日。
+- 物件（尘明码，买下即常驻，无随机无退款）：
+
+| id | 名字 | 价 | 画法（CSS） | 动效 |
+|---|---|---|---|---|
+| `sun-rocket` | 小火箭 | 30 | 银色小火箭立在角落，尾焰橙色 | 点击发射 1.5s（升空再落下） |
+| `sun-telescope` | 望远镜 | 20 | 三脚架望远镜朝向天空 | 底座缓慢左右转 |
+| `sun-pinwheel` | 风车 | 15 | 彩色纸风车插在栏杆上 | 叶片恒转（快慢随机） |
+| `sun-plane` | 纸飞机 | 10 | 三架纸飞机挂在栏杆，一架在飞 | 飞的那架循环横穿场景 |
+
+**绿意 · 树屋基地**
+- 场景：深绿树冠 + 粗树干剪影，地上几片落叶。免费基础：树屋地板、树干、落叶。
+- 物件：
+
+| id | 名字 | 价 | 画法（CSS） | 动效 |
+|---|---|---|---|---|
+| `leaf-ladder` | 木梯 | 15 | 搭在树干上的小木梯 | 无（静物） |
+| `leaf-hammock` | 吊床 | 25 | 两树之间的吊床 | 轻轻摇摆 |
+| `leaf-jars` | 萤火虫瓶 | 20 | 玻璃瓶里几只会发光的萤火虫 | 光点呼吸明灭 |
+| `leaf-chest` | 小木箱 | 10 | 带锁小木箱 | 满 3 星的精灵会坐在箱子上 |
+
+**天气 · 云上营地**
+- 场景：蓝紫夜空渐变 + 星点，一弯月亮。免费基础：大云平台、月亮、星点。
+- 物件：
+
+| id | 名字 | 价 | 画法（CSS） | 动效 |
+|---|---|---|---|---|
+| `sky-balloon` | 热气球 | 30 | 彩色热气球系在云边 | 缓慢上下起伏 |
+| `sky-lights` | 星星灯 | 20 | 一串小星星灯挂在云边 | 逐个闪烁 |
+| `sky-umbrella` | 雨伞 | 15 | 插在云上的小雨伞，伞面有雨滴图案 | 无（静物） |
+| `sky-moonbed` | 月亮吊床 | 25 | 弯月做成的吊床 | 值班精灵晚上躺在上面（若有） |
+
+全收集 12 件共 **210 尘**。价格调参表（见 §4.7.5）。
+
+#### 4.7.3 基地规则 + 晨间惊喜
+
+**基地规则**
+- 三个基地**同时存在**，不用选主题（图鉴本身就是三个基地，避免"选了天台就没有树屋"的失落）。
+- 物件只属于该系基地，不能跨系摆放。
+- 已购物件常驻展示，不能卖、不能拆（只增不减，与精灵一致）。
+- 物件目录是代码常量 `BASE_ITEMS`，家长不可改。
+- 未拥有的精灵不进基地场景；已拥有的按 `obtained_at` 顺序排排坐。
+- 学习留痕在三个基地之间联动：单元卡完成的纸飞机**从树屋起飞、飞向天台**；单词完成的星**挂在云上营地夜空**。留痕只展示「今天」，跨天清零（与 ② 三格同日历）。
+- 回忆物（层⑥免费那部分）只做 2 件 MVP：`全对小奖状`（首次 word session 全对）、`坚持小旗`（streak≥7）。挂在树屋，点击可读获得日期。其余回忆物 2.1 再扩。
+
+**晨间惊喜（层⑤，已定稿）**
+- 服务端在 `GET /api/sprites` 返回：
+
+```json
+"morning": {
+  "new": true,
+  "text": "昨晚果果试飞了你折的纸飞机，它给你留了句话：今天也加油！"
+}
+```
+
+- 判定：`sprite_morning_ack != 今天` 且 **昨天有任意学习活动**（单元/每日完成、单词 session、签到其一）。文本模板由服务端从「值班精灵优先，否则随机已拥有精灵」+ 昨天最高光事件（单词全对 > 单元卡 > 打卡）拼出。
+- 前端只在孩子端登录后的第一次 refresh 展示（非全屏，图鉴入口小气泡 + 顶栏值班精灵跳一下），展示后调 `POST /api/sprites/morning-ack` 写 `sprite_morning_ack = 今天`。同一天不再弹（跨设备也一致）。
+- 昨天没学习：`new=false`，不弹，不写 ack。
+- 不占庆祝队列（它只是气泡，不挡全屏）。
+
+#### 4.7.4 值班精灵（B）
+
+- 图鉴详情页加按钮「设为值班」。**每次只能一只**；设新的替换旧的；可取消（留空）。
+- 主屏：顶栏阳光芽旁显示值班精灵小圆脸（复用 `.buddy`，约 24px），**不替换芽**——芽是身份，值班精灵是来陪你玩的朋友。
+- 完成一个任务（单元/每日/单词 session）后，值班精灵**跳一下**（1.2s CSS，与 ② 的 pulse 同一套动画思路）。
+- 3 星精灵显示一圈小星环（星有了主屏可见的意义）。
+- 若值班精灵在 ③B 未做的阶段：跳动画与升级庆祝不冲突（升级是全屏，值班是顶栏小动画）。
+- 状态存 `kid_settings.sprite_on_duty` = def_id，空串=没设。
+
+#### 4.7.5 尘价格调参（已定）
+
+| 档 | 每箱尘 | 12 件全收集 | 12 件 + 36 星全满 |
+|---|---|---|---|
+| **定稿** | **+6** | 35 箱 ≈ **3.5 个月** | 35+72 箱 ≈ **10.7 个月** |
+
++6：基地物件每 2 箱买得起一件，升星每 2 箱一颗，节奏正好。实现为常量 `DUST_PER_DUP = 6`，一处可调。
 
 ---
 
@@ -276,6 +390,9 @@ WITH CHECK (kid_id = current_setting('app.kid_id', true))
 | key | 默认 | 含义 |
 |---|---|---|
 | `sprite_dust` | 缺省当 0 | 尘 |
+| `sprite_base_items` | 缺省当 `[]` | 已买的基地物件 id（JSON 数组） |
+| `sprite_on_duty` | 缺省当 `""` | 值班精灵 def_id，空=没设 |
+| `sprite_morning_ack` | 缺省当 `""` | 晨间惊喜已展示的日期 |
 | `sprites_enabled` | 缺省当 **开**（`!= "0"`） | 图鉴；关则开箱回退旧阳光 |
 
 2.1 再加 `sprites_shop`。
@@ -300,7 +417,7 @@ if enabled:
     if not dup:
         INSERT kid_sprites (stars=0, nickname='', flavor='')
     else:
-        dust += 3
+        dust += 6          # 调参已定：+6（见 §4.7.5 推荐档）
     INSERT sprite_opens (source='box', ref_id=f'box-{n}', duplicate, dust_gain)
 else:
     bonus = randint(3, 10)
@@ -308,7 +425,7 @@ insert_ledger(today, bonus, 'box', f'box-{n}', '连击宝箱')
 commit
 ```
 
-`sprite_opens UNIQUE (kid_id,source,ref_id)` 是第二道防重。冲突 → 整笔 rollback（含 box_opened），对外 409。现开箱两标签页竞态本刀不新加锁，与今天相同。
+**防重（已定稿）**：`sprite_opens UNIQUE(kid_id,source,ref_id)` 是唯一兜底。整个 `open_box` 在一个事务内完成，任一写失败或唯一键冲突 → 整笔 rollback（阳光、游标、蛋、尘全部回退），对外 409「这箱已经开过啦」。
 
 返回（开关开）：
 
@@ -322,7 +439,7 @@ commit
   "dust_gain": 0,
   "sprite": {
     "id": "sp-leaf", "name": "叶叶", "series": "leaf",
-    "feature": "leafhat", "tint": "#2e8f55",
+    "feature": "leafcloak", "tint": "#2e8f55",
     "nickname": "", "flavor": "喜欢藏在课本里", "stars": 0
   },
   "streak": 9,
@@ -348,6 +465,8 @@ commit
 {
   "enabled": true,
   "dust": 6,
+  "base_items": ["sun-pinwheel"],
+  "on_duty": "sp-leaf",
   "owned": 3,
   "total": 12,
   "series": [
@@ -383,6 +502,18 @@ commit
 文案：「连击宝箱会孵出阳光精灵，进图鉴。关掉则宝箱只给阳光。」  
 放 Admin 学习组，单词开关附近。
 
+### 7.5 `POST /api/sprites/base/{item_id}/buy`
+
+尘明码买基地物件。`item_id` 必须在 `BASE_ITEMS` 白名单且属于对应系。未拥有该系精灵也可买（物件可以先备着）。已拥有 → 409「已经买过啦」。尘不足 → 400「星尘不够」。成功：`dust -= price`，`sprite_base_items` 数组加一项，返回 `{ "dust": 3, "base_items": [...] }`。无 ledger。
+
+### 7.6 `POST /api/sprites/{def_id}/duty` / `POST /api/sprites/duty-clear`
+
+设为/取消值班精灵。必须已拥有；空 body。写 `kid_settings.sprite_on_duty`。返回 `{ "on_duty": "sp-leaf" }` 或 `{ "on_duty": "" }`。无 ledger。
+
+### 7.7 `POST /api/sprites/morning-ack`
+
+把 `sprite_morning_ack` 写成今天。幂等。无 ledger。前端展示完晨间惊喜后调用。
+
 2.1 才有 `POST /api/sprites/buy-egg`。
 
 ---
@@ -395,6 +526,10 @@ commit
 sprites: () => j('/api/sprites'),
 spriteProfile: (id, o) => j(`/api/sprites/${encodeURIComponent(id)}/profile`, { method: 'POST', ...body(o) }),
 spriteStar: (id) => j(`/api/sprites/${encodeURIComponent(id)}/star`, { method: 'POST' }),
+baseBuy: (itemId) => j(`/api/sprites/base/${encodeURIComponent(itemId)}/buy`, { method: 'POST' }),
+spriteDuty: (id) => j(`/api/sprites/${encodeURIComponent(id)}/duty`, { method: 'POST' }),
+spriteDutyClear: () => j('/api/sprites/duty-clear', { method: 'POST' }),
+morningAck: () => j('/api/sprites/morning-ack', { method: 'POST' }),
 admin: { ..., spritesConfig: () => j('/api/admin/sprites-config'),
          setSpritesConfig: (o) => j('/api/admin/sprites-config', { method: 'PUT', ...body(o) }) }
 ```
@@ -494,6 +629,9 @@ def pick_def_id(c, kid) -> (str, bool)
 def grant_from_box(c, kid, fam, ref_id) -> dict
 def set_profile(c, kid, def_id, nickname, flavor)
 def add_star(c, kid, def_id)
+def base_items_of(c, kid) -> list          # 已购物件
+def buy_base_item(c, kid, item_id) -> dict # 尘扣减 + 数组追加
+def set_on_duty(c, kid, def_id)            # '' = 取消
 ```
 
 `grant_from_box` 不写阳光、不改 `box_opened`（由 `open_box` 调）。非法 `def_id` 抛 `SpriteError`，main 转 400。
@@ -525,7 +663,7 @@ def _give_boxes(kid, n):
 | 无箱 | 409，sprites=0，ledger COUNT 不变，dust 缺省 |
 | 开关开第一次 | 200，delta∈[1,3]，kid_sprites=1，opens=1，ledger 一笔 `reason=box` `ref=box-1`，`kind=sprite` |
 | 未拥有优先 | 给 12 箱，连开 12 次：每次 `duplicate=false`，owned 1…12，12 个不同 def_id |
-| 第 13 次 | duplicate，行数仍 12，dust=3，kid_sprites.stars 全 0 |
+| 第 13 次 | **需 39 天连击（`_give_boxes(13)`）**：duplicate，行数仍 12，dust=6，kid_sprites.stars 全 0 |
 | 升星尘不足 | 400 |
 | POST star 12 尘 | stars=1，dust=0，ledger COUNT 不变 |
 | 连续升到 3 再点 | 400，stars=3 |
@@ -538,6 +676,13 @@ def _give_boxes(kid, n):
 | box5 口径 | `box_opened` +1 与现在相同 |
 | 非法 def 升星 | 400 |
 | 开箱 409 后 dust | 不变 |
+| 买基地物件（尘够） | 200，`sprite_base_items` +1，dust 减价，ledger COUNT 不变 |
+| 买基地物件（尘不足/重复买/非法 id） | 400/409/400 |
+| 值班（未拥有） | 404 |
+| 设为值班→替换→取消 | `sprite_on_duty` 依次 = def_id、新 def_id、空串 |
+| 家庭隔离（基地/值班） | B 读不到 A 的 base_items 和 on_duty |
+| 晨间惊喜 | 昨天有学习且 ack≠今天 → `morning.new=true`；ack 后再 GET → false；昨天无学习 → false |
+| morning-ack 无 ledger | COUNT 不变 |
 
 手测：375px 图鉴；孵化未完点蒙层不关；关开关后小卡无按钮；进化全屏与开箱不同时（用户自己点箱）。
 
@@ -564,14 +709,14 @@ npm --prefix frontend run build
 
 ## 12. 分期
 
-**2.0（本文，2.5–3.5 天）**  
-迁移、`sprites.py`、改 `open_box`、图鉴+开箱两拍、改名升星、家长开关、测试。
+**2.0（本文，5–5.5 天）**  
+迁移、`sprites.py`、改 `open_box`、图鉴（三个基地：**昼夜循环 + 精灵点按 + 学习留痕 + 玩具商店**）、开箱两拍、改名升星、**值班精灵（主屏小脸 + 完成任务跳一下 + 3 星星环）**、**晨间惊喜气泡 + morning-ack**、家长开关、测试。
 
 **2.1（1–1.5 天，需另开一刀）**  
 - 今日第一次单元或单词完成：30% 掉蛋，每天最多 1，不写阳光  
 - 阳光换蛋 40，明码，每周 1，默认关；`earned` 排除 `sprite`；指纹同步  
-- 成就：日光/绿意/天气各集齐 4 只  
-- 别针：一只挂芽角（③A 贴纸归宿）
+- 成就：日光/绿意/天气各集齐 4 只（D）  
+- ③A 贴纸/别针已由「值班精灵」取代，不再单独做
 
 **2.2**  
 JSON 8 色填色（仍不上传）。照片上传要配额和家长相册权限后再谈。
@@ -585,11 +730,11 @@ JSON 8 色填色（仍不上传）。照片上传要配额和家长相册权限�
 
 | 文件 | 改什么 |
 |---|---|
-| `backend/db.py` | `_migrate_030`、`MIGRATIONS`、PG GRANT |
+| `backend/db.py` | `_migrate_032`、`MIGRATIONS`、PG GRANT |
 | `backend/sprites.py` | **新** |
-| `backend/main.py` | `open_box`；三个 sprites 路由；admin config |
+| `backend/main.py` | `open_box`；sprites 路由（图鉴/改名/升星/**基地购买/值班**）；admin config |
 | `frontend/src/api.js` | 4 个方法 |
-| `frontend/src/App.vue` | 开箱状态机、图鉴遮罩、小卡按钮、`.buddy` CSS 小怪 |
+| `frontend/src/App.vue` | 开箱状态机、图鉴遮罩（**三个基地场景 + 物件商店**）、值班精灵顶栏小脸、小卡按钮、`.buddy` CSS |
 | `frontend/src/Admin.vue` | 学习组开关 |
 | `backend/test_sprites.py` | **新** |
 

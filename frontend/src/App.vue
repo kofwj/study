@@ -113,39 +113,58 @@ const wordToday = ref({ enabled: false, finished: false, session: null, config: 
 const wordInputEl = ref(null)
 const wordDialog = reactive({
   open: false, itemIndex: 0, phase: 'look', input: '', busy: false,
-  feedback: null, peekUntil: 0, peekN: {}, heard: {},
+  feedback: null, peekUntil: 0, peekN: {}, heard: {}, filter: 'new',
 })
 let wordPeekTimer = null
 let wordNextTimer = null
 function wordItems() { return wordToday.value.session?.items || [] }
+function wordLaneOf(item) { return item && item.source === 'due' ? 'due' : 'new' }
+function wordLaneItems(kind) {
+  const k = kind || wordDialog.filter
+  if (k === 'all') return wordItems()
+  return wordItems().filter(x => wordLaneOf(x) === k)
+}
 const wordRemaining = computed(() => wordItems().filter(x => x.state !== 'done').length)
-const wordCurrent = computed(() => wordItems()[wordDialog.itemIndex] || null)
+const wordCurrent = computed(() => wordLaneItems()[wordDialog.itemIndex] || null)
 const wordCfg = computed(() => wordToday.value.config || {})
 const wordTtsOn = computed(() => wordCfg.value.tts !== false)
-const wordCard = computed(() => {
+const wordSun = computed(() => (wordCfg.value.base_sunshine != null ? wordCfg.value.base_sunshine : 3))
+function buildWordLane(kind) {
   const t = wordToday.value
+  if (!t.enabled) return null
   const sess = t.session
-  const cfg = t.config || {}
-  const finished = !!(t.finished || (sess && sess.state === 'completed'))
-  const counts = sess && sess.counts
-  const n = (sess && sess.items && sess.items.length) || 0
-  let detail = '看词、默写，写完领阳光'
-  if (finished && sess) detail = `今日背默完成 · 正确 ${counts && counts.correct_first_try != null ? counts.correct_first_try : 0}/${n}`
-  else if (finished && !sess) detail = '这一单元的词都练过了'
-  else if (wordRemaining.value) {
-    detail = `还剩 ${wordRemaining.value} 个`
-    if (counts) detail += ` · 复习 ${counts.due} · 新学 ${counts.new}`
-  } else if (counts) detail = `复习 ${counts.due} · 新学 ${counts.new}`
-  const sun = cfg.base_sunshine != null ? cfg.base_sunshine : 3
-  return { finished, detail, sun, blocked: finished && !sess }
-})
-function openWordCard() { if (!wordCard.value.blocked) openWords() }
+  const counts = (sess && sess.counts) || {}
+  const items = wordLaneItems(kind)
+  let total = items.length
+  if (!total && sess) total = Number(kind === 'due' ? counts.due : counts.new) || 0
+  if (!total && !sess && !t.finished) {
+    if (kind === 'due') total = Number(t.backlog_due) || 0
+    else total = 1
+  }
+  if (!total) return null
+  const left = items.length ? items.filter(x => x.state !== 'done').length : total
+  const finished = !!(t.finished || (sess && sess.state === 'completed') || (items.length && left === 0))
+  let detail = kind === 'due' ? '到期的词，直接默写' : '本课新词，先看再写'
+  if (finished) detail = kind === 'due' ? `复习完成 · ${total} 个` : `新词完成 · ${total} 个`
+  else if (items.length) detail = `还剩 ${left} 个 · ${kind === 'due' ? '到期复习' : '本课新词'}`
+  else detail = kind === 'due' ? `约 ${total} 个到期` : '去学几个新词'
+  return { kind, title: kind === 'due' ? '今日复习' : '今日新词', detail, finished, left, total, sun: wordSun.value }
+}
+const wordDueCard = computed(() => buildWordLane('due'))
+const wordNewCard = computed(() => buildWordLane('new'))
+const wordOtherLane = computed(() => wordDialog.filter === 'due' ? 'new' : 'due')
+const wordOtherCard = computed(() => buildWordLane(wordOtherLane.value))
 const wordPos = computed(() => {
-  const items = wordItems()
+  const items = wordLaneItems()
   const total = items.length
   const done = items.filter(x => x.state === 'done').length
   const cur = !total ? 0 : (done === total ? total : done + 1)
   return { cur, total, done, pct: total ? Math.round(done / total * 100) : 0 }
+})
+const wordOverlayTitle = computed(() => {
+  if (wordDialog.filter === 'due') return '今日复习'
+  if (wordDialog.filter === 'new') return '今日新词'
+  return '今日单词'
 })
 const wordSlots = computed(() => {
   const w = wordCurrent.value?.word || ''
@@ -156,7 +175,7 @@ function firstLetter(w) { const m = String(w || '').match(/[A-Za-z]/); return m 
 function applyWordToday(t) {
   if (!t) return
   wordToday.value = t
-  const items = t.session?.items || []
+  const items = wordLaneItems()
   const i = items.findIndex(x => x.state !== 'done')
   wordDialog.itemIndex = i < 0 ? 0 : i
 }
@@ -239,9 +258,9 @@ function maybeAutoSpeak() {
   speakWord(it.word, cfg.tts_lang)
 }
 function syncWordPhase() {
-  const items = wordItems()
+  const items = wordLaneItems()
   const sess = wordToday.value.session
-  if (!sess || items.every(x => x.state === 'done') || sess.state === 'completed' || wordToday.value.finished) {
+  if (!sess || !items.length || items.every(x => x.state === 'done') || sess.state === 'completed' || wordToday.value.finished) {
     wordDialog.phase = 'done'
     wordDialog.feedback = null
     return
@@ -256,8 +275,9 @@ function syncWordPhase() {
   maybeAutoSpeak()
   focusWordInput()
 }
-async function openWords() {
+async function openWords(kind) {
   if (wordDialog.busy) return
+  wordDialog.filter = kind === 'due' ? 'due' : 'new'
   wordDialog.busy = true
   try {
     let t = await api.wordsToday()
@@ -265,6 +285,10 @@ async function openWords() {
     applyWordToday(t)
     if (!t.enabled) { showToast('单词练习还没开'); return }
     if (t.finished && !t.session) { showToast('这一单元的词都练过了'); return }
+    if (!wordLaneItems().length) {
+      showToast(kind === 'due' ? '今天没有到期复习' : '今天没有新词')
+      return
+    }
     wordDialog.input = ''
     wordDialog.feedback = null
     wordDialog.peekUntil = 0
@@ -273,6 +297,7 @@ async function openWords() {
   } catch (e) { showToast(e.message) }
   finally { wordDialog.busy = false }
 }
+function openWordLane(kind) { openWords(kind) }
 function closeWords() {
   wordDialog.open = false
   wordDialog.feedback = null
@@ -864,9 +889,10 @@ const todayCheckinItems = computed(() => {
   const items = []
   let wordPlaced = false
   const putWord = () => {
-    if (wordPlaced || !wordToday.value.enabled || wordToday.value.finished) return
+    if (wordPlaced || !wordToday.value.enabled) return
     wordPlaced = true
-    items.push({ key: 'word-today', kind: 'word' })
+    if (wordDueCard.value && !wordDueCard.value.finished) items.push({ key: 'word-due', kind: 'word', lane: 'due' })
+    if (wordNewCard.value && !wordNewCard.value.finished) items.push({ key: 'word-new', kind: 'word', lane: 'new' })
   }
   for (const d of dailyTodo.value) {
     if (subjectRank(d.subject_id) >= subjectRank('英语')) putWord()
@@ -896,7 +922,11 @@ const studyNext = computed(() => {
   }
   return out
 })
-const todayRemaining = computed(() => reviewDue.value.length + dailyTodo.value.length + studyNext.value.length + ((wordToday.value.enabled && !wordToday.value.finished) ? (wordRemaining.value || 1) : 0))
+const todayRemaining = computed(() => {
+  const words = (wordDueCard.value && !wordDueCard.value.finished ? 1 : 0)
+    + (wordNewCard.value && !wordNewCard.value.finished ? 1 : 0)
+  return reviewDue.value.length + dailyTodo.value.length + studyNext.value.length + words
+})
 const subjectProgress = computed(() => {
   const m = {}
   for (const s of data.subjects) m[s.id] = { done: 0, total: 0 }
@@ -1059,7 +1089,8 @@ function reloadApp() {
                 <span v-if="reviewDue.length">复习 {{ reviewDue.length }} 项</span>
                 <span v-if="dailyTodo.length">打卡 {{ dailyTodo.length }} 项</span>
                 <span v-if="studyNext.length">学习 {{ studyNext.length }} 项</span>
-                <span v-if="wordToday.enabled && !wordToday.finished">单词 {{ wordRemaining || '待练' }}</span>
+                <span v-if="wordDueCard && !wordDueCard.finished">单词复习 {{ wordDueCard.left }}</span>
+                <span v-if="wordNewCard && !wordNewCard.finished">新词 {{ wordNewCard.left }}</span>
               </div>
             </div>
           </div>
@@ -1093,12 +1124,12 @@ function reloadApp() {
             </div>
             <div class="grid plan-grid">
               <template v-for="it in todayCheckinItems" :key="it.key">
-                <div v-if="it.kind === 'word'" class="card enter word-daily-card" :class="{ done: wordCard.finished }" role="button" @click="openWordCard">
-                  <button type="button" class="circle" :class="{ ok: wordCard.finished }" @click.stop="openWordCard"><Check v-if="wordCard.finished" :size="15" /></button>
+                <div v-if="it.kind === 'word'" class="card enter word-daily-card" role="button" @click="openWordLane(it.lane)">
+                  <button type="button" class="circle" @click.stop="openWordLane(it.lane)"></button>
                   <div class="card-body">
-                    <div class="card-title">今日单词</div>
-                    <div class="card-detail">{{ wordCard.detail }}</div>
-                    <div class="plus">英语 · +{{ wordCard.sun }} <Sun class="ico sun" :size="12" /></div>
+                    <div class="card-title">{{ it.lane === 'due' ? '今日复习' : '今日新词' }}</div>
+                    <div class="card-detail">{{ (it.lane === 'due' ? wordDueCard : wordNewCard).detail }}</div>
+                    <div class="plus">英语<template v-if="it.lane === 'new'"> · +{{ wordSun }} <Sun class="ico sun" :size="12" /></template></div>
                   </div>
                 </div>
                 <div v-else class="card enter">
@@ -1143,13 +1174,21 @@ function reloadApp() {
           <div class="unit" v-if="data.daily.some(x => x.subject_id === activeTab) || (activeTab === '英语' && wordToday.enabled)">
             <h2><i></i> 每日打卡</h2>
             <div class="grid">
-              <div v-if="activeTab === '英语' && wordToday.enabled"
-                class="card enter word-daily-card" :class="{ done: wordCard.finished }" role="button" @click="openWordCard">
-                <button type="button" class="circle" :class="{ ok: wordCard.finished }" @click.stop="openWordCard"><Check v-if="wordCard.finished" :size="15" /></button>
+              <div v-if="activeTab === '英语' && wordDueCard"
+                class="card enter word-daily-card" :class="{ done: wordDueCard.finished }" role="button" @click="openWordLane('due')">
+                <button type="button" class="circle" :class="{ ok: wordDueCard.finished }" @click.stop="openWordLane('due')"><Check v-if="wordDueCard.finished" :size="15" /></button>
                 <div class="card-body">
-                  <div class="card-title">今日单词</div>
-                  <div class="card-detail">{{ wordCard.detail }}</div>
-                  <div class="plus">+{{ wordCard.sun }} <Sun class="ico sun" :size="12" /></div>
+                  <div class="card-title">今日复习</div>
+                  <div class="card-detail">{{ wordDueCard.detail }}</div>
+                </div>
+              </div>
+              <div v-if="activeTab === '英语' && wordNewCard"
+                class="card enter word-daily-card" :class="{ done: wordNewCard.finished }" role="button" @click="openWordLane('new')">
+                <button type="button" class="circle" :class="{ ok: wordNewCard.finished }" @click.stop="openWordLane('new')"><Check v-if="wordNewCard.finished" :size="15" /></button>
+                <div class="card-body">
+                  <div class="card-title">今日新词</div>
+                  <div class="card-detail">{{ wordNewCard.detail }}</div>
+                  <div class="plus">+{{ wordSun }} <Sun class="ico sun" :size="12" /></div>
                 </div>
               </div>
               <div v-for="d in tabDailies" :key="d.id"
@@ -1302,7 +1341,7 @@ function reloadApp() {
     <div v-if="wordDialog.open" class="mask" @click.self="closeWords">
       <div class="shop-modal word-modal">
         <div class="word-top">
-          <strong>今日单词</strong>
+          <strong>{{ wordOverlayTitle }}</strong>
           <span>{{ wordPos.cur }} / {{ wordPos.total }}</span>
         </div>
         <div class="word-bar"><i :style="{ width: wordPos.pct + '%' }"></i></div>
@@ -1351,12 +1390,16 @@ function reloadApp() {
         </div>
 
         <div v-else-if="wordDialog.phase === 'done'" class="word-pane word-done">
-          <h3>今日背默完成</h3>
-          <p>复习 {{ (wordToday.session && wordToday.session.counts && wordToday.session.counts.due) || 0 }} · 新学 {{ (wordToday.session && wordToday.session.counts && wordToday.session.counts.new) || 0 }}</p>
-          <p>首轮正确 {{ (wordToday.session && wordToday.session.counts && wordToday.session.counts.correct_first_try) || 0 }} / {{ wordItems().length }}</p>
+          <h3>{{ wordDialog.filter === 'due' ? '复习完成' : '新词完成' }}</h3>
+          <p v-if="wordOtherCard && !wordOtherCard.finished">{{ wordDialog.filter === 'due' ? '新词还没练' : '复习还没练' }} · {{ wordOtherCard.left }} 个</p>
+          <p v-else>复习 {{ (wordToday.session && wordToday.session.counts && wordToday.session.counts.due) || 0 }} · 新学 {{ (wordToday.session && wordToday.session.counts && wordToday.session.counts.new) || 0 }}</p>
+          <p v-if="!(wordOtherCard && !wordOtherCard.finished)">首轮正确 {{ (wordToday.session && wordToday.session.counts && wordToday.session.counts.correct_first_try) || 0 }} / {{ wordItems().length }}</p>
           <p v-if="wordToday.session && wordToday.session.reward" class="word-sun">+{{ wordToday.session.reward.base }} 阳光</p>
           <p v-if="wordToday.session && wordToday.session.reward && wordToday.session.reward.perfect" class="word-sun">+{{ wordToday.session.reward.perfect }} 全对</p>
-          <button type="button" class="do big" :disabled="wordDialog.busy" @click="wordCollect">
+          <button v-if="wordOtherCard && !wordOtherCard.finished" type="button" class="do big" :disabled="wordDialog.busy" @click="openWords(wordOtherLane)">
+            去练{{ wordOtherLane === 'due' ? '复习' : '新词' }}
+          </button>
+          <button v-else type="button" class="do big" :disabled="wordDialog.busy" @click="wordCollect">
             {{ wordToday.session && wordToday.session.state === 'completed' ? '关闭' : '收下阳光' }}
           </button>
         </div>
