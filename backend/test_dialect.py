@@ -40,7 +40,7 @@ def test_dialect():
     assert n >= 8
     assert db.get_setting(c, "k") == "2"
     migs = {r[0] for r in c.execute("SELECT id FROM schema_migrations").fetchall()}
-    assert {"001_identity", "002_kid_id", "016_unit_version", "017_knowledge_tags"} <= migs
+    assert {"001_identity", "002_kid_id", "016_unit_version", "017_knowledge_tags", "031_ledger_once"} <= migs
     assert c.execute("SELECT 1 FROM users WHERE id=?", (db.DEFAULT_KID,)).fetchone()
     assert c.execute("SELECT version FROM units WHERE id=?", ("g5s1-ma-1",)).fetchone()[0] == "sjb-math"
     assert c.execute("SELECT version FROM units WHERE id=?", ("g5s1-en-1",)).fetchone()[0] == "yilin-eng"

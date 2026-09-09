@@ -4,7 +4,7 @@
 > 取代总图 [ROADMAP_GAMEIFICATION.md](ROADMAP_GAMEIFICATION.md) §4.2 初稿的「单抽 30 / 十连 270 / 70·25·5 / 30 保底 / 涂色上传 / 迁移 029_sprites」。  
 > 主屏芽已在 v0.2.16，见 [ROADMAP_COMPANION.md](ROADMAP_COMPANION.md)。图鉴是芽的朋友册，**不换物种。**  
 > 铁律：ledger 唯一阳光真相；消费不掉级；无第三方 IP；无新 npm/pip；无真实货币。  
-> 迁移尾号现在是 `029_words`，本阶段 `030_sprites`。
+> 迁移尾号现在是 `031_ledger_once`，本阶段 `032_sprites`。
 
 ## 0. 一页结论
 
@@ -228,7 +228,7 @@ def pick_def_id(c, kid):
 
 ---
 
-## 5. 数据 · 迁移 `030_sprites`
+## 5. 数据 · 迁移 `032_sprites`
 
 不建 `sprite_defs` 表。
 
@@ -280,7 +280,7 @@ WITH CHECK (kid_id = current_setting('app.kid_id', true))
 
 2.1 再加 `sprites_shop`。
 
-把 `030_sprites` 追加进 `MIGRATIONS` 元组（`backend/db.py` 约 1000 行）。
+把 `032_sprites` 追加进 `MIGRATIONS` 元组（`backend/db.py` 约 1000 行）。
 
 ---
 

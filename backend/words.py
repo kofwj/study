@@ -795,11 +795,7 @@ def spell_item(c, kid, fam, sid, word_id, text, phase, attempt_no):
 def _try_ledger(c, kid, delta, reason, ref, note):
     if int(delta or 0) <= 0:
         return
-    try:
-        db.insert_ledger(c, db.today(), int(delta), reason, ref, note, kid_id=kid)
-    except Exception as e:
-        if not _is_unique(e):
-            raise
+    db.insert_ledger(c, db.today(), int(delta), reason, ref, note, kid_id=kid)
 
 
 def week_stats(c, kid, fam):

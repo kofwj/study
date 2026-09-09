@@ -60,6 +60,7 @@ onBeforeUnmount(() => {
   try { if (typeof speechSynthesis !== 'undefined') speechSynthesis.cancel() } catch {}
 })
 const toast = ref('')
+const actionBusy = ref(false)
 const shopOpen = ref(false)
 const myRedeems = ref([])
 const achievements = ref([])
@@ -618,11 +619,14 @@ async function refresh() {
 }
 
 async function checkin() {
+  if (actionBusy.value) return
+  actionBusy.value = true
   try {
     const r = await api.checkin()
     showToast('已签到' + milestoneTxt(r.milestone))
     await refresh()
   } catch (e) { showToast(e.message) }
+  finally { actionBusy.value = false }
 }
 
 async function toggleTask(task, event) {
@@ -634,6 +638,8 @@ async function toggleTask(task, event) {
     showToast('还没学到这课，先把前面的学完')
     return
   }
+  if (actionBusy.value) return
+  actionBusy.value = true
   try {
     if (task.done) {
       await api.cancel(task.id)
@@ -645,6 +651,7 @@ async function toggleTask(task, event) {
     }
     await refresh()
   } catch (e) { showToast(e.message) }
+  finally { actionBusy.value = false }
 }
 
 async function openChart(task) {
@@ -720,6 +727,8 @@ async function submitDaily(event) {
       if (v && !Number.isNaN(v)) metrics[m.id] = v
     }
   }
+  if (actionBusy.value) return
+  actionBusy.value = true
   try {
     const r = await api.complete(dailyDialog.task.id, metrics)
     if (event) flyPlus(event.clientX, event.clientY, `+${r.delta} 阳光`)
@@ -727,13 +736,17 @@ async function submitDaily(event) {
     dailyDialog.open = false
     await refresh()
   } catch (e) { showToast(e.message) }
+  finally { actionBusy.value = false }
 }
 async function cancelDaily(task) {
+  if (actionBusy.value) return
+  actionBusy.value = true
   try {
     await api.cancel(task.id)
     showToast('已取消，扣回阳光')
     await refresh()
   } catch (e) { showToast(e.message) }
+  finally { actionBusy.value = false }
 }
 
 async function redeem(reward) {
@@ -774,12 +787,15 @@ async function openBox() {
     showToast(`再连续打卡 ${Math.max(1, need)} 天解锁宝箱`)
     return
   }
+  if (actionBusy.value) return
+  actionBusy.value = true
   try {
     const r = await api.openBox()
     boxResult.value = r.delta
     boxOpen.value = true
     await refresh()
   } catch (e) { showToast(e.message) }
+  finally { actionBusy.value = false }
 }
 async function openRankMap() {
   rankMapOpen.value = true

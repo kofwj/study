@@ -826,12 +826,15 @@ async function addPenalty() {
   }
 }
 async function cancelPenalty(id) {
+  if (penaltySubmitting.value) return
   if (!confirm('撤回这笔扣分？阳光会加回去，等级不变。')) return
+  penaltySubmitting.value = true
   try {
     await api.admin.cancelPenalty(id)
     showToast('已撤回')
     await load()
   } catch (e) { showToast(e.message) }
+  finally { penaltySubmitting.value = false }
 }
 async function delMember(m) {
   if (!confirm('删除「' + m.name + '」？立刻失效。')) return

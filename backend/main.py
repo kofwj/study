@@ -95,7 +95,19 @@ def kid_id():
 
 
 def insert_ledger(c, date, delta, reason, ref_id, note, kid=None):
-    db.insert_ledger(c, date, delta, reason, ref_id, note, kid_id=kid or kid_id())
+    return db.insert_ledger(c, date, delta, reason, ref_id, note, kid_id=kid or kid_id())
+
+
+def _begin_write(c):
+    if not db.is_postgres():
+        c.execute("BEGIN IMMEDIATE")
+
+
+def _rollback(c):
+    try:
+        c.rollback()
+    except Exception:
+        pass
 
 
 def active_term(c):
@@ -679,8 +691,10 @@ def maybe_milestone(c, kid=None):
     for days, bonus in MILESTONES:
         key = f"milestone_{days}"
         if s >= days and not db.get_kid_setting(c, kid, key, ""):
+            lid = insert_ledger(c, db.today(), bonus, "milestone", key, f"连续坚持 {days} 天", kid=kid)
+            if lid is None:
+                continue
             db.set_kid_setting(c, kid, key, db.today())
-            insert_ledger(c, db.today(), bonus, "milestone", key, f"连续坚持 {days} 天", kid=kid)
             got.append((days, bonus))
     return got
 
@@ -918,18 +932,26 @@ def boxes():
 @app.post("/api/open_box")
 def open_box():
     c = get_conn()
-    s = streak(c)
-    opened = int(db.get_kid_setting(c, kid_id(), "box_opened", "0"))
-    if s // BOX_INTERVAL <= opened:
+    try:
+        _begin_write(c)
+        kid = kid_id()
+        s = streak(c, kid)
+        opened = int(db.get_kid_setting(c, kid, "box_opened", "0") or 0)
+        nxt = opened + 1
+        if s // BOX_INTERVAL < nxt:
+            raise HTTPException(409, "还没有可开的宝箱，再坚持坚持吧！")
+        bonus = random.randint(3, 10)
+        lid = insert_ledger(c, db.today(), bonus, "box", f"box-{nxt}", "连击宝箱", kid=kid)
+        if lid is None:
+            raise HTTPException(409, "这个宝箱已经开过啦")
+        db.set_kid_setting(c, kid, "box_opened", str(nxt))
+        c.commit()
+        return {"delta": bonus, "streak": streak(c, kid), "level": level_info(c)}
+    except Exception:
+        _rollback(c)
+        raise
+    finally:
         c.close()
-        raise HTTPException(409, "还没有可开的宝箱，再坚持坚持吧！")
-    bonus = random.randint(3, 10)
-    db.set_kid_setting(c, kid_id(), "box_opened", str(opened + 1))
-    insert_ledger(c, db.today(), bonus, "box", f"box-{opened + 1}", "连击宝箱")
-    c.commit()
-    res = {"delta": bonus, "streak": streak(c), "level": level_info(c)}
-    c.close()
-    return res
 
 
 @app.get("/api/ranks")
@@ -1201,7 +1223,7 @@ def companion_ack_evolve():
     seen = (db.get_kid_setting(c, kid, CFG_COMPANION_SEEN, "") or "").strip()
     seen_idx = next((i for i, st in enumerate(COMPANION_STAGES) if st[0] == seen), -1)
     cur_idx = next(i for i, st in enumerate(COMPANION_STAGES) if st[0] == info["stage"])
-    if cur_idx >= seen_idx:
+    if cur_idx > seen_idx:
         db.set_kid_setting(c, kid, CFG_COMPANION_SEEN, info["stage"])
     c.commit()
     out = companion_info(c, kid)
@@ -1263,30 +1285,36 @@ def delete_task_kid(tid: str):
 def cancel(body: CompleteBody):
     c = get_conn()
     try:
+        _begin_write(c)
         t = db.today()
+        kid = kid_id()
         kind = c.execute("SELECT kind FROM completions WHERE task_id=? AND kid_id=? AND status='completed' ORDER BY id DESC LIMIT 1",
-                         (body.task_id, kid_id())).fetchone()
+                         (body.task_id, kid)).fetchone()
         if not kind:
             raise HTTPException(404, "没有可取消的记录")
         if kind["kind"] == "daily":
             comp = c.execute(
                 "SELECT * FROM completions WHERE task_id=? AND status='completed' AND kid_id=? AND date=? ORDER BY id DESC LIMIT 1",
-                (body.task_id, kid_id(), t)).fetchone()
+                (body.task_id, kid, t)).fetchone()
         else:
             comp = c.execute(
                 "SELECT * FROM completions WHERE task_id=? AND status='completed' AND kid_id=? ORDER BY id DESC LIMIT 1",
-                (body.task_id, kid_id())).fetchone()
+                (body.task_id, kid)).fetchone()
         if not comp:
             raise HTTPException(404, "没有可取消的记录")
-        if c.execute("SELECT 1 FROM ledger WHERE reason='cancel' AND ref_id=?", (f"cmp-{comp['id']}",)).fetchone():
+        ref = f"cmp-{comp['id']}"
+        cur = c.execute("UPDATE completions SET status='cancelled' WHERE id=? AND status='completed'", (comp["id"],))
+        if getattr(cur, "rowcount", 0) == 0:
             raise HTTPException(409, "这项已经取消过啦")
-        # 保留原完成记录用于审计，但标记为 cancelled，释放唯一索引以便修正后重新打卡。
         delta = -comp["sunshine"]
-        c.execute("UPDATE completions SET status='cancelled' WHERE id=?", (comp["id"],))
-        insert_ledger(c, t, delta, "cancel", f"cmp-{comp['id']}", "点错取消")
+        lid = insert_ledger(c, t, delta, "cancel", ref, "点错取消", kid=kid)
+        if lid is None:
+            raise HTTPException(409, "这项已经取消过啦")
         c.commit()
-        res = {"delta": delta, "level": level_info(c)}
-        return res
+        return {"delta": delta, "level": level_info(c)}
+    except Exception:
+        _rollback(c)
+        raise
     finally:
         c.close()
 
@@ -1495,6 +1523,7 @@ def auth_join(b: JoinBody, request: Request):
     ip = _client_ip(request)
     _rate_ok("ip:" + ip)
     _rate_ok("join:" + code)
+    # 失败猜码才记次数，成功加入不占爆破额度
     c = db.connect(admin=True)
     try:
         inv = c.execute("SELECT * FROM invites WHERE code=?", (code,)).fetchone()
@@ -1755,17 +1784,20 @@ def penalty_cancel(lid: int):
         if not kid:
             raise HTTPException(400, "没有孩子")
         _own_kid(c, kid, fam)
+        _begin_write(c)
         row = c.execute("SELECT * FROM ledger WHERE id=? AND kid_id=? AND reason='penalty'", (lid, kid)).fetchone()
         if not row:
             raise HTTPException(404, "没找到这笔扣分")
         ref = row["ref_id"]
-        if c.execute("SELECT 1 FROM ledger WHERE reason='penalty_cancel' AND ref_id=?", (ref,)).fetchone():
-            raise HTTPException(409, "这笔已经撤回过")
         before = earned(c, kid)
-        db.insert(c, "INSERT INTO ledger(date,delta,reason,ref_id,note,created_at,kid_id) VALUES(?,?,?,?,?,?,?)",
-                  (db.today(), abs(int(row["delta"])), "penalty_cancel", ref, "撤回扣分", db.now(), kid))
+        lid_new = insert_ledger(c, db.today(), abs(int(row["delta"])), "penalty_cancel", ref, "撤回扣分", kid=kid)
+        if lid_new is None:
+            raise HTTPException(409, "这笔已经撤回过")
         c.commit()
         return {"ok": True, "balance": balance(c, kid), "earned": earned(c, kid), "earned_before": before, "level": level_info(c)}
+    except Exception:
+        _rollback(c)
+        raise
     finally:
         c.close()
 
@@ -1993,22 +2025,28 @@ def redemption_approve(rid: str):
         if rd["status"] != "pending":
             raise HTTPException(409, "这条已处理过")
         applicant = rd["kid_id"] or kid_id()
-        
-        # 锁定余额行，防止并发超支
+        _begin_write(c)
         if db.is_postgres():
-            # PostgreSQL: 锁定 ledger 表防止并发修改
             c.execute("SELECT SUM(delta) FROM ledger WHERE kid_id=? FOR UPDATE", (applicant,))
-        
+        rd = c.execute("SELECT * FROM redemptions WHERE id=? AND kid_id=?", (rid, applicant)).fetchone()
+        if not rd or rd["status"] != "pending":
+            raise HTTPException(409, "这条已处理过")
         bal = balance(c, applicant)
         if bal < rd["price"]:
             raise HTTPException(409, "阳光不够，还差 %d" % (rd["price"] - bal))
-        
-        c.execute("UPDATE redemptions SET status='done' WHERE id=?", (rid,))
+        cur = c.execute("UPDATE redemptions SET status='done' WHERE id=? AND status='pending'", (rid,))
+        if getattr(cur, "rowcount", 0) == 0:
+            raise HTTPException(409, "这条已处理过")
         rw = c.execute("SELECT name FROM rewards WHERE id=?", (rd["reward_id"],)).fetchone()
-        insert_ledger(c, db.today(), -rd["price"], "redeem", f"red-{rid}", rw["name"] if rw else "兑换", kid=applicant)
+        lid = insert_ledger(c, db.today(), -rd["price"], "redeem", f"red-{rid}", rw["name"] if rw else "兑换", kid=applicant)
+        if lid is None:
+            raise HTTPException(409, "这条已处理过")
         maybe_milestone(c, applicant)
         c.commit()
         return {"ok": True}
+    except Exception:
+        _rollback(c)
+        raise
     finally:
         c.close()
 
@@ -2106,22 +2144,30 @@ def tests_list():
 def test_delete(tid: str):
     c = get_conn()
     fam = _fam.get()
-    r = None
-    owner = None
-    for kr in c.execute("SELECT id FROM users WHERE family_id=? AND role='kid'", (fam,)).fetchall():
-        db.apply_scope(c, fam, kr["id"])
-        r = c.execute("SELECT * FROM tests WHERE id=? AND kid_id=?", (tid, kr["id"])).fetchone()
-        if r:
-            owner = kr["id"]
-            break
-    if not r:
-        db.apply_scope(c, fam, kid_id()); c.close(); raise HTTPException(404, "没找到这条测试")
-    c.execute("DELETE FROM tests WHERE id=?", (tid,))
-    insert_ledger(c, db.today(), -r["sunshine"], "test_cancel", f"test-{tid}", "删除测试冲正", kid=owner)
-    c.commit()
-    db.apply_scope(c, fam, kid_id())
-    c.close()
-    return {"ok": True}
+    try:
+        r = None
+        owner = None
+        for kr in c.execute("SELECT id FROM users WHERE family_id=? AND role='kid'", (fam,)).fetchall():
+            db.apply_scope(c, fam, kr["id"])
+            r = c.execute("SELECT * FROM tests WHERE id=? AND kid_id=?", (tid, kr["id"])).fetchone()
+            if r:
+                owner = kr["id"]
+                break
+        if not r:
+            raise HTTPException(404, "没找到这条测试")
+        _begin_write(c)
+        lid = insert_ledger(c, db.today(), -r["sunshine"], "test_cancel", f"test-{tid}", "删除测试冲正", kid=owner)
+        if lid is None:
+            raise HTTPException(409, "这条已经冲正过")
+        c.execute("DELETE FROM tests WHERE id=?", (tid,))
+        c.commit()
+        return {"ok": True}
+    except Exception:
+        _rollback(c)
+        raise
+    finally:
+        db.apply_scope(c, fam, kid_id())
+        c.close()
 
 
 WEAKPOINT_INTERVALS = [1, 3, 7, 14, 30]

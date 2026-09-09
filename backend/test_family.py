@@ -255,9 +255,21 @@ def test_register_daily_limit_persists():
         assert r.status_code == 429
 
 
+def test_join_guess_rate_limit():
+    db.init_db()
+    with TestClient(main.app) as a:
+        assert a.post("/api/auth/register", json={"account": "joina", "pin": "join8888", "family_name": "加家"}).status_code == 200
+        for i in range(main.RATE_MAX):
+            r = a.post("/api/auth/join", json={"account": "guess%d" % i, "pin": "guess888", "code": "DEADCODE", "name": "猜"})
+            assert r.status_code == 404, r.text
+        r = a.post("/api/auth/join", json={"account": "guessx", "pin": "guess888", "code": "DEADCODE", "name": "猜"})
+        assert r.status_code == 429
+
+
 if __name__ == "__main__":
     test_family()
     test_penalty_switch_and_ledger()
     test_penalty_concurrent_sqlite()
     test_register_recover_and_kid_cap()
     test_register_daily_limit_persists()
+    test_join_guess_rate_limit()

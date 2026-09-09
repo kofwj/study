@@ -136,6 +136,39 @@ def test_daily_cancel_allows_recompletion():
         assert cli.get("/api/overview").json()["balance"] == before + second.json()["delta"]
 
 
+def test_cancel_concurrent_once():
+    """连点取消只冲正一次，余额回到完成前。"""
+    import concurrent.futures
+    db.init_db()
+    with TestClient(main.app) as cli1, TestClient(main.app) as cli2:
+        assert cli1.post("/api/auth/login", json={"account": "parent", "pin": "8888"}).status_code == 200
+        kid = next(k["id"] for k in cli1.get("/api/admin/kids").json() if k["account"] == "lele")
+        q = "?selected_kid=" + kid
+        tid = next(x["id"] for x in cli1.get("/api/tasks" + q).json()["tasks"]
+                   if not x.get("done") and not x.get("locked") and not x.get("past"))
+        before = cli1.get("/api/overview" + q).json()["balance"]
+        assert cli1.post("/api/complete" + q, json={"task_id": tid}).status_code == 200
+        mid = cli1.get("/api/overview" + q).json()["balance"]
+        assert mid > before
+        assert cli2.post("/api/auth/login", json={"account": "parent", "pin": "8888"}).status_code == 200
+
+        def do_cancel(client):
+            r = client.post("/api/cancel" + q, json={"task_id": tid})
+            return r.status_code
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as ex:
+            codes = list(ex.map(do_cancel, (cli1, cli2)))
+        assert 200 in codes
+        assert 500 not in codes
+        assert cli1.get("/api/overview" + q).json()["balance"] == before
+        c = db.connect()
+        n = c.execute(
+            "SELECT COUNT(*) FROM ledger WHERE kid_id=? AND reason='cancel' AND ref_id LIKE 'cmp-%'",
+            (kid,)).fetchone()[0]
+        c.close()
+        assert n == 1
+
+
 def test_streak():
     from datetime import date, timedelta
     db.init_db()
@@ -270,6 +303,8 @@ def test_new_achievements_query():
 
 if __name__ == "__main__":
     test_kids()
+    test_daily_cancel_allows_recompletion()
+    test_cancel_concurrent_once()
     test_streak()
     test_achievement_earned_idempotent()
     test_achievement_seen_toggle()
