@@ -390,6 +390,64 @@ def streak(c, kid=None):
     return n
 
 
+COMPANION_STAGES = [
+    ("egg", "阳光蛋", 0),
+    ("sprout", "阳光芽", 50),
+    ("leaf", "阳光苗", 350),
+    ("bloom", "阳光花", 1200),
+]
+CFG_COMPANION_NAME = "companion_name"
+CFG_COMPANION_SEEN = "companion_stage_seen"
+
+
+def _companion_aura(n):
+    if n >= 30:
+        return "month"
+    if n >= 14:
+        return "fortnight"
+    if n >= 7:
+        return "week"
+    return None
+
+
+def companion_info(c, kid=None):
+    kid = kid or kid_id()
+    e = int(earned(c, kid) or 0)
+    s = streak(c, kid)
+    cur = COMPANION_STAGES[0]
+    for st in COMPANION_STAGES:
+        if e >= st[2]:
+            cur = st
+    idx = next(i for i, st in enumerate(COMPANION_STAGES) if st[0] == cur[0])
+    nxt = COMPANION_STAGES[idx + 1] if idx + 1 < len(COMPANION_STAGES) else None
+    if nxt:
+        span = nxt[2] - cur[2]
+        progress = round((e - cur[2]) / span * 100, 1) if span else 100.0
+    else:
+        progress = 100.0
+    name = (db.get_kid_setting(c, kid, CFG_COMPANION_NAME, "") or "").strip()
+    seen = (db.get_kid_setting(c, kid, CFG_COMPANION_SEEN, "") or "").strip()
+    seen_idx = next((i for i, st in enumerate(COMPANION_STAGES) if st[0] == seen), None)
+    evolve = False
+    if seen_idx is None:
+        db.set_kid_setting(c, kid, CFG_COMPANION_SEEN, cur[0])
+        evolve = False
+    else:
+        evolve = idx > seen_idx
+    return {
+        "stage": cur[0],
+        "stage_name": cur[1],
+        "name": name,
+        "earned": e,
+        "next_stage": nxt[0] if nxt else None,
+        "next_stage_name": nxt[1] if nxt else None,
+        "next_need": nxt[2] if nxt else None,
+        "progress": progress,
+        "aura": _companion_aura(s),
+        "evolve": evolve,
+    }
+
+
 INSIGHT_DEFAULTS = {
     "test_fail_count": 2,
     "test_fail_score": 80,
@@ -999,6 +1057,8 @@ def tasks():
     for r in _wp_rows(c, kid_id()):
         weak.setdefault(r["unit_id"], []).append(r["tag_name"] or r["tag_id"])
     out["weak_tags"] = weak
+    out["companion"] = companion_info(c)
+    c.commit()
     return out
 
 
@@ -1113,6 +1173,40 @@ def set_kid_name(body: KidNameBody):
     c.commit()
     c.close()
     return {"name": name}
+
+
+class CompanionNameIn(BaseModel):
+    name: str = ""
+
+
+@app.post("/api/companion/name")
+def companion_set_name(b: CompanionNameIn):
+    name = (b.name or "").strip()
+    if not name or len(name) > 8:
+        raise HTTPException(400, "给它起个 1 到 8 个字的名字")
+    c = get_conn()
+    db.set_kid_setting(c, kid_id(), CFG_COMPANION_NAME, name)
+    c.commit()
+    out = companion_info(c)
+    c.commit()
+    c.close()
+    return out
+
+
+@app.post("/api/companion/ack-evolve")
+def companion_ack_evolve():
+    c = get_conn()
+    kid = kid_id()
+    info = companion_info(c, kid)
+    seen = (db.get_kid_setting(c, kid, CFG_COMPANION_SEEN, "") or "").strip()
+    seen_idx = next((i for i, st in enumerate(COMPANION_STAGES) if st[0] == seen), -1)
+    cur_idx = next(i for i, st in enumerate(COMPANION_STAGES) if st[0] == info["stage"])
+    if cur_idx >= seen_idx:
+        db.set_kid_setting(c, kid, CFG_COMPANION_SEEN, info["stage"])
+    c.commit()
+    out = companion_info(c, kid)
+    c.close()
+    return out
 
 
 class CustomTaskBody(BaseModel):

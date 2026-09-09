@@ -6,7 +6,7 @@ import { APP_LABEL, APP_REVISION } from './version.js'
 const Admin = defineAsyncComponent(() => import('./Admin.vue'))
 import { SUBJECT_ICONS as ICONS, rankIcon, achIcon } from './icons.js'
 import { mottoFor } from './dailyMottos.js'
-import { Sun, Lock, Gift, Check, TrendingUp, Target, User, ShoppingCart, ScrollText, Medal, ChartColumn, Map, CalendarDays, RefreshCw, PartyPopper, Sparkles, BookOpen, Flame, Volume2 } from '@lucide/vue'
+import { Sun, Lock, Gift, Check, TrendingUp, Target, User, ShoppingCart, ScrollText, Medal, ChartColumn, Map, CalendarDays, RefreshCw, PartyPopper, Sparkles, BookOpen, Flame, Volume2, Egg, Sprout, Leaf, Flower } from '@lucide/vue'
 
 const data = reactive({
   level: { earned: 0, balance: 0, level: '阳光萌新', next: null, next_need: 0, progress: 0 },
@@ -25,6 +25,11 @@ const data = reactive({
   test_fail_score: 80,
   fitness_goals: {},
   weak_tags: {},
+  companion: {
+    stage: 'egg', stage_name: '阳光蛋', name: '', earned: 0,
+    next_stage: 'sprout', next_stage_name: '阳光芽', next_need: 50,
+    progress: 0, aura: null, evolve: false,
+  },
 })
 const rewards = ref([])
 const loading = ref(true)
@@ -332,6 +337,45 @@ const recentLedger = ref([])
 const reviewDue = ref([])
 const updateReady = ref(false)
 const celebrate = ref(null)
+const companionOpen = ref(false)
+const companionNameDraft = ref('')
+const companionEvolve = ref(null)
+const pendingLevelUp = ref(null)
+let evolveTimer = null
+const COMPANION_ICONS = { egg: Egg, sprout: Sprout, leaf: Leaf, bloom: Flower }
+const companion = computed(() => data.companion || {})
+const companionIcon = computed(() => COMPANION_ICONS[companion.value.stage] || Egg)
+const companionTitle = computed(() => {
+  const c = companion.value
+  const stage = c.stage_name || '阳光蛋'
+  return (c.name && String(c.name).trim()) ? (c.name.trim() + ' · ' + stage) : stage
+})
+function openCompanion() {
+  companionNameDraft.value = (companion.value.name || '').trim()
+  companionOpen.value = true
+}
+async function saveCompanionName() {
+  try {
+    const out = await api.companionName(companionNameDraft.value)
+    data.companion = out
+    showToast('已记住这个名字')
+  } catch (e) { showToast(e.message) }
+}
+function showLevelCelebrate(payload) {
+  celebrate.value = payload
+  setTimeout(() => (celebrate.value = null), 2800)
+}
+function closeCompanionEvolve() {
+  if (!companionEvolve.value) return
+  companionEvolve.value = null
+  if (evolveTimer) { clearTimeout(evolveTimer); evolveTimer = null }
+  api.ackCompanionEvolve().then(out => { if (out) data.companion = out }).catch(() => {})
+  if (pendingLevelUp.value) {
+    const p = pendingLevelUp.value
+    pendingLevelUp.value = null
+    showLevelCelebrate(p)
+  }
+}
 const chartOpen = reactive({ open: false, task: null, history: [] })
 const renaming = ref(false)
 const renameVal = ref('')
@@ -478,10 +522,16 @@ async function refresh() {
     const prevId = data.level && data.level.level_id
     const prevEarned = data.level && (data.level.earned || 0)
     Object.assign(data, t)
+    if (t.companion && t.companion.evolve && !companionEvolve.value) {
+      companionEvolve.value = t.companion
+      if (evolveTimer) clearTimeout(evolveTimer)
+      evolveTimer = setTimeout(closeCompanionEvolve, 2800)
+    }
     // 升级检测：等级变了且累计阳光增加了才庆祝（取消扣回导致的降级不庆祝）
     if (prevId && t.level.level_id !== prevId && t.level.earned >= prevEarned) {
-      celebrate.value = { icon: t.level.level_icon || '', name: t.level.level }
-      setTimeout(() => (celebrate.value = null), 2800)
+      const payload = { icon: t.level.level_icon || '', name: t.level.level }
+      if (companionEvolve.value) pendingLevelUp.value = payload
+      else showLevelCelebrate(payload)
     }
     rewards.value = r
     boxes.value = bx
@@ -698,7 +748,35 @@ const bySubject = computed(() => {
   }
   return m
 })
-const dailyTodo = computed(() => data.daily.filter(d => !d.done_today))
+const dailyTodo = computed(() => {
+  return data.daily
+    .map((d, i) => ({ d, i }))
+    .filter(x => !x.d.done_today)
+    .sort((a, b) => subjectRank(a.d.subject_id) - subjectRank(b.d.subject_id) || a.i - b.i)
+    .map(x => x.d)
+})
+const todayCheckinItems = computed(() => {
+  const items = []
+  let wordPlaced = false
+  const putWord = () => {
+    if (wordPlaced || !wordToday.value.enabled || wordToday.value.finished) return
+    wordPlaced = true
+    items.push({ key: 'word-today', kind: 'word' })
+  }
+  for (const d of dailyTodo.value) {
+    if (subjectRank(d.subject_id) >= subjectRank('英语')) putWord()
+    items.push({ key: d.id, kind: 'daily', d })
+  }
+  putWord()
+  return items
+})
+const tabDailies = computed(() => {
+  return data.daily
+    .map((d, i) => ({ d, i }))
+    .filter(x => x.d.subject_id === activeTab.value)
+    .sort((a, b) => a.i - b.i)
+    .map(x => x.d)
+})
 const dailyMotto = computed(() => {
   const m = /^g(\d)/.exec(data.active_term || '')
   return mottoFor(data.today, data.kid_id, m ? Number(m[1]) : 0)
@@ -743,6 +821,10 @@ const avatarBg = computed(() => {
   return AVATAR_PALETTE[h % AVATAR_PALETTE.length]
 })
 const SUBJECT_ORDER = ['语文', '数学', '英语', '科学', '道法', '体育', '音美', '综合', '围棋']
+function subjectRank(id) {
+  const i = SUBJECT_ORDER.indexOf(id)
+  return i < 0 ? 99 : i
+}
 const orderedSubjects = computed(() => {
   // 只显示有内容的学科（单元任务或每日任务），空的（科学/道法/音美/综合）先隐藏，补目录后自动出现
   const list = data.subjects.filter(s => (subjectProgress.value[s.id] || {}).total > 0)
@@ -791,12 +873,17 @@ function reloadApp() {
     <!-- 蓝顶栏 -->
     <header ref="topbarEl" class="topbar">
       <div class="who">
-        <div class="avatar" :style="{ background: avatarBg }">{{ avatarLetter }}</div>
+        <button type="button" class="avatar companion" :class="['stage-' + (companion.stage || 'egg'), companion.aura ? 'aura-' + companion.aura : '']" @click="openCompanion">
+          <component :is="companionIcon" :size="26" />
+        </button>
         <div>
           <div class="hello">{{ data.today || '今天' }}</div>
           <div class="name-row">
             <b class="kid">{{ data.kid_name }}</b>
           </div>
+          <div class="companion-line">{{ companionTitle }}</div>
+          <div v-if="companion.next_stage" class="companion-need">再 {{ Math.max(0, (companion.next_need || 0) - (companion.earned || 0)) }} 阳光到{{ companion.next_stage_name }}</div>
+          <div v-else class="companion-need">开完花了，继续攒阳光也不会掉</div>
         </div>
       </div>
       <div class="pills">
@@ -888,7 +975,7 @@ function reloadApp() {
             </div>
           </section>
 
-          <section v-if="data.daily.length" class="plan-section">
+          <section v-if="todayCheckinItems.length" class="plan-section">
             <div class="plan-head">
               <h2>
                 <RefreshCw class="ico" :size="18" /> 每日打卡
@@ -896,35 +983,29 @@ function reloadApp() {
               </h2>
             </div>
             <div class="grid plan-grid">
-              <div v-for="d in dailyTodo" :key="d.id" class="card enter">
-                <button class="circle" @click="openDaily(d)">○</button>
-                <div class="card-body">
-                  <div class="card-title">{{ d.name }}</div>
-                  <div v-if="d.note" class="card-detail">{{ d.note }}</div>
-                  <template v-if="fitnessBar(d)">
-                    <div class="fit-bar"><i :style="{ width: fitnessBar(d).pct + '%' }"></i><em>{{ fitnessBar(d).status }}</em></div>
-                    <div class="fit-std">{{ fitnessBar(d).lines }}</div>
-                  </template>
-                  <div class="plus">{{ d.subject_id || '体育' }} · +{{ d.sunshine || 5 }} <Sun class="ico sun" :size="12" /></div>
+              <template v-for="it in todayCheckinItems" :key="it.key">
+                <div v-if="it.kind === 'word'" class="card enter word-daily-card" :class="{ done: wordCard.finished }" role="button" @click="openWordCard">
+                  <button type="button" class="circle" :class="{ ok: wordCard.finished }" @click.stop="openWordCard"><Check v-if="wordCard.finished" :size="15" /></button>
+                  <div class="card-body">
+                    <div class="card-title">今日单词</div>
+                    <div class="card-detail">{{ wordCard.detail }}</div>
+                    <div class="plus">英语 · +{{ wordCard.sun }} <Sun class="ico sun" :size="12" /></div>
+                  </div>
                 </div>
-                <button class="trend" @click="openChart(d)" title="看趋势"><TrendingUp :size="15" /></button>
-              </div>
-            </div>
-          </section>
-
-          <section v-if="wordToday.enabled" class="plan-section">
-            <div class="plan-head">
-              <div><h2><BookOpen class="ico" :size="18" /> 今日单词</h2></div>
-            </div>
-            <div class="grid plan-grid">
-              <div class="card enter word-daily-card" :class="{ done: wordCard.finished }" role="button" @click="openWordCard">
-                <button type="button" class="circle" :class="{ ok: wordCard.finished }" @click.stop="openWordCard"><Check v-if="wordCard.finished" :size="15" /></button>
-                <div class="card-body">
-                  <div class="card-title">今日单词</div>
-                  <div class="card-detail">{{ wordCard.detail }}</div>
-                  <div class="plus">英语 · +{{ wordCard.sun }} <Sun class="ico sun" :size="12" /></div>
+                <div v-else class="card enter">
+                  <button class="circle" @click="openDaily(it.d)">○</button>
+                  <div class="card-body">
+                    <div class="card-title">{{ it.d.name }}</div>
+                    <div v-if="it.d.note" class="card-detail">{{ it.d.note }}</div>
+                    <template v-if="fitnessBar(it.d)">
+                      <div class="fit-bar"><i :style="{ width: fitnessBar(it.d).pct + '%' }"></i><em>{{ fitnessBar(it.d).status }}</em></div>
+                      <div class="fit-std">{{ fitnessBar(it.d).lines }}</div>
+                    </template>
+                    <div class="plus">{{ it.d.subject_id || '体育' }} · +{{ it.d.sunshine || 5 }} <Sun class="ico sun" :size="12" /></div>
+                  </div>
+                  <button class="trend" @click="openChart(it.d)" title="看趋势"><TrendingUp :size="15" /></button>
                 </div>
-              </div>
+              </template>
             </div>
           </section>
 
@@ -962,7 +1043,7 @@ function reloadApp() {
                   <div class="plus">+{{ wordCard.sun }} <Sun class="ico sun" :size="12" /></div>
                 </div>
               </div>
-              <div v-for="d in data.daily.filter(x => x.subject_id === activeTab)" :key="d.id"
+              <div v-for="d in tabDailies" :key="d.id"
                 class="card enter" :class="{ done: d.done_today }">
                 <button class="circle" :class="{ ok: d.done_today }"
                   @click="d.done_today ? cancelDaily(d) : openDaily(d)"><Check v-if="d.done_today" :size="15" /></button>
@@ -1172,6 +1253,36 @@ function reloadApp() {
     <!-- +N 阳光飞出 -->
     <div v-for="f in floaters" :key="f.id" class="floater" :style="{ left: f.x + 'px', top: f.y + 'px' }">{{ f.text }}</div>
 
+    <div v-if="companionOpen" class="mask" @click.self="companionOpen = false">
+      <div class="companion-sheet enter">
+        <div class="companion-big" :class="['stage-' + (companion.stage || 'egg'), companion.aura ? 'aura-' + companion.aura : '']">
+          <component :is="companionIcon" :size="52" />
+        </div>
+        <strong>{{ companionTitle }}</strong>
+        <p v-if="companion.next_stage" class="dim">再 {{ Math.max(0, (companion.next_need || 0) - (companion.earned || 0)) }} 阳光到{{ companion.next_stage_name }}</p>
+        <p v-else class="dim">开完花了，继续攒阳光也不会掉</p>
+        <div class="next-bar companion-bar"><i :style="{ width: (companion.progress || 0) + '%' }"></i></div>
+        <label class="fld companion-name"><span>给它起名</span>
+          <input v-model="companionNameDraft" maxlength="8" placeholder="1 到 8 个字" @keyup.enter="saveCompanionName" />
+        </label>
+        <button type="button" class="do" @click="saveCompanionName">保存</button>
+        <button type="button" class="ghost" @click="companionOpen = false">关闭</button>
+      </div>
+    </div>
+
+    <div v-if="companionEvolve" class="celebrate companion-evolve" @click="closeCompanionEvolve">
+      <div class="confetti">
+        <span v-for="i in 14" :key="'e'+i" :style="{ left: (i * 7.1) + '%', animationDelay: (i * 0.09) + 's' }">•</span>
+      </div>
+      <div class="celebrate-card">
+        <div class="companion-big" :class="'stage-' + (companionEvolve.stage || 'egg')">
+          <component :is="COMPANION_ICONS[companionEvolve.stage] || Egg" :size="52" />
+        </div>
+        <div class="celebrate-title"><PartyPopper class="ico" :size="16" /> 长大了</div>
+        <div class="celebrate-name">{{ companionEvolve.name ? companionEvolve.name + ' · ' : '' }}{{ companionEvolve.stage_name }}</div>
+      </div>
+    </div>
+
     <!-- 升级庆祝 -->
     <div v-if="celebrate" class="celebrate">
       <div class="confetti">
@@ -1338,6 +1449,28 @@ body {
   flex: 0 0 52px; aspect-ratio: 1; overflow: hidden;
   border: 3px solid rgba(255,255,255,.72); box-shadow: var(--shadow-press-active);
 }
+.avatar.companion { border: none; cursor: pointer; font-family: inherit; padding: 0; color: #fff; }
+.avatar.stage-egg, .companion-big.stage-egg { background: #c5ced6; color: #4a5560; }
+.avatar.stage-sprout, .companion-big.stage-sprout { background: #7dba6a; color: #fff; }
+.avatar.stage-leaf, .companion-big.stage-leaf { background: #2e8f55; color: #fff; }
+.avatar.stage-bloom, .companion-big.stage-bloom { background: #f5a524; color: #fff; }
+.avatar.aura-week { box-shadow: 0 0 0 3px #f5a524; }
+.avatar.aura-fortnight { box-shadow: 0 0 0 3px #f5a524, 0 0 10px 2px rgba(245,165,36,.85); }
+.avatar.aura-month { box-shadow: 0 0 0 4px #e8c547, 0 0 14px 3px rgba(232,197,71,.9); }
+.companion-line { margin-top: 2px; font-size: 13px; font-weight: 700; opacity: .95; }
+.companion-need { font-size: 11px; opacity: .88; margin-top: 1px; }
+.companion-sheet {
+  width: min(360px, calc(100vw - 32px)); background: var(--surface); border-radius: var(--radius-xl);
+  padding: 22px 20px 16px; text-align: center; box-shadow: var(--shadow-lg);
+}
+.companion-big {
+  width: 88px; height: 88px; border-radius: var(--radius-circle); margin: 0 auto 10px;
+  display: flex; align-items: center; justify-content: center; color: #fff;
+}
+.companion-sheet strong { display: block; font-size: 18px; }
+.companion-bar { margin: 10px 0 14px; background: var(--surface-2); }
+.companion-name { text-align: left; margin: 8px 0 10px; }
+.companion-evolve { pointer-events: auto; cursor: pointer; }
 .hello { font-size: 12px; opacity: .92; }
 .kid { font-size: 22px; font-weight: 800; }
 .name-row { display: flex; align-items: center; gap: 8px; }
