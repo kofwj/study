@@ -631,6 +631,27 @@ function n1(v) {
   const x = Math.round(Number(v) * 10) / 10
   return x % 1 ? String(x) : String(Math.round(x))
 }
+function isTimeMetric(m) {
+  const u = String((m && m.unit) || '')
+  return u.includes('秒') || u.includes('分钟')
+}
+function formatDuration(sec) {
+  if (sec == null || Number.isNaN(Number(sec))) return '—'
+  const total = Math.max(0, Math.round(Number(sec)))
+  const mm = Math.floor(total / 60)
+  const ss = total % 60
+  return mm + "'" + String(ss).padStart(2, '0') + '"'
+}
+function formatMetricValue(m, v) {
+  if (v == null || v === '') return '—'
+  if (isTimeMetric(m)) {
+    const n = Number(v)
+    if (Number.isNaN(n)) return '—'
+    const sec = String((m && m.unit) || '').includes('分钟') ? n * 60 : n
+    return formatDuration(sec)
+  }
+  return n1(v)
+}
 function lastMetric(d, mid) {
   if (d.today_metrics && d.today_metrics[mid] != null && d.today_metrics[mid] !== '') return Number(d.today_metrics[mid])
   const hist = dailyHist.value[d.id] || []
@@ -961,13 +982,13 @@ onMounted(load)
           <div v-for="c in peCards" :key="c.key" class="pe-card">
             <span class="dim">{{ c.name }}</span>
             <strong>{{ c.label }}</strong>
-            <b>{{ c.last == null ? '—' : n1(c.last) }}<small>{{ c.unit }}</small></b>
+            <b>{{ formatMetricValue({ unit: c.unit }, c.last) }}<small v-if="!isTimeMetric({ unit: c.unit })">{{ c.unit }}</small></b>
             <em class="fam-st" :class="c.cls">{{ c.gap || c.status }}{{ c.today ? ' · 今天记的' : '' }}</em>
             <div v-if="c.goal" class="w-subj-row pe-std">
               <div class="w-subj-track"><i :style="{ width: c.pct + '%' }"></i></div>
               <span class="w-subj-num">达标 {{ n1(c.goal.pass) }}{{ c.unit }}</span>
             </div>
-            <span class="dim">个人最好 {{ c.pb == null ? '—' : n1(c.pb) }}{{ c.unit }}{{ c.series.length ? ' · ' + c.series.length + ' 次' : '' }}</span>
+            <span class="dim">个人最好 {{ formatMetricValue({ unit: c.unit }, c.pb) }}{{ c.series.length ? ' · ' + c.series.length + ' 次' : '' }}</span>
             <svg v-if="c.pts" viewBox="0 0 288 56" class="pe-svg" preserveAspectRatio="none">
               <polyline :points="c.pts" fill="none" stroke="var(--brand)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
             </svg>

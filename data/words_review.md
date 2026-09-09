@@ -1,45 +1,41 @@
 # 单词词书核对表
 
-> curriculum_ver: `words-g5s1-en-v2`
+> curriculum_ver: `words-g5s1-en-v4`
 > 系统词书只允许改 JSON 后重新入库；家长不可改。页码空着的条目仍需对照 2026 秋译林 5A Word lists。
 
 ## Unit 1 Good habits (`g5s1-en-1`)
 
-- unit_id: `g5s1-en-1` · term: `g5s1` · 词数: 24
-- 来源: 核心词，对齐本仓库五上英语 Unit 1 任务（Word list / bl / 三单 does / Talk about habits）。页码待对照 2026 秋译林 5A Word lists 后补。
+- unit_id: `g5s1-en-1` · term: `g5s1` · 词数: 20
+- 来源: 核心词，对齐本仓库五上英语 Unit 1 任务（Word list / bl / 三单 does / Talk about habits）。频率副词 always/usually/often/sometimes/never 放在 Unit 5。页码待对照 2026 秋译林 5A Word lists 后补。
 - 待实物核对: 是
 
 | # | 单词 | 中文 | 音标 | 分组 | 页码 |
 |---|---|---|---|---|---|
 | 1 | habit | 习惯 | /ˈhæbɪt/ | topic |  |
-| 2 | always | 总是 | /ˈɔːlweɪz/ | frequency |  |
-| 3 | usually | 通常 | /ˈjuːʒuəli/ | frequency |  |
-| 4 | often | 经常 | /ˈɒfn/ | frequency |  |
-| 5 | sometimes | 有时 | /ˈsʌmtaɪmz/ | frequency |  |
-| 6 | never | 从不 | /ˈnevə/ | frequency |  |
-| 7 | get up | 起床 |  | routine |  |
-| 8 | go to bed | 上床睡觉 |  | routine |  |
-| 9 | have breakfast | 吃早餐 |  | routine |  |
-| 10 | brush my teeth | 刷牙 |  | routine |  |
-| 11 | wash my face | 洗脸 |  | routine |  |
-| 12 | go to school | 去上学 |  | routine |  |
-| 13 | do homework | 做作业 |  | routine |  |
-| 14 | watch TV | 看电视 |  | routine |  |
-| 15 | early | 早的 | /ˈɜːli/ | adj |  |
-| 16 | late | 晚的 | /leɪt/ | adj |  |
-| 17 | healthy | 健康的 | /ˈhelθi/ | adj |  |
-| 18 | before | 在……之前 | /bɪˈfɔː/ | time |  |
-| 19 | after | 在……之后 | /ˈɑːftə/ | time |  |
-| 20 | on time | 准时 |  | time |  |
-| 21 | blackboard | 黑板 | /ˈblækbɔːd/ | sounds-bl |  |
-| 22 | does | （他/她）做 | /dʌz/ | grammar-3sg |  |
-| 23 | doesn't | （他/她）不做 | /ˈdʌznt/ | grammar-3sg |  |
-| 24 | breakfast | 早餐 | /ˈbrekfəst/ | noun |  |
+| 2 | get up | 起床 |  | routine |  |
+| 3 | go to bed | 上床睡觉 |  | routine |  |
+| 4 | have breakfast | 吃早餐 |  | routine |  |
+| 5 | brush my teeth | 刷牙 |  | routine |  |
+| 6 | wash my face | 洗脸 |  | routine |  |
+| 7 | go to school | 去上学 |  | routine |  |
+| 8 | do homework | 做作业 |  | routine |  |
+| 9 | watch TV | 看电视 |  | routine |  |
+| 10 | early | 早的 | /ˈɜːli/ | adj |  |
+| 11 | late | 晚的 | /leɪt/ | adj |  |
+| 12 | healthy | 健康的 | /ˈhelθi/ | adj |  |
+| 13 | before | 在……之前 | /bɪˈfɔː/ | time |  |
+| 14 | after | 在……之后 | /ˈɑːftə/ | time |  |
+| 15 | on time | 准时 |  | time |  |
+| 16 | blackboard | 黑板 | /ˈblækbɔːd/ | sounds-bl |  |
+| 17 | does | （他/她）做 | /dʌz/ | grammar-3sg |  |
+| 18 | doesn't | （他/她）不做 | /ˈdʌznt/ | grammar-3sg |  |
+| 19 | breakfast | 早餐 | /ˈbrekfəst/ | noun |  |
+| 20 | have dinner | 吃晚饭 |  | routine |  |
 
 ## Unit 2 I feel good (`g5s1-en-2`)
 
-- unit_id: `g5s1-en-2` · term: `g5s1` · 词数: 24
-- 来源: 核心词，对齐本仓库五上英语 Unit 2 任务（Word list / cl climbing / Does he/she like / Give advice）。页码待对照 2026 秋译林 5A Word lists 后补。
+- unit_id: `g5s1-en-2` · term: `g5s1` · 词数: 22
+- 来源: 核心词，对齐 Unit 2（感受 / cl climbing / Does he/she like / Give advice）。class/clean 仅作拼读填充，已去掉。页码待对照课本 Word lists。
 - 待实物核对: 是
 
 | # | 单词 | 中文 | 音标 | 分组 | 页码 |
@@ -64,15 +60,13 @@
 | 18 | run | 跑 | /rʌn/ | verb |  |
 | 19 | jump | 跳 | /dʒʌmp/ | verb |  |
 | 20 | rest | 休息 | /rest/ | verb |  |
-| 21 | class | 班级；课 | /klɑːs/ | sounds-cl |  |
-| 22 | clean | 干净的 | /kliːn/ | sounds-cl |  |
-| 23 | clothes | 衣服 | /kləʊðz/ | sounds-cl |  |
-| 24 | advice | 建议 | /ədˈvaɪs/ | topic |  |
+| 21 | clothes | 衣服 | /kləʊðz/ | sounds-cl |  |
+| 22 | advice | 建议 | /ədˈvaɪs/ | topic |  |
 
 ## Unit 3 Hobbies (`g5s1-en-3`)
 
-- unit_id: `g5s1-en-3` · term: `g5s1` · 词数: 22
-- 来源: 核心词，对齐本仓库五上英语 Unit 3 任务（Word list / br brother / What does he/she like doing / Talk about hobbies）。页码待对照 2026 秋译林 5A Word lists 后补。
+- unit_id: `g5s1-en-3` · term: `g5s1` · 词数: 21
+- 来源: 核心词，对齐 Unit 3（爱好 / br brother / What does he/she like doing）。不把句型 like doing 当单词。页码待对照课本 Word lists。
 - 待实物核对: 是
 
 | # | 单词 | 中文 | 音标 | 分组 | 页码 |
@@ -98,12 +92,11 @@
 | 19 | bright | 明亮的 | /braɪt/ | sounds-br |  |
 | 20 | interesting | 有趣的 | /ˈɪntrəstɪŋ/ | adj |  |
 | 21 | favourite | 最喜欢的 | /ˈfeɪvərɪt/ | adj |  |
-| 22 | like doing | 喜欢做…… |  | grammar |  |
 
 ## Unit 4 Safety first (`g5s1-en-4`)
 
-- unit_id: `g5s1-en-4` · term: `g5s1` · 词数: 24
-- 来源: 核心词，对齐本仓库五上英语 Unit 4 任务（Word list / gr great / should shouldn't / Give a speech about safety）。页码待对照 2026 秋译林 5A Word lists 后补。
+- unit_id: `g5s1-en-4` · term: `g5s1` · 词数: 20
+- 来源: 核心词，对齐 Unit 4（安全 / gr great / should shouldn't）。green/grass/grandpa/grow 仅作拼读填充，已去掉。页码待对照课本 Word lists。
 - 待实物核对: 是
 
 | # | 单词 | 中文 | 音标 | 分组 | 页码 |
@@ -128,15 +121,11 @@
 | 18 | shouldn't | 不应该 | /ˈʃʊdnt/ | grammar |  |
 | 19 | first | 第一；首先 | /fɜːst/ | topic |  |
 | 20 | great | 很好的 | /ɡreɪt/ | sounds-gr |  |
-| 21 | green | 绿色的 | /ɡriːn/ | sounds-gr |  |
-| 22 | grass | 草 | /ɡrɑːs/ | sounds-gr |  |
-| 23 | grandpa | 爷爷；外公 | /ˈɡrænpɑː/ | sounds-gr |  |
-| 24 | grow | 生长 | /ɡrəʊ/ | sounds-gr |  |
 
 ## Unit 5 At weekends (`g5s1-en-5`)
 
-- unit_id: `g5s1-en-5` · term: `g5s1` · 词数: 24
-- 来源: 核心词，对齐本仓库五上英语 Unit 5 任务（Word list / tr travel / 频率副词说周末 / Talk about your weekends）。页码待对照 2026 秋译林 5A Word lists 后补。
+- unit_id: `g5s1-en-5` · term: `g5s1` · 词数: 26
+- 来源: 核心词，对齐 Unit 5（周末 / tr travel / 频率副词）。tree/truck/try 仅作拼读填充，已去掉。页码待对照课本 Word lists。
 - 待实物核对: 是
 
 | # | 单词 | 中文 | 音标 | 分组 | 页码 |
@@ -161,15 +150,17 @@
 | 18 | together | 一起 | /təˈɡeðə/ | adv |  |
 | 19 | travel | 旅行 | /ˈtrævl/ | sounds-tr |  |
 | 20 | trip | 短途旅行 | /trɪp/ | sounds-tr |  |
-| 21 | tree | 树 | /triː/ | sounds-tr |  |
-| 22 | train | 火车 | /treɪn/ | sounds-tr |  |
-| 23 | try | 尝试 | /traɪ/ | sounds-tr |  |
-| 24 | truck | 卡车 | /trʌk/ | sounds-tr |  |
+| 21 | train | 火车 | /treɪn/ | sounds-tr |  |
+| 22 | always | 总是 | /ˈɔːlweɪz/ | frequency |  |
+| 23 | usually | 通常 | /ˈjuːʒuəli/ | frequency |  |
+| 24 | often | 经常 | /ˈɒfn/ | frequency |  |
+| 25 | sometimes | 有时 | /ˈsʌmtaɪmz/ | frequency |  |
+| 26 | never | 从不 | /ˈnevə/ | frequency |  |
 
 ## Unit 6 Getting along with others (`g5s1-en-6`)
 
-- unit_id: `g5s1-en-6` · term: `g5s1` · 词数: 24
-- 来源: 核心词，对齐本仓库五上英语 Unit 6 任务（Word list / dr / Why don't / Put on a play）。页码待对照 2026 秋译林 5A Word lists 后补。
+- unit_id: `g5s1-en-6` · term: `g5s1` · 词数: 21
+- 来源: 核心词，对齐 Unit 6（相处 / dr / Why don't）。不把 Why don't we 整句当单词。页码待对照课本 Word lists。
 - 待实物核对: 是
 
 | # | 单词 | 中文 | 音标 | 分组 | 页码 |
@@ -188,21 +179,18 @@
 | 12 | classmate | 同学 | /ˈklɑːsmeɪt/ | noun |  |
 | 13 | why | 为什么 | /waɪ/ | grammar |  |
 | 14 | don't | 不要；不 | /dəʊnt/ | grammar |  |
-| 15 | Why don't we | 我们何不…… |  | grammar |  |
-| 16 | idea | 主意 | /aɪˈdɪə/ | noun |  |
-| 17 | join | 加入 | /dʒɔɪn/ | verb |  |
-| 18 | play with | 和……玩 |  | verb |  |
-| 19 | help each other | 互相帮助 |  | expr |  |
-| 20 | draw | 画 | /drɔː/ | sounds-dr |  |
-| 21 | drink | 喝 | /drɪŋk/ | sounds-dr |  |
-| 22 | drive | 开车 | /draɪv/ | sounds-dr |  |
-| 23 | dream | 梦；梦想 | /driːm/ | sounds-dr |  |
-| 24 | drop | 掉落 | /drɒp/ | sounds-dr |  |
+| 15 | idea | 主意 | /aɪˈdɪə/ | noun |  |
+| 16 | join | 加入 | /dʒɔɪn/ | verb |  |
+| 17 | play with | 和……玩 |  | verb |  |
+| 18 | help each other | 互相帮助 |  | expr |  |
+| 19 | draw | 画 | /drɔː/ | sounds-dr |  |
+| 20 | drink | 喝 | /drɪŋk/ | sounds-dr |  |
+| 21 | drive | 开车 | /draɪv/ | sounds-dr |  |
 
 ## Unit 7 Shopping smart (`g5s1-en-7`)
 
-- unit_id: `g5s1-en-7` · term: `g5s1` · 词数: 26
-- 来源: 核心词，对齐本仓库五上英语 Unit 7 任务（Word list / st sk sp / How much is/are / Make a shopping plan）。页码待对照 2026 秋译林 5A Word lists 后补。
+- unit_id: `g5s1-en-7` · term: `g5s1` · 词数: 20
+- 来源: 核心词，对齐 Unit 7（购物 / st sk sp / How much）。不把 how much 和 stop/study/sky/speak/spell 当本课词表。页码待对照课本 Word lists。
 - 待实物核对: 是
 
 | # | 单词 | 中文 | 音标 | 分组 | 页码 |
@@ -224,20 +212,14 @@
 | 15 | socks | 袜子 | /sɒks/ | noun |  |
 | 16 | skirt | 裙子 | /skɜːt/ | noun |  |
 | 17 | T-shirt | T恤 | /ˈtiː ʃɜːt/ | noun |  |
-| 18 | how much | 多少钱 |  | grammar |  |
-| 19 | smart | 精明的 | /smɑːt/ | topic |  |
-| 20 | spend | 花（钱） | /spend/ | verb |  |
-| 21 | save | 节省 | /seɪv/ | verb |  |
-| 22 | stop | 停止 | /stɒp/ | sounds-st |  |
-| 23 | study | 学习 | /ˈstʌdi/ | sounds-st |  |
-| 24 | sky | 天空 | /skaɪ/ | sounds-sk |  |
-| 25 | speak | 说 | /spiːk/ | sounds-sp |  |
-| 26 | spell | 拼写 | /spel/ | sounds-sp |  |
+| 18 | smart | 精明的 | /smɑːt/ | topic |  |
+| 19 | spend | 花（钱） | /spend/ | verb |  |
+| 20 | save | 节省 | /seɪv/ | verb |  |
 
 ## Unit 8 We love festivals (`g5s1-en-8`)
 
-- unit_id: `g5s1-en-8` · term: `g5s1` · 词数: 25
-- 来源: 核心词，对齐本仓库五上英语 Unit 8 任务（Word list / ing morning / in on at / Talk about your favourite festival）。页码待对照 2026 秋译林 5A Word lists 后补。
+- unit_id: `g5s1-en-8` · term: `g5s1` · 词数: 22
+- 来源: 核心词，对齐 Unit 8（节日 / ing morning / in on at）。in October/on Monday/at night 是语法例句，已从词表拿掉。页码待对照课本 Word lists。
 - 待实物核对: 是
 
 | # | 单词 | 中文 | 音标 | 分组 | 页码 |
@@ -264,9 +246,6 @@
 | 20 | decorate | 装饰 | /ˈdekəreɪt/ | verb |  |
 | 21 | firework | 烟花 | /ˈfaɪəwɜːk/ | noun |  |
 | 22 | exciting | 令人兴奋的 | /ɪkˈsaɪtɪŋ/ | sounds-ing |  |
-| 23 | in October | 在十月 |  | grammar |  |
-| 24 | on Monday | 在星期一 |  | grammar |  |
-| 25 | at night | 在晚上 |  | grammar |  |
 
 ## Project 1 A happy life poster (`g5s1-en-9`)
 

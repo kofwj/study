@@ -41,7 +41,9 @@ def test_unit1_seed_and_system_readonly():
         detail = cli.get("/api/admin/words/books/g5s1-en-1").json()
         words = [w["word"] for w in detail["words"] if w["active"]]
         assert words[0] == "habit"
-        assert "always" in words and "blackboard" in words
+        assert "blackboard" in words and "always" not in words
+        u5 = cli.get("/api/admin/words/books/g5s1-en-5").json()
+        assert "always" in {w["word"] for w in u5["words"] if w["active"]}
         assert cli.put("/api/admin/words/books/g5s1-en-1", json={"name": "改"}).status_code == 403
         assert cli.delete("/api/admin/words/books/g5s1-en-1").status_code == 403
         assert cli.post("/api/admin/words/books/g5s1-en-1/import", json={"text": "hi\t嗨"}).status_code == 403
@@ -317,7 +319,7 @@ def test_admin_stats_tts_and_problem_words():
         cfg = cli.get("/api/admin/words/config").json()
         assert cfg["tts"] is False and cfg["tts_autoplay"] is True and cfg["tts_lang"] == "en-US"
         u1 = next(b for b in cfg["books"] if b["id"] == "g5s1-en-1")
-        assert u1["source_ver"] == "words-g5s1-en-v2"
+        assert u1["source_ver"] == "words-g5s1-en-v4"
         assert u1["source_unit"] == "Unit 1 Good habits"
         _enable(cli, new_per_day=2)
         sess = cli.post("/api/words/session/start").json()["session"]

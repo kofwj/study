@@ -456,6 +456,36 @@ function n1(v) {
   const x = Math.round(Number(v) * 10) / 10
   return x % 1 ? String(x) : String(Math.round(x))
 }
+function isTimeMetric(m) {
+  const u = String((m && m.unit) || '')
+  return u.includes('秒') || u.includes('分钟')
+}
+function timeUnitLabel(m) {
+  return String((m && m.unit) || '').includes('分钟') ? '分钟' : '秒'
+}
+function metricToSeconds(m, v) {
+  if (v == null || v === '') return null
+  const n = Number(v)
+  if (Number.isNaN(n)) return null
+  return String((m && m.unit) || '').includes('分钟') ? n * 60 : n
+}
+function secondsToMetric(m, sec) {
+  if (sec == null || Number.isNaN(Number(sec))) return null
+  const s = Number(sec)
+  return String((m && m.unit) || '').includes('分钟') ? s / 60 : s
+}
+function formatDuration(sec) {
+  if (sec == null || Number.isNaN(Number(sec))) return '—'
+  const total = Math.max(0, Math.round(Number(sec)))
+  const mm = Math.floor(total / 60)
+  const ss = total % 60
+  return mm + "'" + String(ss).padStart(2, '0') + '"'
+}
+function formatMetricValue(m, v) {
+  if (v == null || v === '') return '—'
+  if (isTimeMetric(m)) return formatDuration(metricToSeconds(m, v))
+  return n1(v)
+}
 function fitnessBar(d) {
   const g = (data.fitness_goals || {})[d.id]
   if (!g) return null
@@ -656,19 +686,39 @@ const chartDays = computed(() => {
   }
   return days
 })
-const dailyDialog = reactive({ open: false, task: null, vals: {} })
+const dailyDialog = reactive({ open: false, task: null, vals: {}, time: {} })
 function openDaily(task) {
   if (task.done_today) return
   dailyDialog.task = task
   dailyDialog.vals = {}
-  for (const m of task.metrics) dailyDialog.vals[m.id] = ''
+  dailyDialog.time = {}
+  for (const m of task.metrics) {
+    dailyDialog.vals[m.id] = ''
+    if (isTimeMetric(m)) dailyDialog.time[m.id] = { min: '', sec: '' }
+  }
   dailyDialog.open = true
+}
+function clampSec(v) {
+  const n = Number(v)
+  if (v === '' || Number.isNaN(n)) return ''
+  return Math.max(0, Math.min(59, Math.round(n)))
 }
 async function submitDaily(event) {
   const metrics = {}
   for (const m of dailyDialog.task.metrics) {
-    const v = Number(dailyDialog.vals[m.id])
-    if (v && !Number.isNaN(v)) metrics[m.id] = v
+    if (isTimeMetric(m)) {
+      const t = dailyDialog.time[m.id] || {}
+      const mm = Number(t.min)
+      const ss = Number(t.sec)
+      const has = (t.min !== '' && t.min != null) || (t.sec !== '' && t.sec != null)
+      if (!has) continue
+      const totalSec = (Number.isNaN(mm) ? 0 : Math.max(0, mm)) * 60 + (Number.isNaN(ss) ? 0 : Math.max(0, Math.min(59, ss)))
+      const stored = secondsToMetric(m, totalSec)
+      if (stored) metrics[m.id] = stored
+    } else {
+      const v = Number(dailyDialog.vals[m.id])
+      if (v && !Number.isNaN(v)) metrics[m.id] = v
+    }
   }
   try {
     const r = await api.complete(dailyDialog.task.id, metrics)
@@ -1173,9 +1223,13 @@ function reloadApp() {
         <h3>{{ dailyDialog.task.name }}</h3>
         <p v-if="dailyDialog.task.note" class="daily-dialog-note">怎么做：{{ dailyDialog.task.note }}</p>
         <div v-for="m in dailyDialog.task.metrics" :key="m.id" class="metric">
-          <label>{{ m.label }}（{{ m.unit }}）</label>
+          <label>{{ m.label }}</label>
           <div v-if="m.note" class="metric-note">{{ m.note }}</div>
-          <input v-model.number="dailyDialog.vals[m.id]" type="number" inputmode="decimal" :placeholder="m.unit" />
+          <div v-if="isTimeMetric(m)" class="time-row">
+            <label class="time-part"><input v-model="dailyDialog.time[m.id].min" type="number" inputmode="numeric" min="0" placeholder="0" /><span>分</span></label>
+            <label class="time-part"><input :value="dailyDialog.time[m.id].sec" type="number" inputmode="numeric" min="0" max="59" placeholder="00" @input="dailyDialog.time[m.id].sec = clampSec($event.target.value)" /><span>秒</span></label>
+          </div>
+          <input v-else v-model.number="dailyDialog.vals[m.id]" type="number" inputmode="decimal" :placeholder="m.unit" />
         </div>
         <button class="do big" @click="submitDaily($event)">打卡，赚阳光 <Sun class="ico" :size="15" /></button>
         <button class="ghost" @click="dailyDialog.open = false">取消</button>
@@ -1194,16 +1248,16 @@ function reloadApp() {
           <div v-for="m in chartOpen.task.metrics" :key="m.id" class="chart-block">
             <div class="chart-head">
               <span class="chart-title">{{ m.label }}</span>
-              <span class="chart-scale">{{ lineFor(m).min }} ~ {{ lineFor(m).max }} {{ m.unit }}</span>
+              <span class="chart-scale">{{ formatMetricValue(m, lineFor(m).min) }} ~ {{ formatMetricValue(m, lineFor(m).max) }}</span>
             </div>
             <svg viewBox="0 0 288 92" class="chart-svg" preserveAspectRatio="none">
               <line v-if="lineFor(m).dots.length" x1="14" :y1="lineFor(m).bestY" x2="274" :y2="lineFor(m).bestY" class="chart-pb-line" />
               <polyline :points="lineFor(m).pts" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
               <circle v-for="(p, i) in lineFor(m).dots" :key="i" :cx="p.x" :cy="p.y" :r="p.best ? 5 : 3.5" :fill="p.best ? 'var(--danger)' : 'var(--accent)'" stroke="#fff" stroke-width="1.5">
-                <title>{{ p.v }}{{ m.unit }}</title>
+                <title>{{ formatMetricValue(m, p.v) }}</title>
               </circle>
             </svg>
-            <div class="chart-pb"><Medal class="ico" :size="13" /> 个人纪录 {{ chartOpen.task.pb?.[m.id] ?? '—' }} {{ m.unit }} · <ChartColumn class="ico" :size="13" /> 累计 {{ lineFor(m).sum }} {{ m.unit }} · 共 {{ lineFor(m).count }} 次</div>
+            <div class="chart-pb"><Medal class="ico" :size="13" /> 个人纪录 {{ formatMetricValue(m, chartOpen.task.pb?.[m.id]) }} · 共 {{ lineFor(m).count }} 次</div>
           </div>
         </template>
 
@@ -1853,6 +1907,10 @@ body {
 .metric label { display: block; font-size: 13px; margin-bottom: 4px; }
 .daily-dialog-note, .metric-note { margin: -4px 0 8px; color: var(--ink-3); font-size: 12px; line-height: 1.5; }
 .metric-note { margin: -1px 0 4px; }
+.time-row { display: flex; gap: 10px; }
+.time-part { display: flex; align-items: center; gap: 6px; flex: 1; margin: 0; }
+.time-part span { font-size: 13px; font-weight: 700; color: var(--ink-2); flex: none; }
+.time-part input { flex: 1; }
 .trend { position: absolute; top: 8px; right: 8px; border: none; background: var(--warm); border-radius: var(--radius-lg); padding: 3px 8px; font-size: 15px; cursor: pointer; line-height: 1; }
 .chart-modal { max-width: 460px; max-height: 86vh; overflow-y: auto; }
 .chart-block { margin-bottom: 12px; padding: 10px 12px; background: var(--surface-2); border-radius: var(--radius-md); }
