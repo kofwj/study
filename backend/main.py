@@ -626,35 +626,98 @@ def maybe_milestone(c, kid=None):
     return got
 
 
-# 成就徽章（孩子端「成就墙」）
+# 成就徽章（孩子端「成就墙」）：稀有度/系列/段位是设计字段，不入库。
 ACHIEVEMENTS = [
-    {"id": "first",    "icon": "sprout", "name": "初来乍到", "desc": "完成第 1 张任务卡", "target": 1},
-    {"id": "cn10",     "icon": "book", "name": "语文十卡", "desc": "完成 10 张语文卡", "target": 10},
-    {"id": "ma10",     "icon": "calc", "name": "数学十卡", "desc": "完成 10 张数学卡", "target": 10},
-    {"id": "en10",     "icon": "globe", "name": "英语十卡", "desc": "完成 10 张英语卡", "target": 10},
-    {"id": "all100",   "icon": "medal", "name": "百卡达成", "desc": "累计完成 100 张单元卡", "target": 100},
-    {"id": "sport",    "icon": "sport", "name": "运动健将", "desc": "每日运动打卡 10 次", "target": 10},
-    {"id": "daily30",  "icon": "calendar", "name": "每日全勤", "desc": "每日任务累计打卡 30 次", "target": 30},
-    {"id": "go10",     "icon": "go", "name": "围棋小棋手", "desc": "围棋对弈打卡 10 次", "target": 10},
-    {"id": "calc10",   "icon": "mental", "name": "口算达人", "desc": "每日口算打卡 10 次", "target": 10},
-    {"id": "streak7",  "icon": "flame", "name": "坚持一周", "desc": "连续坚持 7 天", "target": 7},
-    {"id": "streak14", "icon": "rocket", "name": "坚持半月", "desc": "连续坚持 14 天", "target": 14},
-    {"id": "streak30", "icon": "moon", "name": "坚持满月", "desc": "连续坚持 30 天", "target": 30},
-    {"id": "test100",  "icon": "award", "name": "满分学霸", "desc": "单元测试考 100 分", "target": 100},
-    {"id": "shop1",    "icon": "cart", "name": "初尝战果", "desc": "第一次兑换奖励", "target": 1},
-    {"id": "shop5",    "icon": "gift", "name": "兑换小能手", "desc": "累计兑换 5 次", "target": 5},
-    {"id": "box5",     "icon": "dices", "name": "盲盒收藏家", "desc": "开 5 个连击盲盒", "target": 5},
-    {"id": "custom10", "icon": "sparkles", "name": "自律之星", "desc": "完成家长任务 10 次", "target": 10},
-    {"id": "sun500",   "icon": "coins", "name": "阳光富翁", "desc": "累计获得 500 阳光", "target": 500},
-    {"id": "sun2000",  "icon": "gem", "name": "阳光大佬", "desc": "累计获得 2000 阳光", "target": 2000},
-    {"id": "sun5000",  "icon": "crown", "name": "阳光传说", "desc": "累计获得 5000 阳光", "target": 5000},
+    {"id": "first", "icon": "sprout", "name": "初来乍到", "desc": "完成第 1 张任务卡", "target": 1,
+     "rarity": "bronze", "series": "milestone", "tier": None},
+    {"id": "cn10", "icon": "book", "name": "语文十卡", "desc": "完成 10 张语文卡", "target": 10,
+     "rarity": "bronze", "series": "study", "tier": "subject"},
+    {"id": "ma10", "icon": "calc", "name": "数学十卡", "desc": "完成 10 张数学卡", "target": 10,
+     "rarity": "bronze", "series": "study", "tier": "subject"},
+    {"id": "en10", "icon": "globe", "name": "英语十卡", "desc": "完成 10 张英语卡", "target": 10,
+     "rarity": "bronze", "series": "study", "tier": "subject"},
+    {"id": "all100", "icon": "medal", "name": "百卡达成", "desc": "累计完成 100 张单元卡", "target": 100,
+     "rarity": "silver", "series": "milestone", "tier": None},
+    {"id": "sport", "icon": "sport", "name": "运动健将", "desc": "每日运动打卡 10 次", "target": 10,
+     "rarity": "bronze", "series": "habit", "tier": None},
+    {"id": "daily30", "icon": "calendar", "name": "每日全勤", "desc": "每日任务累计打卡 30 次", "target": 30,
+     "rarity": "silver", "series": "habit", "tier": None},
+    {"id": "go10", "icon": "go", "name": "围棋小棋手", "desc": "围棋对弈打卡 10 次", "target": 10,
+     "rarity": "bronze", "series": "habit", "tier": None},
+    {"id": "calc10", "icon": "mental", "name": "口算达人", "desc": "每日口算打卡 10 次", "target": 10,
+     "rarity": "bronze", "series": "habit", "tier": None},
+    {"id": "streak7", "icon": "flame", "name": "坚持一周", "desc": "连续坚持 7 天", "target": 7,
+     "rarity": "bronze", "series": "habit", "tier": "streak"},
+    {"id": "streak14", "icon": "rocket", "name": "坚持半月", "desc": "连续坚持 14 天", "target": 14,
+     "rarity": "silver", "series": "habit", "tier": "streak"},
+    {"id": "streak30", "icon": "moon", "name": "坚持满月", "desc": "连续坚持 30 天", "target": 30,
+     "rarity": "gold", "series": "habit", "tier": "streak"},
+    {"id": "test100", "icon": "award", "name": "满分学霸", "desc": "单元测试考 100 分", "target": 100,
+     "rarity": "bronze", "series": "milestone", "tier": None},
+    {"id": "shop1", "icon": "cart", "name": "初尝战果", "desc": "第一次兑换奖励", "target": 1,
+     "rarity": "bronze", "series": "milestone", "tier": None},
+    {"id": "shop5", "icon": "gift", "name": "兑换小能手", "desc": "累计兑换 5 次", "target": 5,
+     "rarity": "bronze", "series": "milestone", "tier": None},
+    {"id": "box5", "icon": "dices", "name": "盲盒收藏家", "desc": "开 5 个连击盲盒", "target": 5,
+     "rarity": "bronze", "series": "milestone", "tier": None},
+    {"id": "custom10", "icon": "sparkles", "name": "自律之星", "desc": "完成家长任务 10 次", "target": 10,
+     "rarity": "silver", "series": "milestone", "tier": None},
+    {"id": "sun500", "icon": "coins", "name": "阳光新手", "desc": "累计获得 500 阳光", "target": 500,
+     "rarity": "silver", "series": "wealth", "tier": "sun"},
+    {"id": "sun2000", "icon": "gem", "name": "阳光大师", "desc": "累计获得 2000 阳光", "target": 2000,
+     "rarity": "gold", "series": "wealth", "tier": "sun"},
+    {"id": "sun5000", "icon": "crown", "name": "阳光传说", "desc": "累计获得 5000 阳光", "target": 5000,
+     "rarity": "legend", "series": "wealth", "tier": "sun"},
+    {"id": "early_bird", "icon": "sunrise", "name": "早鸟", "desc": "连续 7 天早 8 点前完成每日任务", "target": 7,
+     "rarity": "silver", "series": "habit", "tier": None},
+    {"id": "review_pro", "icon": "book", "name": "复习达人", "desc": "本周复习判定过关至少 5 次", "target": 5,
+     "rarity": "bronze", "series": "study", "tier": None},
+    {"id": "word_debut", "icon": "globe", "name": "单词首秀", "desc": "第一次完成每日背默", "target": 1,
+     "rarity": "bronze", "series": "study", "tier": None},
+    {"id": "perfect_week", "icon": "calendar", "name": "满分一周", "desc": "连续 7 天每日任务全打卡", "target": 7,
+     "rarity": "gold", "series": "habit", "tier": None},
+    {"id": "streak60", "icon": "trophy", "name": "坚持两月", "desc": "连续坚持 60 天", "target": 60,
+     "rarity": "legend", "series": "habit", "tier": "streak"},
 ]
 
 
-@app.get("/api/achievements")
-def achievements():
-    c = get_conn()
-    kid = kid_id()
+def _created_hour(ts):
+    if not ts:
+        return None
+    s = str(ts).strip()
+    try:
+        return datetime.fromisoformat(s.replace("Z", "").replace(" ", "T", 1)).hour
+    except ValueError:
+        pass
+    for sep in ("T", " "):
+        if sep in s:
+            part = s.split(sep, 1)[1]
+            try:
+                return int(part[0:2])
+            except ValueError:
+                return None
+    return None
+
+
+def _consecutive_days(dates, today=None):
+    """从今天（若今天不在集合里则从昨天）往回数连续天数。"""
+    bag = {str(x) for x in dates}
+    d = today or datetime.now().date()
+    if d.isoformat() not in bag:
+        d -= timedelta(days=1)
+    n = 0
+    while d.isoformat() in bag:
+        n += 1
+        d -= timedelta(days=1)
+    return n
+
+
+def _week_monday():
+    d = datetime.now().date()
+    return (d - timedelta(days=d.weekday())).isoformat()
+
+
+def _ach_currents(c, kid):
     total = c.execute("SELECT COUNT(*) FROM completions WHERE status='completed' AND kid_id=?", (kid,)).fetchone()[0]
     unit_done = c.execute("SELECT COUNT(*) FROM completions WHERE status='completed' AND kind='unit' AND kid_id=?", (kid,)).fetchone()[0]
     sport = c.execute("SELECT COUNT(*) FROM completions WHERE status='completed' AND kind='daily' AND kid_id=?", (kid,)).fetchone()[0]
@@ -665,26 +728,116 @@ def achievements():
         "WHERE c.status='completed' AND COALESCE(t.custom,0)=1 AND c.kid_id=?", (kid,)).fetchone()[0]
     shop_n = c.execute("SELECT COUNT(*) FROM redemptions WHERE status IN ('done','delivered') AND kid_id=?", (kid,)).fetchone()[0]
     best_test = c.execute("SELECT COALESCE(MAX(score),0) FROM tests WHERE kid_id=?", (kid,)).fetchone()[0]
-    box_n = int(db.get_kid_setting(c, kid_id(), "box_opened", "0"))
-    s = streak(c)
-    e = earned(c)
+    box_n = int(db.get_kid_setting(c, kid, "box_opened", "0"))
+    s = streak(c, kid)
+    e = earned(c, kid)
     done_by_subj = {r[0]: r[1] for r in c.execute(
         "SELECT t.subject_id, COUNT(*) FROM completions c JOIN tasks t ON t.id=c.task_id "
         "WHERE c.status='completed' AND c.kid_id=? GROUP BY t.subject_id", (kid,)).fetchall()}
-    cur = {
+    daily_rows = c.execute(
+        "SELECT date, task_id, created_at FROM completions WHERE status='completed' AND kind='daily' AND kid_id=?",
+        (kid,)).fetchall()
+    early_dates = {r["date"] for r in daily_rows if (_created_hour(r["created_at"]) or 99) < 8}
+    daily_ids = [r[0] for r in c.execute("SELECT id FROM daily_tasks").fetchall()]
+    n_daily = len(daily_ids)
+    by_date = {}
+    for r in daily_rows:
+        by_date.setdefault(r["date"], set()).add(r["task_id"])
+    perfect_dates = {d for d, ids in by_date.items() if n_daily and len(ids) >= n_daily}
+    monday = _week_monday()
+    # 没有 pass 事件表：本周被更新且至少升过一档 / 已巩固，作为过关次数的近似。
+    review_n = c.execute(
+        "SELECT COUNT(*) FROM weak_points WHERE kid_id=? AND updated_at>=? "
+        "AND (status='resolved' OR COALESCE(interval_idx,0)>=1)",
+        (kid, monday)).fetchone()[0]
+    word_n = 0
+    if db._has_table(c, "word_daily"):
+        word_n = c.execute("SELECT COUNT(*) FROM word_daily WHERE kid_id=?", (kid,)).fetchone()[0]
+    return {
         "first": total, "all100": unit_done,
         "sport": sport, "daily30": sport, "go10": go_n, "calc10": calc_n,
-        "streak7": s, "streak14": s, "streak30": s,
+        "streak7": s, "streak14": s, "streak30": s, "streak60": s,
         "cn10": done_by_subj.get("语文", 0), "ma10": done_by_subj.get("数学", 0), "en10": done_by_subj.get("英语", 0),
         "test100": best_test, "shop1": shop_n, "shop5": shop_n, "box5": box_n,
         "custom10": custom_n, "sun500": e, "sun2000": e, "sun5000": e,
+        "early_bird": _consecutive_days(early_dates),
+        "review_pro": review_n,
+        "word_debut": word_n,
+        "perfect_week": _consecutive_days(perfect_dates),
     }
+
+
+def _load_earned_map(c, kid):
+    rows = c.execute(
+        "SELECT ach_id, earned_at, seen FROM achievement_earned WHERE kid_id=?", (kid,)).fetchall()
+    return {r["ach_id"]: {"earned_at": r["earned_at"], "seen": int(r["seen"] or 0)} for r in rows}
+
+
+def _sync_achievement_earned(c, kid, fam, unlocked_ids, earned_map):
+    now = db.now()
+    added = False
+    for ach_id in unlocked_ids:
+        if ach_id in earned_map:
+            continue
+        c.execute(
+            "INSERT INTO achievement_earned(kid_id, ach_id, family_id, earned_at, seen) "
+            "VALUES(?,?,?,?,0) ON CONFLICT DO NOTHING",
+            (kid, ach_id, fam or "", now))
+        earned_map[ach_id] = {"earned_at": now, "seen": 0}
+        added = True
+    if added:
+        c.commit()
+    return earned_map
+
+
+@app.get("/api/achievements")
+def achievements():
+    c = get_conn()
+    kid = kid_id()
+    fam = _fam.get()
+    cur = _ach_currents(c, kid)
+    earned_map = _load_earned_map(c, kid)
+    unlocked_ids = [a["id"] for a in ACHIEVEMENTS if cur.get(a["id"], 0) >= a["target"]]
+    earned_map = _sync_achievement_earned(c, kid, fam, unlocked_ids, earned_map)
+    tier_total, tier_got = {}, {}
+    for a in ACHIEVEMENTS:
+        t = a.get("tier")
+        if not t:
+            continue
+        tier_total[t] = tier_total.get(t, 0) + 1
+        if a["id"] in earned_map:
+            tier_got[t] = tier_got.get(t, 0) + 1
     out = []
     for a in ACHIEVEMENTS:
-        v = cur[a["id"]]
-        out.append({**a, "current": v, "earned": v >= a["target"]})
+        v = cur.get(a["id"], 0)
+        unlocked = v >= a["target"]
+        rec = earned_map.get(a["id"])
+        if rec:
+            earned_at, seen = rec["earned_at"], rec["seen"]
+        else:
+            earned_at, seen = None, (0 if unlocked else 1)
+        t = a.get("tier")
+        chain = f"{tier_got.get(t, 0)}/{tier_total.get(t, 0)}" if t else None
+        out.append({
+            **a,
+            "current": v,
+            "earned": unlocked,  # 兼容旧前端
+            "unlocked": unlocked,
+            "earned_at": earned_at,
+            "seen": seen,
+            "chain_progress": chain,
+        })
     c.close()
     return out
+
+
+@app.post("/api/achievements/{ach_id}/mark-seen")
+def mark_achievement_seen(ach_id: str):
+    c = get_conn()
+    c.execute("UPDATE achievement_earned SET seen=1 WHERE kid_id=? AND ach_id=?", (kid_id(), ach_id))
+    c.commit()
+    c.close()
+    return {"ok": True}
 
 
 # 连击宝箱：连续打卡每 3 天解锁一个，随机 +3~+10（期望 ≈ 每天 +2，防通胀）

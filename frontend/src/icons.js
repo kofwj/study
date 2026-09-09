@@ -3,6 +3,7 @@ import {
     BookOpen, Calculator, Globe, FlaskConical, Heart, Dumbbell, Palette, Sparkles,
     Sprout, Leaf, Flower, Star, Flame, Trophy, Medal, Gem, Rocket, Crown,
     CalendarDays, Circle, Brain, Moon, Award, ShoppingCart, Gift, Dices, Coins,
+    Sunrise,
 } from '@lucide/vue'
 
 export const SUBJECT_ICONS = {
@@ -33,6 +34,7 @@ const ACH_ICONS = {
     mental: Brain, flame: Flame, rocket: Rocket, moon: Moon,
     award: Award, cart: ShoppingCart, gift: Gift, dices: Dices,
     sparkles: Sparkles, coins: Coins, gem: Gem, crown: Crown,
+    sunrise: Sunrise, trophy: Trophy,
 }
 
 export function achIcon(glyph) {

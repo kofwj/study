@@ -36,6 +36,7 @@ export const api = {
   redeem: (reward_id) => j('/api/rewards/redeem', { method: 'POST', ...body({ reward_id }) }),
   redemptions: () => j('/api/redemptions'),
   achievements: () => j('/api/achievements'),
+  markAchievementSeen: (id) => j(`/api/achievements/${encodeURIComponent(id)}/mark-seen`, { method: 'POST' }),
   ranks: () => j('/api/ranks'),
   boxes: () => j('/api/boxes'),
   openBox: () => j('/api/open_box', { method: 'POST' }),

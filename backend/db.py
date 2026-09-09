@@ -391,6 +391,15 @@ def _has_column(conn, table, col):
     return any(r["name"] == col for r in conn.execute(f"PRAGMA table_info({table})").fetchall())
 
 
+def _has_table(conn, name):
+    if conn.pg:
+        return conn.execute(
+            "SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name=?",
+            (name,)).fetchone() is not None
+    return conn.execute(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (name,)).fetchone() is not None
+
+
 def _add_column(conn, table, spec):
     col = spec.split()[0]
     if not _has_column(conn, table, col):
@@ -787,6 +796,28 @@ def _migrate_026(conn):
     _add_column(conn, "families", "penalty_enabled INTEGER DEFAULT 0")
 
 
+def _migrate_028(conn):
+    """成就获得时刻：达标写一次，seen=0 表示还没看过新徽章动画。"""
+    conn.execute("""
+CREATE TABLE IF NOT EXISTS achievement_earned (
+  kid_id TEXT NOT NULL,
+  ach_id TEXT NOT NULL,
+  family_id TEXT NOT NULL DEFAULT '',
+  earned_at TEXT NOT NULL,
+  seen INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (kid_id, ach_id)
+)""")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_ae_kid_seen ON achievement_earned(kid_id, seen)")
+    if conn.pg:
+        conn.execute("ALTER TABLE achievement_earned ENABLE ROW LEVEL SECURITY")
+        conn.execute("ALTER TABLE achievement_earned FORCE ROW LEVEL SECURITY")
+        conn.execute("DROP POLICY IF EXISTS iso ON achievement_earned")
+        conn.execute(
+            "CREATE POLICY iso ON achievement_earned USING (kid_id = current_setting('app.kid_id', true)) "
+            "WITH CHECK (kid_id = current_setting('app.kid_id', true))")
+        conn.execute("GRANT SELECT, INSERT, UPDATE, DELETE ON achievement_earned TO sunshine_app")
+
+
 def _migrate_027(conn):
     """家长一次性找回码哈希 + 登录/注册限流落库。"""
     _add_column(conn, "families", "recovery_hash TEXT")
@@ -839,6 +870,7 @@ MIGRATIONS = (
     ("025_parent_role", _migrate_025),
     ("026_penalty", _migrate_026),
     ("027_recovery_rate", _migrate_027),
+    ("028_achievement_earned", _migrate_028),
 )
 
 

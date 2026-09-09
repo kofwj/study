@@ -153,6 +153,125 @@ def test_streak():
     print("streak ok")
 
 
+def _ach_by_id(items):
+    return {a["id"]: a for a in items}
+
+
+def test_achievement_earned_idempotent():
+    db.init_db()
+    with TestClient(main.app) as cli:
+        assert cli.post("/api/auth/login", json={"account": "lele", "pin": "8888"}).status_code == 200
+        kid = db.DEFAULT_KID
+        before = cli.get("/api/overview").json()["earned"]
+        c = db.connect()
+        c.execute(
+            "INSERT INTO completions(task_id,date,status,sunshine,metrics,kind,created_at,kid_id) "
+            "VALUES(?,?,?,?,?,?,?,?)",
+            ("cn-read", db.today(), "completed", 5, None, "daily", db.now(), kid))
+        c.commit()
+        c.close()
+        first = cli.get("/api/achievements")
+        assert first.status_code == 200, first.text
+        a1 = _ach_by_id(first.json())["first"]
+        assert a1["unlocked"] and a1["earned"] and a1["earned_at"]
+        assert a1["rarity"] == "bronze" and a1["series"] == "milestone"
+        ts = a1["earned_at"]
+        second = cli.get("/api/achievements")
+        assert second.status_code == 200
+        a2 = _ach_by_id(second.json())["first"]
+        assert a2["earned_at"] == ts
+        c = db.connect()
+        n = c.execute("SELECT COUNT(*) FROM achievement_earned WHERE kid_id=? AND ach_id=?",
+                      (kid, "first")).fetchone()[0]
+        after = cli.get("/api/overview").json()["earned"]
+        c.close()
+        assert n == 1
+        assert after == before  # 成就表不影响 earned()
+
+
+def test_achievement_seen_toggle():
+    db.init_db()
+    with TestClient(main.app) as cli:
+        assert cli.post("/api/auth/login", json={"account": "lele", "pin": "8888"}).status_code == 200
+        c = db.connect()
+        c.execute(
+            "INSERT INTO completions(task_id,date,status,sunshine,metrics,kind,created_at,kid_id) "
+            "VALUES(?,?,?,?,?,?,?,?)",
+            ("cn-read", db.today(), "completed", 5, None, "daily", db.now(), db.DEFAULT_KID))
+        c.commit()
+        c.close()
+        a = _ach_by_id(cli.get("/api/achievements").json())["first"]
+        assert a["seen"] == 0
+        r = cli.post("/api/achievements/first/mark-seen")
+        assert r.status_code == 200 and r.json()["ok"] is True
+        assert _ach_by_id(cli.get("/api/achievements").json())["first"]["seen"] == 1
+        assert cli.post("/api/achievements/first/mark-seen").status_code == 200
+        assert _ach_by_id(cli.get("/api/achievements").json())["first"]["seen"] == 1
+        assert cli.post("/api/achievements/not-a-real/mark-seen").status_code == 200
+
+
+def test_achievement_chain_progress():
+    db.init_db()
+    with TestClient(main.app) as cli:
+        assert cli.post("/api/auth/login", json={"account": "lele", "pin": "8888"}).status_code == 200
+        kid = db.DEFAULT_KID
+        items = _ach_by_id(cli.get("/api/achievements").json())
+        assert items["sun500"]["chain_progress"] == "0/3"
+        assert items["sun2000"]["chain_progress"] == "0/3"
+        assert items["streak7"]["chain_progress"] == "0/4"
+        c = db.connect()
+        db.insert_ledger(c, db.today(), 500, "task", "sun-t1", "测", kid)
+        c.commit()
+        c.close()
+        items = _ach_by_id(cli.get("/api/achievements").json())
+        assert items["sun500"]["unlocked"] and items["sun500"]["chain_progress"] == "1/3"
+        assert items["sun2000"]["chain_progress"] == "1/3"
+        assert items["sun5000"]["chain_progress"] == "1/3"
+        c = db.connect()
+        db.insert_ledger(c, db.today(), 1500, "task", "sun-t2", "测", kid)
+        c.commit()
+        c.close()
+        items = _ach_by_id(cli.get("/api/achievements").json())
+        assert items["sun2000"]["unlocked"] and items["sun2000"]["chain_progress"] == "2/3"
+        c = db.connect()
+        db.insert_ledger(c, db.today(), 3000, "task", "sun-t3", "测", kid)
+        c.commit()
+        c.close()
+        items = _ach_by_id(cli.get("/api/achievements").json())
+        assert items["sun5000"]["unlocked"] and items["sun5000"]["rarity"] == "legend"
+        assert items["sun500"]["chain_progress"] == "3/3"
+        assert items["sun2000"]["chain_progress"] == "3/3"
+        assert items["sun5000"]["chain_progress"] == "3/3"
+
+
+def test_new_achievements_query():
+    db.init_db()
+    with TestClient(main.app) as cli:
+        assert cli.post("/api/auth/login", json={"account": "lele", "pin": "8888"}).status_code == 200
+        c = db.connect()
+        c.execute(
+            "INSERT INTO completions(task_id,date,status,sunshine,metrics,kind,created_at,kid_id) "
+            "VALUES(?,?,?,?,?,?,?,?)",
+            ("cn-read", db.today(), "completed", 5, None, "daily", db.now(), db.DEFAULT_KID))
+        db.insert_ledger(c, db.today(), 500, "task", "sun-new", "测", db.DEFAULT_KID)
+        c.commit()
+        c.close()
+        items = cli.get("/api/achievements").json()
+        unseen = [a for a in items if a["unlocked"] and a["seen"] == 0]
+        assert len(unseen) >= 2
+        assert {a["id"] for a in unseen} >= {"first", "sun500"}
+        assert cli.post("/api/achievements/first/mark-seen").status_code == 200
+        items = cli.get("/api/achievements").json()
+        unseen_ids = {a["id"] for a in items if a["unlocked"] and a["seen"] == 0}
+        assert "first" not in unseen_ids
+        assert "sun500" in unseen_ids
+        assert len(main.ACHIEVEMENTS) == 25
+
+
 if __name__ == "__main__":
     test_kids()
     test_streak()
+    test_achievement_earned_idempotent()
+    test_achievement_seen_toggle()
+    test_achievement_chain_progress()
+    test_new_achievements_query()

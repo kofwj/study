@@ -56,6 +56,49 @@ const shopOpen = ref(false)
 const myRedeems = ref([])
 const achievements = ref([])
 const achOpen = ref(false)
+const achModal = ref(null)
+const SERIES_NAME = { milestone: '里程碑', study: '学科', habit: '坚持', wealth: '阳光' }
+const SERIES_ORDER = ['milestone', 'study', 'habit', 'wealth']
+const RARITY_LABEL = { bronze: '青铜', silver: '白银', gold: '黄金', legend: '传说' }
+function achOn(a) { return !!(a && (a.earned || a.unlocked)) }
+function achNew(a) { return achOn(a) && Number(a.seen) === 0 }
+const newAchCount = computed(() => achievements.value.filter(achNew).length)
+const achBySeries = computed(() => {
+  const groups = {}
+  for (const a of achievements.value) {
+    const s = a.series || 'milestone'
+    ;(groups[s] ||= []).push(a)
+  }
+  return SERIES_ORDER.filter(s => groups[s]).concat(Object.keys(groups).filter(s => !SERIES_ORDER.includes(s)))
+    .map(s => ({ id: s, name: SERIES_NAME[s] || s, items: groups[s] }))
+})
+function seriesTiers(items) {
+  const seen = []
+  for (const a of items) {
+    if (a.tier && !seen.includes(a.tier)) seen.push(a.tier)
+  }
+  return seen
+}
+function timeAgo(iso) {
+  if (!iso) return ''
+  const t = new Date(iso)
+  if (Number.isNaN(t.getTime())) return ''
+  const sec = Math.max(0, (Date.now() - t.getTime()) / 1000)
+  if (sec < 60) return '刚刚'
+  if (sec < 3600) return Math.floor(sec / 60) + ' 分钟前'
+  if (sec < 86400) return Math.floor(sec / 3600) + ' 小时前'
+  const d = Math.floor(sec / 86400)
+  if (d === 1) return '昨天'
+  if (d < 30) return d + ' 天前'
+  return String(iso).slice(0, 10)
+}
+function pickUnseenAch() {
+  const fresh = achievements.value.filter(achNew)
+  if (!fresh.length) return null
+  const order = { legend: 0, gold: 1, silver: 2, bronze: 3 }
+  fresh.sort((a, b) => (order[a.rarity] ?? 9) - (order[b.rarity] ?? 9))
+  return fresh[0]
+}
 const boxes = ref({ avail: 0, opened: 0, earned: 0, streak: 0 })
 const boxOpen = ref(false)
 const boxResult = ref(null)
@@ -202,7 +245,11 @@ async function doLogout() {
 
 async function refresh() {
   try {
-    const [t, r, bx, rv, led] = await Promise.all([api.tasks(), api.rewards(), api.boxes(), api.reviewDue().catch(() => []), api.ledger().catch(() => [])])
+    const [t, r, bx, rv, led, ach] = await Promise.all([
+      api.tasks(), api.rewards(), api.boxes(),
+      api.reviewDue().catch(() => []), api.ledger().catch(() => []),
+      api.achievements().catch(() => null),
+    ])
     const prevId = data.level && data.level.level_id
     const prevEarned = data.level && (data.level.earned || 0)
     Object.assign(data, t)
@@ -215,6 +262,7 @@ async function refresh() {
     boxes.value = bx
     reviewDue.value = rv || []
     recentLedger.value = led || []
+    if (Array.isArray(ach)) achievements.value = ach
     err.value = ''
   } catch (e) {
     if (e.status === 401) { me.value = null; authed.value = false }
@@ -339,7 +387,21 @@ const STATUS_TXT = { pending: '等家长同意', done: '已兑换', delivered: '
 const milestoneTxt = (m) => (m && m.length) ? m.map(([d, b]) => ` · 连续 ${d} 天 +${b} 阳光`).join('') : ''
 async function openAch() {
   achOpen.value = true
-  try { achievements.value = await api.achievements() } catch {}
+  try {
+    achievements.value = await api.achievements()
+    if (!achModal.value) achModal.value = pickUnseenAch()
+  } catch {}
+}
+function openAchDetail(a) { achModal.value = a }
+async function closeAchModal() {
+  const a = achModal.value
+  achModal.value = null
+  if (a && achNew(a)) {
+    try { await api.markAchievementSeen(a.id) } catch {}
+    a.seen = 1
+    const next = pickUnseenAch()
+    if (next) achModal.value = next
+  }
 }
 async function openBox() {
   if (boxes.value.avail <= 0) {
@@ -513,7 +575,7 @@ function reloadApp() {
         <span class="pill sun"><i></i> {{ data.level.balance }}</span>
         <span class="pill fire"><Flame class="ico" :size="15" /> 连续打卡 {{ data.streak }} 天</span>
         <button class="pill star" @click="openRankMap"><component :is="rankIcon(data.level.level_icon)" class="ico" :size="15" /> {{ data.level.level }}</button>
-        <button class="pill ach" @click="openAch"><Medal class="ico" :size="15" /> 成就</button>
+        <button class="pill ach" @click="openAch"><Medal class="ico" :size="15" /> 成就 <em v-if="newAchCount" class="ach-pill-new">{{ newAchCount }}</em></button>
         <button class="pill box" :class="{ ready: boxes.avail > 0 }" @click="openBox">
           <Gift class="ico" :size="15" /> {{ boxes.avail > 0 ? '宝箱 ×' + boxes.avail : '宝箱' }}
         </button>
@@ -807,15 +869,51 @@ function reloadApp() {
     <!-- 成就墙 -->
     <div v-if="achOpen" class="mask" @click.self="achOpen = false">
       <div class="shop-modal ach-modal">
-        <h3><Medal class="ico" :size="18" /> 我的成就</h3>
-        <div class="ach-grid">
-          <div v-for="a in achievements" :key="a.id" class="ach-cell" :class="{ on: a.earned }">
-            <div class="ach-icon"><component :is="achIcon(a.icon)" class="ico" :size="24" /></div>
-            <div class="ach-name">{{ a.name }}</div>
-            <div class="ach-prog">{{ Math.min(a.current, a.target) }}/{{ a.target }}</div>
-          </div>
+        <h3>
+          <Medal class="ico" :size="18" /> 我的成就
+          <span v-if="newAchCount" class="ach-head-new">{{ newAchCount }} 个新</span>
+        </h3>
+        <div class="ach-body">
+          <details v-for="g in achBySeries" :key="g.id" class="ach-series" open>
+            <summary>{{ g.name }} ({{ g.items.filter(achOn).length }}/{{ g.items.length }})</summary>
+            <div v-for="tier in seriesTiers(g.items)" :key="tier" class="tier-track">
+              <div v-for="a in g.items.filter(x => x.tier === tier)" :key="a.id"
+                class="ach-cell" :class="[a.rarity, { on: achOn(a), new: achNew(a) }]"
+                @click="openAchDetail(a)">
+                <div class="ach-icon"><component :is="achIcon(a.icon)" class="ico" :size="24" /></div>
+                <div class="ach-name">{{ a.name }}</div>
+                <div class="ach-prog">{{ Math.min(a.current, a.target) }}/{{ a.target }}</div>
+                <span v-if="achNew(a)" class="new-dot">NEW</span>
+              </div>
+              <span class="tier-progress">{{ (g.items.find(x => x.tier === tier) || {}).chain_progress }}</span>
+            </div>
+            <div class="ach-grid">
+              <div v-for="a in g.items.filter(x => !x.tier)" :key="a.id"
+                class="ach-cell" :class="[a.rarity, { on: achOn(a), new: achNew(a) }]"
+                @click="openAchDetail(a)">
+                <div class="ach-icon"><component :is="achIcon(a.icon)" class="ico" :size="24" /></div>
+                <div class="ach-name">{{ a.name }}</div>
+                <div class="ach-prog">{{ Math.min(a.current, a.target) }}/{{ a.target }}</div>
+                <span v-if="achNew(a)" class="new-dot">NEW</span>
+              </div>
+            </div>
+          </details>
         </div>
         <button class="ghost" @click="achOpen = false">关闭</button>
+      </div>
+      <div v-if="achModal" class="ach-pop" @click.self="closeAchModal">
+        <div class="confetti" v-if="achNew(achModal)">
+          <span v-for="i in 14" :key="i" :style="{ left: (i * 7.1) + '%', animationDelay: (i * 0.09) + 's' }">•</span>
+        </div>
+        <div :class="['ach-detail', achModal.rarity]">
+          <div class="ach-icon"><component :is="achIcon(achModal.icon)" class="ico" :size="48" /></div>
+          <h3>{{ achModal.name }}</h3>
+          <p>{{ achModal.desc }}</p>
+          <p class="rarity-label">{{ RARITY_LABEL[achModal.rarity] || achModal.rarity }}</p>
+          <p v-if="achModal.earned_at" class="earned-time">{{ timeAgo(achModal.earned_at) }}获得</p>
+          <p v-else class="earned-time">{{ Math.min(achModal.current, achModal.target) }}/{{ achModal.target }}</p>
+          <button class="do" @click="closeAchModal">关闭</button>
+        </div>
       </div>
     </div>
 
@@ -1297,13 +1395,55 @@ body {
 .map-th { font-size: 12px; color: var(--ink-3); }
 .map-node.cur .map-th { color: var(--accent-ink); }
 .ach-modal { max-width: 460px; }
-.ach-grid { display: grid; flex: 1 1 auto; min-height: 0; overflow-y: auto; grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); gap: 10px; margin: 14px 0; }
-.ach-cell { background: var(--surface-2); border-radius: var(--radius-lg); padding: 12px 6px; text-align: center; opacity: .5; }
-.ach-cell.on { opacity: 1; background: var(--warm-2); border: 1px solid var(--accent); }
+.ach-head-new { margin-left: 8px; font-size: 12px; font-weight: 700; color: var(--accent-ink); background: var(--warm); padding: 2px 8px; border-radius: var(--radius-pill); }
+.pill.ach { position: relative; }
+.ach-pill-new { margin-left: 4px; font-size: 11px; font-style: normal; font-weight: 800; color: #fff; background: var(--danger); padding: 0 6px; border-radius: var(--radius-pill); }
+.ach-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; margin: 8px 0 12px; }
+.ach-series { margin: 4px 0 10px; }
+.ach-series summary { cursor: pointer; font-weight: 700; color: var(--ink); padding: 6px 2px; list-style: none; }
+.ach-series summary::-webkit-details-marker { display: none; }
+.tier-track { display: flex; align-items: stretch; gap: 8px; margin: 8px 0 12px; overflow-x: auto; }
+.tier-track .ach-cell { flex: 1 1 0; min-width: 88px; }
+.tier-progress { font-size: 11px; color: var(--ink-3); align-self: center; white-space: nowrap; }
+.ach-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); gap: 10px; margin: 8px 0; }
+.ach-cell { position: relative; background: var(--surface-2); border-radius: var(--radius-lg); padding: 12px 6px; text-align: center; opacity: .5; cursor: pointer; border: 2px solid transparent; }
+.ach-cell.on { opacity: 1; background: var(--warm-2); }
+.ach-cell.bronze { border-color: #c9844a; }
+.ach-cell.silver { border-color: #b8c4ce; }
+.ach-cell.silver.on { box-shadow: 0 0 8px rgba(184,196,206,.45); }
+.ach-cell.gold { border-color: var(--accent); }
+.ach-cell.gold.on { box-shadow: 0 0 12px rgba(245,165,36,.45); }
+.ach-cell.legend { border-color: #e08a12; }
+.ach-cell.legend.on {
+  background: linear-gradient(135deg, #fff6e0 0%, #ffe3a3 100%);
+  box-shadow: 0 0 16px rgba(245,165,36,.55);
+  animation: achglow 2s ease-in-out infinite;
+}
+@keyframes achglow {
+  0%, 100% { box-shadow: 0 0 12px rgba(245,165,36,.45); }
+  50% { box-shadow: 0 0 20px rgba(245,165,36,.8); }
+}
+.ach-cell .new-dot {
+  position: absolute; top: -6px; right: -4px;
+  background: var(--danger); color: #fff;
+  padding: 1px 6px; border-radius: 8px; font-size: 10px; font-weight: 800;
+  animation: boxpulse 1s ease-in-out infinite;
+}
 .ach-icon { font-size: 30px; }
 .ach-name { font-size: 12px; font-weight: 700; color: var(--ink-2); margin-top: 4px; }
 .ach-prog { font-size: 11px; color: var(--ink-3); margin-top: 2px; }
 .ach-cell.on .ach-prog { color: var(--accent-ink); }
+.ach-pop { position: absolute; inset: 0; z-index: 3; display: flex; align-items: center; justify-content: center; background: rgba(20,40,60,.28); padding: 16px; }
+.ach-detail { position: relative; z-index: 2; background: var(--surface); border-radius: var(--radius-xl); padding: 28px 32px; text-align: center; box-shadow: var(--shadow-lg); min-width: 220px; max-width: 320px; border: 3px solid var(--accent); }
+.ach-detail.bronze { border-color: #c9844a; }
+.ach-detail.silver { border-color: #b8c4ce; }
+.ach-detail.gold { border-color: var(--accent); }
+.ach-detail.legend { border-color: #e08a12; background: linear-gradient(180deg, #fffdf6, #fff); }
+.ach-detail h3 { margin: 8px 0 4px; }
+.ach-detail p { margin: 4px 0; color: var(--ink-2); font-size: 13px; }
+.rarity-label { font-weight: 800; color: var(--accent-ink) !important; }
+.earned-time { font-size: 12px; color: var(--ink-3) !important; }
+.ach-detail .do { margin-top: 12px; }
 .map-modal > .ghost, .ach-modal > .ghost { flex: 0 0 auto; }
 .confetti { position: absolute; inset: 0; z-index: 1; overflow: hidden; }
 .confetti span { position: absolute; top: -40px; font-size: 24px; color: var(--accent); animation: fall 2.6s linear forwards; }
