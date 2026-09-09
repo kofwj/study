@@ -6,7 +6,7 @@ import { APP_LABEL, APP_REVISION } from './version.js'
 const Admin = defineAsyncComponent(() => import('./Admin.vue'))
 import { SUBJECT_ICONS as ICONS, rankIcon, achIcon } from './icons.js'
 import { mottoFor } from './dailyMottos.js'
-import { Sun, Lock, Gift, Check, TrendingUp, Target, User, ShoppingCart, ScrollText, Medal, ChartColumn, Map, CalendarDays, RefreshCw, PartyPopper, Sparkles, BookOpen, Flame, Volume2, Egg, Sprout, Leaf, Flower } from '@lucide/vue'
+import { Sun, Lock, Gift, Check, TrendingUp, Target, User, ShoppingCart, ScrollText, Medal, ChartColumn, Map, CalendarDays, RefreshCw, PartyPopper, Sparkles, BookOpen, Flame, Volume2, Egg, Sprout, Leaf, Flower, House, Landmark, Construction } from '@lucide/vue'
 
 const data = reactive({
   level: { earned: 0, balance: 0, level: '阳光萌新', next: null, next_need: 0, progress: 0 },
@@ -849,6 +849,41 @@ function ledgerSign(n) {
   const v = Number(n) || 0
   return (v > 0 ? '+' : '') + v
 }
+function ymd(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+const SUN_BUCKETS = [
+  { id: 'study', name: '学习', reasons: ['task', 'word_daily', 'word_perfect', 'test'] },
+  { id: 'daily', name: '打卡', reasons: ['daily'] },
+  { id: 'box', name: '惊喜', reasons: ['box', 'milestone'] },
+]
+const sunshineStats = computed(() => {
+  const rows = recentLedger.value || []
+  const now = new Date()
+  const days = []
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i)
+    const iso = ymd(d)
+    const net = rows.filter(r => r.date === iso).reduce((s, r) => s + (Number(r.delta) || 0), 0)
+    days.push({ date: iso, label: `${d.getMonth() + 1}/${d.getDate()}`, net, today: i === 0 })
+  }
+  const weekNet = days.reduce((s, d) => s + d.net, 0)
+  const maxAbs = Math.max(1, ...days.map(d => Math.abs(d.net)))
+  const buckets = SUN_BUCKETS.map(b => ({
+    ...b,
+    sun: rows.filter(r => b.reasons.includes(r.reason) && Number(r.delta) > 0)
+      .reduce((s, r) => s + (Number(r.delta) || 0), 0),
+  })).filter(b => b.sun > 0)
+  const maxBucket = Math.max(1, ...buckets.map(b => b.sun), 0)
+  return {
+    balance: data.level.balance || 0,
+    earned: data.level.earned || 0,
+    streak: data.streak || 0,
+    level: data.level.level || '',
+    days, weekNet, maxAbs, buckets, maxBucket,
+    recent: rows.slice(0, 8),
+  }
+})
 const todayPenalty = computed(() => {
   const today = data.today
   const rows = recentLedger.value || []
@@ -859,7 +894,6 @@ const todayPenalty = computed(() => {
   const reason = ((active[0].note || '').split('：')[0] || '约定').trim()
   return { n, count: active.length, reason }
 })
-const recentSunshine = computed(() => (recentLedger.value || []).slice(0, 5))
 
 const unitName = (id) => data.units.find(u => u.id === id)?.name || ''
 const bySubject = computed(() => {
@@ -1062,18 +1096,17 @@ function reloadApp() {
             <em>{{ subjectProgress[s.id]?.done || 0 }}/{{ subjectProgress[s.id]?.total || 0 }}</em>
           </button>
         </div>
-        <div v-if="recentSunshine.length" class="side-split side-split-sun" role="separator"></div>
-        <div v-if="recentSunshine.length" class="side-sunshine">
-          <div class="side-sunshine-header">
-            <Sun class="ico" :size="14" />
-            <span>最近阳光</span>
-          </div>
-          <div class="side-sunshine-list">
-            <div v-for="row in recentSunshine" :key="row.id" class="side-sunshine-item" :class="{ down: row.delta < 0 }">
-              <span class="side-sunshine-label">{{ ledgerLabel(row) }}</span>
-              <b class="side-sunshine-value" :class="{ down: row.delta < 0 }">{{ ledgerSign(row.delta) }}</b>
-            </div>
-          </div>
+        <div class="side-split" role="separator"></div>
+        <div class="nav-group">
+          <button class="nav" :class="{ on: activeTab === 'sunshine' }" @click="activeTab = 'sunshine'">
+            <span><Sun class="ico" :size="15" /> 我的阳光</span>
+          </button>
+          <button class="nav" :class="{ on: activeTab === 'base' }" @click="activeTab = 'base'">
+            <span><House class="ico" :size="15" /> 秘密基地</span>
+          </button>
+          <button class="nav" :class="{ on: activeTab === 'bank' }" @click="activeTab = 'bank'">
+            <span><Landmark class="ico" :size="15" /> 阳光银行</span>
+          </button>
         </div>
       </aside>
 
@@ -1166,6 +1199,71 @@ function reloadApp() {
             </div>
           </section>
           <div v-if="!todayRemaining" class="empty"><PartyPopper class="ico" :size="16" /> 今天安排的事都完成了。</div>
+        </template>
+
+        <template v-else-if="activeTab === 'sunshine'">
+          <h1><Sun class="ico" :size="20" /> 我的阳光</h1>
+          <p class="sun-lead">{{ sunshineStats.weekNet > 0 ? '这几天口袋里又多了 ' + sunshineStats.weekNet + ' 颗。' : (sunshineStats.weekNet < 0 ? '这几天花掉了一些阳光。' : '这几天阳光没怎么动。') }}</p>
+          <div class="sun-hero">
+            <div class="sun-box main">
+              <span>口袋里</span>
+              <b>{{ sunshineStats.balance }}</b>
+            </div>
+            <div class="sun-box">
+              <span>一共攒过</span>
+              <b>{{ sunshineStats.earned }}</b>
+            </div>
+            <div class="sun-box">
+              <span>连续打卡</span>
+              <b>{{ sunshineStats.streak }}<small>天</small></b>
+            </div>
+          </div>
+          <section class="plan-section">
+            <div class="plan-head"><h2>近 7 天进出</h2></div>
+            <div class="sun-week">
+              <div v-for="d in sunshineStats.days" :key="d.date" class="sun-col">
+                <span class="sun-col-n" :class="{ down: d.net < 0, zero: !d.net }">{{ d.net ? ledgerSign(d.net) : '·' }}</span>
+                <div class="sun-track">
+                  <i v-if="d.net" :class="{ down: d.net < 0 }" :style="{ height: Math.max(8, Math.round(Math.abs(d.net) / sunshineStats.maxAbs * 72)) + 'px' }"></i>
+                </div>
+                <span :class="{ today: d.today }">{{ d.today ? '今天' : d.label }}</span>
+              </div>
+            </div>
+          </section>
+          <section v-if="sunshineStats.buckets.length" class="plan-section">
+            <div class="plan-head"><h2>阳光从哪来</h2></div>
+            <div class="sun-src" v-for="b in sunshineStats.buckets" :key="b.id">
+              <span>{{ b.name }}</span>
+              <div class="sun-src-bar"><i :style="{ width: Math.round(b.sun / sunshineStats.maxBucket * 100) + '%' }"></i></div>
+              <b>+{{ b.sun }}</b>
+            </div>
+          </section>
+          <section v-if="sunshineStats.recent.length" class="plan-section">
+            <div class="plan-head"><h2>最近进出</h2></div>
+            <div class="sun-log">
+              <div v-for="row in sunshineStats.recent" :key="row.id" class="sun-log-row" :class="{ down: row.delta < 0 }">
+                <div>
+                  <strong>{{ ledgerLabel(row) }}</strong>
+                  <small>{{ row.date }}</small>
+                </div>
+                <b>{{ ledgerSign(row.delta) }}</b>
+              </div>
+            </div>
+          </section>
+        </template>
+
+        <template v-else-if="activeTab === 'base' || activeTab === 'bank'">
+          <h1>
+            <House v-if="activeTab === 'base'" class="ico" :size="20" />
+            <Landmark v-else class="ico" :size="20" />
+            {{ activeTab === 'base' ? '秘密基地' : '阳光银行' }}
+          </h1>
+          <div class="coming">
+            <Construction class="ico" :size="36" />
+            <strong>建设中</strong>
+            <p v-if="activeTab === 'base'">小房子还在搭，以后可以藏贴纸、日记和悄悄话。</p>
+            <p v-else>存折还在印，以后能看阳光怎么攒、怎么花。</p>
+          </div>
         </template>
 
         <template v-else>
@@ -1686,62 +1784,41 @@ body {
   margin-top: 0;
 }
 
-/* 左侧阳光样式 */
-.side-sunshine {
-  margin-top: 0;
-  padding-top: 4px;
-  position: relative;
+.coming {
+  margin-top: 18px; max-width: 420px; text-align: center;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-xl);
+  padding: 36px 24px; box-shadow: var(--shadow-md);
 }
-.side-sunshine-header {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--ink-2);
-  margin-bottom: 10px;
-  padding: 0 12px;
-}
-.side-sunshine-header .ico {
-  color: #FFA500;
-}
-.side-sunshine-list {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.side-sunshine-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
-  font-size: 12px;
-  border-radius: var(--radius-sm);
-  transition: background .2s;
-}
-.side-sunshine-item:hover {
-  background: var(--warm);
-}
-.side-sunshine-label {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--ink-2);
-  font-size: 11px;
-}
-.side-sunshine-value {
-  flex: none;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  color: var(--ink);
-  font-size: 12px;
-}
-.side-sunshine-item.down { background: var(--warm); }
-.side-sunshine-value.down {
-  color: var(--accent-ink);
-}
+.coming .ico { color: var(--accent-ink); }
+.coming strong { display: block; margin: 12px 0 6px; font-size: 22px; }
+.coming p { margin: 0; color: var(--ink-2); font-size: 14px; line-height: 1.6; }
+.sun-lead { color: var(--ink-2); margin: 0 0 14px; font-size: 14px; }
+.sun-hero { display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+.sun-box { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 14px 16px; }
+.sun-box span { display: block; font-size: 12px; color: var(--ink-3); font-weight: 700; }
+.sun-box b { display: block; margin-top: 4px; font-size: 26px; letter-spacing: -.03em; }
+.sun-box small { font-size: 13px; margin-left: 3px; color: var(--ink-3); font-weight: 700; }
+.sun-box.main { background: var(--warm); border-color: transparent; }
+.sun-week { display: flex; align-items: flex-end; gap: 8px; height: 140px; padding-top: 8px; }
+.sun-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100%; }
+.sun-col-n { font-size: 11px; font-weight: 800; color: var(--accent-ink); min-height: 14px; }
+.sun-col-n.down, .sun-col-n.zero { color: var(--ink-3); }
+.sun-track { flex: 1; width: 100%; max-width: 28px; display: flex; align-items: flex-end; justify-content: center; }
+.sun-track i { display: block; width: 100%; background: var(--accent); border-radius: 6px 6px 0 0; min-height: 6px; }
+.sun-track i.down { background: var(--ink-3); }
+.sun-col span:last-child { font-size: 11px; color: var(--ink-2); }
+.sun-col span.today { color: var(--accent-ink); font-weight: 800; }
+.sun-src { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
+.sun-src span { width: 36px; font-weight: 700; font-size: 13px; }
+.sun-src-bar { flex: 1; height: 12px; background: var(--line); border-radius: 99px; overflow: hidden; }
+.sun-src-bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--brand), var(--accent)); }
+.sun-src b { min-width: 2.4em; text-align: right; font-size: 13px; }
+.sun-log-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--surface-2); }
+.sun-log-row div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.sun-log-row strong { font-size: 14px; }
+.sun-log-row small { color: var(--ink-3); font-size: 11px; }
+.sun-log-row b { font-variant-numeric: tabular-nums; color: var(--accent-ink); }
+.sun-log-row.down b { color: var(--ink-3); }
 
 .cta {
   border: none; border-radius: var(--radius-xl); padding: 11px 22px; font-weight: 800; font-size: 15px; cursor: pointer;
@@ -2165,6 +2242,7 @@ body {
   }
   .side::-webkit-scrollbar { display: none; }
   .side-split { width: 1px; height: 28px; align-self: center; margin: 0 2px; }
+  .sun-hero { grid-template-columns: 1fr 1fr; }
   .side-sunshine, .side-split-sun { display: none; }
   .nav-group {
     display: flex; flex-direction: row; align-items: center; gap: 8px;

@@ -48,7 +48,7 @@ export const api = {
   boxes: () => j('/api/boxes'),
   openBox: () => j('/api/open_box', { method: 'POST' }),
   reviewDue: () => j('/api/review-due'),
-  ledger: () => j('/api/ledger?limit=15'),
+  ledger: () => j('/api/ledger?limit=60'),
   setKidName: (name) => j('/api/kid-name', { method: 'POST', ...body({ name }) }),
   dailyHistory: (id) => j(`/api/daily/${id}/history`),
 
