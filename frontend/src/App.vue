@@ -159,16 +159,45 @@ function applyWordToday(t) {
   const i = items.findIndex(x => x.state !== 'done')
   wordDialog.itemIndex = i < 0 ? 0 : i
 }
+let wordUtter = null
+let wordVoices = []
+function ttsReady() { return typeof speechSynthesis !== 'undefined' }
+function loadWordVoices() {
+  if (!ttsReady()) return []
+  try { wordVoices = speechSynthesis.getVoices() || [] } catch { wordVoices = [] }
+  return wordVoices
+}
+function pickWordVoice(lang) {
+  const want = (lang || wordCfg.value.tts_lang || 'en-GB').toLowerCase()
+  const list = loadWordVoices()
+  const en = list.filter(v => String(v.lang || '').toLowerCase().startsWith('en'))
+  if (!en.length) return null
+  return en.find(v => String(v.lang || '').toLowerCase() === want)
+    || en.find(v => String(v.lang || '').toLowerCase().startsWith(want.slice(0, 2)))
+    || en[0]
+}
 function stopWordSpeech() {
-  try { if (typeof speechSynthesis !== 'undefined') speechSynthesis.cancel() } catch {}
+  wordUtter = null
+  try { if (ttsReady()) speechSynthesis.cancel() } catch {}
 }
 function speakWord(word, lang) {
-  if (typeof speechSynthesis === 'undefined') return false
+  if (!ttsReady() || !word) return false
+  const text = String(word).trim()
+  if (!text) return false
   try {
     speechSynthesis.cancel()
-    const u = new SpeechSynthesisUtterance(word)
-    u.lang = lang || wordCfg.value.tts_lang || 'en-GB'
+    const u = new SpeechSynthesisUtterance(text)
+    const voice = pickWordVoice(lang)
+    if (voice) {
+      u.voice = voice
+      u.lang = voice.lang || lang || 'en-GB'
+    } else {
+      u.lang = lang || wordCfg.value.tts_lang || 'en-GB'
+    }
     u.rate = 0.85
+    u.onerror = () => { if (wordUtter === u) wordUtter = null }
+    u.onend = () => { if (wordUtter === u) wordUtter = null }
+    wordUtter = u
     speechSynthesis.speak(u)
     return true
   } catch { return false }
@@ -176,7 +205,17 @@ function speakWord(word, lang) {
 function hearWord() {
   const w = wordCurrent.value
   if (!w) return
-  if (!speakWord(w.word)) showToast('这台设备暂时不能朗读，先看音标')
+  if (!ttsReady()) return showToast('这台设备暂时不能朗读，先看音标')
+  loadWordVoices()
+  const play = () => {
+    if (!speakWord(w.word)) showToast('这台设备暂时不能朗读，先看音标')
+  }
+  if (!wordVoices.length) {
+    // Android WebView 语音列表常在第一次点喇叭后才填上
+    setTimeout(() => { loadWordVoices(); play() }, 250)
+    return
+  }
+  play()
 }
 function wordPhaseOf(item) {
   if (!item) return 'done'
@@ -836,6 +875,10 @@ const currentUnits = computed(() => bySubject.value[activeTab.value]?.units || [
 
 onMounted(async () => {
   window.addEventListener('sw-update', () => { updateReady.value = true })
+  if (ttsReady()) {
+    loadWordVoices()
+    try { speechSynthesis.addEventListener('voiceschanged', loadWordVoices) } catch {}
+  }
   try {
     me.value = await api.me()
     authed.value = true

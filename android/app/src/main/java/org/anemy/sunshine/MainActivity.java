@@ -33,6 +33,8 @@ public class MainActivity extends Activity {
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
         s.setDatabaseEnabled(true);
+        // Android WebView 的 speechSynthesis 需要媒体自动播放权限，否则朗读被静音拦截
+        s.setMediaPlaybackRequiresUserGesture(false);
         web.setWebChromeClient(new WebChromeClient());
         web.setWebViewClient(new WebViewClient() {
             @Override public boolean shouldOverrideUrlLoading(WebView v, WebResourceRequest r) {

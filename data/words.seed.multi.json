@@ -1,5 +1,5 @@
 {
-  "curriculum_ver": "words-g5s1-en-v2",
+  "curriculum_ver": "words-g5s1-en-v3",
   "books": [
     {
       "id": "g5s1-en-1",
@@ -30,66 +30,31 @@
           "group": "topic"
         },
         {
-          "word": "always",
-          "cn": "总是",
-          "ipa": "/ˈɔːlweɪz/",
-          "sort": 2,
-          "group": "frequency"
-        },
-        {
-          "word": "usually",
-          "cn": "通常",
-          "ipa": "/ˈjuːʒuəli/",
-          "sort": 3,
-          "group": "frequency"
-        },
-        {
-          "word": "often",
-          "cn": "经常",
-          "ipa": "/ˈɒfn/",
-          "sort": 4,
-          "group": "frequency"
-        },
-        {
-          "word": "sometimes",
-          "cn": "有时",
-          "ipa": "/ˈsʌmtaɪmz/",
-          "sort": 5,
-          "group": "frequency"
-        },
-        {
-          "word": "never",
-          "cn": "从不",
-          "ipa": "/ˈnevə/",
-          "sort": 6,
-          "group": "frequency"
-        },
-        {
           "word": "get up",
           "cn": "起床",
           "ipa": "",
-          "sort": 7,
+          "sort": 2,
           "group": "routine"
         },
         {
           "word": "go to bed",
           "cn": "上床睡觉",
           "ipa": "",
-          "sort": 8,
+          "sort": 3,
           "group": "routine"
         },
         {
           "word": "have breakfast",
           "cn": "吃早餐",
           "ipa": "",
-          "sort": 9,
+          "sort": 4,
           "group": "routine"
         },
         {
           "word": "brush my teeth",
           "cn": "刷牙",
           "ipa": "",
-          "sort": 10,
+          "sort": 5,
           "group": "routine",
           "accept": [
             "brush teeth"
@@ -99,7 +64,7 @@
           "word": "wash my face",
           "cn": "洗脸",
           "ipa": "",
-          "sort": 11,
+          "sort": 6,
           "group": "routine",
           "accept": [
             "wash face"
@@ -109,14 +74,14 @@
           "word": "go to school",
           "cn": "去上学",
           "ipa": "",
-          "sort": 12,
+          "sort": 7,
           "group": "routine"
         },
         {
           "word": "do homework",
           "cn": "做作业",
           "ipa": "",
-          "sort": 13,
+          "sort": 8,
           "group": "routine",
           "accept": [
             "do my homework"
@@ -126,70 +91,70 @@
           "word": "watch TV",
           "cn": "看电视",
           "ipa": "",
-          "sort": 14,
+          "sort": 9,
           "group": "routine"
         },
         {
           "word": "early",
           "cn": "早的",
           "ipa": "/ˈɜːli/",
-          "sort": 15,
+          "sort": 10,
           "group": "adj"
         },
         {
           "word": "late",
           "cn": "晚的",
           "ipa": "/leɪt/",
-          "sort": 16,
+          "sort": 11,
           "group": "adj"
         },
         {
           "word": "healthy",
           "cn": "健康的",
           "ipa": "/ˈhelθi/",
-          "sort": 17,
+          "sort": 12,
           "group": "adj"
         },
         {
           "word": "before",
           "cn": "在……之前",
           "ipa": "/bɪˈfɔː/",
-          "sort": 18,
+          "sort": 13,
           "group": "time"
         },
         {
           "word": "after",
           "cn": "在……之后",
           "ipa": "/ˈɑːftə/",
-          "sort": 19,
+          "sort": 14,
           "group": "time"
         },
         {
           "word": "on time",
           "cn": "准时",
           "ipa": "",
-          "sort": 20,
+          "sort": 15,
           "group": "time"
         },
         {
           "word": "blackboard",
           "cn": "黑板",
           "ipa": "/ˈblækbɔːd/",
-          "sort": 21,
+          "sort": 16,
           "group": "sounds-bl"
         },
         {
           "word": "does",
           "cn": "（他/她）做",
           "ipa": "/dʌz/",
-          "sort": 22,
+          "sort": 17,
           "group": "grammar-3sg"
         },
         {
           "word": "doesn't",
           "cn": "（他/她）不做",
           "ipa": "/ˈdʌznt/",
-          "sort": 23,
+          "sort": 18,
           "group": "grammar-3sg",
           "accept": [
             "does not"
@@ -199,8 +164,15 @@
           "word": "breakfast",
           "cn": "早餐",
           "ipa": "/ˈbrekfəst/",
-          "sort": 24,
+          "sort": 19,
           "group": "noun"
+        },
+        {
+          "word": "have dinner",
+          "cn": "吃晚饭",
+          "ipa": "",
+          "sort": 20,
+          "group": "routine"
         }
       ]
     },
@@ -960,6 +932,41 @@
           "ipa": "/trʌk/",
           "sort": 24,
           "group": "sounds-tr"
+        },
+        {
+          "word": "always",
+          "cn": "总是",
+          "ipa": "/ˈɔːlweɪz/",
+          "sort": 25,
+          "group": "frequency"
+        },
+        {
+          "word": "usually",
+          "cn": "通常",
+          "ipa": "/ˈjuːʒuəli/",
+          "sort": 26,
+          "group": "frequency"
+        },
+        {
+          "word": "often",
+          "cn": "经常",
+          "ipa": "/ˈɒfn/",
+          "sort": 27,
+          "group": "frequency"
+        },
+        {
+          "word": "sometimes",
+          "cn": "有时",
+          "ipa": "/ˈsʌmtaɪmz/",
+          "sort": 28,
+          "group": "frequency"
+        },
+        {
+          "word": "never",
+          "cn": "从不",
+          "ipa": "/ˈnevə/",
+          "sort": 29,
+          "group": "frequency"
         }
       ]
     },

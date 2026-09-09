@@ -415,11 +415,16 @@ def mark_achievement_seen(ach_id: str):
 
 等级之外的第二条成长线：主屏一只芽，四阶段（蛋 → 芽 → 苗 → 花），只读累计 `earned`，连击只加光晕。进化庆祝一次。详细规格见 [ROADMAP_COMPANION.md](ROADMAP_COMPANION.md)。抽卡图鉴仍见 §4，本刀不做。
 
+养成 1.5 第 ② 刀（今日三格）和第 ③ 刀（宝箱外观 + 成就打断打卡）的规格见 [ROADMAP_RINGS_BOX.md](ROADMAP_RINGS_BOX.md)，尚未实现。
+
 ### 3.4 升级仪式（小改动，大感知）
 
 `level_info()` 返回的 `level` 变化时（前端对比上次 level_id），孩子端播放「升级时刻」：当前等级图标 → 新等级图标 + 撒阳光粒子（纯 CSS keyframes，几十行）。数据不动，纯前端。
 
 ## 4. 方向二：抽卡——IP 风险与替代方案
+
+> **详细规格已改写为「阳光图鉴」：** [ROADMAP_STAGE2.md](ROADMAP_STAGE2.md)。  
+> 下文 §4.1 的 IP 结论仍有效。§4.2 初稿中的「单抽 30 / 十连 270 / 70·25·5 / 30 保底 / 涂色上传 / 迁移 029_sprites」**已被图鉴方案取代**：蛋绑在现有连击宝箱、12 只无稀有度、星尘只升图鉴、迁移改为 `030_sprites`。养成 1.5 的 ②③ 仍见 [ROADMAP_RINGS_BOX.md](ROADMAP_RINGS_BOX.md)，与阶段二分开搁置。
 
 ### 4.1 直接用奥特曼 / 幻兽帕鲁 / 植物大战僵尸？——不可以
 
@@ -1146,12 +1151,12 @@ Unit 1 运行两周，人工核对错词和每天耗时后再扩 Unit 2；每新
 - 验收：`cd backend && python3 -m pytest -q` 全绿（含新增：earned 记录幂等、seen 置 1、稀有度字段存在）；`npm --prefix frontend run build` 成功。
 - 防回退：现有 24 个测试必须一个不红（特别是 test_task_rules 的取消冲正、test_weak_points 的 judge 档位）。
 
-### 阶段二：阳光精灵 + 抽卡（P1，3-5 天）
+### 阶段二：阳光图鉴（P1，2.5–3.5 天）
 
-- 目标：自创精灵体系上线：图鉴、抽卡（阳光消耗）、涂色上传、保底。
-- 涉及文件：`backend/db.py`（迁移 029 + sprite_defs 种子）、`backend/main.py`（4 个端点 + ledger reason `gacha` + earned 排除）、`frontend/src/App.vue`（图鉴页、开蛋动画）、`frontend/src/Admin.vue`（gacha-config）、`backend/test_kids.py`/新 `test_gacha.py`。
-- 验收：pytest 全绿（重点用例：余额不足 409、十连=10 条 draw 记录、pity 到 30 强制稀有、重复转星尘、gacha 不掉级 earned 断言、关闭开关后 403）；build 成功；手测上传涂色图（>2MB 拒绝）。
-- 防回退：`earned()` 的 reason 排除名单改动必须带上回归断言「抽卡后 earned 不变、balance 减少」。
+- 目标：12 只自创精灵图鉴；连击宝箱改为少量阳光 + 一枚蛋（未拥有优先）；重复转星尘升星。不做十连、不做阳光当抽卡石、不做涂色上传。规格见 [ROADMAP_STAGE2.md](ROADMAP_STAGE2.md)。
+- 涉及文件：`backend/db.py`（迁移 **030_sprites**，029 已是单词）、`backend/main.py` / `sprites.py`、`open_box`、`frontend/src/App.vue`（图鉴遮罩、开箱两拍）、`Admin.vue`（总开关）、`backend/test_sprites.py`。
+- 验收：pytest 全绿（无箱 409、未拥有优先集满 12、第 13 次转尘、升星、开关关闭回退旧阳光、家庭隔离、尘不加 earned）；build 成功。
+- 防回退：`box_opened` / `box5` 口径不变；`companion` 阶段算法不变。2.1 若加阳光换蛋，必须断言 `reason=sprite` 不掉级。
 
 ### 阶段三：单词背默（P1.5，4-5 天开发 + 两周观察）
 
