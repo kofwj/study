@@ -28,10 +28,16 @@ def test_unit1_seed_and_system_readonly():
     with TestClient(main.app) as cli:
         kid = _parent(cli, "w1", "wordpass", "词家")
         books = cli.get("/api/admin/words/books").json()
+        sys_ids = {b["id"] for b in books if b["is_system"]}
+        assert sys_ids == {f"g5s1-en-{i}" for i in range(1, 11)}
         u1 = next(b for b in books if b["id"] == "g5s1-en-1")
         assert u1["is_system"] == 1
         assert 20 <= u1["word_count"] <= 30
         assert u1["name"] == "Unit 1 Good habits"
+        u8 = next(b for b in books if b["id"] == "g5s1-en-8")
+        assert u8["name"] == "Unit 8 We love festivals" and 20 <= u8["word_count"] <= 30
+        p1 = next(b for b in books if b["id"] == "g5s1-en-9")
+        assert "Project 1" in p1["name"] and 10 <= p1["word_count"] <= 22
         detail = cli.get("/api/admin/words/books/g5s1-en-1").json()
         words = [w["word"] for w in detail["words"] if w["active"]]
         assert words[0] == "habit"
@@ -88,6 +94,10 @@ def test_word_config_cursor_lock():
         assert r.status_code == 200, r.text
         body = r.json()
         assert body["enabled"] is True and body["current_book"] == "g5s1-en-1" and body["new_per_day"] == 3
+        u2 = next(b for b in body["books"] if b["id"] == "g5s1-en-2")
+        assert u2["selectable"] is False
+        r = cli.put("/api/admin/words/config", json={"current_book": "g5s1-en-2"})
+        assert r.status_code == 400
         r = cli.put("/api/admin/words/config", json={"unknown": 1})
         assert r.status_code == 422
         today = cli.get("/api/words/today?selected_kid=" + kid).json()
@@ -307,7 +317,7 @@ def test_admin_stats_tts_and_problem_words():
         cfg = cli.get("/api/admin/words/config").json()
         assert cfg["tts"] is False and cfg["tts_autoplay"] is True and cfg["tts_lang"] == "en-US"
         u1 = next(b for b in cfg["books"] if b["id"] == "g5s1-en-1")
-        assert u1["source_ver"] == "words-g5s1-en-1-v1"
+        assert u1["source_ver"] == "words-g5s1-en-v2"
         assert u1["source_unit"] == "Unit 1 Good habits"
         _enable(cli, new_per_day=2)
         sess = cli.post("/api/words/session/start").json()["session"]

@@ -116,6 +116,24 @@ const wordRemaining = computed(() => wordItems().filter(x => x.state !== 'done')
 const wordCurrent = computed(() => wordItems()[wordDialog.itemIndex] || null)
 const wordCfg = computed(() => wordToday.value.config || {})
 const wordTtsOn = computed(() => wordCfg.value.tts !== false)
+const wordCard = computed(() => {
+  const t = wordToday.value
+  const sess = t.session
+  const cfg = t.config || {}
+  const finished = !!(t.finished || (sess && sess.state === 'completed'))
+  const counts = sess && sess.counts
+  const n = (sess && sess.items && sess.items.length) || 0
+  let detail = '看词、默写，写完领阳光'
+  if (finished && sess) detail = `今日背默完成 · 正确 ${counts && counts.correct_first_try != null ? counts.correct_first_try : 0}/${n}`
+  else if (finished && !sess) detail = '这一单元的词都练过了'
+  else if (wordRemaining.value) {
+    detail = `还剩 ${wordRemaining.value} 个`
+    if (counts) detail += ` · 复习 ${counts.due} · 新学 ${counts.new}`
+  } else if (counts) detail = `复习 ${counts.due} · 新学 ${counts.new}`
+  const sun = cfg.base_sunshine != null ? cfg.base_sunshine : 3
+  return { finished, detail, sun, blocked: finished && !sess }
+})
+function openWordCard() { if (!wordCard.value.blocked) openWords() }
 const wordPos = computed(() => {
   const items = wordItems()
   const total = items.length
@@ -898,17 +916,16 @@ function reloadApp() {
             <div class="plan-head">
               <div><h2><BookOpen class="ico" :size="18" /> 今日单词</h2></div>
             </div>
-            <button type="button" class="word-entry" :disabled="wordToday.finished && !wordToday.session" @click="openWords">
-              <div>
-                <strong v-if="wordToday.session && (wordToday.finished || wordToday.session.state === 'completed')">
-                  今日背默完成 · 正确 {{ wordToday.session.counts && wordToday.session.counts.correct_first_try }}/{{ (wordToday.session.items || []).length }}
-                </strong>
-                <strong v-else-if="wordToday.finished && !wordToday.session">这一单元的词都练过了</strong>
-                <strong v-else>英语单词 · 还剩 {{ wordRemaining || (wordToday.session && wordToday.session.items || []).length || '' }} 个</strong>
-                <small v-if="wordToday.session && wordToday.session.counts">复习 {{ wordToday.session.counts.due }} · 新学 {{ wordToday.session.counts.new }}</small>
+            <div class="grid plan-grid">
+              <div class="card enter word-daily-card" :class="{ done: wordCard.finished }" role="button" @click="openWordCard">
+                <button type="button" class="circle" :class="{ ok: wordCard.finished }" @click.stop="openWordCard"><Check v-if="wordCard.finished" :size="15" /></button>
+                <div class="card-body">
+                  <div class="card-title">今日单词</div>
+                  <div class="card-detail">{{ wordCard.detail }}</div>
+                  <div class="plus">英语 · +{{ wordCard.sun }} <Sun class="ico sun" :size="12" /></div>
+                </div>
               </div>
-              <span class="word-entry-go">{{ wordToday.session && (wordToday.finished || wordToday.session.state === 'completed') ? '回顾' : '开始' }}</span>
-            </button>
+            </div>
           </section>
 
           <section v-if="studyNext.length" class="plan-section">
@@ -933,18 +950,18 @@ function reloadApp() {
         <template v-else>
           <h1><component :is="ICONS[activeTab] || BookOpen" class="ico" :size="20" /> {{ activeTab }}</h1>
 
-          <button v-if="activeTab === '英语' && wordToday.enabled" type="button" class="word-entry word-entry-tab" @click="openWords">
-            <div>
-              <strong v-if="wordToday.session && (wordToday.finished || wordToday.session.state === 'completed')">今日背默完成</strong>
-              <strong v-else>今日单词</strong>
-              <small>{{ wordRemaining ? '还剩 ' + wordRemaining + ' 个' : (wordToday.finished ? '已完成' : '去练习') }}</small>
-            </div>
-            <span class="word-entry-go">打开</span>
-          </button>
-
-          <div class="unit" v-if="data.daily.some(x => x.subject_id === activeTab)">
+          <div class="unit" v-if="data.daily.some(x => x.subject_id === activeTab) || (activeTab === '英语' && wordToday.enabled)">
             <h2><i></i> 每日打卡</h2>
             <div class="grid">
+              <div v-if="activeTab === '英语' && wordToday.enabled"
+                class="card enter word-daily-card" :class="{ done: wordCard.finished }" role="button" @click="openWordCard">
+                <button type="button" class="circle" :class="{ ok: wordCard.finished }" @click.stop="openWordCard"><Check v-if="wordCard.finished" :size="15" /></button>
+                <div class="card-body">
+                  <div class="card-title">今日单词</div>
+                  <div class="card-detail">{{ wordCard.detail }}</div>
+                  <div class="plus">+{{ wordCard.sun }} <Sun class="ico sun" :size="12" /></div>
+                </div>
+              </div>
               <div v-for="d in data.daily.filter(x => x.subject_id === activeTab)" :key="d.id"
                 class="card enter" :class="{ done: d.done_today }">
                 <button class="circle" :class="{ ok: d.done_today }"
@@ -985,7 +1002,7 @@ function reloadApp() {
             </div>
           </div>
 
-          <div v-if="!currentUnits.length && !data.daily.some(x => x.subject_id === activeTab)" class="empty">
+          <div v-if="!currentUnits.length && !data.daily.some(x => x.subject_id === activeTab) && !(activeTab === '英语' && wordToday.enabled)" class="empty">
             这科没有任务
           </div>
         </template>
@@ -1624,16 +1641,7 @@ body {
 .do:disabled { background: var(--line); cursor: default; }
 .do.big { width: 100%; padding: 12px; margin-top: 8px; }
 .ghost { width: 100%; margin-top: 8px; border: none; background: none; color: var(--ink-3); cursor: pointer; }
-.word-entry {
-  display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%;
-  text-align: left; border: 1px solid var(--accent); background: var(--warm-2);
-  border-radius: var(--radius-lg); padding: 12px 14px; cursor: pointer; font-family: inherit;
-}
-.word-entry:disabled { opacity: .6; cursor: default; }
-.word-entry strong { display: block; color: var(--ink); }
-.word-entry small { display: block; margin-top: 3px; color: var(--ink-3); font-size: 12px; }
-.word-entry-go { flex: none; min-height: 44px; min-width: 64px; padding: 0 14px; border-radius: var(--radius-pill); background: var(--brand); color: #fff; font-weight: 800; display: inline-flex; align-items: center; justify-content: center; }
-.word-entry-tab { margin: 0 0 16px; }
+.word-daily-card { cursor: pointer; }
 .word-modal { max-width: 420px; text-align: center; }
 .word-top { display: flex; justify-content: space-between; align-items: center; font-weight: 800; }
 .word-bar { height: 6px; background: var(--surface-2); border-radius: 99px; margin: 8px 0 10px; overflow: hidden; }

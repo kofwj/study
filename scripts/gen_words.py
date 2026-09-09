@@ -44,8 +44,13 @@ def main():
             "|---|---|---|---|---|---|",
         ]
         seen = set()
-        if not (20 <= len(words) <= 30) and b.get("id") == "g5s1-en-1":
-            errors.append(f"{b['id']} 试点词数应在 20–30，当前 {len(words)}")
+        bid = b.get("id") or ""
+        if bid in ("g5s1-en-9", "g5s1-en-10"):
+            if not (10 <= len(words) <= 22):
+                errors.append(f"{bid} 项目词数应在 10–22，当前 {len(words)}")
+        elif bid.startswith("g5s1-en-"):
+            if not (20 <= len(words) <= 30):
+                errors.append(f"{bid} 单元词数应在 20–30，当前 {len(words)}")
         for i, w in enumerate(words, 1):
             word = (w.get("word") or "").strip()
             cn = (w.get("cn") or "").strip()

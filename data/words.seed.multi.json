@@ -1,5 +1,5 @@
 {
-  "curriculum_ver": "words-g5s1-en-1-v1",
+  "curriculum_ver": "words-g5s1-en-v2",
   "books": [
     {
       "id": "g5s1-en-1",
@@ -12,35 +12,1829 @@
         "unit": "Unit 1 Good habits",
         "unit_id": "g5s1-en-1",
         "catalog": "/books/yilin/yingyu/5a_2026/",
-        "aligned_tasks": ["g5s1-en-1-1", "g5s1-en-1-2", "g5s1-en-1-4", "g5s1-en-1-5"],
-        "note": "试点核心词，对齐本仓库五上英语 Unit 1 任务（Word list / bl / 三单 does / Talk about habits）。页码待对照 2026 秋译林 5A Word lists 后补。",
+        "aligned_tasks": [
+          "g5s1-en-1-1",
+          "g5s1-en-1-2",
+          "g5s1-en-1-4",
+          "g5s1-en-1-5"
+        ],
+        "note": "核心词，对齐本仓库五上英语 Unit 1 任务（Word list / bl / 三单 does / Talk about habits）。页码待对照 2026 秋译林 5A Word lists 后补。",
         "needs_spot_check": true
       },
       "words": [
-        {"word": "habit", "cn": "习惯", "ipa": "/ˈhæbɪt/", "sort": 1, "group": "topic"},
-        {"word": "always", "cn": "总是", "ipa": "/ˈɔːlweɪz/", "sort": 2, "group": "frequency"},
-        {"word": "usually", "cn": "通常", "ipa": "/ˈjuːʒuəli/", "sort": 3, "group": "frequency"},
-        {"word": "often", "cn": "经常", "ipa": "/ˈɒfn/", "sort": 4, "group": "frequency"},
-        {"word": "sometimes", "cn": "有时", "ipa": "/ˈsʌmtaɪmz/", "sort": 5, "group": "frequency"},
-        {"word": "never", "cn": "从不", "ipa": "/ˈnevə/", "sort": 6, "group": "frequency"},
-        {"word": "get up", "cn": "起床", "ipa": "", "sort": 7, "group": "routine"},
-        {"word": "go to bed", "cn": "上床睡觉", "ipa": "", "sort": 8, "group": "routine"},
-        {"word": "have breakfast", "cn": "吃早餐", "ipa": "", "sort": 9, "group": "routine"},
-        {"word": "brush my teeth", "cn": "刷牙", "ipa": "", "sort": 10, "group": "routine", "accept": ["brush teeth"]},
-        {"word": "wash my face", "cn": "洗脸", "ipa": "", "sort": 11, "group": "routine", "accept": ["wash face"]},
-        {"word": "go to school", "cn": "去上学", "ipa": "", "sort": 12, "group": "routine"},
-        {"word": "do homework", "cn": "做作业", "ipa": "", "sort": 13, "group": "routine", "accept": ["do my homework"]},
-        {"word": "watch TV", "cn": "看电视", "ipa": "", "sort": 14, "group": "routine"},
-        {"word": "early", "cn": "早的", "ipa": "/ˈɜːli/", "sort": 15, "group": "adj"},
-        {"word": "late", "cn": "晚的", "ipa": "/leɪt/", "sort": 16, "group": "adj"},
-        {"word": "healthy", "cn": "健康的", "ipa": "/ˈhelθi/", "sort": 17, "group": "adj"},
-        {"word": "before", "cn": "在……之前", "ipa": "/bɪˈfɔː/", "sort": 18, "group": "time"},
-        {"word": "after", "cn": "在……之后", "ipa": "/ˈɑːftə/", "sort": 19, "group": "time"},
-        {"word": "on time", "cn": "准时", "ipa": "", "sort": 20, "group": "time"},
-        {"word": "blackboard", "cn": "黑板", "ipa": "/ˈblækbɔːd/", "sort": 21, "group": "sounds-bl"},
-        {"word": "does", "cn": "（他/她）做", "ipa": "/dʌz/", "sort": 22, "group": "grammar-3sg"},
-        {"word": "doesn't", "cn": "（他/她）不做", "ipa": "/ˈdʌznt/", "sort": 23, "group": "grammar-3sg", "accept": ["does not"]},
-        {"word": "breakfast", "cn": "早餐", "ipa": "/ˈbrekfəst/", "sort": 24, "group": "noun"}
+        {
+          "word": "habit",
+          "cn": "习惯",
+          "ipa": "/ˈhæbɪt/",
+          "sort": 1,
+          "group": "topic"
+        },
+        {
+          "word": "always",
+          "cn": "总是",
+          "ipa": "/ˈɔːlweɪz/",
+          "sort": 2,
+          "group": "frequency"
+        },
+        {
+          "word": "usually",
+          "cn": "通常",
+          "ipa": "/ˈjuːʒuəli/",
+          "sort": 3,
+          "group": "frequency"
+        },
+        {
+          "word": "often",
+          "cn": "经常",
+          "ipa": "/ˈɒfn/",
+          "sort": 4,
+          "group": "frequency"
+        },
+        {
+          "word": "sometimes",
+          "cn": "有时",
+          "ipa": "/ˈsʌmtaɪmz/",
+          "sort": 5,
+          "group": "frequency"
+        },
+        {
+          "word": "never",
+          "cn": "从不",
+          "ipa": "/ˈnevə/",
+          "sort": 6,
+          "group": "frequency"
+        },
+        {
+          "word": "get up",
+          "cn": "起床",
+          "ipa": "",
+          "sort": 7,
+          "group": "routine"
+        },
+        {
+          "word": "go to bed",
+          "cn": "上床睡觉",
+          "ipa": "",
+          "sort": 8,
+          "group": "routine"
+        },
+        {
+          "word": "have breakfast",
+          "cn": "吃早餐",
+          "ipa": "",
+          "sort": 9,
+          "group": "routine"
+        },
+        {
+          "word": "brush my teeth",
+          "cn": "刷牙",
+          "ipa": "",
+          "sort": 10,
+          "group": "routine",
+          "accept": [
+            "brush teeth"
+          ]
+        },
+        {
+          "word": "wash my face",
+          "cn": "洗脸",
+          "ipa": "",
+          "sort": 11,
+          "group": "routine",
+          "accept": [
+            "wash face"
+          ]
+        },
+        {
+          "word": "go to school",
+          "cn": "去上学",
+          "ipa": "",
+          "sort": 12,
+          "group": "routine"
+        },
+        {
+          "word": "do homework",
+          "cn": "做作业",
+          "ipa": "",
+          "sort": 13,
+          "group": "routine",
+          "accept": [
+            "do my homework"
+          ]
+        },
+        {
+          "word": "watch TV",
+          "cn": "看电视",
+          "ipa": "",
+          "sort": 14,
+          "group": "routine"
+        },
+        {
+          "word": "early",
+          "cn": "早的",
+          "ipa": "/ˈɜːli/",
+          "sort": 15,
+          "group": "adj"
+        },
+        {
+          "word": "late",
+          "cn": "晚的",
+          "ipa": "/leɪt/",
+          "sort": 16,
+          "group": "adj"
+        },
+        {
+          "word": "healthy",
+          "cn": "健康的",
+          "ipa": "/ˈhelθi/",
+          "sort": 17,
+          "group": "adj"
+        },
+        {
+          "word": "before",
+          "cn": "在……之前",
+          "ipa": "/bɪˈfɔː/",
+          "sort": 18,
+          "group": "time"
+        },
+        {
+          "word": "after",
+          "cn": "在……之后",
+          "ipa": "/ˈɑːftə/",
+          "sort": 19,
+          "group": "time"
+        },
+        {
+          "word": "on time",
+          "cn": "准时",
+          "ipa": "",
+          "sort": 20,
+          "group": "time"
+        },
+        {
+          "word": "blackboard",
+          "cn": "黑板",
+          "ipa": "/ˈblækbɔːd/",
+          "sort": 21,
+          "group": "sounds-bl"
+        },
+        {
+          "word": "does",
+          "cn": "（他/她）做",
+          "ipa": "/dʌz/",
+          "sort": 22,
+          "group": "grammar-3sg"
+        },
+        {
+          "word": "doesn't",
+          "cn": "（他/她）不做",
+          "ipa": "/ˈdʌznt/",
+          "sort": 23,
+          "group": "grammar-3sg",
+          "accept": [
+            "does not"
+          ]
+        },
+        {
+          "word": "breakfast",
+          "cn": "早餐",
+          "ipa": "/ˈbrekfəst/",
+          "sort": 24,
+          "group": "noun"
+        }
+      ]
+    },
+    {
+      "id": "g5s1-en-2",
+      "term_id": "g5s1",
+      "unit_id": "g5s1-en-2",
+      "name": "Unit 2 I feel good",
+      "sort": 2,
+      "source": {
+        "edition": "yilin-eng-5a-2026",
+        "unit": "Unit 2 I feel good",
+        "unit_id": "g5s1-en-2",
+        "catalog": "/books/yilin/yingyu/5a_2026/",
+        "aligned_tasks": [
+          "g5s1-en-2-1",
+          "g5s1-en-2-2",
+          "g5s1-en-2-4",
+          "g5s1-en-2-5"
+        ],
+        "note": "核心词，对齐本仓库五上英语 Unit 2 任务（Word list / cl climbing / Does he/she like / Give advice）。页码待对照 2026 秋译林 5A Word lists 后补。",
+        "needs_spot_check": true
+      },
+      "words": [
+        {
+          "word": "feel",
+          "cn": "感觉",
+          "ipa": "/fiːl/",
+          "sort": 1,
+          "group": "topic"
+        },
+        {
+          "word": "happy",
+          "cn": "高兴的",
+          "ipa": "/ˈhæpi/",
+          "sort": 2,
+          "group": "feel"
+        },
+        {
+          "word": "sad",
+          "cn": "难过的",
+          "ipa": "/sæd/",
+          "sort": 3,
+          "group": "feel"
+        },
+        {
+          "word": "tired",
+          "cn": "累的",
+          "ipa": "/ˈtaɪəd/",
+          "sort": 4,
+          "group": "feel"
+        },
+        {
+          "word": "angry",
+          "cn": "生气的",
+          "ipa": "/ˈæŋɡri/",
+          "sort": 5,
+          "group": "feel"
+        },
+        {
+          "word": "bored",
+          "cn": "无聊的",
+          "ipa": "/bɔːd/",
+          "sort": 6,
+          "group": "feel"
+        },
+        {
+          "word": "hungry",
+          "cn": "饿的",
+          "ipa": "/ˈhʌŋɡri/",
+          "sort": 7,
+          "group": "feel"
+        },
+        {
+          "word": "thirsty",
+          "cn": "渴的",
+          "ipa": "/ˈθɜːsti/",
+          "sort": 8,
+          "group": "feel"
+        },
+        {
+          "word": "worried",
+          "cn": "担心的",
+          "ipa": "/ˈwʌrid/",
+          "sort": 9,
+          "group": "feel"
+        },
+        {
+          "word": "ill",
+          "cn": "生病的",
+          "ipa": "/ɪl/",
+          "sort": 10,
+          "group": "feel"
+        },
+        {
+          "word": "better",
+          "cn": "更好的",
+          "ipa": "/ˈbetə/",
+          "sort": 11,
+          "group": "feel"
+        },
+        {
+          "word": "well",
+          "cn": "健康的",
+          "ipa": "/wel/",
+          "sort": 12,
+          "group": "feel"
+        },
+        {
+          "word": "like",
+          "cn": "喜欢",
+          "ipa": "/laɪk/",
+          "sort": 13,
+          "group": "verb"
+        },
+        {
+          "word": "sport",
+          "cn": "运动",
+          "ipa": "/spɔːt/",
+          "sort": 14,
+          "group": "noun"
+        },
+        {
+          "word": "football",
+          "cn": "足球",
+          "ipa": "/ˈfʊtbɔːl/",
+          "sort": 15,
+          "group": "noun"
+        },
+        {
+          "word": "swimming",
+          "cn": "游泳",
+          "ipa": "/ˈswɪmɪŋ/",
+          "sort": 16,
+          "group": "noun"
+        },
+        {
+          "word": "climbing",
+          "cn": "攀爬",
+          "ipa": "/ˈklaɪmɪŋ/",
+          "sort": 17,
+          "group": "sounds-cl"
+        },
+        {
+          "word": "run",
+          "cn": "跑",
+          "ipa": "/rʌn/",
+          "sort": 18,
+          "group": "verb"
+        },
+        {
+          "word": "jump",
+          "cn": "跳",
+          "ipa": "/dʒʌmp/",
+          "sort": 19,
+          "group": "verb"
+        },
+        {
+          "word": "rest",
+          "cn": "休息",
+          "ipa": "/rest/",
+          "sort": 20,
+          "group": "verb"
+        },
+        {
+          "word": "class",
+          "cn": "班级；课",
+          "ipa": "/klɑːs/",
+          "sort": 21,
+          "group": "sounds-cl"
+        },
+        {
+          "word": "clean",
+          "cn": "干净的",
+          "ipa": "/kliːn/",
+          "sort": 22,
+          "group": "sounds-cl"
+        },
+        {
+          "word": "clothes",
+          "cn": "衣服",
+          "ipa": "/kləʊðz/",
+          "sort": 23,
+          "group": "sounds-cl"
+        },
+        {
+          "word": "advice",
+          "cn": "建议",
+          "ipa": "/ədˈvaɪs/",
+          "sort": 24,
+          "group": "topic"
+        }
+      ]
+    },
+    {
+      "id": "g5s1-en-3",
+      "term_id": "g5s1",
+      "unit_id": "g5s1-en-3",
+      "name": "Unit 3 Hobbies",
+      "sort": 3,
+      "source": {
+        "edition": "yilin-eng-5a-2026",
+        "unit": "Unit 3 Hobbies",
+        "unit_id": "g5s1-en-3",
+        "catalog": "/books/yilin/yingyu/5a_2026/",
+        "aligned_tasks": [
+          "g5s1-en-3-1",
+          "g5s1-en-3-2",
+          "g5s1-en-3-4",
+          "g5s1-en-3-5"
+        ],
+        "note": "核心词，对齐本仓库五上英语 Unit 3 任务（Word list / br brother / What does he/she like doing / Talk about hobbies）。页码待对照 2026 秋译林 5A Word lists 后补。",
+        "needs_spot_check": true
+      },
+      "words": [
+        {
+          "word": "hobby",
+          "cn": "爱好",
+          "ipa": "/ˈhɒbi/",
+          "sort": 1,
+          "group": "topic"
+        },
+        {
+          "word": "hobbies",
+          "cn": "爱好（复数）",
+          "ipa": "/ˈhɒbiz/",
+          "sort": 2,
+          "group": "topic"
+        },
+        {
+          "word": "reading",
+          "cn": "阅读",
+          "ipa": "/ˈriːdɪŋ/",
+          "sort": 3,
+          "group": "hobby"
+        },
+        {
+          "word": "drawing",
+          "cn": "画画",
+          "ipa": "/ˈdrɔːɪŋ/",
+          "sort": 4,
+          "group": "hobby"
+        },
+        {
+          "word": "singing",
+          "cn": "唱歌",
+          "ipa": "/ˈsɪŋɪŋ/",
+          "sort": 5,
+          "group": "hobby"
+        },
+        {
+          "word": "dancing",
+          "cn": "跳舞",
+          "ipa": "/ˈdɑːnsɪŋ/",
+          "sort": 6,
+          "group": "hobby"
+        },
+        {
+          "word": "collecting",
+          "cn": "收集",
+          "ipa": "/kəˈlektɪŋ/",
+          "sort": 7,
+          "group": "hobby"
+        },
+        {
+          "word": "stamps",
+          "cn": "邮票",
+          "ipa": "/stæmps/",
+          "sort": 8,
+          "group": "hobby"
+        },
+        {
+          "word": "piano",
+          "cn": "钢琴",
+          "ipa": "/piˈænəʊ/",
+          "sort": 9,
+          "group": "hobby"
+        },
+        {
+          "word": "guitar",
+          "cn": "吉他",
+          "ipa": "/ɡɪˈtɑː/",
+          "sort": 10,
+          "group": "hobby"
+        },
+        {
+          "word": "fishing",
+          "cn": "钓鱼",
+          "ipa": "/ˈfɪʃɪŋ/",
+          "sort": 11,
+          "group": "hobby"
+        },
+        {
+          "word": "take photos",
+          "cn": "拍照",
+          "ipa": "",
+          "sort": 12,
+          "group": "hobby"
+        },
+        {
+          "word": "basketball",
+          "cn": "篮球",
+          "ipa": "/ˈbɑːskɪtbɔːl/",
+          "sort": 13,
+          "group": "hobby"
+        },
+        {
+          "word": "brother",
+          "cn": "哥哥；弟弟",
+          "ipa": "/ˈbrʌðə/",
+          "sort": 14,
+          "group": "sounds-br"
+        },
+        {
+          "word": "sister",
+          "cn": "姐姐；妹妹",
+          "ipa": "/ˈsɪstə/",
+          "sort": 15,
+          "group": "noun"
+        },
+        {
+          "word": "brown",
+          "cn": "棕色的",
+          "ipa": "/braʊn/",
+          "sort": 16,
+          "group": "sounds-br"
+        },
+        {
+          "word": "bread",
+          "cn": "面包",
+          "ipa": "/bred/",
+          "sort": 17,
+          "group": "sounds-br"
+        },
+        {
+          "word": "brush",
+          "cn": "刷子；刷",
+          "ipa": "/brʌʃ/",
+          "sort": 18,
+          "group": "sounds-br"
+        },
+        {
+          "word": "bright",
+          "cn": "明亮的",
+          "ipa": "/braɪt/",
+          "sort": 19,
+          "group": "sounds-br"
+        },
+        {
+          "word": "interesting",
+          "cn": "有趣的",
+          "ipa": "/ˈɪntrəstɪŋ/",
+          "sort": 20,
+          "group": "adj"
+        },
+        {
+          "word": "favourite",
+          "cn": "最喜欢的",
+          "ipa": "/ˈfeɪvərɪt/",
+          "sort": 21,
+          "group": "adj",
+          "accept": [
+            "favorite"
+          ]
+        },
+        {
+          "word": "like doing",
+          "cn": "喜欢做……",
+          "ipa": "",
+          "sort": 22,
+          "group": "grammar"
+        }
+      ]
+    },
+    {
+      "id": "g5s1-en-4",
+      "term_id": "g5s1",
+      "unit_id": "g5s1-en-4",
+      "name": "Unit 4 Safety first",
+      "sort": 4,
+      "source": {
+        "edition": "yilin-eng-5a-2026",
+        "unit": "Unit 4 Safety first",
+        "unit_id": "g5s1-en-4",
+        "catalog": "/books/yilin/yingyu/5a_2026/",
+        "aligned_tasks": [
+          "g5s1-en-4-1",
+          "g5s1-en-4-2",
+          "g5s1-en-4-4",
+          "g5s1-en-4-5"
+        ],
+        "note": "核心词，对齐本仓库五上英语 Unit 4 任务（Word list / gr great / should shouldn't / Give a speech about safety）。页码待对照 2026 秋译林 5A Word lists 后补。",
+        "needs_spot_check": true
+      },
+      "words": [
+        {
+          "word": "safety",
+          "cn": "安全",
+          "ipa": "/ˈseɪfti/",
+          "sort": 1,
+          "group": "topic"
+        },
+        {
+          "word": "safe",
+          "cn": "安全的",
+          "ipa": "/seɪf/",
+          "sort": 2,
+          "group": "adj"
+        },
+        {
+          "word": "dangerous",
+          "cn": "危险的",
+          "ipa": "/ˈdeɪndʒərəs/",
+          "sort": 3,
+          "group": "adj"
+        },
+        {
+          "word": "traffic",
+          "cn": "交通",
+          "ipa": "/ˈtræfɪk/",
+          "sort": 4,
+          "group": "noun"
+        },
+        {
+          "word": "light",
+          "cn": "灯",
+          "ipa": "/laɪt/",
+          "sort": 5,
+          "group": "noun"
+        },
+        {
+          "word": "cross",
+          "cn": "穿过",
+          "ipa": "/krɒs/",
+          "sort": 6,
+          "group": "verb"
+        },
+        {
+          "word": "road",
+          "cn": "路",
+          "ipa": "/rəʊd/",
+          "sort": 7,
+          "group": "noun"
+        },
+        {
+          "word": "street",
+          "cn": "街道",
+          "ipa": "/striːt/",
+          "sort": 8,
+          "group": "noun"
+        },
+        {
+          "word": "zebra crossing",
+          "cn": "斑马线",
+          "ipa": "",
+          "sort": 9,
+          "group": "noun"
+        },
+        {
+          "word": "helmet",
+          "cn": "头盔",
+          "ipa": "/ˈhelmət/",
+          "sort": 10,
+          "group": "noun"
+        },
+        {
+          "word": "fire",
+          "cn": "火",
+          "ipa": "/ˈfaɪə/",
+          "sort": 11,
+          "group": "noun"
+        },
+        {
+          "word": "smoke",
+          "cn": "烟",
+          "ipa": "/sməʊk/",
+          "sort": 12,
+          "group": "noun"
+        },
+        {
+          "word": "stranger",
+          "cn": "陌生人",
+          "ipa": "/ˈstreɪndʒə/",
+          "sort": 13,
+          "group": "noun"
+        },
+        {
+          "word": "help",
+          "cn": "帮助",
+          "ipa": "/help/",
+          "sort": 14,
+          "group": "verb"
+        },
+        {
+          "word": "policeman",
+          "cn": "警察",
+          "ipa": "/pəˈliːsmən/",
+          "sort": 15,
+          "group": "noun"
+        },
+        {
+          "word": "careful",
+          "cn": "小心的",
+          "ipa": "/ˈkeəfl/",
+          "sort": 16,
+          "group": "adj"
+        },
+        {
+          "word": "should",
+          "cn": "应该",
+          "ipa": "/ʃʊd/",
+          "sort": 17,
+          "group": "grammar"
+        },
+        {
+          "word": "shouldn't",
+          "cn": "不应该",
+          "ipa": "/ˈʃʊdnt/",
+          "sort": 18,
+          "group": "grammar",
+          "accept": [
+            "should not"
+          ]
+        },
+        {
+          "word": "first",
+          "cn": "第一；首先",
+          "ipa": "/fɜːst/",
+          "sort": 19,
+          "group": "topic"
+        },
+        {
+          "word": "great",
+          "cn": "很好的",
+          "ipa": "/ɡreɪt/",
+          "sort": 20,
+          "group": "sounds-gr"
+        },
+        {
+          "word": "green",
+          "cn": "绿色的",
+          "ipa": "/ɡriːn/",
+          "sort": 21,
+          "group": "sounds-gr"
+        },
+        {
+          "word": "grass",
+          "cn": "草",
+          "ipa": "/ɡrɑːs/",
+          "sort": 22,
+          "group": "sounds-gr"
+        },
+        {
+          "word": "grandpa",
+          "cn": "爷爷；外公",
+          "ipa": "/ˈɡrænpɑː/",
+          "sort": 23,
+          "group": "sounds-gr"
+        },
+        {
+          "word": "grow",
+          "cn": "生长",
+          "ipa": "/ɡrəʊ/",
+          "sort": 24,
+          "group": "sounds-gr"
+        }
+      ]
+    },
+    {
+      "id": "g5s1-en-5",
+      "term_id": "g5s1",
+      "unit_id": "g5s1-en-5",
+      "name": "Unit 5 At weekends",
+      "sort": 5,
+      "source": {
+        "edition": "yilin-eng-5a-2026",
+        "unit": "Unit 5 At weekends",
+        "unit_id": "g5s1-en-5",
+        "catalog": "/books/yilin/yingyu/5a_2026/",
+        "aligned_tasks": [
+          "g5s1-en-5-1",
+          "g5s1-en-5-2",
+          "g5s1-en-5-4",
+          "g5s1-en-5-5"
+        ],
+        "note": "核心词，对齐本仓库五上英语 Unit 5 任务（Word list / tr travel / 频率副词说周末 / Talk about your weekends）。页码待对照 2026 秋译林 5A Word lists 后补。",
+        "needs_spot_check": true
+      },
+      "words": [
+        {
+          "word": "weekend",
+          "cn": "周末",
+          "ipa": "/ˌwiːkˈend/",
+          "sort": 1,
+          "group": "topic"
+        },
+        {
+          "word": "at weekends",
+          "cn": "在周末",
+          "ipa": "",
+          "sort": 2,
+          "group": "topic"
+        },
+        {
+          "word": "visit",
+          "cn": "拜访",
+          "ipa": "/ˈvɪzɪt/",
+          "sort": 3,
+          "group": "verb"
+        },
+        {
+          "word": "grandparents",
+          "cn": "祖父母",
+          "ipa": "/ˈɡrænpeərənts/",
+          "sort": 4,
+          "group": "noun"
+        },
+        {
+          "word": "park",
+          "cn": "公园",
+          "ipa": "/pɑːk/",
+          "sort": 5,
+          "group": "noun"
+        },
+        {
+          "word": "cinema",
+          "cn": "电影院",
+          "ipa": "/ˈsɪnəmə/",
+          "sort": 6,
+          "group": "noun"
+        },
+        {
+          "word": "museum",
+          "cn": "博物馆",
+          "ipa": "/mjuˈziːəm/",
+          "sort": 7,
+          "group": "noun"
+        },
+        {
+          "word": "supermarket",
+          "cn": "超市",
+          "ipa": "/ˈsuːpəmɑːkɪt/",
+          "sort": 8,
+          "group": "noun"
+        },
+        {
+          "word": "stay at home",
+          "cn": "待在家里",
+          "ipa": "",
+          "sort": 9,
+          "group": "routine"
+        },
+        {
+          "word": "go shopping",
+          "cn": "去购物",
+          "ipa": "",
+          "sort": 10,
+          "group": "routine"
+        },
+        {
+          "word": "go swimming",
+          "cn": "去游泳",
+          "ipa": "",
+          "sort": 11,
+          "group": "routine"
+        },
+        {
+          "word": "play football",
+          "cn": "踢足球",
+          "ipa": "",
+          "sort": 12,
+          "group": "routine"
+        },
+        {
+          "word": "go for a walk",
+          "cn": "去散步",
+          "ipa": "",
+          "sort": 13,
+          "group": "routine"
+        },
+        {
+          "word": "see a film",
+          "cn": "看电影",
+          "ipa": "",
+          "sort": 14,
+          "group": "routine",
+          "accept": [
+            "see a movie"
+          ]
+        },
+        {
+          "word": "picnic",
+          "cn": "野餐",
+          "ipa": "/ˈpɪknɪk/",
+          "sort": 15,
+          "group": "noun"
+        },
+        {
+          "word": "housework",
+          "cn": "家务",
+          "ipa": "/ˈhaʊswɜːk/",
+          "sort": 16,
+          "group": "noun"
+        },
+        {
+          "word": "cousin",
+          "cn": "堂/表兄弟姐妹",
+          "ipa": "/ˈkʌzn/",
+          "sort": 17,
+          "group": "noun"
+        },
+        {
+          "word": "together",
+          "cn": "一起",
+          "ipa": "/təˈɡeðə/",
+          "sort": 18,
+          "group": "adv"
+        },
+        {
+          "word": "travel",
+          "cn": "旅行",
+          "ipa": "/ˈtrævl/",
+          "sort": 19,
+          "group": "sounds-tr"
+        },
+        {
+          "word": "trip",
+          "cn": "短途旅行",
+          "ipa": "/trɪp/",
+          "sort": 20,
+          "group": "sounds-tr"
+        },
+        {
+          "word": "tree",
+          "cn": "树",
+          "ipa": "/triː/",
+          "sort": 21,
+          "group": "sounds-tr"
+        },
+        {
+          "word": "train",
+          "cn": "火车",
+          "ipa": "/treɪn/",
+          "sort": 22,
+          "group": "sounds-tr"
+        },
+        {
+          "word": "try",
+          "cn": "尝试",
+          "ipa": "/traɪ/",
+          "sort": 23,
+          "group": "sounds-tr"
+        },
+        {
+          "word": "truck",
+          "cn": "卡车",
+          "ipa": "/trʌk/",
+          "sort": 24,
+          "group": "sounds-tr"
+        }
+      ]
+    },
+    {
+      "id": "g5s1-en-6",
+      "term_id": "g5s1",
+      "unit_id": "g5s1-en-6",
+      "name": "Unit 6 Getting along with others",
+      "sort": 6,
+      "source": {
+        "edition": "yilin-eng-5a-2026",
+        "unit": "Unit 6 Getting along with others",
+        "unit_id": "g5s1-en-6",
+        "catalog": "/books/yilin/yingyu/5a_2026/",
+        "aligned_tasks": [
+          "g5s1-en-6-1",
+          "g5s1-en-6-2",
+          "g5s1-en-6-4",
+          "g5s1-en-6-5"
+        ],
+        "note": "核心词，对齐本仓库五上英语 Unit 6 任务（Word list / dr / Why don't / Put on a play）。页码待对照 2026 秋译林 5A Word lists 后补。",
+        "needs_spot_check": true
+      },
+      "words": [
+        {
+          "word": "get along",
+          "cn": "相处",
+          "ipa": "",
+          "sort": 1,
+          "group": "topic"
+        },
+        {
+          "word": "others",
+          "cn": "别人",
+          "ipa": "/ˈʌðəz/",
+          "sort": 2,
+          "group": "topic"
+        },
+        {
+          "word": "friend",
+          "cn": "朋友",
+          "ipa": "/frend/",
+          "sort": 3,
+          "group": "noun"
+        },
+        {
+          "word": "share",
+          "cn": "分享",
+          "ipa": "/ʃeə/",
+          "sort": 4,
+          "group": "verb"
+        },
+        {
+          "word": "polite",
+          "cn": "有礼貌的",
+          "ipa": "/pəˈlaɪt/",
+          "sort": 5,
+          "group": "adj"
+        },
+        {
+          "word": "kind",
+          "cn": "善良的",
+          "ipa": "/kaɪnd/",
+          "sort": 6,
+          "group": "adj"
+        },
+        {
+          "word": "sorry",
+          "cn": "对不起",
+          "ipa": "/ˈsɒri/",
+          "sort": 7,
+          "group": "expr"
+        },
+        {
+          "word": "excuse me",
+          "cn": "打扰一下",
+          "ipa": "",
+          "sort": 8,
+          "group": "expr"
+        },
+        {
+          "word": "wait",
+          "cn": "等待",
+          "ipa": "/weɪt/",
+          "sort": 9,
+          "group": "verb"
+        },
+        {
+          "word": "turn",
+          "cn": "轮次；转动",
+          "ipa": "/tɜːn/",
+          "sort": 10,
+          "group": "noun"
+        },
+        {
+          "word": "children",
+          "cn": "孩子们",
+          "ipa": "/ˈtʃɪldrən/",
+          "sort": 11,
+          "group": "noun"
+        },
+        {
+          "word": "classmate",
+          "cn": "同学",
+          "ipa": "/ˈklɑːsmeɪt/",
+          "sort": 12,
+          "group": "noun"
+        },
+        {
+          "word": "why",
+          "cn": "为什么",
+          "ipa": "/waɪ/",
+          "sort": 13,
+          "group": "grammar"
+        },
+        {
+          "word": "don't",
+          "cn": "不要；不",
+          "ipa": "/dəʊnt/",
+          "sort": 14,
+          "group": "grammar",
+          "accept": [
+            "do not"
+          ]
+        },
+        {
+          "word": "Why don't we",
+          "cn": "我们何不……",
+          "ipa": "",
+          "sort": 15,
+          "group": "grammar",
+          "accept": [
+            "why don't we"
+          ]
+        },
+        {
+          "word": "idea",
+          "cn": "主意",
+          "ipa": "/aɪˈdɪə/",
+          "sort": 16,
+          "group": "noun"
+        },
+        {
+          "word": "join",
+          "cn": "加入",
+          "ipa": "/dʒɔɪn/",
+          "sort": 17,
+          "group": "verb"
+        },
+        {
+          "word": "play with",
+          "cn": "和……玩",
+          "ipa": "",
+          "sort": 18,
+          "group": "verb"
+        },
+        {
+          "word": "help each other",
+          "cn": "互相帮助",
+          "ipa": "",
+          "sort": 19,
+          "group": "expr"
+        },
+        {
+          "word": "draw",
+          "cn": "画",
+          "ipa": "/drɔː/",
+          "sort": 20,
+          "group": "sounds-dr"
+        },
+        {
+          "word": "drink",
+          "cn": "喝",
+          "ipa": "/drɪŋk/",
+          "sort": 21,
+          "group": "sounds-dr"
+        },
+        {
+          "word": "drive",
+          "cn": "开车",
+          "ipa": "/draɪv/",
+          "sort": 22,
+          "group": "sounds-dr"
+        },
+        {
+          "word": "dream",
+          "cn": "梦；梦想",
+          "ipa": "/driːm/",
+          "sort": 23,
+          "group": "sounds-dr"
+        },
+        {
+          "word": "drop",
+          "cn": "掉落",
+          "ipa": "/drɒp/",
+          "sort": 24,
+          "group": "sounds-dr"
+        }
+      ]
+    },
+    {
+      "id": "g5s1-en-7",
+      "term_id": "g5s1",
+      "unit_id": "g5s1-en-7",
+      "name": "Unit 7 Shopping smart",
+      "sort": 7,
+      "source": {
+        "edition": "yilin-eng-5a-2026",
+        "unit": "Unit 7 Shopping smart",
+        "unit_id": "g5s1-en-7",
+        "catalog": "/books/yilin/yingyu/5a_2026/",
+        "aligned_tasks": [
+          "g5s1-en-7-1",
+          "g5s1-en-7-2",
+          "g5s1-en-7-4",
+          "g5s1-en-7-5"
+        ],
+        "note": "核心词，对齐本仓库五上英语 Unit 7 任务（Word list / st sk sp / How much is/are / Make a shopping plan）。页码待对照 2026 秋译林 5A Word lists 后补。",
+        "needs_spot_check": true
+      },
+      "words": [
+        {
+          "word": "shop",
+          "cn": "商店",
+          "ipa": "/ʃɒp/",
+          "sort": 1,
+          "group": "topic"
+        },
+        {
+          "word": "shopping",
+          "cn": "购物",
+          "ipa": "/ˈʃɒpɪŋ/",
+          "sort": 2,
+          "group": "topic"
+        },
+        {
+          "word": "buy",
+          "cn": "买",
+          "ipa": "/baɪ/",
+          "sort": 3,
+          "group": "verb"
+        },
+        {
+          "word": "cheap",
+          "cn": "便宜的",
+          "ipa": "/tʃiːp/",
+          "sort": 4,
+          "group": "adj"
+        },
+        {
+          "word": "expensive",
+          "cn": "贵的",
+          "ipa": "/ɪkˈspensɪv/",
+          "sort": 5,
+          "group": "adj"
+        },
+        {
+          "word": "price",
+          "cn": "价格",
+          "ipa": "/praɪs/",
+          "sort": 6,
+          "group": "noun"
+        },
+        {
+          "word": "yuan",
+          "cn": "元",
+          "ipa": "/juˈɑːn/",
+          "sort": 7,
+          "group": "noun"
+        },
+        {
+          "word": "size",
+          "cn": "尺码",
+          "ipa": "/saɪz/",
+          "sort": 8,
+          "group": "noun"
+        },
+        {
+          "word": "colour",
+          "cn": "颜色",
+          "ipa": "/ˈkʌlə/",
+          "sort": 9,
+          "group": "noun",
+          "accept": [
+            "color"
+          ]
+        },
+        {
+          "word": "try on",
+          "cn": "试穿",
+          "ipa": "",
+          "sort": 10,
+          "group": "verb"
+        },
+        {
+          "word": "bag",
+          "cn": "包",
+          "ipa": "/bæɡ/",
+          "sort": 11,
+          "group": "noun"
+        },
+        {
+          "word": "fruit",
+          "cn": "水果",
+          "ipa": "/fruːt/",
+          "sort": 12,
+          "group": "noun"
+        },
+        {
+          "word": "vegetable",
+          "cn": "蔬菜",
+          "ipa": "/ˈvedʒtəbl/",
+          "sort": 13,
+          "group": "noun"
+        },
+        {
+          "word": "shoes",
+          "cn": "鞋",
+          "ipa": "/ʃuːz/",
+          "sort": 14,
+          "group": "noun"
+        },
+        {
+          "word": "socks",
+          "cn": "袜子",
+          "ipa": "/sɒks/",
+          "sort": 15,
+          "group": "noun"
+        },
+        {
+          "word": "skirt",
+          "cn": "裙子",
+          "ipa": "/skɜːt/",
+          "sort": 16,
+          "group": "noun"
+        },
+        {
+          "word": "T-shirt",
+          "cn": "T恤",
+          "ipa": "/ˈtiː ʃɜːt/",
+          "sort": 17,
+          "group": "noun",
+          "accept": [
+            "t-shirt",
+            "T shirt"
+          ]
+        },
+        {
+          "word": "how much",
+          "cn": "多少钱",
+          "ipa": "",
+          "sort": 18,
+          "group": "grammar"
+        },
+        {
+          "word": "smart",
+          "cn": "精明的",
+          "ipa": "/smɑːt/",
+          "sort": 19,
+          "group": "topic"
+        },
+        {
+          "word": "spend",
+          "cn": "花（钱）",
+          "ipa": "/spend/",
+          "sort": 20,
+          "group": "verb"
+        },
+        {
+          "word": "save",
+          "cn": "节省",
+          "ipa": "/seɪv/",
+          "sort": 21,
+          "group": "verb"
+        },
+        {
+          "word": "stop",
+          "cn": "停止",
+          "ipa": "/stɒp/",
+          "sort": 22,
+          "group": "sounds-st"
+        },
+        {
+          "word": "study",
+          "cn": "学习",
+          "ipa": "/ˈstʌdi/",
+          "sort": 23,
+          "group": "sounds-st"
+        },
+        {
+          "word": "sky",
+          "cn": "天空",
+          "ipa": "/skaɪ/",
+          "sort": 24,
+          "group": "sounds-sk"
+        },
+        {
+          "word": "speak",
+          "cn": "说",
+          "ipa": "/spiːk/",
+          "sort": 25,
+          "group": "sounds-sp"
+        },
+        {
+          "word": "spell",
+          "cn": "拼写",
+          "ipa": "/spel/",
+          "sort": 26,
+          "group": "sounds-sp"
+        }
+      ]
+    },
+    {
+      "id": "g5s1-en-8",
+      "term_id": "g5s1",
+      "unit_id": "g5s1-en-8",
+      "name": "Unit 8 We love festivals",
+      "sort": 8,
+      "source": {
+        "edition": "yilin-eng-5a-2026",
+        "unit": "Unit 8 We love festivals",
+        "unit_id": "g5s1-en-8",
+        "catalog": "/books/yilin/yingyu/5a_2026/",
+        "aligned_tasks": [
+          "g5s1-en-8-1",
+          "g5s1-en-8-2",
+          "g5s1-en-8-4",
+          "g5s1-en-8-5"
+        ],
+        "note": "核心词，对齐本仓库五上英语 Unit 8 任务（Word list / ing morning / in on at / Talk about your favourite festival）。页码待对照 2026 秋译林 5A Word lists 后补。",
+        "needs_spot_check": true
+      },
+      "words": [
+        {
+          "word": "festival",
+          "cn": "节日",
+          "ipa": "/ˈfestɪvl/",
+          "sort": 1,
+          "group": "topic"
+        },
+        {
+          "word": "Spring Festival",
+          "cn": "春节",
+          "ipa": "",
+          "sort": 2,
+          "group": "festival"
+        },
+        {
+          "word": "Christmas",
+          "cn": "圣诞节",
+          "ipa": "/ˈkrɪsməs/",
+          "sort": 3,
+          "group": "festival"
+        },
+        {
+          "word": "birthday",
+          "cn": "生日",
+          "ipa": "/ˈbɜːθdeɪ/",
+          "sort": 4,
+          "group": "festival"
+        },
+        {
+          "word": "National Day",
+          "cn": "国庆节",
+          "ipa": "",
+          "sort": 5,
+          "group": "festival"
+        },
+        {
+          "word": "Mid-Autumn Festival",
+          "cn": "中秋节",
+          "ipa": "",
+          "sort": 6,
+          "group": "festival"
+        },
+        {
+          "word": "dumpling",
+          "cn": "饺子",
+          "ipa": "/ˈdʌmplɪŋ/",
+          "sort": 7,
+          "group": "noun"
+        },
+        {
+          "word": "mooncake",
+          "cn": "月饼",
+          "ipa": "/ˈmuːnkeɪk/",
+          "sort": 8,
+          "group": "noun"
+        },
+        {
+          "word": "lantern",
+          "cn": "灯笼",
+          "ipa": "/ˈlæntən/",
+          "sort": 9,
+          "group": "noun"
+        },
+        {
+          "word": "gift",
+          "cn": "礼物",
+          "ipa": "/ɡɪft/",
+          "sort": 10,
+          "group": "noun"
+        },
+        {
+          "word": "present",
+          "cn": "礼物",
+          "ipa": "/ˈpreznt/",
+          "sort": 11,
+          "group": "noun"
+        },
+        {
+          "word": "party",
+          "cn": "聚会",
+          "ipa": "/ˈpɑːti/",
+          "sort": 12,
+          "group": "noun"
+        },
+        {
+          "word": "celebrate",
+          "cn": "庆祝",
+          "ipa": "/ˈselɪbreɪt/",
+          "sort": 13,
+          "group": "verb"
+        },
+        {
+          "word": "morning",
+          "cn": "早晨",
+          "ipa": "/ˈmɔːnɪŋ/",
+          "sort": 14,
+          "group": "sounds-ing"
+        },
+        {
+          "word": "evening",
+          "cn": "晚上",
+          "ipa": "/ˈiːvnɪŋ/",
+          "sort": 15,
+          "group": "sounds-ing"
+        },
+        {
+          "word": "night",
+          "cn": "夜晚",
+          "ipa": "/naɪt/",
+          "sort": 16,
+          "group": "time"
+        },
+        {
+          "word": "January",
+          "cn": "一月",
+          "ipa": "/ˈdʒænjuəri/",
+          "sort": 17,
+          "group": "time"
+        },
+        {
+          "word": "October",
+          "cn": "十月",
+          "ipa": "/ɒkˈtəʊbə/",
+          "sort": 18,
+          "group": "time"
+        },
+        {
+          "word": "Monday",
+          "cn": "星期一",
+          "ipa": "/ˈmʌndeɪ/",
+          "sort": 19,
+          "group": "time"
+        },
+        {
+          "word": "decorate",
+          "cn": "装饰",
+          "ipa": "/ˈdekəreɪt/",
+          "sort": 20,
+          "group": "verb"
+        },
+        {
+          "word": "firework",
+          "cn": "烟花",
+          "ipa": "/ˈfaɪəwɜːk/",
+          "sort": 21,
+          "group": "noun"
+        },
+        {
+          "word": "exciting",
+          "cn": "令人兴奋的",
+          "ipa": "/ɪkˈsaɪtɪŋ/",
+          "sort": 22,
+          "group": "sounds-ing"
+        },
+        {
+          "word": "in October",
+          "cn": "在十月",
+          "ipa": "",
+          "sort": 23,
+          "group": "grammar"
+        },
+        {
+          "word": "on Monday",
+          "cn": "在星期一",
+          "ipa": "",
+          "sort": 24,
+          "group": "grammar"
+        },
+        {
+          "word": "at night",
+          "cn": "在晚上",
+          "ipa": "",
+          "sort": 25,
+          "group": "grammar"
+        }
+      ]
+    },
+    {
+      "id": "g5s1-en-9",
+      "term_id": "g5s1",
+      "unit_id": "g5s1-en-9",
+      "name": "Project 1 A happy life poster",
+      "sort": 9,
+      "source": {
+        "edition": "yilin-eng-5a-2026",
+        "unit": "Project 1 A happy life poster",
+        "unit_id": "g5s1-en-9",
+        "catalog": "/books/yilin/yingyu/5a_2026/",
+        "aligned_tasks": [
+          "g5s1-en-9-1"
+        ],
+        "note": "项目回顾词，对齐 Project 1 A happy life poster，不机械复制前四单元全书。页码待对照 2026 秋译林 5A 后补。",
+        "needs_spot_check": true
+      },
+      "words": [
+        {
+          "word": "poster",
+          "cn": "海报",
+          "ipa": "/ˈpəʊstə/",
+          "sort": 1,
+          "group": "topic"
+        },
+        {
+          "word": "happy life",
+          "cn": "快乐生活",
+          "ipa": "",
+          "sort": 2,
+          "group": "topic"
+        },
+        {
+          "word": "title",
+          "cn": "标题",
+          "ipa": "/ˈtaɪtl/",
+          "sort": 3,
+          "group": "noun"
+        },
+        {
+          "word": "keep fit",
+          "cn": "保持健康",
+          "ipa": "",
+          "sort": 4,
+          "group": "expr"
+        },
+        {
+          "word": "do sports",
+          "cn": "做运动",
+          "ipa": "",
+          "sort": 5,
+          "group": "expr"
+        },
+        {
+          "word": "healthy food",
+          "cn": "健康食物",
+          "ipa": "",
+          "sort": 6,
+          "group": "expr"
+        },
+        {
+          "word": "eat fruit",
+          "cn": "吃水果",
+          "ipa": "",
+          "sort": 7,
+          "group": "expr"
+        },
+        {
+          "word": "drink water",
+          "cn": "喝水",
+          "ipa": "",
+          "sort": 8,
+          "group": "expr"
+        },
+        {
+          "word": "get up early",
+          "cn": "早起",
+          "ipa": "",
+          "sort": 9,
+          "group": "expr"
+        },
+        {
+          "word": "go to bed early",
+          "cn": "早睡",
+          "ipa": "",
+          "sort": 10,
+          "group": "expr"
+        },
+        {
+          "word": "be happy",
+          "cn": "保持开心",
+          "ipa": "",
+          "sort": 11,
+          "group": "expr"
+        },
+        {
+          "word": "be careful",
+          "cn": "小心",
+          "ipa": "",
+          "sort": 12,
+          "group": "expr"
+        },
+        {
+          "word": "help others",
+          "cn": "帮助别人",
+          "ipa": "",
+          "sort": 13,
+          "group": "expr"
+        },
+        {
+          "word": "good habit",
+          "cn": "好习惯",
+          "ipa": "",
+          "sort": 14,
+          "group": "expr"
+        },
+        {
+          "word": "smile",
+          "cn": "微笑",
+          "ipa": "/smaɪl/",
+          "sort": 15,
+          "group": "verb"
+        },
+        {
+          "word": "picture",
+          "cn": "图画",
+          "ipa": "/ˈpɪktʃə/",
+          "sort": 16,
+          "group": "noun"
+        }
+      ]
+    },
+    {
+      "id": "g5s1-en-10",
+      "term_id": "g5s1",
+      "unit_id": "g5s1-en-10",
+      "name": "Project 2 An invitation card",
+      "sort": 10,
+      "source": {
+        "edition": "yilin-eng-5a-2026",
+        "unit": "Project 2 An invitation card",
+        "unit_id": "g5s1-en-10",
+        "catalog": "/books/yilin/yingyu/5a_2026/",
+        "aligned_tasks": [
+          "g5s1-en-10-1"
+        ],
+        "note": "项目回顾词，对齐 Project 2 An invitation card，只收邀请卡常用表达。页码待对照 2026 秋译林 5A 后补。",
+        "needs_spot_check": true
+      },
+      "words": [
+        {
+          "word": "invitation",
+          "cn": "邀请",
+          "ipa": "/ˌɪnvɪˈteɪʃn/",
+          "sort": 1,
+          "group": "topic"
+        },
+        {
+          "word": "invite",
+          "cn": "邀请",
+          "ipa": "/ɪnˈvaɪt/",
+          "sort": 2,
+          "group": "verb"
+        },
+        {
+          "word": "card",
+          "cn": "卡片",
+          "ipa": "/kɑːd/",
+          "sort": 3,
+          "group": "noun"
+        },
+        {
+          "word": "come",
+          "cn": "来",
+          "ipa": "/kʌm/",
+          "sort": 4,
+          "group": "verb"
+        },
+        {
+          "word": "date",
+          "cn": "日期",
+          "ipa": "/deɪt/",
+          "sort": 5,
+          "group": "noun"
+        },
+        {
+          "word": "time",
+          "cn": "时间",
+          "ipa": "/taɪm/",
+          "sort": 6,
+          "group": "noun"
+        },
+        {
+          "word": "place",
+          "cn": "地点",
+          "ipa": "/pleɪs/",
+          "sort": 7,
+          "group": "noun"
+        },
+        {
+          "word": "please",
+          "cn": "请",
+          "ipa": "/pliːz/",
+          "sort": 8,
+          "group": "expr"
+        },
+        {
+          "word": "join us",
+          "cn": "加入我们",
+          "ipa": "",
+          "sort": 9,
+          "group": "expr"
+        },
+        {
+          "word": "Would you like",
+          "cn": "你愿意……吗",
+          "ipa": "",
+          "sort": 10,
+          "group": "grammar",
+          "accept": [
+            "would you like"
+          ]
+        },
+        {
+          "word": "birthday party",
+          "cn": "生日聚会",
+          "ipa": "",
+          "sort": 11,
+          "group": "noun"
+        },
+        {
+          "word": "address",
+          "cn": "地址",
+          "ipa": "/əˈdres/",
+          "sort": 12,
+          "group": "noun"
+        },
+        {
+          "word": "from",
+          "cn": "来自",
+          "ipa": "/frɒm/",
+          "sort": 13,
+          "group": "prep"
+        },
+        {
+          "word": "welcome",
+          "cn": "欢迎",
+          "ipa": "/ˈwelkəm/",
+          "sort": 14,
+          "group": "expr"
+        },
+        {
+          "word": "bring",
+          "cn": "带来",
+          "ipa": "/brɪŋ/",
+          "sort": 15,
+          "group": "verb"
+        },
+        {
+          "word": "see you",
+          "cn": "再见；到时见",
+          "ipa": "",
+          "sort": 16,
+          "group": "expr"
+        }
       ]
     }
   ]
