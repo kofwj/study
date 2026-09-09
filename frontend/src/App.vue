@@ -6,7 +6,7 @@ import { APP_LABEL, APP_REVISION } from './version.js'
 const Admin = defineAsyncComponent(() => import('./Admin.vue'))
 import { SUBJECT_ICONS as ICONS, rankIcon, achIcon } from './icons.js'
 import { mottoFor } from './dailyMottos.js'
-import { Sun, Lock, Gift, Check, TrendingUp, Target, User, ShoppingCart, ScrollText, Medal, ChartColumn, Map, CalendarDays, RefreshCw, PartyPopper, Sparkles, BookOpen, Flame, Volume2, Egg, Sprout, Leaf, Flower, House, Landmark, Construction } from '@lucide/vue'
+import { Sun, Lock, Gift, Check, TrendingUp, Target, User, ShoppingCart, ScrollText, Medal, ChartColumn, Map, CalendarDays, RefreshCw, PartyPopper, Sparkles, BookOpen, Flame, Volume2, Egg, Sprout, Leaf, Flower, House, Landmark } from '@lucide/vue'
 
 const data = reactive({
   level: { earned: 0, balance: 0, level: '阳光萌新', next: null, next_need: 0, progress: 0 },
@@ -1253,16 +1253,15 @@ function reloadApp() {
         </template>
 
         <template v-else-if="activeTab === 'base' || activeTab === 'bank'">
-          <h1>
-            <House v-if="activeTab === 'base'" class="ico" :size="20" />
-            <Landmark v-else class="ico" :size="20" />
-            {{ activeTab === 'base' ? '秘密基地' : '阳光银行' }}
-          </h1>
-          <div class="coming">
-            <Construction class="ico" :size="36" />
-            <strong>建设中</strong>
-            <p v-if="activeTab === 'base'">小房子还在搭，以后可以藏贴纸、日记和悄悄话。</p>
-            <p v-else>存折还在印，以后能看阳光怎么攒、怎么花。</p>
+          <div class="coming-page">
+            <div class="coming">
+              <House v-if="activeTab === 'base'" class="ico" :size="36" />
+              <Landmark v-else class="ico" :size="36" />
+              <strong>{{ activeTab === 'base' ? '秘密基地' : '阳光银行' }}</strong>
+              <em>建设中</em>
+              <p v-if="activeTab === 'base'">小房子还在搭，以后可以藏贴纸、日记和悄悄话。</p>
+              <p v-else>存折还在印，以后能看阳光怎么攒、怎么花。</p>
+            </div>
           </div>
         </template>
 
@@ -1784,13 +1783,18 @@ body {
   margin-top: 0;
 }
 
+.coming-page {
+  min-height: calc(100dvh - var(--topbar-height, 72px) - 120px);
+  display: flex; align-items: center; justify-content: center;
+}
 .coming {
-  margin-top: 18px; max-width: 420px; text-align: center;
+  width: min(420px, 100%); margin: 0; text-align: center;
   background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-xl);
-  padding: 36px 24px; box-shadow: var(--shadow-md);
+  padding: 40px 28px; box-shadow: var(--shadow-md);
 }
 .coming .ico { color: var(--accent-ink); }
-.coming strong { display: block; margin: 12px 0 6px; font-size: 22px; }
+.coming strong { display: block; margin: 12px 0 4px; font-size: 22px; }
+.coming em { display: block; font-style: normal; font-size: 13px; font-weight: 800; color: var(--accent-ink); margin-bottom: 8px; }
 .coming p { margin: 0; color: var(--ink-2); font-size: 14px; line-height: 1.6; }
 .sun-lead { color: var(--ink-2); margin: 0 0 14px; font-size: 14px; }
 .sun-hero { display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 10px; margin-bottom: 16px; }
