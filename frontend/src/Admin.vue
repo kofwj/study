@@ -1411,7 +1411,7 @@ onMounted(load)
         <div class="word-book-h">
           <strong>{{ b.name }}</strong>
           <span class="badge">{{ b.is_system ? '系统' : '家庭' }}</span>
-          <span class="dim">{{ b.word_count }} 词 · 已学 {{ b.learned_count }} · 到期 {{ b.due_count }}</span>
+          <span class="dim">{{ b.word_count }} 词<template v-if="b.source_unit"> · {{ b.source_unit }}</template><template v-if="b.source_ver"> · {{ b.source_ver }}</template> · 已学 {{ b.learned_count }} · 到期 {{ b.due_count }} · 错词 {{ b.problem_count }}</span>
           <button class="ghost-s" @click="openWordBook(b.id)">看词</button>
         </div>
         <template v-if="!b.is_system">
@@ -1421,7 +1421,7 @@ onMounted(load)
             <button class="del" @click="delWordBook(b)">删</button>
           </div>
         </template>
-        <p v-else class="dim">系统词书只能改代码里的词表，家长不能改。</p>
+        <p v-else class="dim">系统词书只读，不能改词、不能导入。</p>
       </div>
       <div class="frm-row">
         <label class="fld grow"><span>新建家庭词书</span><input v-model="wordNewBook" placeholder="如：课外词" maxlength="30" /></label>
@@ -1429,6 +1429,10 @@ onMounted(load)
       </div>
       <div class="add-box mt14">
         <div class="add-title">导入家庭词书</div>
+        <p class="dim">一列英文、一列中文，音标可空。制表符或逗号都行，一次最多 500 行。</p>
+        <pre class="word-sample">always	总是	/ˈɔːlweɪz/
+usually	通常	/ˈjuːʒuəli/
+get up	起床</pre>
         <label class="fld grow"><span>导入到</span>
           <select v-model="wordImport.book_id">
             <option value="">选一本家庭词书</option>
@@ -1457,8 +1461,8 @@ onMounted(load)
       <div v-for="w in wordProblems" :key="w.word_id" class="word-row">
         <div>
           <b>{{ w.word }}</b>
-          <span>{{ w.cn }} · 错 {{ w.wrong_count }} 次 · {{ w.book_name }}</span>
-          <em>{{ w.due_at ? ('下次 ' + w.due_at) : '' }}</em>
+          <span>{{ w.cn }} · 错 {{ w.wrong_count }} 次 · {{ w.book_name }}<template v-if="w.unit_id"> · {{ w.unit_id }}</template></span>
+          <em>{{ [w.last_seen_at ? ('最近 ' + String(w.last_seen_at).slice(0, 10)) : '', w.due_at ? ('下次 ' + w.due_at) : ''].filter(Boolean).join(' · ') }}</em>
         </div>
         <button class="ok" @click="focusWord(w.word_id)">明天重点练</button>
       </div>
@@ -1467,7 +1471,7 @@ onMounted(load)
       <p class="dim">完成 {{ wordStats.completed_sessions || 0 }} 次<template v-if="wordStats.first_try_rate != null"> · 首轮正确率 {{ wordStats.first_try_rate }}%</template></p>
       <div class="w-chart word-week">
         <div v-for="d in wordStats.days || []" :key="d.date" class="w-bar-col">
-          <div class="w-bar" :style="{ height: (d.completed ? 70 : 4) + '%' }"><i v-if="d.rate != null">{{ d.rate }}%</i></div>
+          <div class="w-bar" :class="{ down: !d.completed }" :style="{ height: (d.completed ? Math.max(18, d.rate == null ? 40 : d.rate) : 6) + '%' }"><i v-if="d.rate != null">{{ d.rate }}%</i></div>
           <span>{{ d.label }}</span>
         </div>
       </div>
@@ -1901,6 +1905,19 @@ button.fam-card { cursor: pointer; }
 .dc-m-head { font-size: 11px; color: var(--ink-3); font-weight: 800; margin-bottom: 8px; }
 .m-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
 
+.word-ov { grid-template-columns: repeat(5, 1fr); }
+.word-book { border: 1px solid var(--line); border-radius: var(--radius-md); padding: 12px 14px; margin-bottom: 10px; background: var(--surface); }
+.word-book-h { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+.word-book-h strong { font-size: 15px; }
+.word-import { width: 100%; margin: 8px 0; border: 1px solid var(--line); border-radius: var(--radius-md); padding: 8px 10px; font-family: ui-monospace, Menlo, monospace; font-size: 13px; min-height: 100px; color: var(--ink); background: var(--surface); resize: vertical; }
+.word-sample { margin: 6px 0 10px; padding: 10px 12px; background: var(--surface); border-radius: var(--radius-sm); font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: var(--ink-2); white-space: pre-wrap; overflow-x: auto; }
+.word-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--surface-2); flex-wrap: wrap; }
+.word-row > div { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; min-width: 0; }
+.word-row em { font-style: normal; color: var(--ink-3); font-size: 11px; }
+.word-list { margin-top: 10px; padding: 10px 12px; background: var(--surface-2); border-radius: var(--radius-md); }
+.word-err { margin: 6px 0 0; padding-left: 18px; color: var(--danger); font-size: 12px; }
+.word-week { height: 120px; }
+
 .add-box { margin-top: 14px; border: 1px dashed var(--line); border-radius: var(--radius-md); padding: 14px; background: var(--surface-2); }
 .add-title { font-size: 12px; font-weight: 800; color: var(--ink-2); margin-bottom: 10px; }
 .frm-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
@@ -1915,6 +1932,7 @@ button.fam-card { cursor: pointer; }
 .test-row .dim { flex: 1; min-width: 0; }
 
 @media (max-width: 760px) {
+  .word-ov { grid-template-columns: repeat(3, 1fr); }
   .a-body { flex-direction: column; }
   .a-side { width: 100%; position: static; display: flex; gap: 6px; overflow-x: auto; padding: 8px; }
   .a-group { display: none; }
@@ -1927,6 +1945,7 @@ button.fam-card { cursor: pointer; }
 }
 @media (max-width: 560px) {
   .w-summary { grid-template-columns: repeat(2, 1fr); }
+  .word-ov { grid-template-columns: repeat(2, 1fr); }
 }
 .setup { min-height: 80vh; display: flex; align-items: center; justify-content: center; }
 .setup-card { max-width: 420px; width: 100%; }

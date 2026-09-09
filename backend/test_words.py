@@ -292,3 +292,52 @@ def test_abandon_does_not_swallow_new_and_isolation():
         again = a.post("/api/words/session/start").json()["session"]
         assert again["id"] != sid
         assert {x["word_id"] for x in again["items"]} == {x["word_id"] for x in sess["items"]}
+
+
+def test_admin_stats_tts_and_problem_words():
+    db.init_db()
+    with TestClient(main.app) as cli:
+        kid = _parent(cli, "wst", "wordpass", "统家")
+        empty = cli.get("/api/admin/words/stats").json()
+        assert len(empty["days"]) == 7
+        assert empty["completed_sessions"] == 0
+        assert empty["first_try_rate"] is None
+        r = cli.put("/api/admin/words/config", json={"tts": False, "tts_autoplay": True, "tts_lang": "en-US"})
+        assert r.status_code == 200, r.text
+        cfg = cli.get("/api/admin/words/config").json()
+        assert cfg["tts"] is False and cfg["tts_autoplay"] is True and cfg["tts_lang"] == "en-US"
+        u1 = next(b for b in cfg["books"] if b["id"] == "g5s1-en-1")
+        assert u1["source_ver"] == "words-g5s1-en-1-v1"
+        assert u1["source_unit"] == "Unit 1 Good habits"
+        _enable(cli, new_per_day=2)
+        sess = cli.post("/api/words/session/start").json()["session"]
+        sid = sess["id"]
+        for it in sess["items"]:
+            assert _spell(cli, sid, it).status_code == 200
+        assert cli.post(f"/api/words/session/{sid}/complete").status_code == 200
+        st = cli.get("/api/admin/words/stats").json()
+        assert st["completed_sessions"] == 1
+        assert st["first_try_rate"] == 100
+        done = [d for d in st["days"] if d["completed"]]
+        assert len(done) == 1 and done[0]["rate"] == 100
+        wid = sess["items"][0]["word_id"]
+        c = db.connect()
+        c.execute("UPDATE word_progress SET wrong_count=2 WHERE kid_id=? AND word_id=?", (kid, wid))
+        c.commit()
+        c.close()
+        probs = cli.get("/api/admin/words/problem-words").json()
+        assert any(p["word_id"] == wid and p["wrong_count"] >= 2 for p in probs)
+        books = cli.get("/api/admin/words/config").json()["books"]
+        u1 = next(b for b in books if b["id"] == "g5s1-en-1")
+        assert u1["problem_count"] >= 1
+
+
+def test_admin_words_need_kid():
+    db.init_db()
+    with TestClient(main.app) as cli:
+        r = cli.post("/api/auth/register", json={"account": "nokidw", "pin": "wordpass", "family_name": "空家"})
+        assert r.status_code == 200, r.text
+        r = cli.get("/api/admin/words/stats")
+        assert r.status_code == 400
+        r = cli.get("/api/admin/words/config")
+        assert r.status_code == 400

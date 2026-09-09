@@ -31,6 +31,32 @@ CFG_TTS = "words_tts"
 CFG_TTS_AUTO = "words_tts_autoplay"
 CFG_TTS_LANG = "words_tts_lang"
 
+_SEED_BOOK_META = None
+
+
+def _seed_book_meta():
+    global _SEED_BOOK_META
+    if _SEED_BOOK_META is not None:
+        return _SEED_BOOK_META
+    meta = {}
+    try:
+        data = json.loads(WORDS_SEED.read_text(encoding="utf-8"))
+    except Exception:
+        _SEED_BOOK_META = meta
+        return meta
+    ver = data.get("curriculum_ver") or ""
+    for b in data.get("books") or []:
+        bid = (b.get("id") or "").strip()
+        if not bid:
+            continue
+        src = b.get("source") or {}
+        meta[bid] = {
+            "source_ver": ver,
+            "source_unit": src.get("unit") or b.get("name") or "",
+        }
+    _SEED_BOOK_META = meta
+    return meta
+
 
 def normalize_word(raw: str) -> str:
     return " ".join((raw or "").strip().replace("’", "'").replace("‘", "'").lower().split())
@@ -179,6 +205,9 @@ def list_books(c, kid, fam):
         d["selectable"] = book_selectable(c, kid, fam, r, cfg) if kid else bool(d["is_system"])
         d["is_system"] = int(d["is_system"] or 0)
         d["enabled"] = int(d["enabled"] or 0)
+        sm = _seed_book_meta().get(bid) or {}
+        d["source_ver"] = sm.get("source_ver") or "" if d["is_system"] else ""
+        d["source_unit"] = sm.get("source_unit") or (d.get("name") or "" if d["is_system"] else "")
         out.append(d)
     return out
 
@@ -797,7 +826,7 @@ def week_stats(c, kid, fam):
             "completed": completed,
             "items": total,
             "correct_first_try": correct,
-            "rate": round(correct * 100 / total) if total else None,
+            "rate": round(correct * 100 / total) if completed and total else None,
         })
     done = [x for x in days if x["completed"]]
     tot_i = sum(x["items"] for x in done)
