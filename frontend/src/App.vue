@@ -1,12 +1,12 @@
 <script setup>
-import { ref, reactive, computed, onMounted, onBeforeUnmount, watch, defineAsyncComponent } from 'vue'
+import { ref, reactive, computed, onMounted, onBeforeUnmount, watch, nextTick, defineAsyncComponent } from 'vue'
 import { api } from './api.js'
 import { APP_LABEL, APP_REVISION } from './version.js'
 // ponytail: 家长后台（1147 行）单独切 chunk，孩子端首屏不加载
 const Admin = defineAsyncComponent(() => import('./Admin.vue'))
 import { SUBJECT_ICONS as ICONS, rankIcon, achIcon } from './icons.js'
 import { mottoFor } from './dailyMottos.js'
-import { Sun, Lock, Gift, Check, TrendingUp, Target, User, ShoppingCart, ScrollText, Medal, ChartColumn, Map, CalendarDays, RefreshCw, PartyPopper, Sparkles, BookOpen, Flame } from '@lucide/vue'
+import { Sun, Lock, Gift, Check, TrendingUp, Target, User, ShoppingCart, ScrollText, Medal, ChartColumn, Map, CalendarDays, RefreshCw, PartyPopper, Sparkles, BookOpen, Flame, Volume2 } from '@lucide/vue'
 
 const data = reactive({
   level: { earned: 0, balance: 0, level: '阳光萌新', next: null, next_need: 0, progress: 0 },
@@ -50,7 +50,10 @@ function observeChrome() {
   }
 }
 watch([topbarEl, updateBarEl], observeChrome)
-onBeforeUnmount(() => topbarObserver?.disconnect())
+onBeforeUnmount(() => {
+  topbarObserver?.disconnect()
+  try { if (typeof speechSynthesis !== 'undefined') speechSynthesis.cancel() } catch {}
+})
 const toast = ref('')
 const shopOpen = ref(false)
 const myRedeems = ref([])
@@ -99,6 +102,209 @@ function pickUnseenAch() {
   fresh.sort((a, b) => (order[a.rarity] ?? 9) - (order[b.rarity] ?? 9))
   return fresh[0]
 }
+
+const wordToday = ref({ enabled: false, finished: false, session: null, config: {} })
+const wordInputEl = ref(null)
+const wordDialog = reactive({
+  open: false, itemIndex: 0, phase: 'look', input: '', busy: false,
+  feedback: null, peekUntil: 0, peekN: {}, heard: {},
+})
+let wordPeekTimer = null
+let wordNextTimer = null
+function wordItems() { return wordToday.value.session?.items || [] }
+const wordRemaining = computed(() => wordItems().filter(x => x.state !== 'done').length)
+const wordCurrent = computed(() => wordItems()[wordDialog.itemIndex] || null)
+const wordCfg = computed(() => wordToday.value.config || {})
+const wordTtsOn = computed(() => wordCfg.value.tts !== false)
+const wordPos = computed(() => {
+  const items = wordItems()
+  const total = items.length
+  const done = items.filter(x => x.state === 'done').length
+  const cur = !total ? 0 : (done === total ? total : done + 1)
+  return { cur, total, done, pct: total ? Math.round(done / total * 100) : 0 }
+})
+const wordSlots = computed(() => {
+  const w = wordCurrent.value?.word || ''
+  return [...w].map(ch => (ch === ' ' ? 'space' : (ch === '-' ? 'hyphen' : 'letter')))
+})
+function ipaText(w) { return (w && String(w.ipa || '').trim()) ? w.ipa : '暂无音标' }
+function firstLetter(w) { const m = String(w || '').match(/[A-Za-z]/); return m ? m[0] : '' }
+function applyWordToday(t) {
+  if (!t) return
+  wordToday.value = t
+  const items = t.session?.items || []
+  const i = items.findIndex(x => x.state !== 'done')
+  wordDialog.itemIndex = i < 0 ? 0 : i
+}
+function stopWordSpeech() {
+  try { if (typeof speechSynthesis !== 'undefined') speechSynthesis.cancel() } catch {}
+}
+function speakWord(word, lang) {
+  if (typeof speechSynthesis === 'undefined') return false
+  try {
+    speechSynthesis.cancel()
+    const u = new SpeechSynthesisUtterance(word)
+    u.lang = lang || wordCfg.value.tts_lang || 'en-GB'
+    u.rate = 0.85
+    speechSynthesis.speak(u)
+    return true
+  } catch { return false }
+}
+function hearWord() {
+  const w = wordCurrent.value
+  if (!w) return
+  if (!speakWord(w.word)) showToast('这台设备暂时不能朗读，先看音标')
+}
+function wordPhaseOf(item) {
+  if (!item) return 'done'
+  if (item.state === 'retry') return 'retry'
+  if (item.state === 'spell') return 'spell'
+  if (item.state === 'done') return 'done'
+  return item.source === 'due' ? 'spell' : 'look'
+}
+function focusWordInput() {
+  if (wordDialog.phase !== 'spell' && wordDialog.phase !== 'retry') return
+  nextTick(() => wordInputEl.value && wordInputEl.value.focus())
+}
+function maybeAutoSpeak() {
+  const it = wordCurrent.value
+  const cfg = wordCfg.value
+  if (wordDialog.phase !== 'look' || !it || !wordTtsOn.value || !cfg.tts_autoplay) return
+  if (wordDialog.peekUntil) return
+  if (wordDialog.heard[it.word_id]) return
+  wordDialog.heard[it.word_id] = 1
+  speakWord(it.word, cfg.tts_lang)
+}
+function syncWordPhase() {
+  const items = wordItems()
+  const sess = wordToday.value.session
+  if (!sess || items.every(x => x.state === 'done') || sess.state === 'completed' || wordToday.value.finished) {
+    wordDialog.phase = 'done'
+    wordDialog.feedback = null
+    return
+  }
+  if (wordDialog.peekUntil && Date.now() < wordDialog.peekUntil) {
+    wordDialog.phase = 'look'
+    return
+  }
+  const i = items.findIndex(x => x.state !== 'done')
+  wordDialog.itemIndex = i < 0 ? 0 : i
+  wordDialog.phase = wordPhaseOf(items[wordDialog.itemIndex])
+  maybeAutoSpeak()
+  focusWordInput()
+}
+async function openWords() {
+  if (wordDialog.busy) return
+  wordDialog.busy = true
+  try {
+    let t = await api.wordsToday()
+    if (t.enabled && !t.finished && !t.session) t = await api.wordsStart()
+    applyWordToday(t)
+    if (!t.enabled) { showToast('单词练习还没开'); return }
+    if (t.finished && !t.session) { showToast('这一单元的词都练过了'); return }
+    wordDialog.input = ''
+    wordDialog.feedback = null
+    wordDialog.peekUntil = 0
+    wordDialog.open = true
+    syncWordPhase()
+  } catch (e) { showToast(e.message) }
+  finally { wordDialog.busy = false }
+}
+function closeWords() {
+  wordDialog.open = false
+  wordDialog.feedback = null
+  wordDialog.peekUntil = 0
+  clearTimeout(wordPeekTimer)
+  clearTimeout(wordNextTimer)
+  stopWordSpeech()
+}
+async function wordKnown() {
+  const it = wordCurrent.value
+  const sid = wordToday.value.session && wordToday.value.session.id
+  if (!it || !sid || wordDialog.busy) return
+  wordDialog.busy = true
+  try {
+    applyWordToday(await api.wordsStudy(sid, it.word_id, 'known'))
+    wordDialog.input = ''
+    wordDialog.feedback = null
+    wordDialog.phase = 'spell'
+    focusWordInput()
+  } catch (e) { showToast(e.message) }
+  finally { wordDialog.busy = false }
+}
+async function wordAgain() {
+  const it = wordCurrent.value
+  const sid = wordToday.value.session && wordToday.value.session.id
+  if (!it || !sid || wordDialog.busy) return
+  wordDialog.busy = true
+  try {
+    applyWordToday(await api.wordsStudy(sid, it.word_id, 'again'))
+    wordDialog.input = ''
+    wordDialog.feedback = null
+    syncWordPhase()
+  } catch (e) { showToast(e.message) }
+  finally { wordDialog.busy = false }
+}
+function wordPeek() {
+  const it = wordCurrent.value
+  if (!it || it.source !== 'due' || wordDialog.busy) return
+  const n = wordDialog.peekN[it.word_id] || 0
+  if (n >= 2) { showToast('先写一写，写错了会看到答案'); return }
+  wordDialog.peekN[it.word_id] = n + 1
+  wordDialog.peekUntil = Date.now() + 2000
+  wordDialog.phase = 'look'
+  clearTimeout(wordPeekTimer)
+  wordPeekTimer = setTimeout(() => {
+    wordDialog.peekUntil = 0
+    if (wordDialog.open) { wordDialog.phase = 'spell'; focusWordInput() }
+  }, 2000)
+}
+function wordGoNext() {
+  wordDialog.feedback = null
+  wordDialog.input = ''
+  wordDialog.busy = false
+  syncWordPhase()
+}
+async function wordCheck() {
+  const it = wordCurrent.value
+  const sid = wordToday.value.session && wordToday.value.session.id
+  if (!it || !sid || wordDialog.busy) return
+  const text = String(wordDialog.input || '').trim().slice(0, 60)
+  if (!text) { showToast('先写一写'); return }
+  const retry = wordDialog.phase === 'retry' || it.state === 'retry'
+  wordDialog.busy = true
+  try {
+    const t = await api.wordsSpell(sid, {
+      word_id: it.word_id, text, phase: retry ? 'retry' : 'spell', attempt_no: 1,
+    })
+    applyWordToday(t)
+    const right = t.result === 'right'
+    wordDialog.feedback = { kind: right ? 'right' : 'wrong', typed: text }
+    if (right) {
+      clearTimeout(wordNextTimer)
+      wordNextTimer = setTimeout(wordGoNext, 800)
+      return
+    }
+    wordDialog.phase = 'retry'
+    if (!retry) wordDialog.input = firstLetter(it.word)
+  } catch (e) { showToast(e.message) }
+  finally {
+    if (!(wordDialog.feedback && wordDialog.feedback.kind === 'right')) wordDialog.busy = false
+  }
+}
+async function wordCollect() {
+  const sess = wordToday.value.session
+  if (!sess || wordDialog.busy) return
+  if (sess.state === 'completed') { closeWords(); return }
+  wordDialog.busy = true
+  try {
+    applyWordToday(await api.wordsComplete(sess.id))
+    wordDialog.phase = 'done'
+    await refresh()
+  } catch (e) { showToast(e.message) }
+  finally { wordDialog.busy = false }
+}
+
 const boxes = ref({ avail: 0, opened: 0, earned: 0, streak: 0 })
 const boxOpen = ref(false)
 const boxResult = ref(null)
@@ -245,10 +451,11 @@ async function doLogout() {
 
 async function refresh() {
   try {
-    const [t, r, bx, rv, led, ach] = await Promise.all([
+    const [t, r, bx, rv, led, ach, wd] = await Promise.all([
       api.tasks(), api.rewards(), api.boxes(),
       api.reviewDue().catch(() => []), api.ledger().catch(() => []),
       api.achievements().catch(() => null),
+      api.wordsToday().catch(() => null),
     ])
     const prevId = data.level && data.level.level_id
     const prevEarned = data.level && (data.level.earned || 0)
@@ -263,6 +470,7 @@ async function refresh() {
     reviewDue.value = rv || []
     recentLedger.value = led || []
     if (Array.isArray(ach)) achievements.value = ach
+    if (wd) applyWordToday(wd)
     err.value = ''
   } catch (e) {
     if (e.status === 401) { me.value = null; authed.value = false }
@@ -433,6 +641,8 @@ function ledgerLabel(row) {
   if (row.reason === 'test_cancel') return '删除测试'
   if (row.reason === 'box') return '连击宝箱'
   if (row.reason === 'milestone') return note || '连击奖励'
+  if (row.reason === 'word_daily') return '今日单词背默'
+  if (row.reason === 'word_perfect') return '单词默写全对'
   if (row.reason === 'daily') return note || '每日打卡'
   if (row.reason === 'task') return note || '完成任务'
   return note || '阳光变动'
@@ -485,7 +695,7 @@ const studyNext = computed(() => {
   }
   return out
 })
-const todayRemaining = computed(() => reviewDue.value.length + dailyTodo.value.length + studyNext.value.length)
+const todayRemaining = computed(() => reviewDue.value.length + dailyTodo.value.length + studyNext.value.length + ((wordToday.value.enabled && !wordToday.value.finished) ? (wordRemaining.value || 1) : 0))
 const subjectProgress = computed(() => {
   const m = {}
   for (const s of data.subjects) m[s.id] = { done: 0, total: 0 }
@@ -635,6 +845,7 @@ function reloadApp() {
                 <span v-if="reviewDue.length">复习 {{ reviewDue.length }} 项</span>
                 <span v-if="dailyTodo.length">打卡 {{ dailyTodo.length }} 项</span>
                 <span v-if="studyNext.length">学习 {{ studyNext.length }} 项</span>
+                <span v-if="wordToday.enabled && !wordToday.finished">单词 {{ wordRemaining || '待练' }}</span>
               </div>
             </div>
           </div>
@@ -683,6 +894,23 @@ function reloadApp() {
             </div>
           </section>
 
+          <section v-if="wordToday.enabled" class="plan-section">
+            <div class="plan-head">
+              <div><h2><BookOpen class="ico" :size="18" /> 今日单词</h2></div>
+            </div>
+            <button type="button" class="word-entry" :disabled="wordToday.finished && !wordToday.session" @click="openWords">
+              <div>
+                <strong v-if="wordToday.session && (wordToday.finished || wordToday.session.state === 'completed')">
+                  今日背默完成 · 正确 {{ wordToday.session.counts && wordToday.session.counts.correct_first_try }}/{{ (wordToday.session.items || []).length }}
+                </strong>
+                <strong v-else-if="wordToday.finished && !wordToday.session">这一单元的词都练过了</strong>
+                <strong v-else>英语单词 · 还剩 {{ wordRemaining || (wordToday.session && wordToday.session.items || []).length || '' }} 个</strong>
+                <small v-if="wordToday.session && wordToday.session.counts">复习 {{ wordToday.session.counts.due }} · 新学 {{ wordToday.session.counts.new }}</small>
+              </div>
+              <span class="word-entry-go">{{ wordToday.session && (wordToday.finished || wordToday.session.state === 'completed') ? '回顾' : '开始' }}</span>
+            </button>
+          </section>
+
           <section v-if="studyNext.length" class="plan-section">
             <div class="plan-head">
               <div><h2><BookOpen class="ico" :size="18" /> 本课下一步</h2></div>
@@ -704,6 +932,15 @@ function reloadApp() {
 
         <template v-else>
           <h1><component :is="ICONS[activeTab] || BookOpen" class="ico" :size="20" /> {{ activeTab }}</h1>
+
+          <button v-if="activeTab === '英语' && wordToday.enabled" type="button" class="word-entry word-entry-tab" @click="openWords">
+            <div>
+              <strong v-if="wordToday.session && (wordToday.finished || wordToday.session.state === 'completed')">今日背默完成</strong>
+              <strong v-else>今日单词</strong>
+              <small>{{ wordRemaining ? '还剩 ' + wordRemaining + ' 个' : (wordToday.finished ? '已完成' : '去练习') }}</small>
+            </div>
+            <span class="word-entry-go">打开</span>
+          </button>
 
           <div class="unit" v-if="data.daily.some(x => x.subject_id === activeTab)">
             <h2><i></i> 每日打卡</h2>
@@ -850,6 +1087,70 @@ function reloadApp() {
     </div>
 
     <p v-if="err" class="err">{{ err }}</p>
+
+    <div v-if="wordDialog.open" class="mask" @click.self="closeWords">
+      <div class="shop-modal word-modal">
+        <div class="word-top">
+          <strong>今日单词</strong>
+          <span>{{ wordPos.cur }} / {{ wordPos.total }}</span>
+        </div>
+        <div class="word-bar"><i :style="{ width: wordPos.pct + '%' }"></i></div>
+        <div v-if="wordCurrent && wordDialog.phase !== 'done'" class="word-tag">{{ wordCurrent.source === 'due' ? '复习' : '新学' }}</div>
+
+        <div v-if="wordDialog.phase === 'look' && wordCurrent" class="word-pane">
+          <div class="word-en">{{ wordCurrent.word }}</div>
+          <div class="word-ipa">{{ ipaText(wordCurrent) }}</div>
+          <div class="word-cn">{{ wordCurrent.cn }}</div>
+          <button v-if="wordTtsOn" type="button" class="word-hear" :disabled="wordDialog.busy" aria-label="听读音" @click="hearWord">
+            <Volume2 :size="18" /> 听读音
+          </button>
+          <p v-if="wordCurrent.example_en" class="word-ex">{{ wordCurrent.example_en }}</p>
+          <div v-if="!wordDialog.peekUntil" class="word-actions">
+            <button type="button" class="word-sec" :disabled="wordDialog.busy" @click="wordAgain">再看一次</button>
+            <button type="button" class="do word-main" :disabled="wordDialog.busy" @click="wordKnown">去默写</button>
+          </div>
+        </div>
+
+        <div v-else-if="(wordDialog.phase === 'spell' || wordDialog.phase === 'retry') && wordCurrent" class="word-pane">
+          <p v-if="wordDialog.phase === 'retry'" class="word-retry-note">再写一次，不计分</p>
+          <div class="word-cn big">{{ wordCurrent.cn }}</div>
+          <div class="word-slots" :class="wordDialog.feedback && wordDialog.feedback.kind">
+            <i v-for="(s, i) in wordSlots" :key="i" :class="s">{{ s === 'hyphen' ? '-' : '' }}</i>
+          </div>
+          <div v-if="wordDialog.feedback && wordDialog.feedback.kind === 'right'" class="word-fb ok">
+            <div class="word-en fade">{{ wordCurrent.word }}</div>
+            <div class="word-ipa fade">{{ ipaText(wordCurrent) }}</div>
+          </div>
+          <template v-else-if="wordDialog.feedback && wordDialog.feedback.kind === 'wrong'">
+            <p class="word-wrong">你写了 {{ wordDialog.feedback.typed }} · 正确 {{ wordCurrent.word }}</p>
+            <div class="word-ipa">{{ ipaText(wordCurrent) }}</div>
+            <button v-if="wordTtsOn" type="button" class="word-hear" aria-label="听读音" @click="hearWord">
+              <Volume2 :size="18" /> 听读音
+            </button>
+            <button v-if="wordCurrent.state === 'done'" type="button" class="do word-main" @click="wordGoNext">下一题</button>
+            <button v-else type="button" class="do word-main" @click="wordDialog.feedback = null; focusWordInput()">再写一次</button>
+          </template>
+          <template v-else>
+            <input ref="wordInputEl" v-model="wordDialog.input" class="word-input" type="text" inputmode="text"
+              autocomplete="off" autocapitalize="none" spellcheck="false" enterkeyhint="done"
+              :disabled="wordDialog.busy" @keyup.enter="wordCheck" />
+            <button type="button" class="do word-main" :disabled="wordDialog.busy" @click="wordCheck">检查</button>
+            <button v-if="wordCurrent.source === 'due' && wordDialog.phase === 'spell'" type="button" class="word-sec" :disabled="wordDialog.busy" @click="wordPeek">忘了，看一眼</button>
+          </template>
+        </div>
+
+        <div v-else-if="wordDialog.phase === 'done'" class="word-pane word-done">
+          <h3>今日背默完成</h3>
+          <p>复习 {{ (wordToday.session && wordToday.session.counts && wordToday.session.counts.due) || 0 }} · 新学 {{ (wordToday.session && wordToday.session.counts && wordToday.session.counts.new) || 0 }}</p>
+          <p>首轮正确 {{ (wordToday.session && wordToday.session.counts && wordToday.session.counts.correct_first_try) || 0 }} / {{ wordItems().length }}</p>
+          <p v-if="wordToday.session && wordToday.session.reward" class="word-sun">+{{ wordToday.session.reward.base }} 阳光</p>
+          <p v-if="wordToday.session && wordToday.session.reward && wordToday.session.reward.perfect" class="word-sun">+{{ wordToday.session.reward.perfect }} 全对</p>
+          <button type="button" class="do big" :disabled="wordDialog.busy" @click="wordCollect">
+            {{ wordToday.session && wordToday.session.state === 'completed' ? '关闭' : '收下阳光' }}
+          </button>
+        </div>
+      </div>
+    </div>
 
     <!-- +N 阳光飞出 -->
     <div v-for="f in floaters" :key="f.id" class="floater" :style="{ left: f.x + 'px', top: f.y + 'px' }">{{ f.text }}</div>
@@ -1323,6 +1624,47 @@ body {
 .do:disabled { background: var(--line); cursor: default; }
 .do.big { width: 100%; padding: 12px; margin-top: 8px; }
 .ghost { width: 100%; margin-top: 8px; border: none; background: none; color: var(--ink-3); cursor: pointer; }
+.word-entry {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%;
+  text-align: left; border: 1px solid var(--accent); background: var(--warm-2);
+  border-radius: var(--radius-lg); padding: 12px 14px; cursor: pointer; font-family: inherit;
+}
+.word-entry:disabled { opacity: .6; cursor: default; }
+.word-entry strong { display: block; color: var(--ink); }
+.word-entry small { display: block; margin-top: 3px; color: var(--ink-3); font-size: 12px; }
+.word-entry-go { flex: none; min-height: 44px; min-width: 64px; padding: 0 14px; border-radius: var(--radius-pill); background: var(--brand); color: #fff; font-weight: 800; display: inline-flex; align-items: center; justify-content: center; }
+.word-entry-tab { margin: 0 0 16px; }
+.word-modal { max-width: 420px; text-align: center; }
+.word-top { display: flex; justify-content: space-between; align-items: center; font-weight: 800; }
+.word-bar { height: 6px; background: var(--surface-2); border-radius: 99px; margin: 8px 0 10px; overflow: hidden; }
+.word-bar i { display: block; height: 100%; background: var(--accent); }
+.word-tag { display: inline-block; font-size: 12px; font-weight: 800; color: var(--accent-ink); background: var(--warm); border-radius: var(--radius-pill); padding: 2px 10px; margin-bottom: 8px; }
+.word-en { font-size: 34px; font-weight: 800; line-height: 1.2; word-break: break-word; }
+.word-ipa { margin-top: 6px; font-size: 16px; color: var(--ink-2); font-family: ui-serif, "Times New Roman", serif; }
+.word-cn { margin-top: 8px; font-size: 18px; font-weight: 700; }
+.word-cn.big { font-size: 28px; margin: 8px 0 14px; }
+.word-ex { margin: 10px 0 0; color: var(--ink-3); font-size: 13px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.word-hear, .word-sec, .word-main {
+  min-height: 44px; min-width: 44px; margin-top: 12px; border: none; border-radius: var(--radius-lg);
+  font-weight: 800; cursor: pointer; font-family: inherit; padding: 0 16px;
+}
+.word-hear { background: var(--surface-2); color: var(--ink); display: inline-flex; align-items: center; gap: 6px; }
+.word-sec { background: none; color: var(--ink-3); }
+.word-actions { display: flex; gap: 8px; justify-content: center; margin-top: 16px; }
+.word-actions .word-sec, .word-actions .word-main { flex: 1; margin-top: 0; }
+.word-slots { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: 8px 0 14px; min-height: 36px; }
+.word-slots i { width: 18px; height: 28px; border-bottom: 2px solid var(--ink-3); display: inline-flex; align-items: flex-end; justify-content: center; font-weight: 800; }
+.word-slots i.space { width: 12px; border: none; }
+.word-slots i.hyphen { border: none; align-items: center; }
+.word-slots.right i { border-color: var(--ok); color: var(--ok); }
+.word-slots.wrong i { border-color: var(--accent); color: var(--accent-ink); }
+.word-input { width: 100%; min-height: 44px; font-size: 20px; text-align: center; padding: 8px 12px; border: 1px solid var(--line); border-radius: var(--radius-md); }
+.word-retry-note { margin: 0 0 6px; font-size: 13px; color: var(--ink-3); }
+.word-wrong { margin: 8px 0; color: var(--accent-ink); font-weight: 700; }
+.word-fb.ok .fade { animation: wordfade .8s ease; }
+@keyframes wordfade { from { opacity: 0; } to { opacity: 1; } }
+.word-done h3 { margin: 8px 0 10px; }
+.word-sun { font-size: 20px; font-weight: 800; color: var(--accent); }
 .metric { margin-bottom: 10px; }
 .metric label { display: block; font-size: 13px; margin-bottom: 4px; }
 .daily-dialog-note, .metric-note { margin: -4px 0 8px; color: var(--ink-3); font-size: 12px; line-height: 1.5; }
@@ -1453,6 +1795,7 @@ body {
 
 @media (max-width: 900px) {
   .plan-section.review-today { padding: 12px; }
+  .word-en { font-size: 32px; }
   .plan-grid { grid-template-columns: 1fr; }
   .plan-row { align-items: flex-start; flex-direction: column; gap: 5px; }
   .plan-state { padding-left: 38px; }

@@ -4,7 +4,7 @@ import { api, setSelectedKid } from './api.js'
 import { APP_LABEL, APP_REVISION } from './version.js'
 import { rankIcon } from './icons.js'
 import { tagHelp } from './tagHelp.js'
-import { Eye, Baby, Users, KeyRound, Lock, Store, Trophy, ClipboardCheck, BookOpen, RefreshCw, MapPinned, FileText, Sun, Star, Check, ArrowLeft, BookMarked } from '@lucide/vue'
+import { Eye, Baby, Users, KeyRound, Lock, Store, Trophy, ClipboardCheck, BookOpen, RefreshCw, MapPinned, FileText, Sun, Star, Check, ArrowLeft, BookMarked, Globe } from '@lucide/vue'
 
 const props = defineProps({ recoveryCode: { type: String, default: '' } })
 const emit = defineEmits(['exit', 'switched', 'consumed-recovery'])
@@ -40,6 +40,7 @@ const SECTIONS = [
   { group: '学习', items: [
     { id: 'unit-task', icon: BookOpen, label: '任务与考点' },
     { id: 'daily', icon: RefreshCw, label: '每日任务' },
+    { id: 'words', icon: Globe, label: '英语单词' },
     { id: 'cursor', icon: MapPinned, label: '已学到' },
     { id: 'test', icon: FileText, label: '单元测试' },
   ] },
@@ -174,6 +175,137 @@ async function load() {
   weakPoints.value = openWeakPoints
   weakByUnit.value = wb
   reviewDue.value = rv || []
+  await loadWords()
+}
+
+const wordCfg = reactive({
+  enabled: false, new_per_day: 5, max_due: 10, base_sunshine: 3, perfect_sunshine: 2,
+  unlock_by_cursor: true, current_book: '', tts: true, tts_autoplay: false, tts_lang: 'en-GB',
+})
+const wordBooks = ref([])
+const wordToday = ref({ enabled: false, finished: true, backlog_due: 0, session: null })
+const wordProblems = ref([])
+const wordStats = ref({ days: [], completed_sessions: 0, first_try_rate: null })
+const wordNewBook = ref('')
+const wordImport = reactive({ book_id: '', text: '', result: null })
+const wordOpenBook = ref(null)
+const wordBusy = ref(false)
+const wordOverview = computed(() => {
+  const s = wordToday.value.session
+  const counts = (s && s.counts) || { due: 0, new: 0, answered: 0, correct_first_try: 0 }
+  const total = ((s && s.items) || []).length
+  const left = ((s && s.items) || []).filter(x => x.state !== 'done').length
+  return {
+    newn: counts.new || 0,
+    due: counts.due || 0,
+    correct: counts.correct_first_try || 0,
+    total,
+    left: wordToday.value.finished ? 0 : (s ? left : (wordToday.value.enabled ? '—' : 0)),
+    backlog: wordToday.value.backlog_due || 0,
+    finished: !!wordToday.value.finished,
+  }
+})
+async function loadWords() {
+  if (!selectedKid.value) return
+  try {
+    const [cfg, today, problems, stats] = await Promise.all([
+      api.admin.wordConfig(),
+      api.wordsToday().catch(() => null),
+      api.admin.problemWords().catch(() => []),
+      api.admin.wordStats().catch(() => ({ days: [], completed_sessions: 0, first_try_rate: null })),
+    ])
+    Object.assign(wordCfg, {
+      enabled: !!cfg.enabled,
+      new_per_day: cfg.new_per_day,
+      max_due: cfg.max_due,
+      base_sunshine: cfg.base_sunshine,
+      perfect_sunshine: cfg.perfect_sunshine,
+      unlock_by_cursor: cfg.unlock_by_cursor !== false,
+      current_book: cfg.current_book || '',
+      tts: cfg.tts !== false,
+      tts_autoplay: !!cfg.tts_autoplay,
+      tts_lang: cfg.tts_lang === 'en-US' ? 'en-US' : 'en-GB',
+    })
+    wordBooks.value = cfg.books || []
+    wordToday.value = today || { enabled: false, finished: true, backlog_due: 0, session: null }
+    wordProblems.value = problems || []
+    wordStats.value = stats || { days: [], completed_sessions: 0, first_try_rate: null }
+  } catch (e) { showToast(e.message) }
+}
+async function saveWordNow(patch) {
+  try {
+    const cfg = await api.admin.setWordConfig(patch)
+    Object.assign(wordCfg, {
+      enabled: !!cfg.enabled,
+      current_book: cfg.current_book || '',
+      tts: cfg.tts !== false,
+      tts_autoplay: !!cfg.tts_autoplay,
+      tts_lang: cfg.tts_lang === 'en-US' ? 'en-US' : 'en-GB',
+      unlock_by_cursor: cfg.unlock_by_cursor !== false,
+    })
+    wordBooks.value = cfg.books || []
+    await loadWords()
+  } catch (e) { showToast(e.message); await loadWords() }
+}
+async function saveWordRhythm() {
+  try {
+    await api.admin.setWordConfig({
+      new_per_day: wordCfg.new_per_day,
+      max_due: wordCfg.max_due,
+      base_sunshine: wordCfg.base_sunshine,
+      perfect_sunshine: wordCfg.perfect_sunshine,
+    })
+    showToast('已保存，明天的新练习才按这个来')
+  } catch (e) { showToast(e.message) }
+}
+async function addWordBook() {
+  const name = wordNewBook.value.trim()
+  if (!name) return showToast('填词书名字')
+  try {
+    await api.admin.createWordBook({ name })
+    wordNewBook.value = ''
+    showToast('已建家庭词书')
+    await loadWords()
+  } catch (e) { showToast(e.message) }
+}
+async function saveWordBook(b) {
+  try {
+    await api.admin.updateWordBook(b.id, { name: b.name })
+    showToast('已改名')
+    await loadWords()
+  } catch (e) { showToast(e.message) }
+}
+async function delWordBook(b) {
+  if (!confirm('关掉这本家庭词书？')) return
+  try {
+    await api.admin.delWordBook(b.id)
+    if (wordImport.book_id === b.id) wordImport.book_id = ''
+    showToast('已处理')
+    await loadWords()
+  } catch (e) { showToast(e.message) }
+}
+async function importWordBook() {
+  if (!wordImport.book_id) return showToast('先选一本家庭词书')
+  if (!wordImport.text.trim()) return showToast('粘贴单词')
+  wordBusy.value = true
+  try {
+    wordImport.result = await api.admin.importWords(wordImport.book_id, wordImport.text)
+    showToast('导入 ' + wordImport.result.ok + ' 个')
+    await loadWords()
+  } catch (e) { showToast(e.message) }
+  finally { wordBusy.value = false }
+}
+async function openWordBook(id) {
+  try {
+    wordOpenBook.value = await api.admin.wordBook(id)
+  } catch (e) { showToast(e.message) }
+}
+async function focusWord(id) {
+  try {
+    await api.admin.focusWord(id)
+    showToast('明天会练到')
+    await loadWords()
+  } catch (e) { showToast(e.message) }
 }
 
 // —— 商店 ——
@@ -1215,6 +1347,129 @@ onMounted(load)
           </div>
           <button class="ghost-s" @click="addMetric(d.metrics)">＋加破纪录指标</button>
         </template>
+      </div>
+    </section>
+
+    <section v-if="section === 'words'" class="a-card enter">
+      <h3>英语单词</h3>
+      <p class="dim">给 {{ currentKidName || '当前孩子' }} 用。朗读马上生效；每天几个词、给多少阳光，明天新的一组才按这个来。</p>
+      <div class="w-summary word-ov">
+        <div class="w-box"><span>新词</span><b>{{ wordOverview.newn }}</b></div>
+        <div class="w-box"><span>复习</span><b>{{ wordOverview.due }}</b></div>
+        <div class="w-box"><span>首轮对</span><b>{{ wordOverview.correct }}/{{ wordOverview.total || 0 }}</b></div>
+        <div class="w-box"><span>还没写完</span><b>{{ wordOverview.left }}</b></div>
+        <div class="w-box"><span>积压到期</span><b>{{ wordOverview.backlog }}</b></div>
+      </div>
+      <div class="lock-row mt14">
+        <span class="badge">单词练习</span>
+        <span class="grow">孩子端显示今日单词</span>
+        <button type="button" :class="['toggle', { on: wordCfg.enabled }]" @click="saveWordNow({ enabled: !wordCfg.enabled })">{{ wordCfg.enabled ? '开' : '关' }}</button>
+      </div>
+      <div class="frm-row mt14">
+        <label class="fld grow"><span>当前新词词书</span>
+          <select :value="wordCfg.current_book" @change="saveWordNow({ current_book: $event.target.value })">
+            <option value="">还没选</option>
+            <option v-for="b in wordBooks" :key="b.id" :value="b.id" :disabled="b.is_system && !b.selectable">
+              {{ b.name }}{{ b.is_system ? ' · 系统' : ' · 家庭' }}{{ b.is_system && !b.selectable ? '（先设英语已学到）' : '' }}
+            </option>
+          </select>
+        </label>
+      </div>
+      <div class="frm-row">
+        <label class="fld w64"><span>每天新词</span><input v-model.number="wordCfg.new_per_day" type="number" min="1" max="10" /></label>
+        <label class="fld w64"><span>到期上限</span><input v-model.number="wordCfg.max_due" type="number" min="5" max="15" /></label>
+        <label class="fld w64"><span>完成阳光</span><input v-model.number="wordCfg.base_sunshine" type="number" min="0" max="10" /></label>
+        <label class="fld w64"><span>全对阳光</span><input v-model.number="wordCfg.perfect_sunshine" type="number" min="0" max="5" /></label>
+        <button class="ok" @click="saveWordRhythm">保存节奏</button>
+      </div>
+      <div class="lock-row mt14">
+        <span class="badge">词书锁</span>
+        <span class="grow">系统词书跟着英语「已学到」</span>
+        <button type="button" :class="['toggle', { on: wordCfg.unlock_by_cursor }]" @click="saveWordNow({ unlock_by_cursor: !wordCfg.unlock_by_cursor })">{{ wordCfg.unlock_by_cursor ? '开' : '关' }}</button>
+      </div>
+      <div class="lock-row">
+        <span class="badge">朗读</span>
+        <span class="grow">看词页听读音</span>
+        <button type="button" :class="['toggle', { on: wordCfg.tts }]" @click="saveWordNow({ tts: !wordCfg.tts })">{{ wordCfg.tts ? '开' : '关' }}</button>
+      </div>
+      <div class="lock-row">
+        <span class="badge">自动读</span>
+        <span class="grow">进入看词页读一次（默写不出声）</span>
+        <button type="button" :class="['toggle', { on: wordCfg.tts_autoplay }]" @click="saveWordNow({ tts_autoplay: !wordCfg.tts_autoplay })">{{ wordCfg.tts_autoplay ? '开' : '关' }}</button>
+      </div>
+      <div class="frm-row">
+        <label class="fld w104"><span>口音</span>
+          <select :value="wordCfg.tts_lang" @change="saveWordNow({ tts_lang: $event.target.value })">
+            <option value="en-GB">英式</option>
+            <option value="en-US">美式</option>
+          </select>
+        </label>
+      </div>
+
+      <h4 class="w-h">词书</h4>
+      <div class="word-book" v-for="b in wordBooks" :key="b.id">
+        <div class="word-book-h">
+          <strong>{{ b.name }}</strong>
+          <span class="badge">{{ b.is_system ? '系统' : '家庭' }}</span>
+          <span class="dim">{{ b.word_count }} 词 · 已学 {{ b.learned_count }} · 到期 {{ b.due_count }}</span>
+          <button class="ghost-s" @click="openWordBook(b.id)">看词</button>
+        </div>
+        <template v-if="!b.is_system">
+          <div class="frm-row">
+            <label class="fld grow"><span>名字</span><input v-model="b.name" /></label>
+            <button class="ok" @click="saveWordBook(b)">改名</button>
+            <button class="del" @click="delWordBook(b)">删</button>
+          </div>
+        </template>
+        <p v-else class="dim">系统词书只能改代码里的词表，家长不能改。</p>
+      </div>
+      <div class="frm-row">
+        <label class="fld grow"><span>新建家庭词书</span><input v-model="wordNewBook" placeholder="如：课外词" maxlength="30" /></label>
+        <button class="ok" @click="addWordBook">＋新建</button>
+      </div>
+      <div class="add-box mt14">
+        <div class="add-title">导入家庭词书</div>
+        <label class="fld grow"><span>导入到</span>
+          <select v-model="wordImport.book_id">
+            <option value="">选一本家庭词书</option>
+            <option v-for="b in wordBooks.filter(x => !x.is_system)" :key="b.id" :value="b.id">{{ b.name }}</option>
+          </select>
+        </label>
+        <textarea v-model="wordImport.text" class="word-import" rows="5" placeholder="always	总是	/ˈɔːlweɪz/&#10;get up	起床"></textarea>
+        <button class="ok" :disabled="wordBusy" @click="importWordBook">导入</button>
+        <p v-if="wordImport.result" class="dim">成功 {{ wordImport.result.ok }} 行<template v-if="(wordImport.result.errors || []).length"> · {{ wordImport.result.errors.length }} 行有问题</template></p>
+        <ul v-if="wordImport.result && wordImport.result.errors && wordImport.result.errors.length" class="word-err">
+          <li v-for="e in wordImport.result.errors.slice(0, 8)" :key="e.line">第 {{ e.line }} 行：{{ e.error }}</li>
+        </ul>
+      </div>
+      <div v-if="wordOpenBook" class="word-list">
+        <h4 class="w-h">{{ wordOpenBook.name }} 的词</h4>
+        <div v-for="w in (wordOpenBook.words || []).filter(x => x.active !== 0)" :key="w.id" class="word-row">
+          <b>{{ w.word }}</b>
+          <span>{{ w.cn }}</span>
+          <em>{{ w.ipa }}</em>
+        </div>
+        <button class="ghost-s" @click="wordOpenBook = null">收起</button>
+      </div>
+
+      <h4 class="w-h">高频错词</h4>
+      <p v-if="!wordProblems.length" class="dim">还没有错两次以上的词。</p>
+      <div v-for="w in wordProblems" :key="w.word_id" class="word-row">
+        <div>
+          <b>{{ w.word }}</b>
+          <span>{{ w.cn }} · 错 {{ w.wrong_count }} 次 · {{ w.book_name }}</span>
+          <em>{{ w.due_at ? ('下次 ' + w.due_at) : '' }}</em>
+        </div>
+        <button class="ok" @click="focusWord(w.word_id)">明天重点练</button>
+      </div>
+
+      <h4 class="w-h">近 7 日</h4>
+      <p class="dim">完成 {{ wordStats.completed_sessions || 0 }} 次<template v-if="wordStats.first_try_rate != null"> · 首轮正确率 {{ wordStats.first_try_rate }}%</template></p>
+      <div class="w-chart word-week">
+        <div v-for="d in wordStats.days || []" :key="d.date" class="w-bar-col">
+          <div class="w-bar" :style="{ height: (d.completed ? 70 : 4) + '%' }"><i v-if="d.rate != null">{{ d.rate }}%</i></div>
+          <span>{{ d.label }}</span>
+        </div>
       </div>
     </section>
 

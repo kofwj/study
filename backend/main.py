@@ -19,9 +19,10 @@ from fastapi import FastAPI, HTTPException, Depends, Request, Response
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 import db
+import words as wordmod
 from version import app_label, app_revision, app_version
 
 # 配置日志
@@ -751,8 +752,10 @@ def _ach_currents(c, kid):
         "AND (status='resolved' OR COALESCE(interval_idx,0)>=1)",
         (kid, monday)).fetchone()[0]
     word_n = 0
-    if db._has_table(c, "word_daily"):
-        word_n = c.execute("SELECT COUNT(*) FROM word_daily WHERE kid_id=?", (kid,)).fetchone()[0]
+    if db._has_table(c, "word_sessions"):
+        word_n = c.execute(
+            "SELECT COUNT(*) FROM word_sessions WHERE kid_id=? AND state='completed'", (kid,)
+        ).fetchone()[0]
     return {
         "first": total, "all100": unit_done,
         "sport": sport, "daily30": sport, "go10": go_n, "calc10": calc_n,
@@ -2715,6 +2718,328 @@ def kids_delete(kid: str, request: Request):
     c.execute("DELETE FROM profiles WHERE user_id=?", (kid,))
     c.commit(); c.close()
     return {"ok": True}
+
+
+class WordConfigIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    enabled: Optional[bool] = None
+    new_per_day: Optional[int] = None
+    max_due: Optional[int] = None
+    base_sunshine: Optional[int] = None
+    perfect_sunshine: Optional[int] = None
+    unlock_by_cursor: Optional[bool] = None
+    current_book: Optional[str] = None
+    tts: Optional[bool] = None
+    tts_autoplay: Optional[bool] = None
+    tts_lang: Optional[str] = None
+
+
+class WordBookIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: str = ""
+    enabled: Optional[bool] = None
+
+
+class WordImportIn(BaseModel):
+    text: str = ""
+
+
+def _need_kid():
+    k = _kid.get()
+    if not k:
+        raise HTTPException(400, "没有孩子")
+    return k
+
+
+def _word_call(fn, *args):
+    c = get_conn()
+    try:
+        out = fn(c, *args)
+        c.commit()
+        return out
+    except wordmod.WordError as e:
+        c.close()
+        raise HTTPException(e.status, e.detail)
+    finally:
+        try:
+            c.close()
+        except Exception:
+            pass
+
+
+class WordStudyIn(BaseModel):
+    word_id: int
+    action: str
+
+
+class WordSpellIn(BaseModel):
+    word_id: int
+    text: str = ""
+    phase: str = "spell"
+    attempt_no: int = 1
+
+
+@app.get("/api/words/today")
+def words_today():
+    return _word_call(wordmod.today_payload, kid_id(), _fam.get())
+
+
+@app.post("/api/words/session/start")
+def words_session_start():
+    return _word_call(wordmod.start_session, kid_id(), _fam.get())
+
+
+@app.post("/api/words/session/{sid}/study")
+def words_session_study(sid: str, b: WordStudyIn):
+    return _word_call(wordmod.study_item, kid_id(), _fam.get(), sid, b.word_id, b.action)
+
+
+@app.post("/api/words/session/{sid}/spell")
+def words_session_spell(sid: str, b: WordSpellIn):
+    return _word_call(wordmod.spell_item, kid_id(), _fam.get(), sid, b.word_id, b.text, b.phase, b.attempt_no)
+
+
+@app.post("/api/words/session/{sid}/complete")
+def words_session_complete(sid: str):
+    return _word_call(wordmod.complete_session, kid_id(), _fam.get(), sid)
+
+
+@app.get("/api/admin/words/stats", dependencies=[Depends(require_parent)])
+def admin_words_stats():
+    c = get_conn()
+    kid = _need_kid()
+    fam = _fam.get()
+    out = wordmod.week_stats(c, kid, fam)
+    c.close()
+    return out
+
+
+@app.get("/api/admin/words/config", dependencies=[Depends(require_parent)])
+def admin_words_config():
+    c = get_conn()
+    kid = _need_kid()
+    fam = _fam.get()
+    cfg = wordmod.kid_config(c, kid)
+    books = wordmod.list_books(c, kid, fam)
+    c.close()
+    return {**cfg, "books": books}
+
+
+@app.put("/api/admin/words/config", dependencies=[Depends(require_parent)])
+def admin_words_config_put(b: WordConfigIn):
+    c = get_conn()
+    kid = _need_kid()
+    fam = _fam.get()
+    fields = b.model_dump(exclude_unset=True)
+    if "current_book" in fields:
+        bid = (fields.get("current_book") or "").strip()
+        if bid:
+            book = wordmod.get_book(c, fam, bid)
+            if not book or int(book["enabled"] or 0) != 1:
+                c.close()
+                raise HTTPException(404, "没找到这本词书")
+            probe = dict(fields)
+            cfg = wordmod.kid_config(c, kid)
+            cfg.update({k: v for k, v in probe.items() if k != "current_book" and v is not None})
+            if not wordmod.book_selectable(c, kid, fam, book, cfg):
+                c.close()
+                raise HTTPException(400, "先在已学到里设置英语进度，或关掉词书游标锁")
+        fields["current_book"] = bid
+    wordmod.set_kid_config(c, kid, **fields)
+    c.commit()
+    cfg = wordmod.kid_config(c, kid)
+    books = wordmod.list_books(c, kid, fam)
+    c.close()
+    return {**cfg, "books": books}
+
+
+@app.get("/api/admin/words/books", dependencies=[Depends(require_parent)])
+def admin_words_books():
+    c = get_conn()
+    fam = _fam.get()
+    kid = _kid.get()
+    books = wordmod.list_books(c, kid, fam)
+    c.close()
+    return books
+
+
+@app.get("/api/admin/words/books/{bid}", dependencies=[Depends(require_parent)])
+def admin_words_book_get(bid: str):
+    c = get_conn()
+    fam = _fam.get()
+    book, items = wordmod.list_words(c, fam, bid)
+    c.close()
+    if not book:
+        raise HTTPException(404, "没找到这本词书")
+    d = dict(book)
+    d["is_system"] = int(d["is_system"] or 0)
+    d["enabled"] = int(d["enabled"] or 0)
+    d["words"] = items
+    return d
+
+
+@app.post("/api/admin/words/books", dependencies=[Depends(require_parent)])
+def admin_words_book_create(b: WordBookIn):
+    name = (b.name or "").strip()
+    if not name or len(name) > 30:
+        raise HTTPException(400, "词书名字 1–30 字")
+    c = get_conn()
+    fam = _fam.get()
+    bid = "fam-" + uuid.uuid4().hex[:10]
+    now = db.now()
+    c.execute(
+        "INSERT INTO word_books(id,family_id,term_id,unit_id,name,is_system,enabled,sort,created_at,updated_at) "
+        "VALUES(?,?,?,?,?,0,1,?,?,?)",
+        (bid, fam, "", None, name, 0, now, now),
+    )
+    c.commit()
+    row = c.execute("SELECT * FROM word_books WHERE id=?", (bid,)).fetchone()
+    c.close()
+    d = dict(row)
+    d["is_system"] = 0
+    d["word_count"] = 0
+    return d
+
+
+@app.put("/api/admin/words/books/{bid}", dependencies=[Depends(require_parent)])
+def admin_words_book_put(bid: str, b: WordBookIn):
+    c = get_conn()
+    fam = _fam.get()
+    book = wordmod.get_book(c, fam, bid)
+    if not book:
+        c.close()
+        raise HTTPException(404, "没找到这本词书")
+    if int(book["is_system"] or 0):
+        c.close()
+        raise HTTPException(403, "系统词书不能改")
+    name = book["name"]
+    if b.name != "":
+        name = (b.name or "").strip()
+        if not name or len(name) > 30:
+            c.close()
+            raise HTTPException(400, "词书名字 1–30 字")
+    enabled = int(book["enabled"] or 0)
+    if b.enabled is not None:
+        enabled = 1 if b.enabled else 0
+    c.execute("UPDATE word_books SET name=?, enabled=?, updated_at=? WHERE id=? AND family_id=?",
+              (name, enabled, db.now(), bid, fam))
+    c.commit()
+    row = c.execute("SELECT * FROM word_books WHERE id=?", (bid,)).fetchone()
+    c.close()
+    return dict(row)
+
+
+@app.delete("/api/admin/words/books/{bid}", dependencies=[Depends(require_parent)])
+def admin_words_book_del(bid: str):
+    c = get_conn()
+    fam = _fam.get()
+    book = wordmod.get_book(c, fam, bid)
+    if not book:
+        c.close()
+        raise HTTPException(404, "没找到这本词书")
+    if int(book["is_system"] or 0):
+        c.close()
+        raise HTTPException(403, "系统词书不能删")
+    n = c.execute("SELECT COUNT(*) FROM words WHERE book_id=?", (bid,)).fetchone()[0]
+    now = db.now()
+    if n:
+        c.execute("UPDATE word_books SET enabled=0, updated_at=? WHERE id=? AND family_id=?", (now, bid, fam))
+        c.execute("UPDATE words SET active=0, updated_at=? WHERE book_id=?", (now, bid))
+        c.commit()
+        c.close()
+        return {"ok": True, "soft": True}
+    c.execute("DELETE FROM word_books WHERE id=? AND family_id=?", (bid, fam))
+    c.commit()
+    c.close()
+    return {"ok": True, "soft": False}
+
+
+@app.post("/api/admin/words/books/{bid}/import", dependencies=[Depends(require_parent)])
+def admin_words_import(bid: str, b: WordImportIn):
+    c = get_conn()
+    fam = _fam.get()
+    book = wordmod.get_book(c, fam, bid)
+    if not book:
+        c.close()
+        raise HTTPException(404, "没找到这本词书")
+    if int(book["is_system"] or 0):
+        c.close()
+        raise HTTPException(403, "系统词书不能改")
+    try:
+        rows, errors = wordmod.parse_import_text(b.text)
+    except ValueError as e:
+        c.close()
+        raise HTTPException(400, str(e))
+    now = db.now()
+    ok = 0
+    max_sort = c.execute("SELECT COALESCE(MAX(sort),0) FROM words WHERE book_id=?", (bid,)).fetchone()[0]
+    for i, row in enumerate(rows, 1):
+        norm = wordmod.normalize_word(row["word"])
+        if not norm:
+            errors.append({"line": row["line"], "error": "缺单词"})
+            continue
+        c.execute(
+            "INSERT INTO words(book_id,word,word_norm,cn,ipa,example_en,example_cn,accept_json,sort,active,created_at,updated_at) "
+            "VALUES(?,?,?,?,?,?,?,?,?,1,?,?) "
+            "ON CONFLICT(book_id, word_norm) DO UPDATE SET word=excluded.word, cn=excluded.cn, "
+            "ipa=excluded.ipa, active=1, updated_at=excluded.updated_at",
+            (bid, row["word"], norm, row["cn"], row["ipa"], "", "", "[]", max_sort + i, now, now),
+        )
+        ok += 1
+    c.execute("UPDATE word_books SET updated_at=? WHERE id=?", (now, bid))
+    c.commit()
+    c.close()
+    return {"ok": ok, "errors": errors}
+
+
+@app.get("/api/admin/words/problem-words", dependencies=[Depends(require_parent)])
+def admin_words_problem():
+    c = get_conn()
+    kid = _need_kid()
+    fam = _fam.get()
+    rows = c.execute(
+        "SELECT w.id AS word_id, w.word, w.cn, w.ipa, b.id AS book_id, b.name AS book_name, b.unit_id, "
+        "wp.wrong_count, wp.due_at, wp.last_seen_at "
+        "FROM word_progress wp JOIN words w ON w.id=wp.word_id "
+        "JOIN word_books b ON b.id=w.book_id "
+        "WHERE wp.kid_id=? AND COALESCE(wp.wrong_count,0)>=2 AND (b.is_system=1 OR b.family_id=?) "
+        "ORDER BY wp.wrong_count DESC, wp.last_seen_at DESC",
+        (kid, fam or ""),
+    ).fetchall()
+    c.close()
+    return [dict(r) for r in rows]
+
+
+@app.post("/api/admin/words/{word_id}/focus", dependencies=[Depends(require_parent)])
+def admin_words_focus(word_id: int):
+    c = get_conn()
+    kid = _need_kid()
+    fam = _fam.get()
+    row = c.execute(
+        "SELECT w.id FROM words w JOIN word_books b ON b.id=w.book_id "
+        "WHERE w.id=? AND (b.is_system=1 OR b.family_id=?)",
+        (word_id, fam or ""),
+    ).fetchone()
+    if not row:
+        c.close()
+        raise HTTPException(404, "没找到这个词")
+    now = db.now()
+    due = wordmod.tomorrow()
+    exists = c.execute("SELECT 1 FROM word_progress WHERE kid_id=? AND word_id=?", (kid, word_id)).fetchone()
+    if exists:
+        c.execute(
+            "UPDATE word_progress SET interval_idx=0, due_at=?, last_seen_at=? WHERE kid_id=? AND word_id=?",
+            (due, now, kid, word_id),
+        )
+    else:
+        c.execute(
+            "INSERT INTO word_progress(kid_id,word_id,interval_idx,due_at,first_seen_at,last_seen_at,"
+            "last_result,streak_right,correct_count,wrong_count) VALUES(?,?,0,?,NULL,?, '',0,0,0)",
+            (kid, word_id, due, now),
+        )
+    c.commit()
+    c.close()
+    return {"ok": True, "due_at": due}
 
 
 @app.get("/api/daily/{task_id}/history")
