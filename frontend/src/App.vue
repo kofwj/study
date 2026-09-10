@@ -6,7 +6,7 @@ import { APP_LABEL, APP_REVISION } from './version.js'
 const Admin = defineAsyncComponent(() => import('./Admin.vue'))
 import { SUBJECT_ICONS as ICONS, rankIcon, achIcon } from './icons.js'
 import { mottoFor } from './dailyMottos.js'
-import { Sun, Lock, Gift, Check, TrendingUp, Target, User, ShoppingCart, ScrollText, Medal, ChartColumn, Map, CalendarDays, RefreshCw, PartyPopper, Sparkles, BookOpen, Flame, Volume2, Egg, Sprout, Leaf, Flower, House, Landmark, Coins, ArrowDownToLine, ArrowUpFromLine } from '@lucide/vue'
+import { Sun, Lock, Gift, Check, TrendingUp, Target, User, ShoppingCart, ScrollText, Medal, ChartColumn, Map, CalendarDays, RefreshCw, PartyPopper, Sparkles, BookOpen, Flame, Volume2, Egg, Sprout, Leaf, Flower, House, Landmark, Coins, ArrowDownToLine, ArrowUpFromLine, Globe, FileText } from '@lucide/vue'
 
 const data = reactive({
   level: { earned: 0, balance: 0, level: '阳光萌新', next: null, next_need: 0, progress: 0 },
@@ -1062,6 +1062,9 @@ function ledgerLabel(row) {
   if (row.reason === 'word_perfect') return '单词默写全对'
   if (row.reason === 'daily') return note || '每日打卡'
   if (row.reason === 'task') return note || '完成任务'
+  if (row.reason === 'bank_deposit') return '存入阳光银行'
+  if (row.reason === 'bank_withdraw') return '从银行取出'
+  if (row.reason === 'bank_interest') return '银行利息'
   return note || '阳光变动'
 }
 function ledgerSign(n) {
@@ -1071,12 +1074,20 @@ function ledgerSign(n) {
 function ymd(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
-const SUN_BUCKETS = [
-  { id: 'study', name: '学习得的', reasons: ['task', 'word_daily', 'word_perfect', 'test'], icon: BookOpen },
-  { id: 'daily', name: '打卡得的', reasons: ['daily'], icon: CalendarDays },
-  { id: 'box', name: '惊喜得的', reasons: ['box', 'milestone'], icon: Gift },
+const SUN_TRANSFER = new Set(['bank_deposit', 'bank_withdraw', 'bank_interest'])
+const SUN_SPEND = new Set(['redeem', 'penalty', 'cancel', 'test_cancel'])
+const SUN_PATHS = [
+  { id: 'task', name: '课文任务', hint: '把今天的课往前推', reasons: ['task'], icon: BookOpen, tab: null },
+  { id: 'word', name: '英语单词', hint: '复习或新词还没写完', reasons: ['word_daily', 'word_perfect'], icon: Globe, tab: '英语' },
+  { id: 'daily', name: '每日打卡', hint: '今天的打卡还空着', reasons: ['daily'], icon: CalendarDays, tab: '今日推荐' },
+  { id: 'test', name: '单元测试', hint: '测完告诉家长登分', reasons: ['test'], icon: FileText, tab: null },
+  { id: 'box', name: '宝箱连击', hint: '连续打卡才会开箱', reasons: ['box', 'milestone'], icon: Gift, tab: null },
 ]
 const WD = '日一二三四五六'
+function pocketRow(r) { return (r.account || 'pocket') === 'pocket' }
+function sunDelta(r) { return Number(r.delta) || 0 }
+function isSunEarn(r) { return pocketRow(r) && sunDelta(r) > 0 && !SUN_TRANSFER.has(r.reason) && r.reason !== 'penalty_cancel' }
+function isSunSpend(r) { return pocketRow(r) && sunDelta(r) < 0 && SUN_SPEND.has(r.reason) }
 function sunRowIcon(reason) {
   if (['task', 'word_daily', 'word_perfect', 'test'].includes(reason)) return BookOpen
   if (reason === 'daily') return CalendarDays
@@ -1086,39 +1097,77 @@ function sunRowIcon(reason) {
   if (reason === 'cancel' || reason === 'test_cancel') return RefreshCw
   return Sun
 }
+function sunSum(rows, pred) {
+  return rows.filter(pred).reduce((s, r) => s + Math.abs(sunDelta(r)), 0)
+}
 const sunshineStats = computed(() => {
-  const rows = recentLedger.value || []
+  const rows = (recentLedger.value || []).filter(pocketRow)
   const now = new Date()
-  const days = []
-  for (let i = 6; i >= 0; i--) {
+  const dayList = []
+  for (let i = 13; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i)
-    const iso = ymd(d)
-    const net = rows.filter(r => r.date === iso).reduce((s, r) => s + (Number(r.delta) || 0), 0)
-    days.push({ date: iso, wd: i === 0 ? '今天' : WD[d.getDay()], net, today: i === 0 })
+    dayList.push(ymd(d))
   }
-  const weekNet = days.reduce((s, d) => s + d.net, 0)
-  const maxAbs = Math.max(1, ...days.map(d => Math.abs(d.net)))
-  const buckets = SUN_BUCKETS.map(b => ({
-    ...b,
-    sun: rows.filter(r => b.reasons.includes(r.reason) && Number(r.delta) > 0)
-      .reduce((s, r) => s + (Number(r.delta) || 0), 0),
-  }))
-  const maxBucket = Math.max(1, ...buckets.map(b => b.sun), 0)
+  const weekDates = dayList.slice(7)
+  const prevDates = dayList.slice(0, 7)
+  const weekSet = new Set(weekDates)
+  const prevSet = new Set(prevDates)
+  const days = weekDates.map((iso, i) => {
+    const dayRows = rows.filter(r => r.date === iso)
+    const inn = sunSum(dayRows, isSunEarn)
+    const out = sunSum(dayRows, isSunSpend)
+    const d = new Date(iso)
+    return { date: iso, wd: i === 6 ? '今天' : WD[d.getDay()], inn, out, today: i === 6, quiet: inn === 0 }
+  })
+  const weekIn = days.reduce((s, d) => s + d.inn, 0)
+  const weekOut = days.reduce((s, d) => s + d.out, 0)
+  const maxAbs = Math.max(1, ...days.map(d => Math.max(d.inn, d.out)))
+  const paths = SUN_PATHS.map(p => {
+    const week = sunSum(rows.filter(r => weekSet.has(r.date) && p.reasons.includes(r.reason)), isSunEarn)
+    const prev = sunSum(rows.filter(r => prevSet.has(r.date) && p.reasons.includes(r.reason)), isSunEarn)
+    let vs = '这周还没有'
+    if (week > 0 && prev === 0) vs = '这周刚开始有'
+    else if (week > prev) vs = `比上周多 ${week - prev}`
+    else if (week < prev) vs = `比上周少 ${prev - week}`
+    else if (week > 0) vs = '和上周差不多'
+    return { ...p, week, prev, vs }
+  })
+  const maxPath = Math.max(1, ...paths.map(p => p.week), 0)
+  const top = [...paths].sort((a, b) => b.week - a.week)[0]
   return {
-    balance: data.level.balance || 0,
-    earned: data.level.earned || 0,
-    streak: data.streak || 0,
-    level: data.level.level || '',
-    days, weekNet, maxAbs, buckets, maxBucket,
-    recent: rows.slice(0, 8),
+    days, weekIn, weekOut, maxAbs, paths, maxPath,
+    quiet: days.filter(d => d.quiet && !d.today),
+    topName: top && top.week ? top.name : '',
+    recent: rows.slice(0, 10),
   }
+})
+const sunshineGaps = computed(() => {
+  const g = []
+  const st = sunshineStats.value
+  if (dailyTodo.value.length) g.push({ id: 'daily', text: `今天还有 ${dailyTodo.value.length} 项打卡没做`, go: '今日推荐' })
+  if (wordDueCard.value && !wordDueCard.value.finished) g.push({ id: 'word-due', text: `单词复习还剩 ${wordDueCard.value.left} 个`, lane: 'due' })
+  if (wordNewCard.value && !wordNewCard.value.finished) g.push({ id: 'word-new', text: `新词还剩 ${wordNewCard.value.left} 个`, lane: 'new' })
+  if (reviewDue.value.length) g.push({ id: 'review', text: `有 ${reviewDue.value.length} 项复习到期了`, go: '今日推荐' })
+  if (studyNext.value.length) g.push({ id: 'study', text: `课文还没往前：${studyNext.value[0].subject_id}`, go: studyNext.value[0].subject_id })
+  if (st.quiet.length) g.push({ id: 'quiet', text: `这周有 ${st.quiet.length} 天没有攒到阳光` })
+  const emptyPath = st.paths.find(p => p.week === 0 && (p.id === 'task' || p.id === 'daily' || p.id === 'word'))
+  if (emptyPath) g.push({ id: 'path-' + emptyPath.id, text: `这周还没有「${emptyPath.name}」的阳光`, go: emptyPath.tab || '今日推荐' })
+  if (st.weekOut > st.weekIn && st.weekOut) g.push({ id: 'spend', text: `这周花掉 ${st.weekOut}，只攒了 ${st.weekIn}` })
+  if (todayPenalty.value) g.push({ id: 'penalty', text: `今天有约定：${todayPenalty.value.reason}` })
+  const seen = new Set()
+  return g.filter(x => (seen.has(x.id) ? false : seen.add(x.id)))
 })
 const sunshineLead = computed(() => {
-  const n = sunshineStats.value.weekNet
-  if (n > 0) return `这几天口袋又多了 ${n} 颗`
-  if (n < 0) return '这几天花掉了一些阳光'
+  const st = sunshineStats.value
+  const gap = sunshineGaps.value[0]
+  if (gap) return gap.text
+  if (st.topName) return `这周阳光主要来自${st.topName}`
   return '去做任务，口袋就会亮起来'
 })
+function goSunGap(g) {
+  if (g.lane) openWordLane(g.lane)
+  else if (g.go) activeTab.value = g.go
+}
 const todayPenalty = computed(() => {
   const today = data.today
   const rows = recentLedger.value || []
@@ -1442,86 +1491,54 @@ function reloadApp() {
           <div class="sun-page">
             <div class="bank-header">
               <div class="bank-title">
-                <Sun class="bank-icon" :size="28" />
+                <TrendingUp class="bank-icon" :size="28" />
                 <div>
                   <h1>我的阳光</h1>
                   <p>{{ sunshineLead }}</p>
                 </div>
               </div>
-              <button type="button" class="bank-interest-badge sun-level-badge" @click="openRankMap">
-                <component :is="rankIcon(data.level.level_icon)" :size="18" />
-                <div class="interest-info">
-                  <strong>{{ data.level.level }}</strong>
-                  <small v-if="data.level.next">再 {{ data.level.next_need - data.level.earned }} 颗到{{ data.level.next }}</small>
-                  <small v-else>已经是最高等级</small>
-                </div>
+            </div>
+
+            <div v-if="sunshineGaps.length" class="sun-gaps">
+              <h3 class="section-title"><Target class="ico" :size="18" /> 还没做好</h3>
+              <button v-for="g in sunshineGaps.slice(0, 5)" :key="g.id" type="button" class="sun-gap" :disabled="!g.go && !g.lane" @click="goSunGap(g)">
+                <span>{{ g.text }}</span>
+                <em v-if="g.go || g.lane">去看看</em>
               </button>
             </div>
-
-            <div class="bank-cards sun-cards">
-              <div class="bank-card bank-card-primary">
-                <div class="card-label">口袋里还有</div>
-                <div class="card-amount">{{ sunshineStats.balance }}</div>
-                <div class="card-icon"><Sun :size="32" /></div>
-              </div>
-              <div class="bank-card bank-card-secondary">
-                <div class="card-label">一共攒过</div>
-                <div class="card-amount">{{ sunshineStats.earned }}</div>
-                <div class="card-icon"><Coins :size="32" /></div>
-              </div>
-              <div class="bank-card bank-card-secondary">
-                <div class="card-label">连续打卡</div>
-                <div class="card-amount">{{ sunshineStats.streak }}<small>天</small></div>
-                <div class="card-icon"><Flame :size="32" /></div>
-              </div>
-            </div>
-
-            <div class="sun-level-card">
-              <div class="goal-header">
-                <Sparkles class="goal-icon" :size="20" />
-                <div class="goal-info">
-                  <strong>{{ data.level.next ? '离下一等级' : '已经满级' }}</strong>
-                  <span>{{ data.level.progress || 0 }}%</span>
-                </div>
-              </div>
-              <div class="goal-bar"><div class="goal-fill" :style="{ width: Math.min(100, data.level.progress || 0) + '%' }"></div></div>
+            <div v-else class="sun-gaps ok">
+              <p>这周该做的都有阳光进账，继续保持。</p>
             </div>
 
             <div class="bank-operations">
-              <div class="op-header"><h3>这周每天</h3></div>
+              <div class="op-header">
+                <h3>这周趋势</h3>
+                <span class="sun-week-sum">攒 {{ sunshineStats.weekIn }} · 花 {{ sunshineStats.weekOut }}</span>
+              </div>
               <div class="sun-week">
-                <div v-for="d in sunshineStats.days" :key="d.date" class="sun-col">
-                  <span class="sun-col-n" :class="{ down: d.net < 0, zero: !d.net }">{{ d.net ? ledgerSign(d.net) : '0' }}</span>
-                  <div class="sun-track">
-                    <i v-if="d.net" :class="{ down: d.net < 0 }" :style="{ height: Math.max(10, Math.round(Math.abs(d.net) / sunshineStats.maxAbs * 68)) + 'px' }"></i>
+                <div v-for="d in sunshineStats.days" :key="d.date" class="sun-col" :class="{ quiet: d.quiet && !d.today }">
+                  <span class="sun-col-n" :class="{ zero: !d.inn }">{{ d.inn ? '+' + d.inn : '0' }}</span>
+                  <div class="sun-track dual">
+                    <i class="in" :style="{ height: Math.max(d.inn ? 8 : 0, Math.round(d.inn / sunshineStats.maxAbs * 68)) + 'px' }"></i>
+                    <i class="out" :style="{ height: Math.max(d.out ? 8 : 0, Math.round(d.out / sunshineStats.maxAbs * 68)) + 'px' }"></i>
                   </div>
                   <span :class="{ today: d.today }">{{ d.wd }}</span>
                 </div>
               </div>
+              <p class="sun-week-legend"><i class="in"></i> 攒到的 <i class="out"></i> 花掉的 · 空柱是那天没攒到</p>
             </div>
 
             <div class="bank-operations">
-              <div class="op-header"><h3>阳光从哪来</h3></div>
-              <div class="sun-src-grid">
-                <div class="sun-src-card" v-for="b in sunshineStats.buckets" :key="b.id">
-                  <i class="sun-ico" :class="b.id"><component :is="b.icon" :size="22" /></i>
-                  <span>{{ b.name }}</span>
-                  <b>+{{ b.sun }}</b>
-                  <div class="goal-bar src-bar"><i class="goal-fill" :style="{ width: Math.round(b.sun / sunshineStats.maxBucket * 100) + '%' }"></i></div>
-                </div>
-              </div>
-            </div>
-
-            <div v-if="sunshineStats.recent.length" class="bank-section">
-              <h3 class="section-title"><ScrollText class="ico" :size="18" /> 刚才发生了什么</h3>
-              <div class="ledger-list">
-                <div v-for="row in sunshineStats.recent" :key="row.id" class="ledger-item">
-                  <div class="ledger-icon" :class="{ down: row.delta < 0 }"><component :is="sunRowIcon(row.reason)" :size="16" /></div>
-                  <div class="ledger-info">
-                    <strong>{{ ledgerLabel(row) }}</strong>
-                    <small>{{ row.date }}</small>
+              <div class="op-header"><h3>五条途径</h3></div>
+              <div class="sun-path-list">
+                <div v-for="p in sunshineStats.paths" :key="p.id" class="sun-path" :class="{ miss: !p.week }">
+                  <i class="sun-ico" :class="p.id"><component :is="p.icon" :size="18" /></i>
+                  <div>
+                    <strong>{{ p.name }}</strong>
+                    <small>{{ p.week ? p.vs : p.hint }}</small>
                   </div>
-                  <div :class="['ledger-amount', row.delta > 0 ? 'plus' : 'minus']">{{ ledgerSign(row.delta) }}</div>
+                  <b>{{ p.week ? '+' + p.week : '0' }}</b>
+                  <div class="goal-bar src-bar"><i class="goal-fill" :style="{ width: Math.round(p.week / sunshineStats.maxPath * 100) + '%' }"></i></div>
                 </div>
               </div>
             </div>
@@ -2385,10 +2402,33 @@ body {
 .sun-log-row b { font-variant-numeric: tabular-nums; color: var(--accent-ink); font-size: 16px; }
 .sun-log-row.down b { color: var(--ink-3); }
 .sun-page { max-width: 720px; padding-bottom: 24px; }
-.sun-cards { grid-template-columns: 1.2fr 1fr 1fr; }
-.sun-level-badge { cursor: pointer; border: none; font-family: inherit; text-align: left; }
-.sun-level-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-xl); padding: 16px; margin-bottom: 16px; box-shadow: var(--shadow-sm); }
-.sun-level-card .goal-bar { margin-top: 12px; }
+.sun-gaps { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+.sun-gaps.ok { background: var(--ok-bg); border-radius: var(--radius-xl); padding: 14px 16px; }
+.sun-gaps.ok p { margin: 0; font-weight: 700; color: var(--ok); }
+.sun-gap { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 12px 14px; font-family: inherit; cursor: pointer; }
+.sun-gap:disabled { cursor: default; }
+.sun-gap span { font-size: 14px; font-weight: 800; color: var(--ink); }
+.sun-gap em { font-style: normal; font-size: 12px; font-weight: 800; color: var(--accent-ink); background: var(--warm); padding: 4px 10px; border-radius: var(--radius-pill); }
+.sun-week-sum { font-size: 12px; font-weight: 800; color: var(--ink-2); }
+.sun-track.dual { display: flex; align-items: flex-end; justify-content: center; gap: 3px; }
+.sun-track.dual i { width: 10px; min-height: 0; border-radius: 5px 5px 0 0; }
+.sun-track.dual i.in, .sun-week-legend i.in { background: var(--accent); }
+.sun-track.dual i.out, .sun-week-legend i.out { background: var(--ink-3); }
+.sun-col.quiet .sun-col-n { color: var(--danger); }
+.sun-week-legend { display: flex; align-items: center; gap: 6px; margin: 10px 0 0; font-size: 12px; font-weight: 700; color: var(--ink-3); }
+.sun-week-legend i { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
+.sun-path-list { display: flex; flex-direction: column; gap: 8px; }
+.sun-path { display: grid; grid-template-columns: 36px 1fr auto; grid-template-areas: "ico name amt" "bar bar bar"; gap: 2px 10px; align-items: center; background: var(--surface-2); border-radius: var(--radius-lg); padding: 12px; }
+.sun-path.miss { opacity: .72; }
+.sun-path .sun-ico { grid-area: ico; margin: 0; width: 32px; height: 32px; }
+.sun-path div:not(.goal-bar) { grid-area: name; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.sun-path strong { font-size: 14px; }
+.sun-path small { font-size: 12px; color: var(--ink-2); font-weight: 700; }
+.sun-path b { grid-area: amt; font-variant-numeric: tabular-nums; }
+.sun-path .src-bar { grid-area: bar; margin-top: 6px; }
+.sun-ico.task { background: var(--brand); }
+.sun-ico.word { background: #7c6cf0; }
+.sun-ico.test { background: #2e9e63; }
 .src-bar { margin-top: 8px; height: 6px; }
 .src-bar .goal-fill { display: block; height: 100%; }
 .ledger-icon.down { background: var(--surface-2); color: var(--ink-3); }
