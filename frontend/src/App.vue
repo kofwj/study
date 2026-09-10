@@ -6,7 +6,7 @@ import { APP_LABEL, APP_REVISION } from './version.js'
 const Admin = defineAsyncComponent(() => import('./Admin.vue'))
 import { SUBJECT_ICONS as ICONS, rankIcon, achIcon } from './icons.js'
 import { mottoFor } from './dailyMottos.js'
-import { Sun, Lock, Gift, Check, TrendingUp, Target, User, ShoppingCart, ScrollText, Medal, ChartColumn, Map, CalendarDays, RefreshCw, PartyPopper, Sparkles, BookOpen, Flame, Volume2, Egg, Sprout, Leaf, Flower, House, Landmark, Coins } from '@lucide/vue'
+import { Sun, Lock, Gift, Check, TrendingUp, Target, User, ShoppingCart, ScrollText, Medal, ChartColumn, Map, CalendarDays, RefreshCw, PartyPopper, Sparkles, BookOpen, Flame, Volume2, Egg, Sprout, Leaf, Flower, House, Landmark, Coins, ArrowDownToLine, ArrowUpFromLine } from '@lucide/vue'
 
 const data = reactive({
   level: { earned: 0, balance: 0, level: '阳光萌新', next: null, next_need: 0, progress: 0 },
@@ -1553,44 +1553,115 @@ function reloadApp() {
             </div>
           </div>
           <template v-else>
-            <h1><Landmark class="ico" :size="20" /> 阳光银行</h1>
-          <p class="sun-lead"><Landmark class="ico" :size="16" /> 把阳光存起来，为一个小心愿慢慢攒。</p>
-          <div v-if="bankData.interest" class="bank-interest-tip">
-            📈 {{ bankData.interest.cycle === 'weekly' ? '每周六' : (bankData.interest.cycle === 'biweekly' ? '每两周六' : '每月底') }}结算利息 · 本期利率 {{ bankData.interest.rate }}% · 起存点 {{ bankData.interest.threshold }} 颗
-          </div>
-          <div class="sun-hero bank-hero">
-            <div class="sun-box main"><i class="sun-ico pocket"><Landmark :size="22" /></i><span>银行里有</span><b>{{ bankData.balance }}</b></div>
-            <div class="sun-box"><i class="sun-ico pile"><Sun :size="20" /></i><span>口袋还剩</span><b>{{ bankData.pocket_balance }}</b></div>
-          </div>
-          <section class="plan-section bank-action">
-            <div class="plan-head"><h2><Landmark class="ico" :size="16" /> 存一笔阳光</h2></div>
-            <div class="bank-amounts">
-              <button v-for="n in [1, 5, 10]" :key="n" type="button" :class="['chip', { on: bankAmount === n }]" @click="bankAmount = n">{{ n }} 颗</button>
-              <input v-model.number="bankAmount" type="number" min="1" inputmode="numeric" aria-label="存取阳光数量" />
+            <div class="bank-page">
+              <div class="bank-header">
+                <div class="bank-title">
+                  <Landmark class="bank-icon" :size="28" />
+                  <div>
+                    <h1>阳光银行</h1>
+                    <p>把阳光存起来，为一个小心愿慢慢攒</p>
+                  </div>
+                </div>
+                <div v-if="bankData.interest" class="bank-interest-badge">
+                  <span class="interest-icon">📈</span>
+                  <div class="interest-info">
+                    <strong>{{ bankData.interest.rate }}% 利息</strong>
+                    <small>{{ bankData.interest.cycle === 'weekly' ? '每周六结算' : (bankData.interest.cycle === 'biweekly' ? '每两周结算' : '每月结算') }}</small>
+                  </div>
+                </div>
+              </div>
+
+              <div class="bank-cards">
+                <div class="bank-card bank-card-primary">
+                  <div class="card-label">银行存款</div>
+                  <div class="card-amount">{{ bankData.balance }}</div>
+                  <div class="card-icon"><Landmark :size="32" /></div>
+                </div>
+                <div class="bank-card bank-card-secondary">
+                  <div class="card-label">口袋余额</div>
+                  <div class="card-amount">{{ bankData.pocket_balance }}</div>
+                  <div class="card-icon"><Sun :size="32" /></div>
+                </div>
+              </div>
+
+              <div v-if="!bankData.goal" class="bank-goal-card bank-goal-empty">
+                <Target class="goal-icon" :size="20" />
+                <p>还没有存钱目标。家长设一个小心愿，就能看着阳光一点点攒起来。</p>
+              </div>
+              <div v-else class="bank-goal-card">
+                <div class="goal-header">
+                  <Target class="goal-icon" :size="20" />
+                  <div class="goal-info">
+                    <strong>{{ bankData.goal.name }}</strong>
+                    <span>{{ bankData.goal.saved }} / {{ bankData.goal.target }} 颗</span>
+                  </div>
+                  <div v-if="bankData.goal.reached" class="goal-badge">已达成</div>
+                </div>
+                <div class="goal-progress">
+                  <div class="goal-bar">
+                    <div class="goal-fill" :style="{ width: Math.min(100, bankData.goal.saved / bankData.goal.target * 100) + '%' }"></div>
+                  </div>
+                  <p class="goal-tip">{{ bankData.goal.reached ? '🎉 攒够啦！可以告诉家长兑现' : `还差 ${bankData.goal.target - bankData.goal.saved} 颗阳光` }}</p>
+                </div>
+              </div>
+
+              <div class="bank-operations">
+                <div class="op-header">
+                  <h3>存取阳光</h3>
+                </div>
+                <div class="op-amounts">
+                  <button v-for="n in [5, 10, 20, 50]" :key="n" type="button" 
+                    :class="['amount-chip', { active: bankAmount === n }]" 
+                    @click="bankAmount = n">{{ n }}</button>
+                  <input v-model.number="bankAmount" type="number" min="1" class="amount-input" placeholder="自定义" />
+                </div>
+                <div class="op-buttons">
+                  <button class="op-btn op-btn-deposit" :disabled="bankBusy || bankData.pocket_balance < bankAmount" @click="bankMove('deposit')">
+                    <span>存入银行</span>
+                    <small>从口袋转入</small>
+                  </button>
+                  <button class="op-btn op-btn-withdraw" :disabled="bankBusy || bankData.balance < bankAmount" @click="bankMove('withdraw')">
+                    <span>申请取出</span>
+                    <small>需家长同意</small>
+                  </button>
+                </div>
+              </div>
+
+              <div v-if="bankData.requests?.length" class="bank-section">
+                <h3 class="section-title"><ScrollText class="ico" :size="18" /> 我的申请</h3>
+                <div class="request-list">
+                  <div v-for="r in bankData.requests" :key="r.id" class="request-item">
+                    <div class="request-info">
+                      <strong>取出 {{ r.amount }} 颗阳光</strong>
+                      <small>{{ String(r.created_at || '').slice(0, 10) }}</small>
+                    </div>
+                    <div :class="['request-status', r.status]">
+                      {{ r.status === 'pending' ? '等待审批' : (r.status === 'approved' ? '已批准' : '已拒绝') }}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div v-if="bankData.ledger?.length" class="bank-section">
+                <h3 class="section-title"><ScrollText class="ico" :size="18" /> 存取记录</h3>
+                <div class="ledger-list">
+                  <div v-for="row in bankData.ledger.slice(0, 10)" :key="row.id" class="ledger-item">
+                    <div class="ledger-icon">
+                      <Landmark v-if="row.reason === 'bank_interest'" :size="18" />
+                      <ArrowDownToLine v-else-if="row.delta > 0" :size="18" />
+                      <ArrowUpFromLine v-else :size="18" />
+                    </div>
+                    <div class="ledger-info">
+                      <strong>{{ row.reason === 'bank_interest' ? '利息到账' : (row.delta > 0 ? '存入银行' : '取出到口袋') }}</strong>
+                      <small>{{ row.date }}</small>
+                    </div>
+                    <div :class="['ledger-amount', row.delta > 0 ? 'plus' : 'minus']">
+                      {{ row.delta > 0 ? '+' : '' }}{{ row.delta }}
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div class="bank-actions">
-              <button class="do" :disabled="bankBusy || bankData.pocket_balance < bankAmount" @click="bankMove('deposit')">存入银行</button>
-              <button class="ghost-s" :disabled="bankBusy || bankData.balance < bankAmount" @click="bankMove('withdraw')">申请取出</button>
-            </div>
-            <p class="dim">存入马上生效；取出要等家长同意。银行里的阳光不能直接去商店兑换。</p>
-          </section>
-          <section class="plan-section">
-            <div class="plan-head"><h2><Target class="ico" :size="16" /> 正在攒</h2></div>
-            <div v-if="bankData.goal" class="bank-goal">
-              <div class="bank-goal-top"><strong>{{ bankData.goal.name }}</strong><b>{{ bankData.goal.saved }} / {{ bankData.goal.target }}</b></div>
-              <div class="next-bar"><i :style="{ width: Math.min(100, bankData.goal.saved / bankData.goal.target * 100) + '%' }"></i></div>
-              <p>{{ bankData.goal.reached ? '攒够啦，可以告诉家长兑现。' : `还差 ${bankData.goal.target - bankData.goal.saved} 颗阳光` }}</p>
-            </div>
-            <div v-else class="empty">家长还没设置目标。</div>
-          </section>
-          <section v-if="bankData.requests?.length" class="plan-section">
-            <div class="plan-head"><h2><ScrollText class="ico" :size="16" /> 我的申请</h2></div>
-            <div v-for="r in bankData.requests" :key="r.id" class="sun-log-row"><div><strong>取出 {{ r.amount }} 颗</strong><small>{{ r.status === 'pending' ? '等家长同意' : (r.status === 'approved' ? '已取出' : '家长拒绝了') }}</small></div></div>
-          </section>
-          <section v-if="bankData.ledger?.length" class="plan-section">
-            <div class="plan-head"><h2><ScrollText class="ico" :size="16" /> 存钱记录</h2></div>
-            <div v-for="row in bankData.ledger.slice(0, 8)" :key="row.id" class="sun-log-row"><i class="sun-log-ico"><Landmark :size="16" /></i><div><strong>{{ row.delta > 0 ? '存入银行' : '取出到口袋' }}</strong><small>{{ row.date }}</small></div><b>{{ row.delta > 0 ? '+' : '' }}{{ row.delta }}</b></div>
-          </section>
           </template>
         </template>
 
@@ -2278,23 +2349,71 @@ body {
 .sun-log-row small { color: var(--ink-3); font-size: 11px; }
 .sun-log-row b { font-variant-numeric: tabular-nums; color: var(--accent-ink); font-size: 16px; }
 .sun-log-row.down b { color: var(--ink-3); }
-.bank-hero { margin-bottom: 18px; }
-.bank-amounts { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
-.bank-amounts .chip { border: 1px solid var(--line); background: var(--surface); color: var(--ink); padding: 8px 16px; border-radius: var(--radius-pill); cursor: pointer; font-family: inherit; font-size: 14px; font-weight: 700; }
-.bank-amounts .chip.on { background: var(--accent); color: #fff; border-color: var(--accent); }
-.bank-amounts input { flex: 1; min-width: 120px; border: 1px solid var(--line); border-radius: var(--radius-md); padding: 8px 12px; font-size: 15px; font-family: inherit; }
-.bank-actions { display: flex; gap: 8px; margin-bottom: 10px; }
-.bank-actions .do { flex: 1; background: var(--accent); color: #fff; border: none; padding: 12px; border-radius: var(--radius-md); font-weight: 800; cursor: pointer; font-family: inherit; font-size: 15px; }
-.bank-actions .do:disabled { opacity: 0.5; cursor: not-allowed; }
-.bank-actions .ghost-s { flex: 1; }
-.bank-goal { background: var(--surface-2); border-radius: var(--radius-md); padding: 14px; }
-.bank-goal-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
-.bank-goal-top strong { font-size: 16px; }
-.bank-goal-top b { font-size: 14px; color: var(--accent-ink); font-variant-numeric: tabular-nums; }
-.bank-goal p { margin: 8px 0 0; font-size: 13px; color: var(--ink-2); }
-.bank-action { margin-bottom: 20px; }
-.bank-admin-hero { margin: 18px 0; }
-.bank-interest-tip { background: var(--warm); border: 1px solid var(--accent); border-radius: var(--radius-md); padding: 10px 14px; margin-bottom: 14px; font-size: 13px; color: var(--ink); font-weight: 700; }
+.bank-page { max-width: 720px; padding-bottom: 24px; }
+.bank-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
+.bank-title { display: flex; align-items: center; gap: 12px; }
+.bank-icon { flex: none; width: 48px; height: 48px; padding: 10px; border-radius: var(--radius-lg); background: linear-gradient(160deg, #ffd27a, var(--accent)); color: var(--accent-ink); box-shadow: var(--shadow-button); }
+.bank-title h1 { margin: 0; font-size: 24px; letter-spacing: -.03em; }
+.bank-title p { margin: 4px 0 0; color: var(--ink-2); font-size: 13px; font-weight: 600; }
+.bank-interest-badge { display: flex; align-items: center; gap: 8px; background: var(--warm); border: 1px solid rgba(245,165,36,.35); border-radius: var(--radius-lg); padding: 8px 12px; }
+.interest-icon { font-size: 16px; }
+.interest-info { display: flex; flex-direction: column; }
+.interest-info strong { font-size: 14px; color: var(--accent-ink); }
+.interest-info small { font-size: 11px; color: var(--ink-2); font-weight: 700; }
+.bank-cards { display: grid; grid-template-columns: 1.2fr 1fr; gap: 12px; margin-bottom: 16px; }
+.bank-card { position: relative; overflow: hidden; border-radius: var(--radius-xl); padding: 18px 18px 16px; min-height: 112px; }
+.bank-card-primary { background: linear-gradient(145deg, #ffd27a 0%, #f5a524 70%, #e08a12 100%); color: var(--accent-ink); box-shadow: var(--shadow-button); }
+.bank-card-secondary { background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow-sm); }
+.card-label { font-size: 12px; font-weight: 800; opacity: .78; }
+.card-amount { margin-top: 6px; font-size: 36px; font-weight: 800; letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
+.card-icon { position: absolute; right: 14px; bottom: 12px; opacity: .22; }
+.bank-goal-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-xl); padding: 16px; margin-bottom: 16px; box-shadow: var(--shadow-sm); }
+.bank-goal-empty { display: flex; align-items: center; gap: 10px; color: var(--ink-2); }
+.bank-goal-empty p { margin: 0; font-size: 13px; font-weight: 700; line-height: 1.5; }
+.goal-header { display: flex; align-items: center; gap: 10px; }
+.goal-icon { flex: none; color: var(--accent-ink); }
+.goal-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.goal-info strong { font-size: 16px; }
+.goal-info span { font-size: 12px; color: var(--ink-2); font-weight: 700; font-variant-numeric: tabular-nums; }
+.goal-badge { flex: none; background: var(--ok-bg); color: var(--ok); font-size: 12px; font-weight: 800; padding: 4px 10px; border-radius: var(--radius-pill); }
+.goal-progress { margin-top: 12px; }
+.goal-bar { height: 10px; background: var(--surface-2); border-radius: var(--radius-pill); overflow: hidden; }
+.goal-fill { height: 100%; background: linear-gradient(90deg, #ffd27a, var(--accent)); border-radius: var(--radius-pill); }
+.goal-tip { margin: 8px 0 0; font-size: 13px; color: var(--ink-2); font-weight: 700; }
+.bank-operations { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-xl); padding: 16px; margin-bottom: 16px; box-shadow: var(--shadow-sm); }
+.op-header h3 { margin: 0 0 12px; font-size: 15px; }
+.op-amounts { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.amount-chip { border: 1px solid var(--line); background: var(--surface-2); color: var(--ink); padding: 8px 14px; border-radius: var(--radius-pill); cursor: pointer; font-family: inherit; font-size: 14px; font-weight: 800; min-width: 52px; }
+.amount-chip.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.amount-input { width: 92px; border: 1px solid var(--line); border-radius: var(--radius-pill); padding: 8px 12px; font-size: 14px; font-family: inherit; font-weight: 700; }
+.op-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.op-btn { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; border: none; border-radius: var(--radius-lg); padding: 14px 16px; cursor: pointer; font-family: inherit; text-align: left; }
+.op-btn span { font-size: 16px; font-weight: 800; }
+.op-btn small { font-size: 12px; font-weight: 700; opacity: .78; }
+.op-btn:disabled { opacity: .45; cursor: not-allowed; }
+.op-btn-deposit { background: var(--accent); color: #fff; box-shadow: var(--shadow-button); }
+.op-btn-withdraw { background: var(--surface-2); color: var(--ink); border: 1px solid var(--line); }
+.bank-section { margin-bottom: 18px; }
+.section-title { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; font-size: 15px; }
+.request-list, .ledger-list { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-xl); padding: 4px 14px; box-shadow: var(--shadow-sm); }
+.request-item, .ledger-item { display: flex; align-items: center; gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--surface-2); }
+.request-item:last-child, .ledger-item:last-child { border-bottom: none; }
+.request-info, .ledger-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.request-info strong, .ledger-info strong { font-size: 14px; }
+.request-info small, .ledger-info small { font-size: 11px; color: var(--ink-3); font-weight: 700; }
+.request-status { font-size: 12px; font-weight: 800; padding: 4px 10px; border-radius: var(--radius-pill); }
+.request-status.pending { background: var(--warm); color: var(--accent-ink); }
+.request-status.approved { background: var(--ok-bg); color: var(--ok); }
+.request-status.rejected { background: var(--danger-bg); color: var(--danger); }
+.ledger-icon { flex: none; width: 32px; height: 32px; border-radius: var(--radius-circle); display: inline-flex; align-items: center; justify-content: center; background: var(--warm); color: var(--accent-ink); }
+.ledger-amount { font-size: 16px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.ledger-amount.plus { color: var(--ok); }
+.ledger-amount.minus { color: var(--ink-3); }
+@media (max-width: 640px) {
+  .bank-cards { grid-template-columns: 1fr 1fr; }
+  .card-amount { font-size: 28px; }
+  .op-buttons { grid-template-columns: 1fr; }
+}
 
 .cta {
   border: none; border-radius: var(--radius-xl); padding: 11px 22px; font-weight: 800; font-size: 15px; cursor: pointer;
