@@ -38,6 +38,7 @@ function stampSW() {
     name: 'stamp-sw',
     closeBundle() {
       const p = resolve(process.cwd(), 'dist/sw.js')
+      if (!existsSync(p)) return
       const src = readFileSync(p, 'utf8')
       if (src.includes('__BUILD__')) {
         writeFileSync(p, src.replace('__BUILD__', String(Date.now())))
