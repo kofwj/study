@@ -1075,7 +1075,9 @@ function ymd(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 const SUN_TRANSFER = new Set(['bank_deposit', 'bank_withdraw', 'bank_interest'])
-const SUN_SPEND = new Set(['redeem', 'penalty', 'cancel', 'test_cancel'])
+const SUN_EARN = new Set(['task', 'daily', 'word_daily', 'word_perfect', 'test', 'box', 'milestone'])
+const SUN_REVERT = new Set(['cancel', 'test_cancel'])
+const SUN_SPEND = new Set(['redeem'])
 const SUN_PATHS = [
   { id: 'task', name: '课文任务', hint: '把今天的课往前推', reasons: ['task'], icon: BookOpen, tab: null },
   { id: 'word', name: '英语单词', hint: '复习或新词还没写完', reasons: ['word_daily', 'word_perfect'], icon: Globe, tab: '英语' },
@@ -1086,8 +1088,9 @@ const SUN_PATHS = [
 const WD = '日一二三四五六'
 function pocketRow(r) { return (r.account || 'pocket') === 'pocket' }
 function sunDelta(r) { return Number(r.delta) || 0 }
-function isSunEarn(r) { return pocketRow(r) && sunDelta(r) > 0 && !SUN_TRANSFER.has(r.reason) && r.reason !== 'penalty_cancel' }
-function isSunSpend(r) { return pocketRow(r) && sunDelta(r) < 0 && SUN_SPEND.has(r.reason) }
+function isSunEarn(r) { return pocketRow(r) && SUN_EARN.has(r.reason) }
+function isSunRevert(r) { return pocketRow(r) && SUN_REVERT.has(r.reason) }
+function isSunSpend(r) { return pocketRow(r) && SUN_SPEND.has(r.reason) && sunDelta(r) < 0 }
 function sunRowIcon(reason) {
   if (['task', 'word_daily', 'word_perfect', 'test'].includes(reason)) return BookOpen
   if (reason === 'daily') return CalendarDays
@@ -1099,6 +1102,9 @@ function sunRowIcon(reason) {
 }
 function sunSum(rows, pred) {
   return rows.filter(pred).reduce((s, r) => s + Math.abs(sunDelta(r)), 0)
+}
+function sunSumSigned(rows, pred) {
+  return rows.filter(pred).reduce((s, r) => s + sunDelta(r), 0)
 }
 const sunshineStats = computed(() => {
   const rows = (recentLedger.value || []).filter(pocketRow)
@@ -1114,7 +1120,7 @@ const sunshineStats = computed(() => {
   const prevSet = new Set(prevDates)
   const days = weekDates.map((iso, i) => {
     const dayRows = rows.filter(r => r.date === iso)
-    const inn = sunSum(dayRows, isSunEarn)
+    const inn = Math.max(0, sunSumSigned(dayRows, r => isSunEarn(r) || isSunRevert(r)))
     const out = sunSum(dayRows, isSunSpend)
     const d = new Date(iso)
     return { date: iso, wd: i === 6 ? '今天' : WD[d.getDay()], inn, out, today: i === 6, quiet: inn === 0 }
@@ -1152,7 +1158,7 @@ const sunshineGaps = computed(() => {
   if (st.quiet.length) g.push({ id: 'quiet', text: `这周有 ${st.quiet.length} 天没有攒到阳光` })
   const emptyPath = st.paths.find(p => p.week === 0 && (p.id === 'task' || p.id === 'daily' || p.id === 'word'))
   if (emptyPath) g.push({ id: 'path-' + emptyPath.id, text: `这周还没有「${emptyPath.name}」的阳光`, go: emptyPath.tab || '今日推荐' })
-  if (st.weekOut > st.weekIn && st.weekOut) g.push({ id: 'spend', text: `这周花掉 ${st.weekOut}，只攒了 ${st.weekIn}` })
+  if (st.weekOut > st.weekIn && st.weekOut) g.push({ id: 'spend', text: `这周兑换了 ${st.weekOut}，只攒了 ${st.weekIn}` })
   if (todayPenalty.value) g.push({ id: 'penalty', text: `今天有约定：${todayPenalty.value.reason}` })
   const seen = new Set()
   return g.filter(x => (seen.has(x.id) ? false : seen.add(x.id)))
@@ -1513,7 +1519,7 @@ function reloadApp() {
             <div class="bank-operations">
               <div class="op-header">
                 <h3>这周趋势</h3>
-                <span class="sun-week-sum">攒 {{ sunshineStats.weekIn }} · 花 {{ sunshineStats.weekOut }}</span>
+                <span class="sun-week-sum">攒 {{ sunshineStats.weekIn }} · 兑换 {{ sunshineStats.weekOut }}</span>
               </div>
               <div class="sun-week">
                 <div v-for="d in sunshineStats.days" :key="d.date" class="sun-col" :class="{ quiet: d.quiet && !d.today }">
@@ -1525,7 +1531,7 @@ function reloadApp() {
                   <span :class="{ today: d.today }">{{ d.wd }}</span>
                 </div>
               </div>
-              <p class="sun-week-legend"><i class="in"></i> 攒到的 <i class="out"></i> 花掉的 · 空柱是那天没攒到</p>
+              <p class="sun-week-legend"><i class="in"></i> 攒到的 <i class="out"></i> 商店兑换</p>
             </div>
 
             <div class="bank-operations">
