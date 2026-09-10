@@ -665,10 +665,7 @@ async function refresh() {
     if (hidden.has(activeTab.value)) activeTab.value = '今日推荐'
     reviewDue.value = (rv || []).filter(x => !hidden.has(x.subject_id))
     recentLedger.value = led || []
-    if (bk) {
-      bankData.value = bk
-      if (!bk.enabled && activeTab.value === 'bank') activeTab.value = '今日推荐'
-    }
+    if (bk) bankData.value = bk
     if (Array.isArray(ach)) achievements.value = ach
     if (wd) applyWordToday(wd)
     err.value = ''
@@ -1164,7 +1161,7 @@ function reloadApp() {
           <button class="nav" :class="{ on: activeTab === 'base' }" @click="activeTab = 'base'">
             <span><House class="ico" :size="15" /> 秘密基地</span>
           </button>
-          <button v-if="bankData.enabled" class="nav" :class="{ on: activeTab === 'bank' }" @click="activeTab = 'bank'">
+          <button class="nav" :class="{ on: activeTab === 'bank' }" @click="activeTab = 'bank'">
             <span><Landmark class="ico" :size="15" /> 阳光银行</span>
           </button>
         </div>
@@ -1334,7 +1331,16 @@ function reloadApp() {
         </template>
 
         <template v-else-if="activeTab === 'bank'">
-          <h1><Landmark class="ico" :size="20" /> 阳光银行</h1>
+          <div v-if="!bankData.enabled" class="coming-page">
+            <div class="coming">
+              <Landmark class="ico" :size="36" />
+              <strong>阳光银行</strong>
+              <em>建设中</em>
+              <p>存折还在印，以后能看阳光怎么攒、怎么花。</p>
+            </div>
+          </div>
+          <template v-else>
+            <h1><Landmark class="ico" :size="20" /> 阳光银行</h1>
           <p class="sun-lead"><Landmark class="ico" :size="16" /> 把阳光存起来，为一个小心愿慢慢攒。</p>
           <div class="sun-hero bank-hero">
             <div class="sun-box main"><i class="sun-ico pocket"><Landmark :size="22" /></i><span>银行里有</span><b>{{ bankData.balance }}</b></div>
@@ -1369,6 +1375,7 @@ function reloadApp() {
             <div class="plan-head"><h2><ScrollText class="ico" :size="16" /> 存钱记录</h2></div>
             <div v-for="row in bankData.ledger.slice(0, 8)" :key="row.id" class="sun-log-row"><i class="sun-log-ico"><Landmark :size="16" /></i><div><strong>{{ row.delta > 0 ? '存入银行' : '取出到口袋' }}</strong><small>{{ row.date }}</small></div><b>{{ row.delta > 0 ? '+' : '' }}{{ row.delta }}</b></div>
           </section>
+          </template>
         </template>
 
         <template v-else>
