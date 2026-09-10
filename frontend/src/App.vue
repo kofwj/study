@@ -1113,6 +1113,12 @@ const sunshineStats = computed(() => {
     recent: rows.slice(0, 8),
   }
 })
+const sunshineLead = computed(() => {
+  const n = sunshineStats.value.weekNet
+  if (n > 0) return `这几天口袋又多了 ${n} 颗`
+  if (n < 0) return '这几天花掉了一些阳光'
+  return '去做任务，口袋就会亮起来'
+})
 const todayPenalty = computed(() => {
   const today = data.today
   const rows = recentLedger.value || []
@@ -1433,64 +1439,93 @@ function reloadApp() {
         </template>
 
         <template v-else-if="activeTab === 'sunshine'">
-          <h1><Sun class="ico" :size="20" /> 我的阳光</h1>
-          <p class="sun-lead">
-            <PartyPopper v-if="sunshineStats.weekNet > 0" class="ico" :size="16" />
-            <Sparkles v-else class="ico" :size="16" />
-            {{ sunshineStats.weekNet > 0 ? '这几天口袋又多了 ' + sunshineStats.weekNet + ' 颗！' : (sunshineStats.weekNet < 0 ? '这几天花掉了一些阳光。' : '这几天阳光没怎么动，去做任务就会亮起来。') }}
-          </p>
-          <div class="sun-hero">
-            <div class="sun-box main">
-              <i class="sun-ico pocket"><Sun :size="22" /></i>
-              <span>口袋里还有</span>
-              <b>{{ sunshineStats.balance }}</b>
+          <div class="sun-page">
+            <div class="bank-header">
+              <div class="bank-title">
+                <Sun class="bank-icon" :size="28" />
+                <div>
+                  <h1>我的阳光</h1>
+                  <p>{{ sunshineLead }}</p>
+                </div>
+              </div>
+              <button type="button" class="bank-interest-badge sun-level-badge" @click="openRankMap">
+                <component :is="rankIcon(data.level.level_icon)" :size="18" />
+                <div class="interest-info">
+                  <strong>{{ data.level.level }}</strong>
+                  <small v-if="data.level.next">再 {{ data.level.next_need - data.level.earned }} 颗到{{ data.level.next }}</small>
+                  <small v-else>已经是最高等级</small>
+                </div>
+              </button>
             </div>
-            <div class="sun-box">
-              <i class="sun-ico pile"><Coins :size="20" /></i>
-              <span>一共攒过</span>
-              <b>{{ sunshineStats.earned }}</b>
+
+            <div class="bank-cards sun-cards">
+              <div class="bank-card bank-card-primary">
+                <div class="card-label">口袋里还有</div>
+                <div class="card-amount">{{ sunshineStats.balance }}</div>
+                <div class="card-icon"><Sun :size="32" /></div>
+              </div>
+              <div class="bank-card bank-card-secondary">
+                <div class="card-label">一共攒过</div>
+                <div class="card-amount">{{ sunshineStats.earned }}</div>
+                <div class="card-icon"><Coins :size="32" /></div>
+              </div>
+              <div class="bank-card bank-card-secondary">
+                <div class="card-label">连续打卡</div>
+                <div class="card-amount">{{ sunshineStats.streak }}<small>天</small></div>
+                <div class="card-icon"><Flame :size="32" /></div>
+              </div>
             </div>
-            <div class="sun-box">
-              <i class="sun-ico fire"><Flame :size="20" /></i>
-              <span>连续打卡</span>
-              <b>{{ sunshineStats.streak }}<small>天</small></b>
+
+            <div class="sun-level-card">
+              <div class="goal-header">
+                <Sparkles class="goal-icon" :size="20" />
+                <div class="goal-info">
+                  <strong>{{ data.level.next ? '离下一等级' : '已经满级' }}</strong>
+                  <span>{{ data.level.progress || 0 }}%</span>
+                </div>
+              </div>
+              <div class="goal-bar"><div class="goal-fill" :style="{ width: Math.min(100, data.level.progress || 0) + '%' }"></div></div>
+            </div>
+
+            <div class="bank-operations">
+              <div class="op-header"><h3>这周每天</h3></div>
+              <div class="sun-week">
+                <div v-for="d in sunshineStats.days" :key="d.date" class="sun-col">
+                  <span class="sun-col-n" :class="{ down: d.net < 0, zero: !d.net }">{{ d.net ? ledgerSign(d.net) : '0' }}</span>
+                  <div class="sun-track">
+                    <i v-if="d.net" :class="{ down: d.net < 0 }" :style="{ height: Math.max(10, Math.round(Math.abs(d.net) / sunshineStats.maxAbs * 68)) + 'px' }"></i>
+                  </div>
+                  <span :class="{ today: d.today }">{{ d.wd }}</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="bank-operations">
+              <div class="op-header"><h3>阳光从哪来</h3></div>
+              <div class="sun-src-grid">
+                <div class="sun-src-card" v-for="b in sunshineStats.buckets" :key="b.id">
+                  <i class="sun-ico" :class="b.id"><component :is="b.icon" :size="22" /></i>
+                  <span>{{ b.name }}</span>
+                  <b>+{{ b.sun }}</b>
+                  <div class="goal-bar src-bar"><i class="goal-fill" :style="{ width: Math.round(b.sun / sunshineStats.maxBucket * 100) + '%' }"></i></div>
+                </div>
+              </div>
+            </div>
+
+            <div v-if="sunshineStats.recent.length" class="bank-section">
+              <h3 class="section-title"><ScrollText class="ico" :size="18" /> 刚才发生了什么</h3>
+              <div class="ledger-list">
+                <div v-for="row in sunshineStats.recent" :key="row.id" class="ledger-item">
+                  <div class="ledger-icon" :class="{ down: row.delta < 0 }"><component :is="sunRowIcon(row.reason)" :size="16" /></div>
+                  <div class="ledger-info">
+                    <strong>{{ ledgerLabel(row) }}</strong>
+                    <small>{{ row.date }}</small>
+                  </div>
+                  <div :class="['ledger-amount', row.delta > 0 ? 'plus' : 'minus']">{{ ledgerSign(row.delta) }}</div>
+                </div>
+              </div>
             </div>
           </div>
-          <section class="plan-section">
-            <div class="plan-head"><h2><CalendarDays class="ico" :size="16" /> 这周每天</h2></div>
-            <div class="sun-week">
-              <div v-for="d in sunshineStats.days" :key="d.date" class="sun-col">
-                <span class="sun-col-n" :class="{ down: d.net < 0, zero: !d.net }">{{ d.net ? ledgerSign(d.net) : '0' }}</span>
-                <div class="sun-track">
-                  <i v-if="d.net" :class="{ down: d.net < 0 }" :style="{ height: Math.max(10, Math.round(Math.abs(d.net) / sunshineStats.maxAbs * 68)) + 'px' }"></i>
-                </div>
-                <span :class="{ today: d.today }">{{ d.wd }}</span>
-              </div>
-            </div>
-          </section>
-          <section class="plan-section">
-            <div class="plan-head"><h2><Sparkles class="ico" :size="16" /> 阳光从哪来</h2></div>
-            <div class="sun-src-grid">
-              <div class="sun-src-card" v-for="b in sunshineStats.buckets" :key="b.id">
-                <i class="sun-ico" :class="b.id"><component :is="b.icon" :size="22" /></i>
-                <span>{{ b.name }}</span>
-                <b>+{{ b.sun }}</b>
-              </div>
-            </div>
-          </section>
-          <section v-if="sunshineStats.recent.length" class="plan-section">
-            <div class="plan-head"><h2><ScrollText class="ico" :size="16" /> 刚才发生了什么</h2></div>
-            <div class="sun-log">
-              <div v-for="row in sunshineStats.recent" :key="row.id" class="sun-log-row" :class="{ down: row.delta < 0 }">
-                <i class="sun-log-ico" :class="{ down: row.delta < 0 }"><component :is="sunRowIcon(row.reason)" :size="16" /></i>
-                <div>
-                  <strong>{{ ledgerLabel(row) }}</strong>
-                  <small>{{ row.date }}</small>
-                </div>
-                <b>{{ ledgerSign(row.delta) }}</b>
-              </div>
-            </div>
-          </section>
         </template>
 
         <template v-else-if="activeTab === 'base'">
@@ -2349,6 +2384,15 @@ body {
 .sun-log-row small { color: var(--ink-3); font-size: 11px; }
 .sun-log-row b { font-variant-numeric: tabular-nums; color: var(--accent-ink); font-size: 16px; }
 .sun-log-row.down b { color: var(--ink-3); }
+.sun-page { max-width: 720px; padding-bottom: 24px; }
+.sun-cards { grid-template-columns: 1.2fr 1fr 1fr; }
+.sun-level-badge { cursor: pointer; border: none; font-family: inherit; text-align: left; }
+.sun-level-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-xl); padding: 16px; margin-bottom: 16px; box-shadow: var(--shadow-sm); }
+.sun-level-card .goal-bar { margin-top: 12px; }
+.src-bar { margin-top: 8px; height: 6px; }
+.src-bar .goal-fill { display: block; height: 100%; }
+.ledger-icon.down { background: var(--surface-2); color: var(--ink-3); }
+.card-amount small { font-size: 14px; margin-left: 4px; font-weight: 800; color: inherit; opacity: .7; }
 .bank-page { max-width: 720px; padding-bottom: 24px; }
 .bank-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
 .bank-title { display: flex; align-items: center; gap: 12px; }
@@ -2842,6 +2886,8 @@ body {
   .side::-webkit-scrollbar { display: none; }
   .side-split { width: 1px; height: 28px; align-self: center; margin: 0 2px; }
   .sun-hero { grid-template-columns: 1fr 1fr; }
+  .sun-cards { grid-template-columns: 1fr 1fr; }
+  .sun-cards .bank-card-primary { grid-column: 1 / -1; }
   .sun-src-grid { grid-template-columns: 1fr; }
   .side-sunshine, .side-split-sun { display: none; }
   .nav-group {
