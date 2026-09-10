@@ -36,6 +36,8 @@ jobs:
           cd frontend
           echo "📦 安装依赖..."
           npm ci --verbose
+          echo "🔧 确保 Rollup 原生模块正确安装..."
+          npm install --no-save @rollup/rollup-linux-x64-gnu
           echo "🔨 开始构建..."
           npm run build
           echo "✅ 构建完成，检查输出..."
