@@ -163,11 +163,32 @@
     .big .blush { width: 23px; height: 14px; }
     .big.feat-raindrop .body { inset: 4px 24px 10px; }
     .note { max-width: 700px; margin-top: 26px; color: var(--ink-3); font-size: 12px; line-height: 1.55; }
+    .portrait { width: 96px; height: 96px; object-fit: contain; display: block; margin: 0 auto; }
+    .portrait.big { width: 132px; height: 132px; }
+    .portrait.ghost { filter: grayscale(1) contrast(.6); opacity: .42; }
   </style>
 </head>
 <body>
-  <h1>阳光图鉴预览 · 可爱重构 v3</h1>
-  <p class="lead">这版不再是「同一个圆脸换配件」，而是 12 个有轮廓、有小动作、有故事的小伙伴。纯 CSS：团子身、椭圆圆角、渐变高光、同色描边、0 模糊阴影和伪元素。先看设计，尚未接入 App。</p>
+  <h1>阳光图鉴预览 · 定稿立绘</h1>
+  <p class="lead">下面是入库的 PNG（透明底 256px，路径 <code>/sprites/{id}.png</code>）。CSS 团子留在页面下半，只作降级草稿。尚未接入 App。</p>
+
+  <section class="series"><h2>定稿 PNG · 日光 / 绿意 / 天气</h2><div class="grid" id="png"></div></section>
+  <section class="series">
+    <h2>开箱那一下（PNG）</h2>
+    <div class="row">
+      <div class="hatch">
+        <img class="portrait big" src="./sprites/sp-rain.png" alt="滴滴" />
+        <p>遇到了滴滴</p>
+      </div>
+      <div class="hatch">
+        <img class="portrait big ghost" src="./sprites/sp-rain.png" alt="" />
+        <p style="color:#9c8d7d">还没遇到 · 剪影</p>
+      </div>
+    </div>
+  </section>
+
+  <h1 style="margin-top:36px">CSS 草稿（不再当正脸）</h1>
+  <p class="lead">同一套 12 只的纯 CSS 轮廓，给没有图时的降级参考。</p>
 
   <section class="series"><h2>日光 · 会把温暖带过来</h2><div class="grid" id="sun"></div></section>
   <section class="series"><h2>绿意 · 软乎乎的自然朋友</h2><div class="grid" id="leaf"></div></section>
@@ -196,21 +217,26 @@
 
   <script>
     const DEFS = [
-      { series: "sun", name: "暖暖", c: "#f5a524", feature: "sunbun", flavor: "晒饱了就把光分给别人" },
-      { series: "sun", name: "霞霞", c: "#e07a5f", feature: "sleeper", flavor: "抱着云朵也能睡个好觉" },
-      { series: "sun", name: "籽籽", c: "#e8c547", feature: "seedling", flavor: "把小秘密种进土里" },
-      { series: "sun", name: "虹虹", c: "#8172df", feature: "rainbow", flavor: "喜欢把不同颜色叫作朋友" },
-      { series: "leaf", name: "叶叶", c: "#3a9b59", feature: "leafcloak", flavor: "躲在书页边上偷偷探头" },
-      { series: "leaf", name: "苔苔", c: "#7dba6a", feature: "mushroom", flavor: "安静的角落最适合讲故事" },
-      { series: "leaf", name: "铃铃", c: "#5aae8a", feature: "windbell", flavor: "风一吹就叮铃一声" },
-      { series: "leaf", name: "果果", c: "#d66b4e", feature: "acorn", flavor: "抱紧自己的圆肚子" },
-      { series: "sky", name: "朵朵", c: "#d5dde6", feature: "cloudpuff", flavor: "在天上慢慢飘，不赶时间" },
-      { series: "sky", name: "滴滴", c: "#3bb0e6", feature: "raindrop", flavor: "喜欢敲窗户打节拍" },
-      { series: "sky", name: "弯弯", c: "#71849e", feature: "moonboat", flavor: "把每一句晚安送到家" },
-      { series: "sky", name: "闪闪", c: "#5c6879", feature: "sparkstar", flavor: "发现别人做得好就打气" },
+      { id: "sp-sun", series: "sun", name: "暖暖", c: "#f5a524", feature: "sunbun", flavor: "晒饱了就把光分给别人" },
+      { id: "sp-dusk", series: "sun", name: "霞霞", c: "#e07a5f", feature: "sleeper", flavor: "抱着云朵也能睡个好觉" },
+      { id: "sp-seed", series: "sun", name: "籽籽", c: "#e8c547", feature: "seedling", flavor: "把小秘密种进土里" },
+      { id: "sp-iris", series: "sun", name: "虹虹", c: "#8172df", feature: "rainbow", flavor: "喜欢把不同颜色叫作朋友" },
+      { id: "sp-leaf", series: "leaf", name: "叶叶", c: "#3a9b59", feature: "leafcloak", flavor: "躲在书页边上偷偷探头" },
+      { id: "sp-moss", series: "leaf", name: "苔苔", c: "#7dba6a", feature: "mushroom", flavor: "安静的角落最适合讲故事" },
+      { id: "sp-chime", series: "leaf", name: "铃铃", c: "#5aae8a", feature: "windbell", flavor: "风一吹就叮铃一声" },
+      { id: "sp-fruit", series: "leaf", name: "果果", c: "#d66b4e", feature: "acorn", flavor: "抱紧自己的圆肚子" },
+      { id: "sp-cloud", series: "sky", name: "朵朵", c: "#d5dde6", feature: "cloudpuff", flavor: "在天上慢慢飘，不赶时间" },
+      { id: "sp-rain", series: "sky", name: "滴滴", c: "#3bb0e6", feature: "raindrop", flavor: "喜欢敲窗户打节拍" },
+      { id: "sp-moon", series: "sky", name: "弯弯", c: "#71849e", feature: "moonboat", flavor: "把每一句晚安送到家" },
+      { id: "sp-star", series: "sky", name: "闪闪", c: "#5c6879", feature: "sparkstar", flavor: "发现别人做得好就打气" },
     ]
     const parts = `<i class="acc"></i><i class="body"></i><i class="blush l"></i><i class="blush r"></i><i class="eye l"><i class="pupil"></i><i class="glint"></i></i><i class="eye r"><i class="pupil"></i><i class="glint"></i></i><i class="mouth"></i><i class="foot l"></i><i class="foot r"></i>`
+    const pngRoot = document.getElementById("png")
     for (const d of DEFS) {
+      const png = document.createElement("article")
+      png.className = "card"
+      png.innerHTML = `<div class="stage"><img class="portrait" src="./sprites/${d.id}.png" alt="${d.name}" /></div><b>${d.name}</b><small>${d.id}.png</small>`
+      pngRoot.appendChild(png)
       const el = document.createElement("article")
       el.className = "card"
       el.innerHTML = `<div class="stage"><span class="buddy feat-${d.feature}" style="--c:${d.c}">${parts}</span></div><b>${d.name}</b><small>${d.flavor}</small>`

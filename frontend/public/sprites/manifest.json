@@ -1,0 +1,20 @@
+{
+  "size": 256,
+  "format": "webp",
+  "background": "transparent",
+  "sheet": "docs/sprites/sheet.png",
+  "items": [
+    {"id": "sp-sun",   "name": "暖暖", "series": "sun",  "series_name": "日光", "feature": "sunbun",    "tint": "#f5a524", "file": "sp-sun.webp"},
+    {"id": "sp-dusk",  "name": "霞霞", "series": "sun",  "series_name": "日光", "feature": "sleeper",   "tint": "#e07a5f", "file": "sp-dusk.webp"},
+    {"id": "sp-seed",  "name": "籽籽", "series": "sun",  "series_name": "日光", "feature": "seedling",  "tint": "#e8c547", "file": "sp-seed.webp"},
+    {"id": "sp-iris",  "name": "虹虹", "series": "sun",  "series_name": "日光", "feature": "rainbow",   "tint": "#7c6cf0", "file": "sp-iris.webp"},
+    {"id": "sp-leaf",  "name": "叶叶", "series": "leaf", "series_name": "绿意", "feature": "leafcloak", "tint": "#2e8f55", "file": "sp-leaf.webp"},
+    {"id": "sp-moss",  "name": "苔苔", "series": "leaf", "series_name": "绿意", "feature": "mushroom",  "tint": "#7dba6a", "file": "sp-moss.webp"},
+    {"id": "sp-chime", "name": "铃铃", "series": "leaf", "series_name": "绿意", "feature": "windbell",  "tint": "#5aae8a", "file": "sp-chime.webp"},
+    {"id": "sp-fruit", "name": "果果", "series": "leaf", "series_name": "绿意", "feature": "acorn",     "tint": "#c46b4a", "file": "sp-fruit.webp"},
+    {"id": "sp-cloud", "name": "朵朵", "series": "sky",  "series_name": "天气", "feature": "cloudpuff", "tint": "#c5ced6", "file": "sp-cloud.webp"},
+    {"id": "sp-rain",  "name": "滴滴", "series": "sky",  "series_name": "天气", "feature": "raindrop",  "tint": "#2fa6de", "file": "sp-rain.webp"},
+    {"id": "sp-moon",  "name": "弯弯", "series": "sky",  "series_name": "天气", "feature": "moonboat",  "tint": "#6b7c93", "file": "sp-moon.webp"},
+    {"id": "sp-star",  "name": "闪闪", "series": "sky",  "series_name": "天气", "feature": "sparkstar", "tint": "#4a5560", "file": "sp-star.webp"}
+  ]
+}

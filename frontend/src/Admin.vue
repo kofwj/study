@@ -4,7 +4,7 @@ import { api, setSelectedKid } from './api.js'
 import { APP_LABEL, APP_REVISION } from './version.js'
 import { rankIcon } from './icons.js'
 import { tagHelp } from './tagHelp.js'
-import { Eye, Baby, Users, KeyRound, Lock, Store, Trophy, ClipboardCheck, BookOpen, RefreshCw, MapPinned, FileText, Sun, Star, Check, ArrowLeft, BookMarked, Globe, Landmark } from '@lucide/vue'
+import { Eye, Baby, Users, KeyRound, Lock, Store, Trophy, ClipboardCheck, BookOpen, RefreshCw, MapPinned, FileText, Sun, Star, Check, ArrowLeft, BookMarked, Globe, Landmark, Sparkles } from '@lucide/vue'
 
 const props = defineProps({ recoveryCode: { type: String, default: '' } })
 const emit = defineEmits(['exit', 'switched', 'consumed-recovery'])
@@ -41,6 +41,7 @@ const SECTIONS = [
     { id: 'unit-task', icon: BookOpen, label: '任务与考点' },
     { id: 'daily', icon: RefreshCw, label: '每日任务' },
     { id: 'words', icon: Globe, label: '英语单词' },
+    { id: 'sprites', icon: Sparkles, label: '阳光图鉴' },
     { id: 'cursor', icon: MapPinned, label: '已学到' },
     { id: 'test', icon: FileText, label: '单元测试' },
   ] },
@@ -74,6 +75,7 @@ const hiddenSubjects = ref([])
 const bankData = ref({ enabled: false, balance: 0, pocket_balance: 0, goal: null, requests: [], ledger: [] })
 const bankRequests = ref([])
 const bankGoal = reactive({ name: '', target: 100 })
+const bankInterest = reactive({ enabled: false, cycle: 'weekly', rate: 5.0, threshold: 20, last_settle: '' })
 const bankBusy = ref(false)
 const SUBJECT_ORDER = ['语文', '数学', '英语', '科学', '道法', '体育', '音美', '综合', '围棋']
 const redemptions = ref([])
@@ -185,14 +187,16 @@ async function load() {
   reviewDue.value = rv || []
   await loadWords()
   await loadBank()
+  await loadSpritesCfg()
 }
 
 async function loadBank() {
   if (!selectedKid.value) return
   try {
-    const [b, rs] = await Promise.all([api.admin.bank(), api.admin.bankRequests()])
+    const [b, rs, ic] = await Promise.all([api.admin.bank(), api.admin.bankRequests(), api.admin.bankInterestConfig()])
     bankData.value = b || bankData.value
     bankRequests.value = rs || []
+    if (ic) Object.assign(bankInterest, ic)
     if (bankData.value.goal) Object.assign(bankGoal, { name: bankData.value.goal.name, target: bankData.value.goal.target })
     else Object.assign(bankGoal, { name: '', target: 100 })
   } catch (e) { showToast(e.message) }
@@ -218,6 +222,40 @@ async function bankGoalDeliver() {
 async function handleBankRequest(id, action) {
   try { await (action === 'approve' ? api.admin.approveBankRequest(id) : api.admin.rejectBankRequest(id)); showToast(action === 'approve' ? '已批准取出' : '已拒绝申请'); await loadBank() }
   catch (e) { showToast(e.message) }
+}
+async function saveBankInterest() {
+  bankBusy.value = true
+  try {
+    const r = await api.admin.saveBankInterestConfig({ enabled: bankInterest.enabled, cycle: bankInterest.cycle, rate: bankInterest.rate, threshold: bankInterest.threshold })
+    Object.assign(bankInterest, r)
+    showToast('利息配置已保存')
+  } catch (e) { showToast(e.message) }
+  finally { bankBusy.value = false }
+}
+async function settleInterestNow() {
+  try {
+    const r = await api.admin.settleInterestNow()
+    showToast(r.settled ? `已结算利息 ${r.interest} 颗` : '暂无需结算')
+    await loadBank()
+  } catch (e) { showToast(e.message) }
+}
+
+const spriteCfg = reactive({ enabled: true, base_enabled: true })
+async function loadSpritesCfg() {
+  if (!selectedKid.value) return
+  try {
+    const cfg = await api.admin.spritesConfig()
+    spriteCfg.enabled = !!cfg.enabled
+    spriteCfg.base_enabled = !!cfg.base_enabled
+  } catch (e) { showToast(e.message) }
+}
+async function saveSpritesCfg(patch) {
+  try {
+    const cfg = await api.admin.setSpritesConfig(patch)
+    spriteCfg.enabled = !!cfg.enabled
+    spriteCfg.base_enabled = !!cfg.base_enabled
+    showToast('已保存')
+  } catch (e) { showToast(e.message); await loadSpritesCfg() }
 }
 
 const wordCfg = reactive({
@@ -1214,6 +1252,40 @@ onMounted(load)
         <div class="apv-right"><span v-if="r.status !== 'pending'" class="st delivered">{{ r.status === 'approved' ? '已批准' : '已拒绝' }}</span><template v-else><button class="ok" @click="handleBankRequest(r.id, 'approve')">批准</button><button class="del" @click="handleBankRequest(r.id, 'reject')">拒绝</button></template></div>
       </div>
       <p class="dim mt14">银行里的阳光不能用于兑换商店；取出必须由家长批准。</p>
+      
+      <h4 class="w-h">利息设置</h4>
+      <div class="lock-row">
+        <span class="badge">利息开关</span>
+        <span class="grow">关闭后不再结算利息</span>
+        <button type="button" :class="['toggle', { on: bankInterest.enabled }]" @click="bankInterest.enabled = !bankInterest.enabled; saveBankInterest()" :disabled="bankBusy">{{ bankInterest.enabled ? '开' : '关' }}</button>
+      </div>
+      <div v-if="bankInterest.enabled" class="frm-row">
+        <label class="fld"><span>结算周期</span>
+          <select v-model="bankInterest.cycle" @change="saveBankInterest">
+            <option value="weekly">每周六</option>
+            <option value="biweekly">每两周六</option>
+            <option value="monthly">每月最后一天</option>
+          </select>
+        </label>
+        <label class="fld"><span>利率 (%)</span>
+          <input v-model.number="bankInterest.rate" type="number" min="0" max="10" step="0.5" @blur="saveBankInterest" />
+        </label>
+        <label class="fld"><span>起存点</span>
+          <select v-model.number="bankInterest.threshold" @change="saveBankInterest">
+            <option :value="0">不限</option>
+            <option :value="10">10 颗</option>
+            <option :value="20">20 颗</option>
+            <option :value="50">50 颗</option>
+            <option :value="100">100 颗</option>
+          </select>
+        </label>
+      </div>
+      <div v-if="bankInterest.enabled" class="dim">
+        <p>💡 利息是什么？银行为「存在这里的阳光」付一点报酬，鼓励孩子延迟满足、积累财富。</p>
+        <p>利率不宜过高，否则孩子可能失去做任务的动力。建议低年级 3%–5%、高年级 5%–8%。</p>
+        <p v-if="bankInterest.last_settle">上次结算：{{ bankInterest.last_settle }}</p>
+        <button class="ghost-s mt8" @click="settleInterestNow">立即结算（测试）</button>
+      </div>
     </section>
 
     <!-- 扣分 -->
@@ -1466,6 +1538,21 @@ onMounted(load)
           </div>
           <button class="ghost-s" @click="addMetric(d.metrics)">＋加破纪录指标</button>
         </template>
+      </div>
+    </section>
+
+    <section v-if="section === 'sprites'" class="a-card enter">
+      <h3>阳光图鉴</h3>
+      <p class="dim">给 {{ currentKidName || '当前孩子' }} 用。关掉图鉴后，连击宝箱只给阳光；秘密基地仍在，孩子端显示「建设中」。</p>
+      <div class="lock-row mt14">
+        <span class="badge">阳光图鉴</span>
+        <span class="grow">连击宝箱会孵出阳光精灵，进图鉴。关掉则宝箱只给阳光。</span>
+        <button type="button" :class="['toggle', { on: spriteCfg.enabled }]" @click="saveSpritesCfg({ enabled: !spriteCfg.enabled })">{{ spriteCfg.enabled ? '开' : '关' }}</button>
+      </div>
+      <div class="lock-row">
+        <span class="badge">秘密基地</span>
+        <span class="grow">精灵住进天台/树屋/云上，星尘可以买小玩具。关掉则图鉴只显示格子。</span>
+        <button type="button" :class="['toggle', { on: spriteCfg.base_enabled }]" @click="saveSpritesCfg({ base_enabled: !spriteCfg.base_enabled })">{{ spriteCfg.base_enabled ? '开' : '关' }}</button>
       </div>
     </section>
 

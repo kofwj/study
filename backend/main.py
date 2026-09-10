@@ -21,7 +21,10 @@ from fastapi.staticfiles import StaticFiles
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 from pydantic import BaseModel, ConfigDict
 
+import sqlite3
+
 import db
+import sprites as spritemod
 import words as wordmod
 from version import app_label, app_revision, app_version
 
@@ -284,6 +287,7 @@ def _sun(n, lo=0):
 
 def earned(c, kid=None):
     # 累计获得：赚/取消都算（正负抵消）；兑换和扣分/冲正都不算 → 消费不掉级、扣分不掉级
+    # 2.1 若有 reason='sprite' 阳光换蛋，必须加入排除和 fingerprints.earned_sum
     return c.execute(
         "SELECT COALESCE(SUM(delta),0) FROM ledger WHERE reason NOT IN ('redeem','penalty','penalty_cancel') AND kid_id=?",
         (kid or kid_id(),)).fetchone()[0]
@@ -919,8 +923,15 @@ def mark_achievement_seen(ach_id: str):
     return {"ok": True}
 
 
-# 连击宝箱：连续打卡每 3 天解锁一个，随机 +3~+10（期望 ≈ 每天 +2，防通胀）
+# 连击宝箱：连续打卡每 3 天解锁一个。图鉴开：+1~3 阳光 + 精灵；关：保持 +3~10。
 BOX_INTERVAL = 3
+
+
+def _is_unique_conflict(exc) -> bool:
+    if isinstance(exc, sqlite3.IntegrityError):
+        return True
+    name = type(exc).__name__.lower()
+    return "integrity" in name or "unique" in name
 
 
 @app.get("/api/boxes")
@@ -939,20 +950,33 @@ def open_box():
     try:
         _begin_write(c)
         kid = kid_id()
+        fam = _fam.get() or ""
         s = streak(c, kid)
         opened = int(db.get_kid_setting(c, kid, "box_opened", "0") or 0)
         nxt = opened + 1
         if s // BOX_INTERVAL < nxt:
             raise HTTPException(409, "还没有可开的宝箱，再坚持坚持吧！")
-        bonus = random.randint(3, 10)
+        db.set_kid_setting(c, kid, "box_opened", str(nxt))
+        extra = {}
+        if spritemod.enabled(c, kid):
+            bonus = random.randint(1, 3)
+            extra = spritemod.grant_from_box(c, kid, fam, f"box-{nxt}")
+        else:
+            bonus = random.randint(3, 10)
         lid = insert_ledger(c, db.today(), bonus, "box", f"box-{nxt}", "连击宝箱", kid=kid)
         if lid is None:
-            raise HTTPException(409, "这个宝箱已经开过啦")
-        db.set_kid_setting(c, kid, "box_opened", str(nxt))
+            raise HTTPException(409, "这箱已经开过啦")
         c.commit()
-        return {"delta": bonus, "streak": streak(c, kid), "level": level_info(c)}
-    except Exception:
+        out = {"delta": bonus, "streak": streak(c, kid), "level": level_info(c)}
+        out.update(extra)
+        return out
+    except HTTPException:
         _rollback(c)
+        raise
+    except Exception as e:
+        _rollback(c)
+        if _is_unique_conflict(e):
+            raise HTTPException(409, "这箱已经开过啦")
         raise
     finally:
         c.close()
@@ -1263,6 +1287,105 @@ def companion_ack_evolve():
     return out
 
 
+class SpriteProfileIn(BaseModel):
+    nickname: str = ""
+    flavor: str = ""
+
+
+class SpriteConfigIn(BaseModel):
+    enabled: Optional[bool] = None
+    base_enabled: Optional[bool] = None
+
+
+def _sprite_write(fn, *args):
+    c = get_conn()
+    try:
+        out = fn(c, *args)
+        c.commit()
+        return out
+    except spritemod.SpriteError as e:
+        _rollback(c)
+        raise HTTPException(e.status, e.detail)
+    except Exception:
+        _rollback(c)
+        raise
+    finally:
+        c.close()
+
+
+@app.get("/api/sprites")
+def sprites_get():
+    c = get_conn()
+    kid = kid_id()
+    fam = _fam.get() or ""
+    yday = (datetime.now().date() - timedelta(days=1)).isoformat()
+    out = spritemod.catalog(
+        c, kid, fam,
+        review_clear=not _due_queue(c, kid),
+        review_clear_yesterday=not _due_queue(c, kid, yday),
+        streak=streak(c, kid),
+    )
+    c.close()
+    return out
+
+
+@app.post("/api/sprites/{def_id}/profile")
+def sprites_profile(def_id: str, b: SpriteProfileIn):
+    return _sprite_write(spritemod.set_profile, kid_id(), def_id, b.nickname, b.flavor)
+
+
+@app.post("/api/sprites/{def_id}/star")
+def sprites_star(def_id: str):
+    return _sprite_write(spritemod.add_star, kid_id(), def_id)
+
+
+@app.post("/api/sprites/base/{item_id}/buy")
+def sprites_buy(item_id: str):
+    return _sprite_write(spritemod.buy_base_item, kid_id(), item_id)
+
+
+@app.post("/api/sprites/{def_id}/duty")
+def sprites_duty(def_id: str):
+    return _sprite_write(spritemod.set_on_duty, kid_id(), def_id)
+
+
+@app.post("/api/sprites/duty-clear")
+def sprites_duty_clear():
+    return _sprite_write(spritemod.set_on_duty, kid_id(), "")
+
+
+@app.post("/api/sprites/morning-ack")
+def sprites_morning_ack():
+    return _sprite_write(spritemod.ack_morning, kid_id())
+
+
+@app.get("/api/admin/sprites-config", dependencies=[Depends(require_parent)])
+def admin_sprites_config():
+    c = get_conn()
+    kid = _need_kid()
+    out = spritemod.config_of(c, kid)
+    c.close()
+    return out
+
+
+@app.put("/api/admin/sprites-config", dependencies=[Depends(require_parent)])
+def admin_sprites_config_put(b: SpriteConfigIn):
+    c = get_conn()
+    kid = _need_kid()
+    try:
+        out = spritemod.set_config(c, kid, b.enabled, b.base_enabled)
+        c.commit()
+        return out
+    except spritemod.SpriteError as e:
+        _rollback(c)
+        raise HTTPException(e.status, e.detail)
+    except Exception:
+        _rollback(c)
+        raise
+    finally:
+        c.close()
+
+
 class CustomTaskBody(BaseModel):
     subject_id: str
     title: str
@@ -1390,6 +1513,159 @@ def redemptions():
     return [dict(r) for r in rows]
 
 
+# ---------------- 阳光银行利息 ----------------
+
+from datetime import datetime, timedelta
+import calendar
+
+
+def _bank_interest_config(c, kid):
+    """获取银行利息配置"""
+    return {
+        "enabled": db.get_kid_setting(c, kid, "bank_interest_enabled", "0") == "1",
+        "cycle": db.get_kid_setting(c, kid, "bank_interest_cycle", "weekly"),
+        "rate": float(db.get_kid_setting(c, kid, "bank_interest_rate", "5.0")),
+        "threshold": int(db.get_kid_setting(c, kid, "bank_interest_threshold", "20")),
+        "last_settle": db.get_kid_setting(c, kid, "bank_last_settle_date", ""),
+    }
+
+
+def _should_settle_interest(cfg, today):
+    """判断今天是否应该结算利息"""
+    if not cfg["enabled"]:
+        return False
+    last = cfg["last_settle"]
+    if last:
+        last_date = datetime.strptime(last, "%Y-%m-%d").date()
+        if last_date >= today:
+            return False
+    cycle = cfg["cycle"]
+    if cycle == "weekly":
+        return today.weekday() == 5  # 周六
+    elif cycle == "biweekly":
+        if today.weekday() != 5:
+            return False
+        if not last:
+            return True
+        return (today - last_date).days >= 14
+    elif cycle == "monthly":
+        last_day = calendar.monthrange(today.year, today.month)[1]
+        return today.day == last_day
+    return False
+
+
+def _calc_avg_bank_balance(c, kid, start_date, end_date):
+    """计算时间段内银行账户的日均余额"""
+    days = (end_date - start_date).days + 1
+    total = 0
+    current = start_date
+    while current <= end_date:
+        date_str = current.strftime("%Y-%m-%d")
+        bal = c.execute(
+            "SELECT COALESCE(SUM(delta),0) FROM ledger WHERE kid_id=? AND account='bank' AND date<=?",
+            (kid, date_str)
+        ).fetchone()[0]
+        total += bal
+        current += timedelta(days=1)
+    return total / days if days > 0 else 0
+
+
+def settle_bank_interest(c, kid, today):
+    """结算银行利息"""
+    cfg = _bank_interest_config(c, kid)
+    if not _should_settle_interest(cfg, today):
+        return None
+    
+    cycle = cfg["cycle"]
+    if cycle == "weekly":
+        days = 7
+    elif cycle == "biweekly":
+        days = 14
+    else:  # monthly
+        days = today.day
+    
+    start_date = today - timedelta(days=days - 1)
+    avg_balance = _calc_avg_bank_balance(c, kid, start_date, today)
+    
+    if avg_balance < cfg["threshold"]:
+        db.set_kid_setting(c, kid, "bank_last_settle_date", today.strftime("%Y-%m-%d"))
+        return {"settled": False, "reason": "below_threshold", "avg_balance": int(avg_balance)}
+    
+    interest = int(avg_balance * cfg["rate"] / 100)
+    if interest <= 0:
+        db.set_kid_setting(c, kid, "bank_last_settle_date", today.strftime("%Y-%m-%d"))
+        return {"settled": False, "reason": "zero_interest", "avg_balance": int(avg_balance)}
+    
+    cycle_label = {"weekly": "本周", "biweekly": "两周", "monthly": "本月"}[cycle]
+    ref_id = f"interest-{kid}-{today.strftime('%Y-%m-%d')}"
+    lid = db.insert_ledger(c, today.strftime("%Y-%m-%d"), interest, "bank_interest", ref_id,
+                          f"{cycle_label}利息", kid, "bank")
+    if lid:
+        db.set_kid_setting(c, kid, "bank_last_settle_date", today.strftime("%Y-%m-%d"))
+        return {"settled": True, "interest": interest, "avg_balance": int(avg_balance), "ledger_id": lid}
+    return None
+
+
+def check_and_settle_all_interests(c):
+    """检查所有孩子的利息结算，返回结算记录"""
+    today = datetime.strptime(db.today(), "%Y-%m-%d").date()
+    kids = c.execute("SELECT id FROM users WHERE role='kid'").fetchall()
+    results = []
+    for kr in kids:
+        result = settle_bank_interest(c, kr["id"], today)
+        if result:
+            results.append({"kid_id": kr["id"], **result})
+    return results
+
+
+class BankInterestConfigIn(BaseModel):
+    enabled: bool
+    cycle: str = "weekly"
+    rate: float = 5.0
+    threshold: int = 20
+
+
+@app.get("/api/admin/bank/interest", dependencies=[Depends(require_parent)])
+def admin_bank_interest_config():
+    c = get_conn()
+    cfg = _bank_interest_config(c, kid_id())
+    c.close()
+    return cfg
+
+
+@app.put("/api/admin/bank/interest", dependencies=[Depends(require_parent)])
+def admin_bank_interest_update(b: BankInterestConfigIn):
+    if b.cycle not in ("weekly", "biweekly", "monthly"):
+        raise HTTPException(400, "周期只能是 weekly/biweekly/monthly")
+    if not (0 <= b.rate <= 10):
+        raise HTTPException(400, "利率要在 0% 到 10% 之间")
+    if b.threshold not in (0, 10, 20, 50, 100):
+        raise HTTPException(400, "起存点只能是 0/10/20/50/100")
+    c = get_conn()
+    kid = kid_id()
+    db.set_kid_setting(c, kid, "bank_interest_enabled", "1" if b.enabled else "0")
+    db.set_kid_setting(c, kid, "bank_interest_cycle", b.cycle)
+    db.set_kid_setting(c, kid, "bank_interest_rate", str(b.rate))
+    db.set_kid_setting(c, kid, "bank_interest_threshold", str(b.threshold))
+    c.commit()
+    cfg = _bank_interest_config(c, kid)
+    c.close()
+    return cfg
+
+
+@app.post("/api/admin/bank/settle-now", dependencies=[Depends(require_parent)])
+def admin_bank_settle_now():
+    """手动触发当前孩子的利息结算（测试用）"""
+    c = get_conn()
+    try:
+        today = datetime.strptime(db.today(), "%Y-%m-%d").date()
+        result = settle_bank_interest(c, kid_id(), today)
+        c.commit()
+        return result or {"settled": False, "reason": "not_due"}
+    finally:
+        c.close()
+
+
 # ---------------- 阳光银行 ----------------
 
 BANK_ENABLED_KEY = "bank_enabled"
@@ -1435,6 +1711,7 @@ def _bank_payload(c, kid=None):
     if goal:
         goal["saved"] = bank_balance(c, kid)
         goal["reached"] = goal["saved"] >= goal["target"]
+    interest_cfg = _bank_interest_config(c, kid)
     return {
         "enabled": _bank_enabled(c, kid),
         "balance": bank_balance(c, kid),
@@ -1442,6 +1719,7 @@ def _bank_payload(c, kid=None):
         "goal": goal,
         "requests": _bank_requests(c, kid),
         "ledger": rows,
+        "interest": interest_cfg if interest_cfg["enabled"] else None,
     }
 
 

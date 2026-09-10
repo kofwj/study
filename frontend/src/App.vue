@@ -423,10 +423,169 @@ async function wordCollect() {
 const boxes = ref({ avail: 0, opened: 0, earned: 0, streak: 0 })
 const boxOpen = ref(false)
 const boxResult = ref(null)
+const boxPhase = ref('sun')
+let boxTimers = []
+const sprites = ref({
+  enabled: false, base_enabled: false, loaded: false,
+  dust: 0, owned: 0, total: 12, series: [], layout: {}, shop: [],
+  base_items: [], on_duty: '', today: {}, morning: { new: false, who: '', text: '' },
+  memos: { award: false, flag: false }, star_cost: 12,
+})
+const spritesOpen = ref(false)
+const spriteDetail = ref(null)
+const spriteNick = ref('')
+const spriteFlavor = ref('')
+const spriteScene = ref('sun')
+const spriteBusy = ref(false)
+const morningShow = ref(false)
+const toyFlip = reactive({})
+function isNight() {
+  const h = new Date().getHours()
+  return h >= 19 || h < 6
+}
+function spImg(id) { return `/sprites/${id}.webp` }
+function toyImg(id) { return `/sprites/toys/${id}.webp` }
+function baseImg(scene) { return `/sprites/base/${scene}-${isNight() ? 'night' : 'day'}.webp` }
+function displayName(it) { return (it.nickname && it.nickname.trim()) || it.name }
+const dutySprite = computed(() => {
+  if (!sprites.value.enabled || !sprites.value.base_enabled || !sprites.value.on_duty) return null
+  for (const s of sprites.value.series || []) {
+    const it = (s.items || []).find(x => x.id === sprites.value.on_duty && x.owned)
+    if (it) return it
+  }
+  return null
+})
+const FLOOR = {
+  sun: [{ x: 52, y: 90 }, { x: 66, y: 90 }, { x: 78, y: 90 }],
+  leaf: [{ x: 30, y: 92 }, { x: 42, y: 92 }, { x: 72, y: 92 }],
+  sky: [{ x: 38, y: 86 }, { x: 50, y: 86 }, { x: 62, y: 86 }],
+}
+function sceneToys(scene) {
+  const layout = (sprites.value.layout && sprites.value.layout[scene]) || []
+  const bought = new Set(sprites.value.base_items || [])
+  const today = sprites.value.today || {}
+  const memos = sprites.value.memos || {}
+  return layout.filter(t => {
+    if (t.kind === 'shop') return bought.has(t.id)
+    if (t.id === 'trace-pinwheel') return !!today.daily_done
+    if (t.id === 'memo-award') return !!memos.award
+    if (t.id === 'memo-flag') return !!memos.flag
+    return false
+  })
+}
+function sceneBuddies(scene) {
+  const ser = (sprites.value.series || []).find(s => s.id === scene)
+  const owned = (ser?.items || []).filter(x => x.owned)
+  const toys = sceneToys(scene)
+  const seats = toys.filter(t => t.sit)
+  const used = new Set()
+  const out = []
+  const duty = sprites.value.on_duty
+  const moon = toys.find(t => t.id === 'sky-moonbed')
+  if (scene === 'sky' && moon && isNight() && duty) {
+    const d = owned.find(x => x.id === duty)
+    if (d) {
+      out.push({ ...d, x: moon.x, y: moon.y - 8, w: moon.sit?.w || 8, pose: 'lie' })
+      used.add(d.id)
+    }
+  }
+  for (const seat of seats) {
+    if (seat.id === 'sky-moonbed') continue
+    const who = owned.find(x => !used.has(x.id))
+    if (!who) break
+    used.add(who.id)
+    out.push({
+      ...who,
+      x: seat.x - 4 + (seat.sit.x - 50) * seat.w / 100,
+      y: seat.y - (100 - (seat.sit.y || 70)) * 0.12,
+      w: seat.sit.w || 8,
+      pose: seat.pose || 'sit',
+    })
+  }
+  const floors = FLOOR[scene] || []
+  let fi = 0
+  for (const who of owned) {
+    if (used.has(who.id) || fi >= floors.length) continue
+    out.push({ ...who, x: floors[fi].x, y: floors[fi].y, w: 8, pose: 'stand' })
+    fi += 1
+  }
+  return out
+}
+async function loadSprites() {
+  try {
+    const sp = await api.sprites()
+    sprites.value = { ...sprites.value, ...sp, loaded: true }
+    if (sp.enabled && sp.base_enabled && sp.morning && sp.morning.new) morningShow.value = true
+  } catch {
+    sprites.value.enabled = false
+  }
+}
+async function openSprites() {
+  await loadSprites()
+  if (!sprites.value.enabled && !sprites.value.base_enabled) return
+  spritesOpen.value = true
+}
+function openSpriteCell(it) {
+  if (!it.owned) { showToast('连续打卡开宝箱才会遇到它'); return }
+  spriteDetail.value = it
+  spriteNick.value = it.nickname || ''
+  spriteFlavor.value = it.flavor || ''
+}
+async function saveSpriteProfile() {
+  const it = spriteDetail.value
+  if (!it) return
+  try {
+    const out = await api.spriteProfile(it.id, { nickname: spriteNick.value, flavor: spriteFlavor.value })
+    Object.assign(it, out)
+    showToast('已记住')
+    await loadSprites()
+  } catch (e) { showToast(e.message) }
+}
+async function starSprite() {
+  const it = spriteDetail.value
+  if (!it) return
+  try {
+    const out = await api.spriteStar(it.id)
+    it.stars = out.stars
+    sprites.value.dust = out.dust
+    showToast('亮了一颗星')
+  } catch (e) { showToast(e.message) }
+}
+async function buyToy(id) {
+  if (spriteBusy.value) return
+  spriteBusy.value = true
+  try {
+    const out = await api.baseBuy(id)
+    sprites.value.dust = out.dust
+    sprites.value.base_items = out.base_items
+    showToast('放到秘密基地啦')
+  } catch (e) { showToast(e.message) }
+  finally { spriteBusy.value = false }
+}
+async function toggleDuty(id) {
+  try {
+    const on = sprites.value.on_duty === id
+    const out = on ? await api.spriteDutyClear() : await api.spriteDuty(id)
+    sprites.value.on_duty = out.on_duty
+  } catch (e) { showToast(e.message) }
+}
+async function ackMorning() {
+  morningShow.value = false
+  try { await api.morningAck() } catch {}
+  if (sprites.value.morning) sprites.value.morning.new = false
+}
+function closeBoxMask() {
+  if (boxResult.value && boxResult.value.kind === 'sprite' && (boxPhase.value === 'sun' || boxPhase.value === 'egg')) return
+  boxOpen.value = false
+  boxResult.value = null
+  boxPhase.value = 'sun'
+  boxTimers.forEach(clearTimeout)
+  boxTimers = []
+}
 const rankMapOpen = ref(false)
 const rankMap = ref(null)
 const recentLedger = ref([])
-const bankData = ref({ enabled: false, balance: 0, pocket_balance: 0, goal: null, requests: [], ledger: [] })
+const bankData = ref({ enabled: false, balance: 0, pocket_balance: 0, goal: null, requests: [], ledger: [], interest: null })
 const bankAmount = ref(5)
 const bankBusy = ref(false)
 const reviewDue = ref([])
@@ -448,6 +607,7 @@ const companionTitle = computed(() => {
 function openCompanion() {
   companionNameDraft.value = (companion.value.name || '').trim()
   companionOpen.value = true
+  loadSprites()
 }
 async function saveCompanionName() {
   try {
@@ -638,12 +798,13 @@ async function doLogout() {
 
 async function refresh() {
   try {
-    const [t, r, bx, rv, led, ach, wd, bk] = await Promise.all([
+    const [t, r, bx, rv, led, ach, wd, bk, sp] = await Promise.all([
       api.tasks(), api.rewards(), api.boxes(),
       api.reviewDue().catch(() => []), api.ledger().catch(() => []),
       api.achievements().catch(() => null),
       api.wordsToday().catch(() => null),
       api.bank().catch(() => null),
+      api.sprites().catch(() => null),
     ])
     const prevId = data.level && data.level.level_id
     const prevEarned = data.level && (data.level.earned || 0)
@@ -668,6 +829,10 @@ async function refresh() {
     if (bk) bankData.value = bk
     if (Array.isArray(ach)) achievements.value = ach
     if (wd) applyWordToday(wd)
+    if (sp) {
+      sprites.value = { ...sprites.value, ...sp, loaded: true }
+      if (sp.enabled && sp.base_enabled && sp.morning && sp.morning.new) morningShow.value = true
+    }
     err.value = ''
   } catch (e) {
     if (e.status === 401) { me.value = null; authed.value = false }
@@ -862,9 +1027,16 @@ async function openBox() {
   actionBusy.value = true
   try {
     const r = await api.openBox()
-    boxResult.value = r.delta
+    boxResult.value = r
+    boxPhase.value = 'sun'
     boxOpen.value = true
+    boxTimers.forEach(clearTimeout)
+    boxTimers = []
     await refresh()
+    if (r.kind === 'sprite') {
+      boxTimers.push(setTimeout(() => { boxPhase.value = 'egg' }, 600))
+      boxTimers.push(setTimeout(() => { boxPhase.value = r.duplicate ? 'dust' : 'hatch' }, 1400))
+    }
   } catch (e) { showToast(e.message) }
   finally { actionBusy.value = false }
 }
@@ -1106,6 +1278,7 @@ function reloadApp() {
         <button type="button" class="avatar companion" :class="['stage-' + (companion.stage || 'egg'), companion.aura ? 'aura-' + companion.aura : '']" @click="openCompanion">
           <component :is="companionIcon" :size="26" />
         </button>
+        <img v-if="dutySprite" class="duty-face" :src="spImg(dutySprite.id)" :alt="displayName(dutySprite)" />
         <div>
           <div class="hello">{{ data.today || '今天' }}</div>
           <div class="name-row">
@@ -1633,6 +1806,7 @@ function reloadApp() {
           <input v-model="companionNameDraft" maxlength="8" placeholder="1 到 8 个字" @keyup.enter="saveCompanionName" />
         </label>
         <button type="button" class="do" @click="saveCompanionName">保存</button>
+        <button v-if="sprites.enabled || sprites.base_enabled" type="button" class="ghost" @click="companionOpen = false; openSprites()">{{ sprites.enabled ? ('阳光图鉴 ' + sprites.owned + '/12') : '秘密基地' }}</button>
         <button type="button" class="ghost" @click="companionOpen = false">关闭</button>
       </div>
     </div>
@@ -1714,14 +1888,108 @@ function reloadApp() {
     </div>
 
     <!-- 连击宝箱 -->
-    <div v-if="boxOpen" class="mask" @click.self="boxOpen = false">
+    <div v-if="boxOpen" class="mask" @click.self="closeBoxMask">
       <div class="shop-modal box-modal">
         <h3><Gift class="ico" :size="18" /> 连击宝箱</h3>
         <div class="box-result">
-          <div class="box-icon"><Gift :size="34" /></div>
-          <div class="box-gain">+{{ boxResult }} <Sun class="ico sun" :size="16" /></div>
+          <div v-if="boxPhase === 'sun' || !boxResult?.kind" class="box-gain">+{{ boxResult?.delta ?? boxResult }} <Sun class="ico sun" :size="16" /></div>
+          <div v-else-if="boxPhase === 'egg'" class="box-egg">🥚</div>
+          <template v-else-if="boxPhase === 'hatch'">
+            <img class="box-face" :src="spImg(boxResult.item)" :alt="boxResult.sprite?.name" />
+            <div class="box-gain">遇到了{{ boxResult.sprite?.name }}</div>
+          </template>
+          <template v-else-if="boxPhase === 'dust'">
+            <div class="box-gain">已经有了 · 星尘 +{{ boxResult.dust_gain }}</div>
+          </template>
         </div>
-        <button class="do big" @click="boxOpen = false">收下奖励</button>
+        <button v-if="boxPhase !== 'egg' && !(boxResult?.kind === 'sprite' && boxPhase === 'sun')" class="do big" @click="closeBoxMask">收下</button>
+      </div>
+    </div>
+
+    <div v-if="morningShow && sprites.morning?.text" class="morning-pop" @click="ackMorning">
+      <img v-if="sprites.morning.who" class="duty-face" :src="spImg(sprites.morning.who)" alt="" />
+      <p>{{ sprites.morning.text }}</p>
+    </div>
+
+    <div v-if="spritesOpen" class="mask" @click.self="spritesOpen = false">
+      <div class="shop-modal ach-modal atlas-modal">
+        <h3>{{ sprites.enabled ? ('阳光图鉴 ' + sprites.owned + '/12') : '秘密基地' }} <span v-if="sprites.enabled" class="atlas-dust">星尘 {{ sprites.dust }}</span></h3>
+        <div class="ach-body">
+          <div v-if="sprites.base_enabled" class="atlas-scene-tabs">
+            <button type="button" class="tab" :class="{ on: spriteScene === 'sun' }" @click="spriteScene = 'sun'">天台</button>
+            <button type="button" class="tab" :class="{ on: spriteScene === 'leaf' }" @click="spriteScene = 'leaf'">树屋</button>
+            <button type="button" class="tab" :class="{ on: spriteScene === 'sky' }" @click="spriteScene = 'sky'">云上</button>
+          </div>
+          <div v-if="sprites.base_enabled" class="atlas-stage">
+            <img class="atlas-bg" :src="baseImg(spriteScene)" alt="" />
+            <div v-if="!sprites.enabled" class="atlas-building"><b>建设中</b><span>图鉴打开以后，朋友才搬进来</span></div>
+            <template v-if="sprites.enabled" v-for="t in sceneToys(spriteScene)" :key="t.id">
+              <div class="atlas-toy" :class="[t.anim, { flip: toyFlip[t.id] }]"
+                :style="{ left: t.x + '%', top: t.y + '%', width: t.w + '%' }"
+                @click="t.flip && (toyFlip[t.id] = !toyFlip[t.id])">
+                <template v-if="t.id === 'trace-pinwheel'">
+                  <img class="stick" :src="toyImg('trace-pinwheel-stick')" alt="" />
+                  <img class="blades" :src="toyImg('trace-pinwheel-blades')" alt="" />
+                </template>
+                <template v-else-if="t.id === 'memo-flag'">
+                  <img class="pole" :src="toyImg('memo-flag-pole')" alt="" />
+                  <img class="fabric" :src="toyImg('memo-flag-fabric')" alt="" />
+                </template>
+                <img v-else class="toy" :src="toyImg(t.id)" :alt="t.name" />
+              </div>
+            </template>
+            <template v-if="sprites.enabled">
+              <img v-for="b in sceneBuddies(spriteScene)" :key="'b'+b.id" class="atlas-buddy"
+                :src="spImg(b.id)" :alt="displayName(b)"
+                :style="{ left: b.x + '%', top: b.y + '%', width: b.w + '%' }" />
+            </template>
+            <img v-if="sprites.enabled && spriteScene === 'sun' && sprites.today?.unit_done" class="atlas-plane" :src="toyImg('trace-plane')" alt="" />
+            <span v-if="sprites.enabled && spriteScene === 'sky' && sprites.today?.word_done" class="atlas-star">✦</span>
+            <span v-if="sprites.enabled && spriteScene === 'sky' && sprites.today?.review_clear" class="atlas-moon">☾</span>
+          </div>
+          <details v-if="sprites.enabled" v-for="g in sprites.series" :key="g.id" class="ach-series" open>
+            <summary>{{ g.name }} {{ g.owned }}/{{ g.total }}</summary>
+            <div class="ach-grid">
+              <div v-for="it in g.items" :key="it.id" class="ach-cell" :class="{ on: it.owned }" @click="openSpriteCell(it)">
+                <img v-if="it.owned" class="atlas-cell-face" :src="spImg(it.id)" :alt="displayName(it)" />
+                <div v-else class="atlas-sil"></div>
+                <div class="ach-name">{{ it.owned ? displayName(it) : '？？' }}</div>
+                <div v-if="it.owned" class="ach-prog">{{ '★'.repeat(it.stars) }}{{ '☆'.repeat(3 - it.stars) }}</div>
+              </div>
+            </div>
+          </details>
+          <div v-if="sprites.enabled && sprites.base_enabled" class="atlas-shop">
+            <h4>玩具店</h4>
+            <div v-for="it in sprites.shop" :key="it.id" class="atlas-shop-row">
+              <span>{{ it.name }} · {{ it.price }} 尘</span>
+              <button v-if="it.owned" type="button" class="ghost" disabled>已有</button>
+              <button v-else type="button" class="do" :disabled="spriteBusy || sprites.dust < it.price" @click="buyToy(it.id)">买</button>
+            </div>
+          </div>
+        </div>
+        <button class="ghost" @click="spritesOpen = false">关闭</button>
+      </div>
+      <div v-if="spriteDetail" class="ach-pop" @click.self="spriteDetail = null">
+        <div class="ach-detail">
+          <img class="box-face" :src="spImg(spriteDetail.id)" :alt="displayName(spriteDetail)" />
+          <h3>{{ spriteDetail.name }}</h3>
+          <p class="dim">{{ spriteDetail.flavor }}</p>
+          <p>{{ '★'.repeat(spriteDetail.stars) }}{{ '☆'.repeat(3 - spriteDetail.stars) }}</p>
+          <label class="fld companion-name"><span>昵称</span>
+            <input v-model="spriteNick" maxlength="8" placeholder="1 到 8 个字" />
+          </label>
+          <label class="fld companion-name"><span>一句介绍</span>
+            <input v-model="spriteFlavor" maxlength="16" placeholder="最多 16 个字" />
+          </label>
+          <button type="button" class="do" @click="saveSpriteProfile">保存</button>
+          <button type="button" class="ghost" :disabled="spriteDetail.stars >= 3 || sprites.dust < sprites.star_cost" @click="starSprite">
+            {{ spriteDetail.stars >= 3 ? '已经三颗星了' : (sprites.star_cost + ' 星尘升一星') }}
+          </button>
+          <button v-if="sprites.base_enabled" type="button" class="ghost" @click="toggleDuty(spriteDetail.id)">
+            {{ sprites.on_duty === spriteDetail.id ? '取消值班' : '设为值班' }}
+          </button>
+          <button type="button" class="ghost" @click="spriteDetail = null">关闭</button>
+        </div>
       </div>
     </div>
 
@@ -2416,4 +2684,48 @@ body {
   }
   .nav em { padding: 1px 6px; font-size: 11px; }
 }
+.duty-face { width: 24px; height: 24px; object-fit: contain; filter: drop-shadow(0 1px 1px rgba(0,0,0,.25)); }
+.box-egg { font-size: 56px; animation: wobble 1s ease-in-out infinite; }
+.box-face { width: 96px; height: 96px; object-fit: contain; display: block; margin: 0 auto 8px; }
+@keyframes wobble { 0%,100% { transform: rotate(-8deg); } 50% { transform: rotate(8deg); } }
+.morning-pop {
+  position: fixed; left: 16px; top: calc(var(--topbar-height, 72px) + 8px); z-index: 40;
+  max-width: min(92vw, 360px); background: var(--surface); border-radius: var(--radius-lg);
+  padding: 12px 14px; box-shadow: 0 8px 24px rgba(40,30,20,.18); display: flex; gap: 10px; align-items: center;
+  cursor: pointer;
+}
+.morning-pop p { margin: 0; font-size: 14px; line-height: 1.45; }
+.atlas-dust { float: right; font-size: 13px; font-weight: 600; color: var(--ink-2); }
+.atlas-scene-tabs { display: flex; gap: 8px; margin: 0 0 8px; }
+.atlas-scene-tabs .tab { border: 2px solid var(--line); background: var(--surface-2); border-radius: 999px; padding: 4px 12px; font: inherit; cursor: pointer; }
+.atlas-scene-tabs .tab.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+.atlas-stage { position: relative; width: 100%; aspect-ratio: 1448 / 543; border-radius: 12px; overflow: hidden; background: #1a1410; margin-bottom: 12px; }
+.atlas-building {
+  position: absolute; inset: 0; z-index: 8;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+  background: rgba(26,20,16,.42); color: #fffdf8; text-align: center; pointer-events: none;
+}
+.atlas-building b { font-size: 22px; letter-spacing: .12em; }
+.atlas-building span { font-size: 13px; opacity: .9; }
+.atlas-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+.atlas-toy { position: absolute; transform: translate(-50%, -100%); z-index: 2; }
+.atlas-toy .toy, .atlas-toy .blades, .atlas-toy .fabric { width: 100%; display: block; pointer-events: none; }
+.atlas-toy .stick, .atlas-toy .pole { position: absolute; inset: 0; width: 100%; z-index: 3; pointer-events: none; }
+.atlas-toy.flip .toy { transform: scaleX(-1); }
+.atlas-toy.spin-wheel .blades { transform-origin: 49.5% 43.3%; animation: spin-hub 2.8s linear infinite; }
+@keyframes spin-hub { to { transform: rotate(360deg); } }
+.atlas-toy.glow .toy { animation: jar-glow 1.6s ease-in-out infinite; }
+@keyframes jar-glow { 50% { filter: brightness(1.35) drop-shadow(0 0 6px #f5d76a); } }
+.atlas-toy.wave .fabric { transform-origin: 16% 38%; animation: flag-flutter 1.7s ease-in-out infinite; }
+@keyframes flag-flutter { 0%,100% { transform: scaleX(1); } 35% { transform: scaleX(.76); } 70% { transform: scaleX(1.06); } }
+.atlas-buddy { position: absolute; transform: translate(-50%, -100%); z-index: 5; filter: drop-shadow(0 2px 3px rgba(0,0,0,.3)); pointer-events: none; }
+.atlas-plane { position: absolute; width: 10%; top: 28%; left: -12%; animation: plane-fly 4.5s linear infinite; z-index: 6; }
+@keyframes plane-fly { to { left: 110%; top: 18%; } }
+.atlas-star { position: absolute; left: 18%; top: 14%; color: #ffe9a8; font-size: 18px; }
+.atlas-moon { position: absolute; right: 16%; top: 10%; color: #f4f0d8; font-size: 22px; }
+.atlas-cell-face { width: 48px; height: 48px; object-fit: contain; }
+.atlas-sil { width: 48px; height: 48px; margin: 0 auto; border-radius: 50%; background: var(--ink); opacity: .18; }
+.atlas-shop { margin: 12px 0; }
+.atlas-shop h4 { margin: 0 0 8px; }
+.atlas-shop-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--line); }
 </style>
