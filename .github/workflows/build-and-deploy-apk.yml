@@ -54,20 +54,18 @@ jobs:
       
       - name: Check APK output
         run: |
-          # 检查未签名的 APK（没有配置签名时的默认输出）
-          if [ -f "android/app/build/outputs/apk/release/app-release-unsigned.apk" ]; then
-            APK_FILE="android/app/build/outputs/apk/release/app-release-unsigned.apk"
-          elif [ -f "android/app/build/outputs/apk/release/app-release.apk" ]; then
-            APK_FILE="android/app/build/outputs/apk/release/app-release.apk"
-          else
-            echo "❌ 未找到 APK 文件"
+          APK_FILE="android/app/build/outputs/apk/release/app-release.apk"
+          if [ ! -f "$APK_FILE" ]; then
+            echo "❌ 未找到已签名 APK（不要发布 unsigned）"
+            ls -la android/app/build/outputs/apk/release/ || true
             exit 1
           fi
           ls -lh "$APK_FILE"
           APK_SIZE=$(du -h "$APK_FILE" | cut -f1)
           echo "APK_FILE=$APK_FILE" >> $GITHUB_ENV
           echo "APK_SIZE=$APK_SIZE" >> $GITHUB_ENV
-          echo "✅ APK 构建成功: $APK_SIZE"
+          echo "✅ 已签名 APK 构建成功: $APK_SIZE"
+
       
       - name: Get version
         id: version
@@ -100,9 +98,10 @@ jobs:
             ---
             
             ### 📦 安装方式
-            
+
             点击下方 **Assets** 中的 APK 文件下载，在平板上打开并安装。
-            
+            需允许「未知来源 / 安装未知应用」。若之前装过无法打开的旧包，请先卸载再装。
+
             ### 📊 构建信息
             - **APK 大小**: ${{ env.APK_SIZE }}
             - **构建时间**: ${{ github.event.head_commit.timestamp }}

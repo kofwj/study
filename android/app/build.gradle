@@ -8,6 +8,11 @@ def code = 1
 if (bits.size() >= 3) {
     code = bits[0].toInteger() * 10000 + bits[1].toInteger() * 100 + bits[2].toInteger()
 }
+def ksPropsFile = rootProject.file('keystore/keystore.properties')
+def ksProps = new Properties()
+if (ksPropsFile.exists()) {
+    ksProps.load(new FileInputStream(ksPropsFile))
+}
 android {
     namespace 'org.anemy.sunshine'
     compileSdk 35
@@ -18,8 +23,24 @@ android {
         versionCode code
         versionName appVer
     }
+    if (ksPropsFile.exists()) {
+        signingConfigs {
+            release {
+                storeFile rootProject.file(ksProps['storeFile'])
+                storePassword ksProps['storePassword']
+                keyAlias ksProps['keyAlias']
+                keyPassword ksProps['keyPassword']
+                storeType 'PKCS12'
+            }
+        }
+    }
     buildTypes {
-        release { minifyEnabled false }
+        release {
+            minifyEnabled false
+            if (ksPropsFile.exists()) {
+                signingConfig signingConfigs.release
+            }
+        }
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
