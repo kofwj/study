@@ -76,10 +76,15 @@ jobs:
       
       - name: Upload APK to VPS
         run: |
-          scp -i ~/.ssh/id_ed25519 \
+          echo "📤 开始上传 APK 到 VPS..."
+          ls -lh sunshine-v${{ steps.version.outputs.VERSION }}.apk
+          scp -v -i ~/.ssh/id_ed25519 \
             sunshine-v${{ steps.version.outputs.VERSION }}.apk \
             ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/home/kofwj/sunshine/static/sunshine-latest.apk
           echo "✅ APK 已上传到 VPS"
+          echo "🔍 验证上传结果..."
+          ssh -i ~/.ssh/id_ed25519 ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} \
+            "ls -lh /home/kofwj/sunshine/static/sunshine-latest.apk"
       
       - name: Extract changelog for current version
         id: changelog
@@ -105,7 +110,7 @@ jobs:
             ### 📦 安装方式
             
             **平板用户（推荐）**：
-            1. 点击下方 Assets 中的 `sunshine-v${{ steps.version.outputs.VERSION }}.apk` 下载
+            1. 点击下方 Assets 中的 APK 文件下载
             2. 在平板上打开并安装
             
             **或通过 VPS 下载**：
@@ -115,7 +120,8 @@ jobs:
             - **APK 大小**: ${{ env.APK_SIZE }}
             - **构建时间**: ${{ github.event.head_commit.timestamp }}
             - **提交**: ${{ github.sha }}
-          files: sunshine-v${{ steps.version.outputs.VERSION }}.apk
+          files: |
+            sunshine-v${{ steps.version.outputs.VERSION }}.apk
           draft: false
           prerelease: false
         env:
