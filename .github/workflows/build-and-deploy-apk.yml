@@ -74,13 +74,59 @@ jobs:
         id: version
         run: echo "VERSION=$(cat VERSION)" >> $GITHUB_OUTPUT
       
+      - name: Rename APK with version
+        run: |
+          cp android/app/build/outputs/apk/release/app-release.apk \
+             sunshine-v${{ steps.version.outputs.VERSION }}.apk
+      
+      - name: Extract changelog for current version
+        id: changelog
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          CHANGELOG=$(awk "/## .*v${VERSION}/,/## .*v[0-9]/" CHANGELOG.md | sed '1d;$d')
+          echo "CHANGELOG<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGELOG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+      
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.version.outputs.VERSION }}
+          name: v${{ steps.version.outputs.VERSION }}
+          body: |
+            ## 🎉 阳光记账本 v${{ steps.version.outputs.VERSION }}
+            
+            ${{ steps.changelog.outputs.CHANGELOG }}
+            
+            ---
+            
+            ### 📦 安装方式
+            
+            **平板用户（推荐）**：
+            1. 点击下方 Assets 中的 `sunshine-v${{ steps.version.outputs.VERSION }}.apk` 下载
+            2. 在平板上打开并安装
+            
+            **或通过 VPS 下载**：
+            访问 `http://${{ secrets.VPS_HOST }}:9000/api/apk/latest`
+            
+            ### 📊 构建信息
+            - **APK 大小**: ${{ env.APK_SIZE }}
+            - **构建时间**: ${{ github.event.head_commit.timestamp }}
+            - **提交**: ${{ github.sha }}
+          files: sunshine-v${{ steps.version.outputs.VERSION }}.apk
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
       - name: Deployment summary
         run: |
           echo "## 🚀 部署成功" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "- **版本**: v${{ steps.version.outputs.VERSION }}" >> $GITHUB_STEP_SUMMARY
           echo "- **APK 大小**: ${{ env.APK_SIZE }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **下载地址**: http://${{ secrets.VPS_HOST }}:9000/api/apk/latest" >> $GITHUB_STEP_SUMMARY
+          echo "- **GitHub Release**: https://github.com/${{ github.repository }}/releases/tag/v${{ steps.version.outputs.VERSION }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **VPS 下载**: http://${{ secrets.VPS_HOST }}:9000/api/apk/latest" >> $GITHUB_STEP_SUMMARY
           echo "- **部署时间**: $(date +'%Y-%m-%d %H:%M:%S')" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "平板可访问 http://${{ secrets.VPS_HOST }}:9000 检查更新" >> $GITHUB_STEP_SUMMARY

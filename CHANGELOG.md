@@ -3,8 +3,9 @@
 ## 2026-09-10 v0.2.38 - CI/CD 自动构建
 
 - GitHub Actions 自动构建 APK 并部署到 VPS
+- 自动创建 GitHub Release，APK 文件带版本号
 - 后端增加 `/api/version` 和 `/api/apk/latest` 接口
-- 平板可通过浏览器下载最新 APK
+- 平板可通过 GitHub Releases 或 VPS 下载最新 APK
 
 ## 2026-09-10 v0.2.37 - P0 UI 改进：音效与鼓励
 
