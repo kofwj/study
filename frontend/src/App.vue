@@ -166,10 +166,30 @@ const wordOverlayTitle = computed(() => {
   if (wordDialog.filter === 'new') return '今日新词'
   return '今日单词'
 })
-const wordSlots = computed(() => {
+const wordSlotCells = computed(() => {
   const w = wordCurrent.value?.word || ''
-  return [...w].map(ch => (ch === ' ' ? 'space' : (ch === '-' ? 'hyphen' : 'letter')))
+  const letters = String(wordDialog.input || '').replace(/[^A-Za-z']/g, '')
+  let li = 0
+  return [...w].map(ch => {
+    if (ch === ' ') return { kind: 'space', fill: '', cur: false }
+    if (ch === '-') return { kind: 'hyphen', fill: '-', cur: false }
+    const fill = letters[li] || ''
+    const cur = li === letters.length
+    li += 1
+    return { kind: 'letter', fill, cur }
+  })
 })
+function spellSubmitText() {
+  const w = wordCurrent.value?.word || ''
+  const letters = String(wordDialog.input || '').replace(/[^A-Za-z']/g, '')
+  let li = 0
+  let out = ''
+  for (const ch of w) {
+    if (ch === ' ' || ch === '-') out += ch
+    else out += letters[li++] || ''
+  }
+  return out.trim().slice(0, 60)
+}
 function ipaText(w) { return (w && String(w.ipa || '').trim()) ? w.ipa : '暂无音标' }
 function firstLetter(w) { const m = String(w || '').match(/[A-Za-z]/); return m ? m[0] : '' }
 function applyWordToday(t) {
@@ -198,21 +218,32 @@ function pickWordVoice(lang) {
 }
 function stopWordSpeech() {
   wordUtter = null
+  try { if (nativeTts()) SunshineTts.stop() } catch {}
   try { if (ttsReady()) speechSynthesis.cancel() } catch {}
 }
+function nativeTts() {
+  try { return typeof SunshineTts !== 'undefined' && SunshineTts && typeof SunshineTts.speak === 'function' } catch { return false }
+}
 function speakWord(word, lang) {
-  if (!ttsReady() || !word) return false
-  const text = String(word).trim()
+  const text = String(word || '').trim()
   if (!text) return false
+  const useLang = lang || wordCfg.value.tts_lang || 'en-GB'
+  try {
+    if (nativeTts()) {
+      SunshineTts.speak(text, useLang)
+      return true
+    }
+  } catch {}
+  if (!ttsReady()) return false
   try {
     speechSynthesis.cancel()
     const u = new SpeechSynthesisUtterance(text)
-    const voice = pickWordVoice(lang)
+    const voice = pickWordVoice(useLang)
     if (voice) {
       u.voice = voice
-      u.lang = voice.lang || lang || 'en-GB'
+      u.lang = voice.lang || useLang
     } else {
-      u.lang = lang || wordCfg.value.tts_lang || 'en-GB'
+      u.lang = useLang
     }
     u.rate = 0.85
     u.onerror = () => { if (wordUtter === u) wordUtter = null }
@@ -225,17 +256,12 @@ function speakWord(word, lang) {
 function hearWord() {
   const w = wordCurrent.value
   if (!w) return
-  if (!ttsReady()) return showToast('这台设备暂时不能朗读，先看音标')
+  if (speakWord(w.word)) return
+  if (!ttsReady() && !nativeTts()) return showToast('这台设备暂时不能朗读，先看音标')
   loadWordVoices()
-  const play = () => {
+  setTimeout(() => {
     if (!speakWord(w.word)) showToast('这台设备暂时不能朗读，先看音标')
-  }
-  if (!wordVoices.length) {
-    // Android WebView 语音列表常在第一次点喇叭后才填上
-    setTimeout(() => { loadWordVoices(); play() }, 250)
-    return
-  }
-  play()
+  }, 280)
 }
 function wordPhaseOf(item) {
   if (!item) return 'done'
@@ -357,7 +383,7 @@ async function wordCheck() {
   const it = wordCurrent.value
   const sid = wordToday.value.session && wordToday.value.session.id
   if (!it || !sid || wordDialog.busy) return
-  const text = String(wordDialog.input || '').trim().slice(0, 60)
+  const text = spellSubmitText()
   if (!text) { showToast('先写一写'); return }
   const retry = wordDialog.phase === 'retry' || it.state === 'retry'
   wordDialog.busy = true
@@ -1481,8 +1507,12 @@ function reloadApp() {
         <div v-else-if="(wordDialog.phase === 'spell' || wordDialog.phase === 'retry') && wordCurrent" class="word-pane">
           <p v-if="wordDialog.phase === 'retry'" class="word-retry-note">再写一次，不计分</p>
           <div class="word-cn big">{{ wordCurrent.cn }}</div>
-          <div class="word-slots" :class="wordDialog.feedback && wordDialog.feedback.kind">
-            <i v-for="(s, i) in wordSlots" :key="i" :class="s">{{ s === 'hyphen' ? '-' : '' }}</i>
+          <div class="word-slots" :class="wordDialog.feedback && wordDialog.feedback.kind" @click="focusWordInput">
+            <i v-for="(s, i) in wordSlotCells" :key="i" :class="[s.kind, { cur: s.cur && !wordDialog.feedback }]">{{ s.fill }}</i>
+            <input v-if="!wordDialog.feedback" ref="wordInputEl" v-model="wordDialog.input" class="word-input-ghost"
+              type="text" inputmode="text" autocomplete="off" autocapitalize="none" spellcheck="false"
+              enterkeyhint="done" :disabled="wordDialog.busy" maxlength="60" aria-label="默写单词"
+              @keyup.enter="wordCheck" />
           </div>
           <div v-if="wordDialog.feedback && wordDialog.feedback.kind === 'right'" class="word-fb ok">
             <div class="word-en fade">{{ wordCurrent.word }}</div>
@@ -1498,9 +1528,6 @@ function reloadApp() {
             <button v-else type="button" class="do word-main" @click="wordDialog.feedback = null; focusWordInput()">再写一次</button>
           </template>
           <template v-else>
-            <input ref="wordInputEl" v-model="wordDialog.input" class="word-input" type="text" inputmode="text"
-              autocomplete="off" autocapitalize="none" spellcheck="false" enterkeyhint="done"
-              :disabled="wordDialog.busy" @keyup.enter="wordCheck" />
             <button type="button" class="do word-main" :disabled="wordDialog.busy" @click="wordCheck">检查</button>
             <button v-if="wordCurrent.source === 'due' && wordDialog.phase === 'spell'" type="button" class="word-sec" :disabled="wordDialog.busy" @click="wordPeek">忘了，看一眼</button>
           </template>
@@ -2070,13 +2097,17 @@ body {
 .word-sec { background: none; color: var(--ink-3); }
 .word-actions { display: flex; gap: 8px; justify-content: center; margin-top: 16px; }
 .word-actions .word-sec, .word-actions .word-main { flex: 1; margin-top: 0; }
-.word-slots { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: 8px 0 14px; min-height: 36px; }
-.word-slots i { width: 18px; height: 28px; border-bottom: 2px solid var(--ink-3); display: inline-flex; align-items: flex-end; justify-content: center; font-weight: 800; }
+.word-slots { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: 8px 0 14px; min-height: 40px; position: relative; cursor: text; }
+.word-slots i { width: 22px; height: 32px; border-bottom: 2px solid var(--ink-3); display: inline-flex; align-items: flex-end; justify-content: center; font-weight: 800; font-size: 20px; line-height: 1; }
 .word-slots i.space { width: 12px; border: none; }
 .word-slots i.hyphen { border: none; align-items: center; }
+.word-slots i.cur { border-color: var(--accent); }
 .word-slots.right i { border-color: var(--ok); color: var(--ok); }
 .word-slots.wrong i { border-color: var(--accent); color: var(--accent-ink); }
-.word-input { width: 100%; min-height: 44px; font-size: 20px; text-align: center; padding: 8px 12px; border: 1px solid var(--line); border-radius: var(--radius-md); }
+.word-input-ghost {
+  position: absolute; inset: 0; opacity: 0; border: 0; padding: 0; margin: 0;
+  width: 100%; height: 100%; font-size: 16px; background: transparent; caret-color: transparent;
+}
 .word-retry-note { margin: 0 0 6px; font-size: 13px; color: var(--ink-3); }
 .word-wrong { margin: 8px 0; color: var(--accent-ink); font-weight: 700; }
 .word-fb.ok .fade { animation: wordfade .8s ease; }
