@@ -437,6 +437,7 @@ const spriteNick = ref('')
 const spriteFlavor = ref('')
 const spriteScene = ref('sun')
 const spriteBusy = ref(false)
+const toyShopOpen = ref(false)
 const morningShow = ref(false)
 const toyFlip = reactive({})
 function isNight() {
@@ -468,8 +469,8 @@ function sceneToys(scene) {
   return layout.filter(t => {
     if (t.kind === 'shop') return bought.has(t.id)
     if (t.id === 'trace-pinwheel') return !!today.daily_done
-    if (t.id === 'memo-award') return !!memos.award
-    if (t.id === 'memo-flag') return !!memos.flag
+    // 奖状/小旗要有「拿到了」的仪式，不按旧连击或旧全对补挂到树上
+    if (t.id === 'memo-award' || t.id === 'memo-flag') return false
     return false
   })
 }
@@ -1494,7 +1495,11 @@ function reloadApp() {
 
         <template v-else-if="activeTab === 'base'">
           <template v-if="sprites.base_enabled">
-            <h1><House class="ico" :size="20" /> 秘密基地</h1>
+            <h1 class="base-head">
+              <span><House class="ico" :size="20" /> 秘密基地</span>
+              <span v-if="sprites.enabled" class="dust-chip">星尘 {{ sprites.dust }}</span>
+              <button v-if="sprites.enabled" type="button" class="do" @click="toyShopOpen = true">玩具店</button>
+            </h1>
             <div class="atlas-scene-tabs">
               <button type="button" class="tab" :class="{ on: spriteScene === 'sun' }" @click="spriteScene = 'sun'">天台</button>
               <button type="button" class="tab" :class="{ on: spriteScene === 'leaf' }" @click="spriteScene = 'leaf'">树屋</button>
@@ -1526,14 +1531,6 @@ function reloadApp() {
               <img v-if="sprites.enabled && spriteScene === 'sun' && sprites.today?.unit_done" class="atlas-plane" :src="toyImg('trace-plane')" alt="" />
               <span v-if="sprites.enabled && spriteScene === 'sky' && sprites.today?.word_done" class="atlas-star">✦</span>
               <span v-if="sprites.enabled && spriteScene === 'sky' && sprites.today?.review_clear" class="atlas-moon">☾</span>
-            </div>
-            <div v-if="sprites.enabled" class="atlas-shop">
-              <h4>玩具店 · 星尘 {{ sprites.dust }}</h4>
-              <div v-for="it in sprites.shop" :key="it.id" class="atlas-shop-row">
-                <span>{{ it.name }} · {{ it.price }} 尘</span>
-                <button v-if="it.owned" type="button" class="ghost" disabled>已有</button>
-                <button v-else type="button" class="do" :disabled="spriteBusy || sprites.dust < it.price" @click="buyToy(it.id)">买</button>
-              </div>
             </div>
           </template>
           <div v-else class="coming-page">
@@ -1698,6 +1695,23 @@ function reloadApp() {
           </div>
         </div>
         <button class="ghost" @click="shopOpen = false">关闭</button>
+      </div>
+    </div>
+
+    <div v-if="toyShopOpen" class="mask" @click.self="toyShopOpen = false">
+      <div class="shop-modal enter toy-shop-modal">
+        <h3>玩具店</h3>
+        <p class="dust-chip toy-shop-dust">你有星尘 {{ sprites.dust }}</p>
+        <div class="toy-shop-grid">
+          <div v-for="it in sprites.shop" :key="it.id" class="toy-shop-card" :class="{ have: it.owned }">
+            <img :src="toyImg(it.id)" :alt="it.name" />
+            <b>{{ it.name }}</b>
+            <span>{{ it.price }} 星尘</span>
+            <button v-if="it.owned" type="button" class="ghost" disabled>已有</button>
+            <button v-else type="button" class="do" :disabled="spriteBusy || sprites.dust < it.price" @click="buyToy(it.id)">换</button>
+          </div>
+        </div>
+        <button class="ghost" @click="toyShopOpen = false">关闭</button>
       </div>
     </div>
 
@@ -1959,7 +1973,7 @@ function reloadApp() {
 
     <div v-if="spritesOpen" class="mask" @click.self="spritesOpen = false">
       <div class="shop-modal ach-modal atlas-modal">
-        <h3>{{ sprites.enabled ? ('阳光图鉴 ' + sprites.owned + '/12') : '秘密基地' }} <span v-if="sprites.enabled" class="atlas-dust">星尘 {{ sprites.dust }}</span></h3>
+        <h3 class="base-head">{{ sprites.enabled ? ('阳光图鉴 ' + sprites.owned + '/12') : '秘密基地' }} <span v-if="sprites.enabled" class="dust-chip">星尘 {{ sprites.dust }}</span></h3>
         <div class="ach-body">
           <div v-if="sprites.base_enabled" class="atlas-scene-tabs">
             <button type="button" class="tab" :class="{ on: spriteScene === 'sun' }" @click="spriteScene = 'sun'">天台</button>
@@ -2004,14 +2018,7 @@ function reloadApp() {
               </div>
             </div>
           </details>
-          <div v-if="sprites.enabled && sprites.base_enabled" class="atlas-shop">
-            <h4>玩具店</h4>
-            <div v-for="it in sprites.shop" :key="it.id" class="atlas-shop-row">
-              <span>{{ it.name }} · {{ it.price }} 尘</span>
-              <button v-if="it.owned" type="button" class="ghost" disabled>已有</button>
-              <button v-else type="button" class="do" :disabled="spriteBusy || sprites.dust < it.price" @click="buyToy(it.id)">买</button>
-            </div>
-          </div>
+          <p v-if="sprites.enabled && sprites.base_enabled" class="dim atlas-shop-hint">玩具在秘密基地的玩具店里买。</p>
         </div>
         <button class="ghost" @click="spritesOpen = false">关闭</button>
       </div>
@@ -2773,7 +2780,21 @@ body {
 .atlas-moon { position: absolute; right: 16%; top: 10%; color: #f4f0d8; font-size: 22px; }
 .atlas-cell-face { width: 48px; height: 48px; object-fit: contain; }
 .atlas-sil { width: 48px; height: 48px; margin: 0 auto; border-radius: 50%; background: var(--ink); opacity: .18; }
-.atlas-shop { margin: 12px 0; }
-.atlas-shop h4 { margin: 0 0 8px; }
-.atlas-shop-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.base-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.base-head > span:first-child { display: inline-flex; align-items: center; gap: 6px; }
+.dust-chip {
+  display: inline-flex; align-items: center; font-size: 14px; font-weight: 700;
+  background: var(--warm-2); color: var(--accent-ink); padding: 4px 12px; border-radius: 999px;
+}
+.toy-shop-dust { margin: 0 0 12px; }
+.toy-shop-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; margin: 8px 0 14px; }
+.toy-shop-card {
+  display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center;
+  background: var(--surface-2); border-radius: var(--radius-lg); padding: 12px 8px;
+}
+.toy-shop-card img { width: 72px; height: 72px; object-fit: contain; }
+.toy-shop-card.have { opacity: .55; }
+.toy-shop-card b { font-size: 14px; }
+.toy-shop-card span { font-size: 12px; color: var(--ink-2); }
+.atlas-shop-hint { margin: 8px 0 0; font-size: 13px; }
 </style>
