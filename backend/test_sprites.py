@@ -47,7 +47,7 @@ def _ledger_n(kid):
 def _earned(kid):
     c = db.connect()
     n = c.execute(
-        "SELECT COALESCE(SUM(delta),0) FROM ledger WHERE reason NOT IN ('redeem','penalty','penalty_cancel') AND kid_id=?",
+        "SELECT COALESCE(SUM(delta),0) FROM ledger WHERE reason NOT IN ('redeem','bank_deposit','bank_withdraw') AND kid_id=?",
         (kid,),
     ).fetchone()[0]
     c.close()

@@ -2,8 +2,8 @@
 """存储 + 初始化 + 种子数据。
 
 默认 SQLite；设 DATABASE_URL=postgres://... 则走 Postgres。
-流水账(ledger)是唯一真相源：余额=SUM(全部 delta)、累计获得=SUM(非 redeem/penalty/penalty_cancel delta)、
-等级/连击都由累计获得与日期推导，不单独硬存，保证「点错取消」公平可审计。兑换和扣分都不掉级。
+流水账(ledger)是唯一真相源：余额=SUM(全部 delta)、升级阳光=SUM(非 redeem/银行存取 的 delta，含取消和扣分)、
+等级/连击由净增阳光与日期推导。兑换不掉级；取消打卡、约定扣分会减少升级进度。
 """
 import hashlib
 import hmac
@@ -1141,7 +1141,7 @@ def fingerprints(conn):
     settings = {r["key"]: r["value"] for r in conn.execute("SELECT key,value FROM settings ORDER BY key")}
     return {
         "ledger_sum": n("SELECT COALESCE(SUM(delta),0) FROM ledger"),
-        "earned_sum": n("SELECT COALESCE(SUM(delta),0) FROM ledger WHERE reason NOT IN ('redeem','penalty','penalty_cancel')"),
+        "earned_sum": n("SELECT COALESCE(SUM(delta),0) FROM ledger WHERE reason NOT IN ('redeem','bank_deposit','bank_withdraw')"),
         "ledger_n": n("SELECT COUNT(*) FROM ledger"),
         "completions": n("SELECT COUNT(*) FROM completions"),
         "checkins": n("SELECT COUNT(*) FROM checkins"),

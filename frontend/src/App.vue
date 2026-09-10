@@ -1176,7 +1176,7 @@ const sunshineStats = computed(() => {
     const d = new Date(iso)
     return { date: iso, wd: i === 6 ? '今天' : WD[d.getDay()], inn, out, today: i === 6, quiet: inn === 0 }
   })
-  const weekIn = days.reduce((s, d) => s + d.inn, 0)
+  const weekIn = Math.max(0, sunSumSigned(rows.filter(r => weekSet.has(r.date)), r => isSunEarn(r) || isSunRevert(r)))
   const weekOut = days.reduce((s, d) => s + d.out, 0)
   const maxAbs = Math.max(1, ...days.map(d => Math.max(d.inn, d.out)))
   const paths = SUN_PATHS.map(p => {

@@ -286,11 +286,12 @@ def _sun(n, lo=0):
 
 
 def earned(c, kid=None):
-    # 累计获得：赚/取消都算（正负抵消）；兑换和扣分/冲正都不算 → 消费不掉级、扣分不掉级
-    # 2.1 若有 reason='sprite' 阳光换蛋，必须加入排除和 fingerprints.earned_sum
+    # 升级用净增：赚到的减去取消和扣分；商店兑换、银行存取不计入（花钱不掉级）
     return c.execute(
-        "SELECT COALESCE(SUM(delta),0) FROM ledger WHERE reason NOT IN ('redeem','penalty','penalty_cancel') AND kid_id=?",
+        "SELECT COALESCE(SUM(delta),0) FROM ledger WHERE reason NOT IN "
+        "('redeem','bank_deposit','bank_withdraw') AND kid_id=?",
         (kid or kid_id(),)).fetchone()[0]
+
 
 
 def balance(c, kid=None, account="pocket"):
@@ -3116,8 +3117,8 @@ def weekly():
     for i in range(7):
         d = (monday + timedelta(days=i)).isoformat()
         day_earned = c.execute(
-            "SELECT COALESCE(SUM(delta),0) FROM ledger WHERE date=? AND delta>0 AND kid_id=? "
-            "AND reason NOT IN ('penalty','penalty_cancel')", (d, kid)).fetchone()[0]
+            "SELECT COALESCE(SUM(delta),0) FROM ledger WHERE date=? AND kid_id=? "
+            "AND reason NOT IN ('redeem','penalty','penalty_cancel','bank_deposit','bank_withdraw')", (d, kid)).fetchone()[0]
         day_spent = c.execute(
             "SELECT COALESCE(SUM(-delta),0) FROM ledger WHERE date=? AND reason='redeem' AND delta<0 AND kid_id=?", (d, kid)).fetchone()[0]
         day_net = c.execute(
@@ -3143,8 +3144,8 @@ def weekly():
         wm = monday - timedelta(weeks=i)
         we = wm + timedelta(days=6)
         wk_earned = c.execute(
-            "SELECT COALESCE(SUM(delta),0) FROM ledger WHERE date BETWEEN ? AND ? AND delta>0 AND kid_id=? "
-            "AND reason NOT IN ('penalty','penalty_cancel')",
+            "SELECT COALESCE(SUM(delta),0) FROM ledger WHERE date BETWEEN ? AND ? AND kid_id=? "
+            "AND reason NOT IN ('redeem','penalty','penalty_cancel','bank_deposit','bank_withdraw')",
             (wm.isoformat(), we.isoformat(), kid)).fetchone()[0]
         wk_net = c.execute(
             "SELECT COALESCE(SUM(delta),0) FROM ledger WHERE date BETWEEN ? AND ? AND kid_id=?",
@@ -3170,8 +3171,8 @@ def weekly():
         for kr in roster:
             db.apply_scope(c, fam, kr["id"])
             ke = c.execute(
-                "SELECT COALESCE(SUM(delta),0) FROM ledger WHERE kid_id=? AND date BETWEEN ? AND ? AND delta>0 "
-                "AND reason NOT IN ('penalty','penalty_cancel')",
+                "SELECT COALESCE(SUM(delta),0) FROM ledger WHERE kid_id=? AND date BETWEEN ? AND ? "
+                "AND reason NOT IN ('redeem','penalty','penalty_cancel','bank_deposit','bank_withdraw')",
                 (kr["id"], w_start, w_end)).fetchone()[0]
             ks = c.execute(
                 "SELECT COALESCE(SUM(-delta),0) FROM ledger WHERE kid_id=? AND date BETWEEN ? AND ? AND reason='redeem' AND delta<0",

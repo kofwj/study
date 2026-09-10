@@ -111,8 +111,8 @@ def test_penalty_switch_and_ledger():
         assert r.status_code == 200, r.text
         body = r.json()
         assert body["delta"] == -5 and body["balance"] == bal0 - 5
-        assert body["earned"] == earned0 == body["earned_before"]
-        assert body["level"]["level"] == level0
+        assert body["earned"] == earned0 - 5
+        assert body["earned_before"] == earned0
         assert cli.post("/api/admin/penalty" + q, json={"amount": body["balance"] + 1, "reason": "磨蹭"}).status_code == 400
         assert cli.post("/api/admin/penalty" + q, json={"amount": 1, "reason": "其他"}).status_code == 400
         lid = body["id"]
@@ -130,7 +130,7 @@ def test_penalty_switch_and_ledger():
         wk2 = cli.get("/api/admin/weekly" + q).json()
         assert wk2["penalty_net"] == -3 and wk2["penalty_count"] >= 1
         ov2 = cli.get("/api/overview" + q).json()
-        assert ov2["earned"] == earned0 and ov2["balance"] == bal0 - 3
+        assert ov2["earned"] == earned0 - 3 and ov2["balance"] == bal0 - 3
         assert ov2["level"] == level0
         got = cli.get("/api/admin/penalty" + q).json()
         rows = got["items"] if isinstance(got, dict) else got
