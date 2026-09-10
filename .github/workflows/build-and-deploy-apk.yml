@@ -52,6 +52,16 @@ jobs:
           echo "APK_SIZE=$APK_SIZE" >> $GITHUB_ENV
           echo "✅ APK 构建成功: $APK_SIZE"
       
+      - name: Get version
+        id: version
+        run: echo "VERSION=$(cat VERSION)" >> $GITHUB_OUTPUT
+      
+      - name: Rename APK with version
+        run: |
+          cp android/app/build/outputs/apk/release/app-release.apk \
+             sunshine-v${{ steps.version.outputs.VERSION }}.apk
+          ls -lh sunshine-v${{ steps.version.outputs.VERSION }}.apk
+      
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
@@ -67,17 +77,9 @@ jobs:
       - name: Upload APK to VPS
         run: |
           scp -i ~/.ssh/id_ed25519 \
-            android/app/build/outputs/apk/release/app-release.apk \
+            sunshine-v${{ steps.version.outputs.VERSION }}.apk \
             ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/home/kofwj/sunshine/static/sunshine-latest.apk
-      
-      - name: Get version
-        id: version
-        run: echo "VERSION=$(cat VERSION)" >> $GITHUB_OUTPUT
-      
-      - name: Rename APK with version
-        run: |
-          cp android/app/build/outputs/apk/release/app-release.apk \
-             sunshine-v${{ steps.version.outputs.VERSION }}.apk
+          echo "✅ APK 已上传到 VPS"
       
       - name: Extract changelog for current version
         id: changelog
