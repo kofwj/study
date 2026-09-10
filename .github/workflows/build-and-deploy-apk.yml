@@ -50,17 +50,6 @@ jobs:
           cd android
           ./gradlew assembleRelease --no-daemon --stacktrace
       
-      - name: List build outputs
-        run: |
-          echo "📂 查找所有 APK 文件..."
-          find android -name "*.apk" -type f || echo "未找到任何 APK 文件"
-          echo ""
-          echo "📂 查看 build 输出目录结构..."
-          ls -R android/app/build/outputs/ 2>/dev/null || echo "outputs 目录不存在"
-          echo ""
-          echo "📂 检查 build 目录是否存在..."
-          ls -la android/app/build/ 2>/dev/null || echo "build 目录不存在"
-      
       - name: Check APK output
         run: |
           # 检查未签名的 APK（没有配置签名时的默认输出）
@@ -87,37 +76,6 @@ jobs:
           cp "$APK_FILE" sunshine-v${{ steps.version.outputs.VERSION }}.apk
           ls -lh sunshine-v${{ steps.version.outputs.VERSION }}.apk
       
-      - name: Setup SSH
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-          echo "🔍 尝试连接到 VPS 获取 host key..."
-          ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts 2>&1 || {
-            echo "⚠️  ssh-keyscan 失败，尝试使用 StrictHostKeyChecking=no"
-            echo "Host ${{ secrets.VPS_HOST }}" >> ~/.ssh/config
-            echo "  StrictHostKeyChecking no" >> ~/.ssh/config
-            echo "  UserKnownHostsFile=/dev/null" >> ~/.ssh/config
-          }
-          echo "✅ SSH 配置完成"
-      
-      - name: Create static directory on VPS
-        run: |
-          ssh -i ~/.ssh/id_ed25519 ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} \
-            "mkdir -p /home/kofwj/sunshine/static"
-      
-      - name: Upload APK to VPS
-        run: |
-          echo "📤 开始上传 APK 到 VPS..."
-          ls -lh sunshine-v${{ steps.version.outputs.VERSION }}.apk
-          scp -v -i ~/.ssh/id_ed25519 \
-            sunshine-v${{ steps.version.outputs.VERSION }}.apk \
-            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/home/kofwj/sunshine/static/sunshine-latest.apk
-          echo "✅ APK 已上传到 VPS"
-          echo "🔍 验证上传结果..."
-          ssh -i ~/.ssh/id_ed25519 ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} \
-            "ls -lh /home/kofwj/sunshine/static/sunshine-latest.apk"
-      
       - name: Extract changelog for current version
         id: changelog
         run: |
@@ -141,12 +99,7 @@ jobs:
             
             ### 📦 安装方式
             
-            **平板用户（推荐）**：
-            1. 点击下方 Assets 中的 APK 文件下载
-            2. 在平板上打开并安装
-            
-            **或通过 VPS 下载**：
-            访问 `http://${{ secrets.VPS_HOST }}:9000/api/apk/latest`
+            点击下方 **Assets** 中的 APK 文件下载，在平板上打开并安装。
             
             ### 📊 构建信息
             - **APK 大小**: ${{ env.APK_SIZE }}
@@ -166,7 +119,4 @@ jobs:
           echo "- **版本**: v${{ steps.version.outputs.VERSION }}" >> $GITHUB_STEP_SUMMARY
           echo "- **APK 大小**: ${{ env.APK_SIZE }}" >> $GITHUB_STEP_SUMMARY
           echo "- **GitHub Release**: https://github.com/${{ github.repository }}/releases/tag/v${{ steps.version.outputs.VERSION }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **VPS 下载**: http://${{ secrets.VPS_HOST }}:9000/api/apk/latest" >> $GITHUB_STEP_SUMMARY
           echo "- **部署时间**: $(date +'%Y-%m-%d %H:%M:%S')" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "平板可访问 http://${{ secrets.VPS_HOST }}:9000 检查更新" >> $GITHUB_STEP_SUMMARY
