@@ -6,7 +6,13 @@ import { APP_LABEL, APP_REVISION } from './version.js'
 const Admin = defineAsyncComponent(() => import('./Admin.vue'))
 import { SUBJECT_ICONS as ICONS, rankIcon, achIcon } from './icons.js'
 import { mottoFor } from './dailyMottos.js'
-import { Sun, Lock, Gift, Check, TrendingUp, Target, User, ShoppingCart, ScrollText, Medal, ChartColumn, Map, CalendarDays, RefreshCw, PartyPopper, Sparkles, BookOpen, Flame, Volume2, Egg, Sprout, Leaf, Flower, House, Landmark, Coins, ArrowDownToLine, ArrowUpFromLine, Globe, FileText } from '@lucide/vue'
+import { Sun, Lock, Gift, Check, TrendingUp, Target, User, ShoppingCart, ScrollText, Medal, ChartColumn, Map, CalendarDays, RefreshCw, PartyPopper, Sparkles, BookOpen, Flame, Volume2, House, Landmark, Coins, ArrowDownToLine, ArrowUpFromLine, Globe, FileText } from '@lucide/vue'
+
+// companion 插画
+import companionEggImg from './assets/companion-egg.png'
+import companionSproutImg from './assets/companion-sprout.png'
+import companionLeafImg from './assets/companion-leaf.png'
+import companionBloomImg from './assets/companion-bloom.png'
 
 import { soundManager, playSound, playCompleteBeep, playCoinBeep, playLevelUpBeep, playEvolveBeep } from './sounds.js'
 import { getEncouragement, getCompanionMessage } from './encouragements.js'
@@ -60,6 +66,8 @@ function observeChrome() {
 watch([topbarEl, updateBarEl], observeChrome)
 onBeforeUnmount(() => {
   topbarObserver?.disconnect()
+  if (companionPulseTimer) clearTimeout(companionPulseTimer)
+  if (evolveTimer) clearTimeout(evolveTimer)
   try { if (typeof speechSynthesis !== 'undefined') speechSynthesis.cancel() } catch {}
 })
 const toast = ref('')
@@ -115,9 +123,10 @@ function pickUnseenAch() {
 
 const wordToday = ref({ enabled: false, finished: false, session: null, config: {} })
 const wordInputEl = ref(null)
+const WORD_PEEK_MAX = 1
 const wordDialog = reactive({
   open: false, itemIndex: 0, phase: 'look', input: '', busy: false,
-  feedback: null, peekUntil: 0, peekN: {}, heard: {}, filter: 'new',
+  feedback: null, peekUntil: 0, peekN: {}, heard: {}, filter: 'new', sid: '',
 })
 let wordPeekTimer = null
 let wordNextTimer = null
@@ -195,13 +204,22 @@ function spellSubmitText() {
   return out.trim().slice(0, 60)
 }
 function ipaText(w) { return (w && String(w.ipa || '').trim()) ? w.ipa : '暂无音标' }
-function firstLetter(w) { const m = String(w || '').match(/[A-Za-z]/); return m ? m[0] : '' }
 function applyWordToday(t) {
   if (!t) return
+  const sid = (t.session && t.session.id) || ''
+  if (sid && sid !== wordDialog.sid) {
+    wordDialog.sid = sid
+    wordDialog.peekN = {}
+    wordDialog.heard = {}
+  }
   wordToday.value = t
   const items = wordLaneItems()
   const i = items.findIndex(x => x.state !== 'done')
   wordDialog.itemIndex = i < 0 ? 0 : i
+}
+function wordPeekLeft(id) {
+  if (!id) return 0
+  return Math.max(0, WORD_PEEK_MAX - (wordDialog.peekN[id] || 0))
 }
 let wordUtter = null
 let wordVoices = []
@@ -366,9 +384,9 @@ async function wordAgain() {
 function wordPeek() {
   const it = wordCurrent.value
   if (!it || it.source !== 'due' || wordDialog.busy) return
-  const n = wordDialog.peekN[it.word_id] || 0
-  if (n >= 2) { showToast('先写一写，写错了会看到答案'); return }
-  wordDialog.peekN[it.word_id] = n + 1
+  if (wordDialog.phase !== 'spell') return
+  if (wordPeekLeft(it.word_id) <= 0) { showToast('这题不能再看了，先写；写错了会看到正确答案'); return }
+  wordDialog.peekN[it.word_id] = (wordDialog.peekN[it.word_id] || 0) + 1
   wordDialog.peekUntil = Date.now() + 2000
   wordDialog.phase = 'look'
   clearTimeout(wordPeekTimer)
@@ -598,11 +616,20 @@ const celebrate = ref(null)
 const companionOpen = ref(false)
 const companionNameDraft = ref('')
 const companionEvolve = ref(null)
+const companionPulse = ref(false)
 const pendingLevelUp = ref(null)
 let evolveTimer = null
-const COMPANION_ICONS = { egg: Egg, sprout: Sprout, leaf: Leaf, bloom: Flower }
+const COMPANION_IMAGES = { egg: companionEggImg, sprout: companionSproutImg, leaf: companionLeafImg, bloom: companionBloomImg }
 const companion = computed(() => data.companion || {})
-const companionIcon = computed(() => COMPANION_ICONS[companion.value.stage] || Egg)
+const companionImage = computed(() => COMPANION_IMAGES[companion.value.stage] || companionEggImg)
+const companionEvolveImage = computed(() => COMPANION_IMAGES[companionEvolve.value?.stage] || companionEggImg)
+let companionPulseTimer = null
+function pulseCompanion() {
+  companionPulse.value = false
+  if (companionPulseTimer) clearTimeout(companionPulseTimer)
+  requestAnimationFrame(() => { companionPulse.value = true })
+  companionPulseTimer = setTimeout(() => { companionPulse.value = false; companionPulseTimer = null }, 720)
+}
 const companionTitle = computed(() => {
   const c = companion.value
   const stage = c.stage_name || '阳光蛋'
@@ -895,6 +922,7 @@ async function toggleTask(task, event) {
       if (navigator.vibrate) navigator.vibrate(100)
     } else {
       const r = await api.complete(task.id)
+      pulseCompanion()
       playSound('complete') || playCompleteBeep()
       if (navigator.vibrate) navigator.vibrate([50, 30, 50])
       setTimeout(() => { playSound('coin') || playCoinBeep() }, 200)
@@ -997,6 +1025,7 @@ async function submitDaily(event) {
   actionBusy.value = true
   try {
     const r = await api.complete(dailyDialog.task.id, metrics)
+    pulseCompanion()
     playSound('complete') || playCompleteBeep()
     if (navigator.vibrate) navigator.vibrate([50, 30, 50])
     if (event) flyPlus(event.clientX, event.clientY, `+${r.delta} 阳光`)
@@ -1395,8 +1424,8 @@ function reloadApp() {
     <!-- 蓝顶栏 -->
     <header ref="topbarEl" class="topbar">
       <div class="who">
-        <button type="button" class="avatar companion" :class="['stage-' + (companion.stage || 'egg'), companion.aura ? 'aura-' + companion.aura : '']" @click="openCompanion">
-          <component :is="companionIcon" :size="26" />
+        <button type="button" class="avatar companion" :class="['stage-' + (companion.stage || 'egg'), companion.aura ? 'aura-' + companion.aura : '', { 'companion-pulse': companionPulse }]" @click="openCompanion">
+          <img :src="companionImage" alt="伙伴" class="companion-img" />
         </button>
         <img v-if="dutySprite" class="duty-face" :src="spImg(dutySprite.id)" :alt="displayName(dutySprite)" />
         <div>
@@ -2022,7 +2051,7 @@ function reloadApp() {
           </template>
           <template v-else>
             <button type="button" class="do word-main" :disabled="wordDialog.busy" @click="wordCheck">检查</button>
-            <button v-if="wordCurrent.source === 'due' && wordDialog.phase === 'spell'" type="button" class="word-sec" :disabled="wordDialog.busy" @click="wordPeek">忘了，看一眼</button>
+            <button v-if="wordCurrent.source === 'due' && wordDialog.phase === 'spell' && wordPeekLeft(wordCurrent.word_id) > 0" type="button" class="word-sec" :disabled="wordDialog.busy" @click="wordPeek">忘了，看一眼</button>
           </template>
         </div>
 
@@ -2049,7 +2078,7 @@ function reloadApp() {
     <div v-if="companionOpen" class="mask" @click.self="companionOpen = false">
       <div class="companion-sheet enter">
         <div class="companion-big" :class="['stage-' + (companion.stage || 'egg'), companion.aura ? 'aura-' + companion.aura : '']">
-          <component :is="companionIcon" :size="52" />
+          <img :src="companionImage" alt="伙伴" class="companion-img-big" />
         </div>
         <strong>{{ companionTitle }}</strong>
         <p v-if="companion.next_stage" class="dim">再 {{ Math.max(0, (companion.next_need || 0) - (companion.earned || 0)) }} 阳光到{{ companion.next_stage_name }}</p>
@@ -2066,11 +2095,11 @@ function reloadApp() {
 
     <div v-if="companionEvolve" class="celebrate companion-evolve" @click="closeCompanionEvolve">
       <div class="confetti">
-        <span v-for="i in 14" :key="'e'+i" :style="{ left: (i * 7.1) + '%', animationDelay: (i * 0.09) + 's' }">•</span>
+        <span v-for="i in 18" :key="'e'+i" :style="{ left: (i * 5.6) + '%', animationDelay: (i * 0.08) + 's', '--confetti-color': ['#f5a524', '#f26f5f', '#3aa4e0', '#2e9e63'][i % 4] }"></span>
       </div>
-      <div class="celebrate-card">
-        <div class="companion-big" :class="'stage-' + (companionEvolve.stage || 'egg')">
-          <component :is="COMPANION_ICONS[companionEvolve.stage] || Egg" :size="52" />
+      <div class="celebrate-card companion-evolve-card">
+        <div class="companion-big companion-evolve-figure" :class="'stage-' + (companionEvolve.stage || 'egg')">
+          <img :src="companionEvolveImage" alt="伙伴成长了" class="companion-img-big" />
         </div>
         <div class="celebrate-title"><PartyPopper class="ico" :size="16" /> 长大了</div>
         <div class="celebrate-name">{{ companionEvolve.name ? companionEvolve.name + ' · ' : '' }}{{ companionEvolve.stage_name }}</div>
@@ -2330,8 +2359,12 @@ body {
   flex: 0 0 52px; aspect-ratio: 1; overflow: hidden;
   border: 3px solid rgba(255,255,255,.72); box-shadow: var(--shadow-press-active);
 }
-.avatar.companion { border: none; cursor: pointer; font-family: inherit; padding: 0; color: #fff; }
-.avatar.stage-egg, .companion-big.stage-egg { background: #c5ced6; color: #4a5560; }
+.avatar.companion { border: none; cursor: pointer; font-family: inherit; padding: 0; color: #fff; position: relative; }
+.avatar.companion { border: none; cursor: pointer; font-family: inherit; padding: 0; color: #fff; position: relative; transition: transform .18s ease; }
+.companion-img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.companion-img-big { width: 100%; height: 100%; object-fit: contain; display: block; }
+.companion-pulse { animation: companion-hop .72s cubic-bezier(.2,1.6,.4,1) both; }
+.companion-pulse .companion-img { animation: companion-wiggle .72s ease-out both; }
 .avatar.stage-sprout, .companion-big.stage-sprout { background: #7dba6a; color: #fff; }
 .avatar.stage-leaf, .companion-big.stage-leaf { background: #2e8f55; color: #fff; }
 .avatar.stage-bloom, .companion-big.stage-bloom { background: #f5a524; color: #fff; }
