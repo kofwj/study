@@ -21,7 +21,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '24'
+          node-version: '22'
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
       
@@ -34,8 +34,11 @@ jobs:
       - name: Build frontend
         run: |
           cd frontend
-          npm ci
+          echo "📦 安装依赖..."
+          npm ci --verbose
+          echo "🔨 开始构建..."
           npm run build
+          echo "✅ 构建完成，检查输出..."
           ls -lh dist/
       
       - name: Make gradlew executable
