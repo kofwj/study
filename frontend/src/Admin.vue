@@ -69,6 +69,8 @@ const activeTerm = ref('g5s1')
 const activeSubject = ref('')
 const cursors = ref({})
 const progressLock = ref(true)
+const hiddenSubjects = ref([])
+const SUBJECT_ORDER = ['语文', '数学', '英语', '科学', '道法', '体育', '音美', '综合', '围棋']
 const redemptions = ref([])
 const tests = ref([])
 const newTest = reactive({ subject_id: '', unit_id: '', score: '', note: '' })
@@ -152,6 +154,7 @@ async function load() {
   if (!activeSubject.value || !unitsBySubject.value[activeSubject.value]) activeSubject.value = Object.keys(unitsBySubject.value)[0] || ''
   cursors.value = t.cursors || {}
   progressLock.value = t.progress_lock === '1'
+  hiddenSubjects.value = t.hidden_subjects || []
   redemptions.value = rd
   weekly.value = wk
   familyToday.value = ft || { today: '', kids: [] }
@@ -391,6 +394,18 @@ const cursorSubjects = computed(() => {
   const ids = new Set(tasks.value.filter(t => unitIds.has(t.unit_id)).map(t => t.subject_id))
   return subjects.value.filter(s => ids.has(s.id))
 })
+const displaySubjects = computed(() => {
+  const ids = new Set([
+    ...tasks.value.map(t => t.subject_id),
+    ...daily.value.map(d => d.subject_id),
+  ])
+  const list = subjects.value.filter(s => ids.has(s.id))
+  list.sort((a, b) => SUBJECT_ORDER.indexOf(a.id) - SUBJECT_ORDER.indexOf(b.id))
+  return list
+})
+function subjectShown(id) {
+  return !(hiddenSubjects.value || []).includes(id)
+}
 const unitsBySubject = computed(() => {
   const m = {}
   for (const u of termUnits.value) {
@@ -745,6 +760,15 @@ async function toggleLock() {
     await api.admin.setProgressLock(!progressLock.value)
     progressLock.value = !progressLock.value
     showToast(progressLock.value ? '进度锁已开：只能打当前单元' : '进度锁已关：可自由打卡')
+  } catch (e) { showToast(e.message) }
+}
+
+async function toggleSubjectVisible(id) {
+  const on = !subjectShown(id)
+  try {
+    const r = await api.admin.setSubjectVisible(id, on)
+    hiddenSubjects.value = r.hidden_subjects || []
+    showToast(on ? `孩子端显示${id}` : `孩子端已隐藏${id}`)
   } catch (e) { showToast(e.message) }
 }
 
@@ -1510,6 +1534,13 @@ get up	起床</pre>
           <option value="">从头开始</option>
           <option v-for="t in (tasksBySubject[s.id] || [])" :key="t.id" :value="t.id">{{ t.title }}</option>
         </select>
+      </div>
+      <h4 class="w-h">孩子端显示学科</h4>
+      <p class="dim">关掉的科目，孩子侧栏和今日推荐都看不到；任务还在，随时开回来。</p>
+      <div class="lock-row" v-for="s in displaySubjects" :key="'vis-' + s.id">
+        <span class="badge">{{ s.name }}</span>
+        <span class="grow">孩子端显示</span>
+        <button type="button" :class="['toggle', { on: subjectShown(s.id) }]" @click="toggleSubjectVisible(s.id)">{{ subjectShown(s.id) ? '开' : '关' }}</button>
       </div>
       <div class="lock-row mt14">
         <span class="badge">进度锁</span>

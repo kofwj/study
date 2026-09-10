@@ -18,6 +18,7 @@ const data = reactive({
   cursors: {},
   today_checkin: false,
   subjects: [],
+  hidden_subjects: [],
   units: [],
   tasks: [],
   daily: [],
@@ -656,7 +657,9 @@ async function refresh() {
     }
     rewards.value = r
     boxes.value = bx
-    reviewDue.value = rv || []
+    const hidden = new Set(data.hidden_subjects || [])
+    if (hidden.has(activeTab.value)) activeTab.value = '今日推荐'
+    reviewDue.value = (rv || []).filter(x => !hidden.has(x.subject_id))
     recentLedger.value = led || []
     if (Array.isArray(ach)) achievements.value = ach
     if (wd) applyWordToday(wd)
@@ -951,7 +954,7 @@ const bySubject = computed(() => {
 const dailyTodo = computed(() => {
   return data.daily
     .map((d, i) => ({ d, i }))
-    .filter(x => !x.d.done_today)
+    .filter(x => !x.d.done_today && !(data.hidden_subjects || []).includes(x.d.subject_id))
     .sort((a, b) => subjectRank(a.d.subject_id) - subjectRank(b.d.subject_id) || a.i - b.i)
     .map(x => x.d)
 })
@@ -1031,8 +1034,9 @@ function subjectRank(id) {
   return i < 0 ? 99 : i
 }
 const orderedSubjects = computed(() => {
-  // 只显示有内容的学科（单元任务或每日任务），空的（科学/道法/音美/综合）先隐藏，补目录后自动出现
-  const list = data.subjects.filter(s => (subjectProgress.value[s.id] || {}).total > 0)
+  // 有内容才出现；家长关掉的科目（默认道法）不进孩子侧栏
+  const hidden = new Set(data.hidden_subjects || [])
+  const list = data.subjects.filter(s => (subjectProgress.value[s.id] || {}).total > 0 && !hidden.has(s.id))
   list.sort((a, b) => SUBJECT_ORDER.indexOf(a.id) - SUBJECT_ORDER.indexOf(b.id))
   return list
 })

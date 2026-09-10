@@ -980,6 +980,33 @@ def overview():
     return level_info(get_conn())
 
 
+HIDDEN_SUBJECTS_KEY = "hidden_subjects"
+DEFAULT_HIDDEN_SUBJECTS = ["道法"]
+
+
+def _parse_hidden_subjects(raw):
+    if raw is None:
+        return [s for s in DEFAULT_HIDDEN_SUBJECTS if s in db.ALL_SUBJECTS]
+    text = str(raw).strip()
+    if not text:
+        return []
+    try:
+        val = json.loads(text)
+        names = val if isinstance(val, list) else []
+    except Exception:
+        names = [x.strip() for x in text.split(",") if x.strip()]
+    out = []
+    for n in names:
+        s = str(n)
+        if s in db.ALL_SUBJECTS and s not in out:
+            out.append(s)
+    return out
+
+
+def hidden_subjects_for(c, kid):
+    return _parse_hidden_subjects(db.get_kid_setting(c, kid, HIDDEN_SUBJECTS_KEY, None))
+
+
 @app.get("/api/tasks")
 def tasks():
     c = get_conn()
@@ -1020,6 +1047,7 @@ def tasks():
         "SELECT DISTINCT task_id FROM completions WHERE status='completed' AND kid_id=? AND NOT EXISTS ("
         "SELECT 1 FROM ledger WHERE reason='cancel' AND ref_id='cmp-'||completions.id)", (kid_id(),)).fetchall()}
     out["progress_lock"] = db.get_setting(c, "progress_lock", "1")
+    out["hidden_subjects"] = hidden_subjects_for(c, kid_id())
     locked_ids = locked_task_ids(c)
     out["tasks"] = [{**dict(t), "done": t["id"] in done_ids,
                      "past": is_past(c, t["id"], t["subject_id"]),
@@ -1393,6 +1421,28 @@ def set_progress_lock(b: LockBody):
     db.set_setting(c, "progress_lock", "1" if b.on else "0")
     c.commit(); c.close()
     return {"ok": True}
+
+
+class SubjectVisibleBody(BaseModel):
+    subject_id: str
+    on: bool = True
+
+
+@app.post("/api/admin/subject-visible", dependencies=[Depends(require_parent)])
+def set_subject_visible(b: SubjectVisibleBody):
+    sid = (b.subject_id or "").strip()
+    if sid not in db.ALL_SUBJECTS:
+        raise HTTPException(404, "没有这个学科")
+    c = get_conn()
+    hidden = set(hidden_subjects_for(c, kid_id()))
+    if b.on:
+        hidden.discard(sid)
+    else:
+        hidden.add(sid)
+    ordered = [s for s in db.ALL_SUBJECTS if s in hidden]
+    db.set_kid_setting(c, kid_id(), HIDDEN_SUBJECTS_KEY, json.dumps(ordered, ensure_ascii=False))
+    c.commit(); c.close()
+    return {"ok": True, "hidden_subjects": ordered}
 
 
 
@@ -2323,7 +2373,9 @@ def kid_weak_points(unit_id: str = ""):
 @app.get("/api/review-due")
 def kid_review_due():
     c = get_conn()
-    rows = _due_queue(c, kid_id())
+    kid = kid_id()
+    hidden = set(hidden_subjects_for(c, kid))
+    rows = [r for r in _due_queue(c, kid) if r.get("subject_id") not in hidden]
     c.close()
     return rows
 

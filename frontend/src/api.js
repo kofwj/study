@@ -73,7 +73,7 @@ export const api = {
     updateDaily: (id, o) => j(`/api/admin/daily/${id}`, { method: 'PUT', ...body(o) }),
     delDaily: (id) => j(`/api/admin/daily/${id}`, { method: 'DELETE' }),
     setCursor: (o) => j('/api/admin/cursor', { method: 'POST', ...body(o) }),
-
+    setSubjectVisible: (subject_id, on) => j('/api/admin/subject-visible', { method: 'POST', ...body({ subject_id, on }) }),
     setProgressLock: (on) => j('/api/admin/progress-lock', { method: 'POST', ...body({ on }) }),
     tests: () => j('/api/admin/tests'),
     createTest: (o) => j('/api/admin/tests', { method: 'POST', ...body(o) }),
