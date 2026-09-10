@@ -49,14 +49,19 @@ jobs:
         run: |
           cd android
           ./gradlew assembleRelease --no-daemon --stacktrace
+        continue-on-error: true
       
       - name: List build outputs
         run: |
           echo "📂 查找所有 APK 文件..."
-          find android -name "*.apk" -type f
+          find android -name "*.apk" -type f || echo "未找到任何 APK 文件"
           echo ""
           echo "📂 查看 build 输出目录结构..."
-          ls -R android/app/build/outputs/ || echo "outputs 目录不存在"
+          ls -R android/app/build/outputs/ 2>/dev/null || echo "outputs 目录不存在"
+          echo ""
+          echo "📂 检查 build 目录是否存在..."
+          ls -la android/app/build/ 2>/dev/null || echo "build 目录不存在"
+        continue-on-error: true
       
       - name: Check APK output
         run: |
