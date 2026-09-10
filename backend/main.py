@@ -3762,6 +3762,44 @@ def daily_history(task_id: str):
     return [{"date": r["date"], "metrics": (json.loads(r["metrics"]) if r["metrics"] else {})} for r in rows]
 
 
+# ---------------- APK 更新与下载 ----------------
+
+@app.get("/api/version")
+def get_app_version():
+    """返回当前应用版本号，供 Android 客户端检查更新"""
+    return {
+        "version": app_version(),
+        "revision": app_revision(),
+        "label": app_label()
+    }
+
+
+@app.get("/api/apk/latest")
+def download_latest_apk():
+    """提供最新 APK 下载"""
+    from fastapi.responses import FileResponse
+    import os
+    
+    apk_path = db.BASE / "static" / "sunshine-latest.apk"
+    if not apk_path.exists():
+        raise HTTPException(status_code=404, detail="APK 文件不存在，请先构建并上传")
+    
+    # 返回文件大小和最后修改时间供客户端参考
+    stat = os.stat(apk_path)
+    headers = {
+        "Content-Disposition": f'attachment; filename="sunshine-{app_version()}.apk"',
+        "X-APK-Version": app_version(),
+        "X-APK-Size": str(stat.st_size),
+        "X-APK-Modified": datetime.fromtimestamp(stat.st_mtime).isoformat()
+    }
+    
+    return FileResponse(
+        path=str(apk_path),
+        media_type="application/vnd.android.package-archive",
+        headers=headers
+    )
+
+
 # ---------------- 静态前端（构建后由本后端直接托管） ----------------
 
 _DIST = db.BASE.parent / "frontend" / "dist"

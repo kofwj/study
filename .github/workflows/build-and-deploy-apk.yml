@@ -1,0 +1,86 @@
+name: Build and Deploy APK
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'frontend/**'
+      - 'android/**'
+      - 'VERSION'
+      - 'backend/**'
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+      
+      - name: Build frontend
+        run: |
+          cd frontend
+          npm ci
+          npm run build
+          ls -lh dist/
+      
+      - name: Make gradlew executable
+        run: chmod +x android/gradlew
+      
+      - name: Build Android APK
+        run: |
+          cd android
+          ./gradlew assembleRelease --no-daemon
+      
+      - name: Check APK output
+        run: |
+          ls -lh android/app/build/outputs/apk/release/
+          APK_SIZE=$(du -h android/app/build/outputs/apk/release/app-release.apk | cut -f1)
+          echo "APK_SIZE=$APK_SIZE" >> $GITHUB_ENV
+          echo "✅ APK 构建成功: $APK_SIZE"
+      
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
+      
+      - name: Create static directory on VPS
+        run: |
+          ssh -i ~/.ssh/id_ed25519 ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} \
+            "mkdir -p /home/kofwj/sunshine/static"
+      
+      - name: Upload APK to VPS
+        run: |
+          scp -i ~/.ssh/id_ed25519 \
+            android/app/build/outputs/apk/release/app-release.apk \
+            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/home/kofwj/sunshine/static/sunshine-latest.apk
+      
+      - name: Get version
+        id: version
+        run: echo "VERSION=$(cat VERSION)" >> $GITHUB_OUTPUT
+      
+      - name: Deployment summary
+        run: |
+          echo "## 🚀 部署成功" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **版本**: v${{ steps.version.outputs.VERSION }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **APK 大小**: ${{ env.APK_SIZE }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **下载地址**: http://${{ secrets.VPS_HOST }}:9000/api/apk/latest" >> $GITHUB_STEP_SUMMARY
+          echo "- **部署时间**: $(date +'%Y-%m-%d %H:%M:%S')" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "平板可访问 http://${{ secrets.VPS_HOST }}:9000 检查更新" >> $GITHUB_STEP_SUMMARY
