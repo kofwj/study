@@ -122,3 +122,4 @@ Error: Cannot find module
 
 1. 在 commit message 中添加 `[skip ci]` 或 `[ci skip]`
 2. 或者在 `.github/workflows/build-and-deploy-apk.yml` 中注释掉 `on:` 触发条件
+# CI/CD 测试
