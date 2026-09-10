@@ -426,6 +426,9 @@ const boxResult = ref(null)
 const rankMapOpen = ref(false)
 const rankMap = ref(null)
 const recentLedger = ref([])
+const bankData = ref({ enabled: false, balance: 0, pocket_balance: 0, goal: null, requests: [], ledger: [] })
+const bankAmount = ref(5)
+const bankBusy = ref(false)
 const reviewDue = ref([])
 const updateReady = ref(false)
 const celebrate = ref(null)
@@ -635,11 +638,12 @@ async function doLogout() {
 
 async function refresh() {
   try {
-    const [t, r, bx, rv, led, ach, wd] = await Promise.all([
+    const [t, r, bx, rv, led, ach, wd, bk] = await Promise.all([
       api.tasks(), api.rewards(), api.boxes(),
       api.reviewDue().catch(() => []), api.ledger().catch(() => []),
       api.achievements().catch(() => null),
       api.wordsToday().catch(() => null),
+      api.bank().catch(() => null),
     ])
     const prevId = data.level && data.level.level_id
     const prevEarned = data.level && (data.level.earned || 0)
@@ -661,6 +665,10 @@ async function refresh() {
     if (hidden.has(activeTab.value)) activeTab.value = '今日推荐'
     reviewDue.value = (rv || []).filter(x => !hidden.has(x.subject_id))
     recentLedger.value = led || []
+    if (bk) {
+      bankData.value = bk
+      if (!bk.enabled && activeTab.value === 'bank') activeTab.value = '今日推荐'
+    }
     if (Array.isArray(ach)) achievements.value = ach
     if (wd) applyWordToday(wd)
     err.value = ''
@@ -814,6 +822,18 @@ async function redeem(reward) {
 async function openShop() {
   shopOpen.value = true
   try { myRedeems.value = await api.redemptions() } catch {}
+}
+async function bankMove(kind) {
+  const amount = Number(bankAmount.value)
+  if (!Number.isInteger(amount) || amount < 1) return showToast('请输入正整数阳光')
+  if (bankBusy.value) return
+  bankBusy.value = true
+  try {
+    bankData.value = kind === 'deposit' ? await api.bankDeposit(amount) : await api.bankWithdraw(amount)
+    showToast(kind === 'deposit' ? `已存入 ${amount} 颗阳光` : `已提交取出 ${amount} 颗的申请`)
+    await refresh()
+  } catch (e) { showToast(e.message) }
+  finally { bankBusy.value = false }
 }
 const STATUS_TXT = { pending: '等家长同意', done: '已兑换', delivered: '已兑现' }
 const milestoneTxt = (m) => (m && m.length) ? m.map(([d, b]) => ` · 连续 ${d} 天 +${b} 阳光`).join('') : ''
@@ -1144,7 +1164,7 @@ function reloadApp() {
           <button class="nav" :class="{ on: activeTab === 'base' }" @click="activeTab = 'base'">
             <span><House class="ico" :size="15" /> 秘密基地</span>
           </button>
-          <button class="nav" :class="{ on: activeTab === 'bank' }" @click="activeTab = 'bank'">
+          <button v-if="bankData.enabled" class="nav" :class="{ on: activeTab === 'bank' }" @click="activeTab = 'bank'">
             <span><Landmark class="ico" :size="15" /> 阳光银行</span>
           </button>
         </div>
@@ -1302,17 +1322,53 @@ function reloadApp() {
           </section>
         </template>
 
-        <template v-else-if="activeTab === 'base' || activeTab === 'bank'">
+        <template v-else-if="activeTab === 'base'">
           <div class="coming-page">
             <div class="coming">
-              <House v-if="activeTab === 'base'" class="ico" :size="36" />
-              <Landmark v-else class="ico" :size="36" />
-              <strong>{{ activeTab === 'base' ? '秘密基地' : '阳光银行' }}</strong>
+              <House class="ico" :size="36" />
+              <strong>秘密基地</strong>
               <em>建设中</em>
-              <p v-if="activeTab === 'base'">小房子还在搭，以后可以藏贴纸、日记和悄悄话。</p>
-              <p v-else>存折还在印，以后能看阳光怎么攒、怎么花。</p>
+              <p>小房子还在搭，以后可以藏贴纸、日记和悄悄话。</p>
             </div>
           </div>
+        </template>
+
+        <template v-else-if="activeTab === 'bank'">
+          <h1><Landmark class="ico" :size="20" /> 阳光银行</h1>
+          <p class="sun-lead"><Landmark class="ico" :size="16" /> 把阳光存起来，为一个小心愿慢慢攒。</p>
+          <div class="sun-hero bank-hero">
+            <div class="sun-box main"><i class="sun-ico pocket"><Landmark :size="22" /></i><span>银行里有</span><b>{{ bankData.balance }}</b></div>
+            <div class="sun-box"><i class="sun-ico pile"><Sun :size="20" /></i><span>口袋还剩</span><b>{{ bankData.pocket_balance }}</b></div>
+          </div>
+          <section class="plan-section bank-action">
+            <div class="plan-head"><h2><Landmark class="ico" :size="16" /> 存一笔阳光</h2></div>
+            <div class="bank-amounts">
+              <button v-for="n in [1, 5, 10]" :key="n" type="button" :class="['chip', { on: bankAmount === n }]" @click="bankAmount = n">{{ n }} 颗</button>
+              <input v-model.number="bankAmount" type="number" min="1" inputmode="numeric" aria-label="存取阳光数量" />
+            </div>
+            <div class="bank-actions">
+              <button class="do" :disabled="bankBusy || bankData.pocket_balance < bankAmount" @click="bankMove('deposit')">存入银行</button>
+              <button class="ghost-s" :disabled="bankBusy || bankData.balance < bankAmount" @click="bankMove('withdraw')">申请取出</button>
+            </div>
+            <p class="dim">存入马上生效；取出要等家长同意。银行里的阳光不能直接去商店兑换。</p>
+          </section>
+          <section class="plan-section">
+            <div class="plan-head"><h2><Target class="ico" :size="16" /> 正在攒</h2></div>
+            <div v-if="bankData.goal" class="bank-goal">
+              <div class="bank-goal-top"><strong>{{ bankData.goal.name }}</strong><b>{{ bankData.goal.saved }} / {{ bankData.goal.target }}</b></div>
+              <div class="next-bar"><i :style="{ width: Math.min(100, bankData.goal.saved / bankData.goal.target * 100) + '%' }"></i></div>
+              <p>{{ bankData.goal.reached ? '攒够啦，可以告诉家长兑现。' : `还差 ${bankData.goal.target - bankData.goal.saved} 颗阳光` }}</p>
+            </div>
+            <div v-else class="empty">家长还没设置目标。</div>
+          </section>
+          <section v-if="bankData.requests?.length" class="plan-section">
+            <div class="plan-head"><h2><ScrollText class="ico" :size="16" /> 我的申请</h2></div>
+            <div v-for="r in bankData.requests" :key="r.id" class="sun-log-row"><div><strong>取出 {{ r.amount }} 颗</strong><small>{{ r.status === 'pending' ? '等家长同意' : (r.status === 'approved' ? '已取出' : '家长拒绝了') }}</small></div></div>
+          </section>
+          <section v-if="bankData.ledger?.length" class="plan-section">
+            <div class="plan-head"><h2><ScrollText class="ico" :size="16" /> 存钱记录</h2></div>
+            <div v-for="row in bankData.ledger.slice(0, 8)" :key="row.id" class="sun-log-row"><i class="sun-log-ico"><Landmark :size="16" /></i><div><strong>{{ row.delta > 0 ? '存入银行' : '取出到口袋' }}</strong><small>{{ row.date }}</small></div><b>{{ row.delta > 0 ? '+' : '' }}{{ row.delta }}</b></div>
+          </section>
         </template>
 
         <template v-else>
@@ -1894,6 +1950,22 @@ body {
 .sun-log-row small { color: var(--ink-3); font-size: 11px; }
 .sun-log-row b { font-variant-numeric: tabular-nums; color: var(--accent-ink); font-size: 16px; }
 .sun-log-row.down b { color: var(--ink-3); }
+.bank-hero { margin-bottom: 18px; }
+.bank-amounts { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.bank-amounts .chip { border: 1px solid var(--line); background: var(--surface); color: var(--ink); padding: 8px 16px; border-radius: var(--radius-pill); cursor: pointer; font-family: inherit; font-size: 14px; font-weight: 700; }
+.bank-amounts .chip.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+.bank-amounts input { flex: 1; min-width: 120px; border: 1px solid var(--line); border-radius: var(--radius-md); padding: 8px 12px; font-size: 15px; font-family: inherit; }
+.bank-actions { display: flex; gap: 8px; margin-bottom: 10px; }
+.bank-actions .do { flex: 1; background: var(--accent); color: #fff; border: none; padding: 12px; border-radius: var(--radius-md); font-weight: 800; cursor: pointer; font-family: inherit; font-size: 15px; }
+.bank-actions .do:disabled { opacity: 0.5; cursor: not-allowed; }
+.bank-actions .ghost-s { flex: 1; }
+.bank-goal { background: var(--surface-2); border-radius: var(--radius-md); padding: 14px; }
+.bank-goal-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+.bank-goal-top strong { font-size: 16px; }
+.bank-goal-top b { font-size: 14px; color: var(--accent-ink); font-variant-numeric: tabular-nums; }
+.bank-goal p { margin: 8px 0 0; font-size: 13px; color: var(--ink-2); }
+.bank-action { margin-bottom: 20px; }
+.bank-admin-hero { margin: 18px 0; }
 
 .cta {
   border: none; border-radius: var(--radius-xl); padding: 11px 22px; font-weight: 800; font-size: 15px; cursor: pointer;

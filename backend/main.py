@@ -94,8 +94,8 @@ def kid_id():
     return k
 
 
-def insert_ledger(c, date, delta, reason, ref_id, note, kid=None):
-    return db.insert_ledger(c, date, delta, reason, ref_id, note, kid_id=kid or kid_id())
+def insert_ledger(c, date, delta, reason, ref_id, note, kid=None, account="pocket"):
+    return db.insert_ledger(c, date, delta, reason, ref_id, note, kid_id=kid or kid_id(), account=account)
 
 
 def _begin_write(c):
@@ -289,8 +289,12 @@ def earned(c, kid=None):
         (kid or kid_id(),)).fetchone()[0]
 
 
-def balance(c, kid=None):
-    return c.execute("SELECT COALESCE(SUM(delta),0) FROM ledger WHERE kid_id=?", (kid or kid_id(),)).fetchone()[0]
+def balance(c, kid=None, account="pocket"):
+    return c.execute("SELECT COALESCE(SUM(delta),0) FROM ledger WHERE kid_id=? AND account=?", (kid or kid_id(), account)).fetchone()[0]
+
+
+def bank_balance(c, kid=None):
+    return balance(c, kid, "bank")
 
 
 def level_info(c):
@@ -1386,6 +1390,120 @@ def redemptions():
     return [dict(r) for r in rows]
 
 
+# ---------------- 阳光银行 ----------------
+
+BANK_ENABLED_KEY = "bank_enabled"
+
+
+class BankAmountIn(BaseModel):
+    amount: int
+
+
+class BankGoalIn(BaseModel):
+    name: str
+    target: int
+
+
+class BankEnabledIn(BaseModel):
+    enabled: bool
+
+
+def _bank_enabled(c, kid=None):
+    return db.get_kid_setting(c, kid or kid_id(), BANK_ENABLED_KEY, "0") == "1"
+
+
+def _bank_goal(c, kid):
+    r = c.execute(
+        "SELECT * FROM bank_goals WHERE kid_id=? AND status='active' ORDER BY created_at DESC LIMIT 1", (kid,)
+    ).fetchone()
+    return dict(r) if r else None
+
+
+def _bank_requests(c, kid, limit=20):
+    return [dict(r) for r in c.execute(
+        "SELECT * FROM bank_requests WHERE kid_id=? ORDER BY created_at DESC LIMIT ?", (kid, limit)
+    ).fetchall()]
+
+
+def _bank_payload(c, kid=None):
+    kid = kid or kid_id()
+    rows = [dict(r) for r in c.execute(
+        "SELECT id,date,delta,reason,ref_id,note,created_at,account FROM ledger "
+        "WHERE kid_id=? AND account='bank' ORDER BY id DESC LIMIT 30", (kid,)
+    ).fetchall()]
+    goal = _bank_goal(c, kid)
+    if goal:
+        goal["saved"] = bank_balance(c, kid)
+        goal["reached"] = goal["saved"] >= goal["target"]
+    return {
+        "enabled": _bank_enabled(c, kid),
+        "balance": bank_balance(c, kid),
+        "pocket_balance": balance(c, kid, "pocket"),
+        "goal": goal,
+        "requests": _bank_requests(c, kid),
+        "ledger": rows,
+    }
+
+
+@app.get("/api/bank")
+def bank():
+    c = get_conn()
+    out = _bank_payload(c)
+    c.close()
+    return out
+
+
+@app.post("/api/bank/deposit")
+def bank_deposit(b: BankAmountIn):
+    c = get_conn()
+    try:
+        if not _bank_enabled(c):
+            raise HTTPException(403, "阳光银行还没开启")
+        amount = _sun(b.amount, lo=1)
+        _begin_write(c)
+        kid = kid_id()
+        pocket = balance(c, kid, "pocket")
+        if amount > pocket:
+            raise HTTPException(409, "口袋里的阳光不够")
+        ref = "bank-deposit-" + uuid.uuid4().hex
+        if insert_ledger(c, db.today(), -amount, "bank_deposit", ref + "-pocket", "存入阳光银行", kid=kid, account="pocket") is None:
+            raise HTTPException(409, "存入失败，请再试一次")
+        insert_ledger(c, db.today(), amount, "bank_deposit", ref + "-bank", "存入阳光银行", kid=kid, account="bank")
+        c.commit()
+        return _bank_payload(c, kid)
+    except Exception:
+        _rollback(c)
+        raise
+    finally:
+        c.close()
+
+
+@app.post("/api/bank/withdraw")
+def bank_withdraw(b: BankAmountIn):
+    c = get_conn()
+    try:
+        if not _bank_enabled(c):
+            raise HTTPException(403, "阳光银行还没开启")
+        amount = _sun(b.amount, lo=1)
+        kid = kid_id()
+        available = bank_balance(c, kid) - sum(
+            int(r["amount"] or 0) for r in c.execute(
+                "SELECT amount FROM bank_requests WHERE kid_id=? AND kind='withdraw' AND status='pending'", (kid,)
+            ).fetchall()
+        )
+        if amount > available:
+            raise HTTPException(409, "银行里可申请取出的阳光不够")
+        rid = uuid.uuid4().hex[:12]
+        c.execute(
+            "INSERT INTO bank_requests(id,kid_id,family_id,kind,amount,status,note,created_at) VALUES(?,?,?,?,?,?,?,?)",
+            (rid, kid, _fam.get(), "withdraw", amount, "pending", "孩子申请取出", db.now()),
+        )
+        c.commit()
+        return {"ok": True, "request_id": rid, **_bank_payload(c, kid)}
+    finally:
+        c.close()
+
+
 # ---------------- 流水 ----------------
 
 @app.get("/api/ledger")
@@ -1413,6 +1531,127 @@ def set_cursor(b: CursorBody):
 
 class LockBody(BaseModel):
     on: bool = True
+
+
+@app.get("/api/admin/bank", dependencies=[Depends(require_parent)])
+def admin_bank():
+    c = get_conn()
+    out = _bank_payload(c)
+    out["requests"] = _bank_requests(c, kid_id(), 50)
+    c.close()
+    return out
+
+
+@app.put("/api/admin/bank/enabled", dependencies=[Depends(require_parent)])
+def admin_bank_enabled(b: BankEnabledIn):
+    c = get_conn()
+    db.set_kid_setting(c, kid_id(), BANK_ENABLED_KEY, "1" if b.enabled else "0")
+    c.commit()
+    out = _bank_payload(c)
+    c.close()
+    return out
+
+
+@app.post("/api/admin/bank/goal", dependencies=[Depends(require_parent)])
+def admin_bank_goal(b: BankGoalIn):
+    name = (b.name or "").strip()
+    if not name or len(name) > 40:
+        raise HTTPException(400, "目标名称要填 1 到 40 个字")
+    target = _sun(b.target, lo=1)
+    c = get_conn()
+    kid = kid_id()
+    existing = c.execute("SELECT id FROM bank_goals WHERE kid_id=? AND status='active'", (kid,)).fetchone()
+    if existing:
+        c.execute("UPDATE bank_goals SET name=?, target=?, updated_at=? WHERE id=?", (name, target, db.now(), existing["id"]))
+        gid = existing["id"]
+    else:
+        gid = uuid.uuid4().hex[:12]
+        c.execute(
+            "INSERT INTO bank_goals(id,kid_id,family_id,name,target,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)",
+            (gid, kid, _fam.get(), name, target, "active", db.now(), db.now()),
+        )
+    c.commit()
+    out = _bank_payload(c, kid)
+    c.close()
+    return out
+
+
+@app.post("/api/admin/bank/goal/deliver", dependencies=[Depends(require_parent)])
+def admin_bank_goal_deliver():
+    c = get_conn()
+    goal = c.execute("SELECT * FROM bank_goals WHERE kid_id=? AND status='active'", (kid_id(),)).fetchone()
+    if not goal:
+        c.close()
+        raise HTTPException(404, "还没有进行中的目标")
+    if bank_balance(c, kid_id()) < goal["target"]:
+        c.close()
+        raise HTTPException(409, "目标还没攒够")
+    c.execute("UPDATE bank_goals SET status='delivered', updated_at=?, closed_at=? WHERE id=?", (db.now(), db.now(), goal["id"]))
+    c.commit()
+    out = _bank_payload(c)
+    c.close()
+    return out
+
+
+@app.get("/api/admin/bank/requests", dependencies=[Depends(require_parent)])
+def admin_bank_requests():
+    c = get_conn()
+    fam = _fam.get()
+    rows = c.execute(
+        "SELECT br.*, u.name AS kid_name FROM bank_requests br JOIN users u ON u.id=br.kid_id "
+        "WHERE br.family_id=? AND br.kid_id=? ORDER BY br.created_at DESC LIMIT 100", (fam, kid_id())
+    ).fetchall()
+    c.close()
+    return [dict(r) for r in rows]
+
+
+def _own_bank_request(c, rid):
+    r = c.execute("SELECT * FROM bank_requests WHERE id=? AND family_id=?", (rid, _fam.get())).fetchone()
+    return r
+
+
+@app.post("/api/admin/bank/requests/{rid}/approve", dependencies=[Depends(require_parent)])
+def admin_bank_request_approve(rid: str):
+    c = get_conn()
+    try:
+        req = _own_bank_request(c, rid)
+        if not req or req["kind"] != "withdraw":
+            raise HTTPException(404, "没找到这条取出申请")
+        if req["status"] != "pending":
+            raise HTTPException(409, "这条申请已经处理过")
+        _begin_write(c)
+        kid = req["kid_id"]
+        amount = int(req["amount"])
+        if bank_balance(c, kid) < amount:
+            raise HTTPException(409, "银行余额已经不够")
+        ref = "bank-withdraw-" + rid
+        if insert_ledger(c, db.today(), -amount, "bank_withdraw", ref + "-bank", "从阳光银行取出", kid=kid, account="bank") is None:
+            raise HTTPException(409, "这条申请已经处理过")
+        insert_ledger(c, db.today(), amount, "bank_withdraw", ref + "-pocket", "从阳光银行取出", kid=kid, account="pocket")
+        c.execute("UPDATE bank_requests SET status='approved', handled_at=? WHERE id=? AND status='pending'", (db.now(), rid))
+        c.commit()
+        return {"ok": True, **_bank_payload(c, kid)}
+    except Exception:
+        _rollback(c)
+        raise
+    finally:
+        c.close()
+
+
+@app.post("/api/admin/bank/requests/{rid}/reject", dependencies=[Depends(require_parent)])
+def admin_bank_request_reject(rid: str):
+    c = get_conn()
+    req = _own_bank_request(c, rid)
+    if not req or req["kind"] != "withdraw":
+        c.close()
+        raise HTTPException(404, "没找到这条取出申请")
+    if req["status"] != "pending":
+        c.close()
+        raise HTTPException(409, "这条申请已经处理过")
+    c.execute("UPDATE bank_requests SET status='rejected', handled_at=? WHERE id=? AND status='pending'", (db.now(), rid))
+    c.commit()
+    c.close()
+    return {"ok": True}
 
 
 @app.post("/api/admin/progress-lock", dependencies=[Depends(require_parent)])

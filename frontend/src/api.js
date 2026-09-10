@@ -51,6 +51,9 @@ export const api = {
   ledger: () => j('/api/ledger?limit=60'),
   setKidName: (name) => j('/api/kid-name', { method: 'POST', ...body({ name }) }),
   dailyHistory: (id) => j(`/api/daily/${id}/history`),
+  bank: () => j('/api/bank'),
+  bankDeposit: (amount) => j('/api/bank/deposit', { method: 'POST', ...body({ amount }) }),
+  bankWithdraw: (amount) => j('/api/bank/withdraw', { method: 'POST', ...body({ amount }) }),
 
   admin: {
     changePin: (pin, current) => j('/api/admin/pin', { method: 'POST', ...body({ pin, current }) }),
@@ -75,6 +78,13 @@ export const api = {
     setCursor: (o) => j('/api/admin/cursor', { method: 'POST', ...body(o) }),
     setSubjectVisible: (subject_id, on) => j('/api/admin/subject-visible', { method: 'POST', ...body({ subject_id, on }) }),
     setProgressLock: (on) => j('/api/admin/progress-lock', { method: 'POST', ...body({ on }) }),
+    bank: () => j('/api/admin/bank'),
+    setBankEnabled: (enabled) => j('/api/admin/bank/enabled', { method: 'PUT', ...body({ enabled }) }),
+    saveBankGoal: (o) => j('/api/admin/bank/goal', { method: 'POST', ...body(o) }),
+    deliverBankGoal: () => j('/api/admin/bank/goal/deliver', { method: 'POST' }),
+    bankRequests: () => j('/api/admin/bank/requests'),
+    approveBankRequest: (id) => j(`/api/admin/bank/requests/${encodeURIComponent(id)}/approve`, { method: 'POST' }),
+    rejectBankRequest: (id) => j(`/api/admin/bank/requests/${encodeURIComponent(id)}/reject`, { method: 'POST' }),
     tests: () => j('/api/admin/tests'),
     createTest: (o) => j('/api/admin/tests', { method: 'POST', ...body(o) }),
     delTest: (id) => j(`/api/admin/tests/${id}`, { method: 'DELETE' }),

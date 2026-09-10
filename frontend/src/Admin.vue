@@ -4,7 +4,7 @@ import { api, setSelectedKid } from './api.js'
 import { APP_LABEL, APP_REVISION } from './version.js'
 import { rankIcon } from './icons.js'
 import { tagHelp } from './tagHelp.js'
-import { Eye, Baby, Users, KeyRound, Lock, Store, Trophy, ClipboardCheck, BookOpen, RefreshCw, MapPinned, FileText, Sun, Star, Check, ArrowLeft, BookMarked, Globe } from '@lucide/vue'
+import { Eye, Baby, Users, KeyRound, Lock, Store, Trophy, ClipboardCheck, BookOpen, RefreshCw, MapPinned, FileText, Sun, Star, Check, ArrowLeft, BookMarked, Globe, Landmark } from '@lucide/vue'
 
 const props = defineProps({ recoveryCode: { type: String, default: '' } })
 const emit = defineEmits(['exit', 'switched', 'consumed-recovery'])
@@ -46,6 +46,7 @@ const SECTIONS = [
   ] },
   { group: '阳光', items: [
     { id: 'shop', icon: Store, label: '兑换商店' },
+    { id: 'bank', icon: Landmark, label: '阳光银行' },
     { id: 'rank', icon: Trophy, label: '成长等级' },
     { id: 'penalty', icon: FileText, label: '扣分' },
   ] },
@@ -70,6 +71,10 @@ const activeSubject = ref('')
 const cursors = ref({})
 const progressLock = ref(true)
 const hiddenSubjects = ref([])
+const bankData = ref({ enabled: false, balance: 0, pocket_balance: 0, goal: null, requests: [], ledger: [] })
+const bankRequests = ref([])
+const bankGoal = reactive({ name: '', target: 100 })
+const bankBusy = ref(false)
 const SUBJECT_ORDER = ['语文', '数学', '英语', '科学', '道法', '体育', '音美', '综合', '围棋']
 const redemptions = ref([])
 const tests = ref([])
@@ -179,6 +184,40 @@ async function load() {
   weakByUnit.value = wb
   reviewDue.value = rv || []
   await loadWords()
+  await loadBank()
+}
+
+async function loadBank() {
+  if (!selectedKid.value) return
+  try {
+    const [b, rs] = await Promise.all([api.admin.bank(), api.admin.bankRequests()])
+    bankData.value = b || bankData.value
+    bankRequests.value = rs || []
+    if (bankData.value.goal) Object.assign(bankGoal, { name: bankData.value.goal.name, target: bankData.value.goal.target })
+    else Object.assign(bankGoal, { name: '', target: 100 })
+  } catch (e) { showToast(e.message) }
+}
+async function toggleBank() {
+  bankBusy.value = true
+  try { bankData.value = await api.admin.setBankEnabled(!bankData.value.enabled); showToast(bankData.value.enabled ? '已开启阳光银行' : '已关闭阳光银行') }
+  catch (e) { showToast(e.message) }
+  finally { bankBusy.value = false }
+}
+async function saveBankGoal() {
+  if (!bankGoal.name.trim()) return showToast('填目标名称')
+  bankBusy.value = true
+  try { bankData.value = await api.admin.saveBankGoal({ name: bankGoal.name, target: bankGoal.target }); showToast('目标已保存') }
+  catch (e) { showToast(e.message) }
+  finally { bankBusy.value = false }
+}
+async function bankGoalDeliver() {
+  if (!confirm('确认这个目标已经兑现？')) return
+  try { bankData.value = await api.admin.deliverBankGoal(); showToast('已标记兑现') }
+  catch (e) { showToast(e.message) }
+}
+async function handleBankRequest(id, action) {
+  try { await (action === 'approve' ? api.admin.approveBankRequest(id) : api.admin.rejectBankRequest(id)); showToast(action === 'approve' ? '已批准取出' : '已拒绝申请'); await loadBank() }
+  catch (e) { showToast(e.message) }
 }
 
 const wordCfg = reactive({
@@ -482,6 +521,7 @@ async function switchKid() {
   reviewSubject.value = ''
   emit('switched')
   await load()
+  await loadBank()
 }
 async function pickKid(id) {
   selectedKid.value = id
@@ -1143,6 +1183,37 @@ onMounted(load)
         </div>
         <button class="ok wide" @click="addReward">＋新增奖励</button>
       </div>
+    </section>
+
+    <!-- 阳光银行 -->
+    <section v-if="section === 'bank'" class="a-card enter">
+      <h3>阳光银行{{ currentKidName ? ' · ' + currentKidName : '' }}</h3>
+      <div class="lock-row">
+        <span class="badge">孩子端开关</span>
+        <span class="grow">关闭后不显示入口，余额和目标保留</span>
+        <button type="button" :class="['toggle', { on: bankData.enabled }]" @click="toggleBank" :disabled="bankBusy">{{ bankData.enabled ? '开' : '关' }}</button>
+      </div>
+      <div class="sun-hero bank-admin-hero">
+        <div class="sun-box"><span>银行余额</span><b>{{ bankData.balance }}</b></div>
+        <div class="sun-box"><span>口袋余额</span><b>{{ bankData.pocket_balance }}</b></div>
+      </div>
+      <div class="add-box">
+        <div class="add-title">一个存钱目标</div>
+        <div class="frm-row">
+          <label class="fld grow"><span>目标名称</span><input v-model="bankGoal.name" maxlength="40" placeholder="如：周末去公园" /></label>
+          <label class="fld w84"><span>需要阳光</span><input v-model.number="bankGoal.target" type="number" min="1" max="10000" /></label>
+          <button class="ok" @click="saveBankGoal">保存目标</button>
+        </div>
+        <div v-if="bankData.goal" class="dim">已存 {{ bankData.goal.saved }} / {{ bankData.goal.target }} · {{ bankData.goal.reached ? '已达成' : '进行中' }}</div>
+        <button v-if="bankData.goal?.reached" class="ok mt8" @click="bankGoalDeliver">标记已兑现</button>
+      </div>
+      <h4 class="w-h">取出申请</h4>
+      <div v-if="!bankRequests.length" class="dim">还没有取出申请。</div>
+      <div v-for="r in bankRequests" :key="r.id" class="apv-row">
+        <div class="apv-info"><span class="apv-name">{{ r.kid_name }}申请取出 {{ r.amount }} 颗</span><span class="dim">{{ r.created_at }}</span></div>
+        <div class="apv-right"><span v-if="r.status !== 'pending'" class="st delivered">{{ r.status === 'approved' ? '已批准' : '已拒绝' }}</span><template v-else><button class="ok" @click="handleBankRequest(r.id, 'approve')">批准</button><button class="del" @click="handleBankRequest(r.id, 'reject')">拒绝</button></template></div>
+      </div>
+      <p class="dim mt14">银行里的阳光不能用于兑换商店；取出必须由家长批准。</p>
     </section>
 
     <!-- 扣分 -->
