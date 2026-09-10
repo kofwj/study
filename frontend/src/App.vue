@@ -8,6 +8,8 @@ import { SUBJECT_ICONS as ICONS, rankIcon, achIcon } from './icons.js'
 import { mottoFor } from './dailyMottos.js'
 import { Sun, Lock, Gift, Check, TrendingUp, Target, User, ShoppingCart, ScrollText, Medal, ChartColumn, Map, CalendarDays, RefreshCw, PartyPopper, Sparkles, BookOpen, Flame, Volume2, Egg, Sprout, Leaf, Flower, House, Landmark, Coins, ArrowDownToLine, ArrowUpFromLine, Globe, FileText } from '@lucide/vue'
 
+import { soundManager, playSound, playCompleteBeep, playCoinBeep, playLevelUpBeep, playEvolveBeep } from './sounds.js'
+import { getEncouragement, getCompanionMessage } from './encouragements.js'
 const data = reactive({
   level: { earned: 0, balance: 0, level: '阳光萌新', next: null, next_need: 0, progress: 0 },
   streak: 0,
@@ -61,6 +63,7 @@ onBeforeUnmount(() => {
   try { if (typeof speechSynthesis !== 'undefined') speechSynthesis.cancel() } catch {}
 })
 const toast = ref('')
+const checkingTask = ref(null) // 记录正在打卡的任务 ID
 const actionBusy = ref(false)
 const shopOpen = ref(false)
 const myRedeems = ref([])
@@ -619,10 +622,14 @@ async function saveCompanionName() {
 }
 function showLevelCelebrate(payload) {
   celebrate.value = payload
+  playSound('levelup') || playLevelUpBeep()
+  if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 100])
   setTimeout(() => (celebrate.value = null), 2800)
 }
 function closeCompanionEvolve() {
   if (!companionEvolve.value) return
+  playSound('evolve') || playEvolveBeep()
+  if (navigator.vibrate) navigator.vibrate([80, 40, 80, 40, 120])
   companionEvolve.value = null
   if (evolveTimer) { clearTimeout(evolveTimer); evolveTimer = null }
   api.ackCompanionEvolve().then(out => { if (out) data.companion = out }).catch(() => {})
@@ -632,6 +639,7 @@ function closeCompanionEvolve() {
     showLevelCelebrate(p)
   }
 }
+
 const chartOpen = reactive({ open: false, task: null, history: [] })
 const renaming = ref(false)
 const renameVal = ref('')
@@ -848,10 +856,25 @@ async function checkin() {
   actionBusy.value = true
   try {
     const r = await api.checkin()
-    showToast('已签到' + milestoneTxt(r.milestone))
+    playSound('complete') || playCompleteBeep()
+    if (navigator.vibrate) navigator.vibrate([40, 20, 40])
+    const encouragement = getEncouragement({ type: 'checkin' })
+    showToast(encouragement + milestoneTxt(r.milestone))
     await refresh()
   } catch (e) { showToast(e.message) }
   finally { actionBusy.value = false }
+}
+
+
+async function toggleTaskWithAnim(task, event) {
+  if (task.done || actionBusy.value) {
+    return toggleTask(task, event)
+  }
+  checkingTask.value = task.id
+  setTimeout(async () => {
+    await toggleTask(task, event)
+    checkingTask.value = null
+  }, 300)
 }
 
 async function toggleTask(task, event) {
@@ -868,14 +891,32 @@ async function toggleTask(task, event) {
   try {
     if (task.done) {
       await api.cancel(task.id)
-      showToast('已取消，扣回阳光')
+      showToast(getEncouragement({ type: 'cancel' }))
+      if (navigator.vibrate) navigator.vibrate(100)
     } else {
       const r = await api.complete(task.id)
+      playSound('complete') || playCompleteBeep()
+      if (navigator.vibrate) navigator.vibrate([50, 30, 50])
+      setTimeout(() => { playSound('coin') || playCoinBeep() }, 200)
       if (event) flyPlus(event.clientX, event.clientY, `+${r.delta} 阳光`)
-      showToast(`完成【${task.title}】+${r.delta} 阳光` + milestoneTxt(r.milestone))
+      const encouragement = getEncouragement({
+        type: 'taskComplete',
+        streak: data.streak,
+        timeOfDay: true,
+        reward: r.delta,
+        isRecord: r.bonus > 0,
+      })
+      const companionMsg = getCompanionMessage(companion.value.stage, 'complete')
+      const fullMsg = companionMsg 
+        ? `${encouragement}！${companionMsg} +${r.delta} 阳光`
+        : `${encouragement}！+${r.delta} 阳光`
+      showToast(fullMsg + milestoneTxt(r.milestone))
     }
     await refresh()
-  } catch (e) { showToast(e.message) }
+  } catch (e) { 
+    showToast(e.message)
+    if (navigator.vibrate) navigator.vibrate(200)
+  }
   finally { actionBusy.value = false }
 }
 
@@ -956,8 +997,18 @@ async function submitDaily(event) {
   actionBusy.value = true
   try {
     const r = await api.complete(dailyDialog.task.id, metrics)
+    playSound('complete') || playCompleteBeep()
+    if (navigator.vibrate) navigator.vibrate([50, 30, 50])
     if (event) flyPlus(event.clientX, event.clientY, `+${r.delta} 阳光`)
-    showToast((r.bonus > 0 ? `完成 +${r.delta} 阳光（破纪录 +${r.bonus}！）` : `完成【${dailyDialog.task.name}】+${r.delta} 阳光`) + milestoneTxt(r.milestone))
+    const encouragement = getEncouragement({
+      type: 'taskComplete',
+      reward: r.delta,
+      isRecord: r.bonus > 0,
+    })
+    const msg = r.bonus > 0 
+      ? `${encouragement}！破纪录了 +${r.delta} 阳光（+${r.bonus} 奖励）`
+      : `${encouragement}！+${r.delta} 阳光`
+    showToast(msg + milestoneTxt(r.milestone))
     dailyDialog.open = false
     await refresh()
   } catch (e) { showToast(e.message) }
@@ -1299,6 +1350,13 @@ onMounted(async () => {
   if (ttsReady()) {
     loadWordVoices()
     try { speechSynthesis.addEventListener('voiceschanged', loadWordVoices) } catch {}
+  // 音效初始化提示（首次需要用户交互才能播放）
+  document.addEventListener('click', () => {
+    if (!soundManager.tested) {
+      soundManager.beep(440, 50, 'sine')
+      soundManager.tested = true
+    }
+  }, { once: true })
   }
   try {
     me.value = await api.me()
@@ -1776,7 +1834,13 @@ function reloadApp() {
             </h2>
             <div class="grid">
               <div v-for="t in u.tasks" :key="t.id" class="card enter" :class="{ done: t.done, past: t.past, locked: t.locked }">
-                <button class="circle" :class="{ ok: t.done || t.past }" @click="toggleTask(t, $event)"><Check v-if="t.done || t.past" :size="15" /><Lock v-else-if="t.locked" :size="14" /></button>
+                <button 
+              class="circle" 
+              :class="{ ok: t.done || t.past, filling: checkingTask === t.id }" 
+              @click="toggleTaskWithAnim(t, $event)"
+            >
+              <div class="circle-fill"></div>
+              <Check class="circle-icon" v-if="t.done || t.past" :size="15" /><Lock v-else-if="t.locked" :size="14" /></button>
                 <div class="card-body">
                   <div class="card-title">{{ t.title }}</div>
                   <div v-if="t.detail" class="card-detail">{{ t.detail }}</div>
@@ -2258,7 +2322,7 @@ body {
   display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
   position: sticky; top: var(--update-bar-height, 0px); z-index: 10;
 }
-.who { display: flex; align-items: center; gap: 10px; min-width: 180px; }
+.who { display: flex; align-items: center; gap: 12px; min-width: 180px; }
 .avatar {
   width: 52px; height: 52px; border-radius: var(--radius-circle); background: var(--accent);
   color: #fff; font-weight: 800; font-size: 22px; letter-spacing: 0;
@@ -2294,7 +2358,7 @@ body {
 .rename { background: none; border: none; color: rgba(255,255,255,.85); font-size: 12px; cursor: pointer; }
 .name-row input { width: 90px; border: none; border-radius: var(--radius-sm); padding: 4px 8px; }
 
-.pills { display: flex; gap: 10px; flex: 1; flex-wrap: wrap; }
+.pills { display: flex; gap: 12px; flex: 1; flex-wrap: wrap; }
 .pill {
   background: rgba(255,255,255,.24); border: 1px solid rgba(255,255,255,.2);
   border-radius: var(--radius-xl); padding: 8px 16px;
@@ -2362,7 +2426,7 @@ body {
 .coming p { margin: 0; color: var(--ink-2); font-size: 14px; line-height: 1.6; }
 .sun-lead { color: var(--ink-2); margin: 0 0 14px; font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 6px; }
 .sun-lead .ico { color: var(--accent-ink); flex: none; }
-.sun-hero { display: grid; grid-template-columns: 1.15fr 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+.sun-hero { display: grid; grid-template-columns: 1.15fr 1fr 1fr; gap: 12px; margin-bottom: 16px; }
 .sun-box { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 14px 14px 12px; }
 .sun-box span { display: block; font-size: 12px; color: var(--ink-3); font-weight: 700; }
 .sun-box b { display: block; margin-top: 2px; font-size: 28px; letter-spacing: -.03em; }
@@ -2388,14 +2452,14 @@ body {
 .sun-track i.down { background: var(--ink-3); }
 .sun-col span:last-child { font-size: 12px; color: var(--ink-2); font-weight: 700; }
 .sun-col span.today { color: var(--accent-ink); }
-.sun-src-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.sun-src-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
 .sun-src-card {
   background: var(--surface-2); border-radius: var(--radius-lg); padding: 14px 12px;
   display: flex; flex-direction: column; align-items: flex-start; gap: 4px;
 }
 .sun-src-card span { font-size: 13px; font-weight: 700; color: var(--ink-2); }
 .sun-src-card b { font-size: 22px; letter-spacing: -.03em; }
-.sun-log-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--surface-2); }
+.sun-log-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--surface-2); }
 .sun-log-ico {
   flex: none; width: 32px; height: 32px; border-radius: var(--radius-circle);
   display: inline-flex; align-items: center; justify-content: center;
@@ -2411,7 +2475,7 @@ body {
 .sun-gaps { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
 .sun-gaps.ok { background: var(--ok-bg); border-radius: var(--radius-xl); padding: 14px 16px; }
 .sun-gaps.ok p { margin: 0; font-weight: 700; color: var(--ok); }
-.sun-gap { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 12px 14px; font-family: inherit; cursor: pointer; }
+.sun-gap { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 12px 14px; font-family: inherit; cursor: pointer; }
 .sun-gap:disabled { cursor: default; }
 .sun-gap span { font-size: 14px; font-weight: 800; color: var(--ink); }
 .sun-gap em { font-style: normal; font-size: 12px; font-weight: 800; color: var(--accent-ink); background: var(--warm); padding: 4px 10px; border-radius: var(--radius-pill); }
@@ -2458,9 +2522,9 @@ body {
 .card-amount { margin-top: 6px; font-size: 36px; font-weight: 800; letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
 .card-icon { position: absolute; right: 14px; bottom: 12px; opacity: .22; }
 .bank-goal-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-xl); padding: 16px; margin-bottom: 16px; box-shadow: var(--shadow-sm); }
-.bank-goal-empty { display: flex; align-items: center; gap: 10px; color: var(--ink-2); }
+.bank-goal-empty { display: flex; align-items: center; gap: 12px; color: var(--ink-2); }
 .bank-goal-empty p { margin: 0; font-size: 13px; font-weight: 700; line-height: 1.5; }
-.goal-header { display: flex; align-items: center; gap: 10px; }
+.goal-header { display: flex; align-items: center; gap: 12px; }
 .goal-icon { flex: none; color: var(--accent-ink); }
 .goal-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .goal-info strong { font-size: 16px; }
@@ -2476,7 +2540,7 @@ body {
 .amount-chip { border: 1px solid var(--line); background: var(--surface-2); color: var(--ink); padding: 8px 14px; border-radius: var(--radius-pill); cursor: pointer; font-family: inherit; font-size: 14px; font-weight: 800; min-width: 52px; }
 .amount-chip.active { background: var(--accent); color: #fff; border-color: var(--accent); }
 .amount-input { width: 92px; border: 1px solid var(--line); border-radius: var(--radius-pill); padding: 8px 12px; font-size: 14px; font-family: inherit; font-weight: 700; }
-.op-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.op-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .op-btn { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; border: none; border-radius: var(--radius-lg); padding: 14px 16px; cursor: pointer; font-family: inherit; text-align: left; }
 .op-btn span { font-size: 16px; font-weight: 800; }
 .op-btn small { font-size: 12px; font-weight: 700; opacity: .78; }
@@ -2486,7 +2550,7 @@ body {
 .bank-section { margin-bottom: 18px; }
 .section-title { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; font-size: 15px; }
 .request-list, .ledger-list { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-xl); padding: 4px 14px; box-shadow: var(--shadow-sm); }
-.request-item, .ledger-item { display: flex; align-items: center; gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--surface-2); }
+.request-item, .ledger-item { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--surface-2); }
 .request-item:last-child, .ledger-item:last-child { border-bottom: none; }
 .request-info, .ledger-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .request-info strong, .ledger-info strong { font-size: 14px; }
@@ -2587,7 +2651,7 @@ body {
 }
 .plan-section { margin: 0 0 24px; }
 .plan-section.review-today { padding: 14px; border: 1px solid var(--accent); border-radius: var(--radius-lg); background: var(--warm-2); }
-.plan-head { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 10px; }
+.plan-head { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 10px; }
 .plan-head h2 { margin: 0; font-size: 16px; color: var(--ink); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; min-width: 0; width: 100%; }
 .daily-motto {
   flex: 1; min-width: 0; margin-left: 4px; font-style: normal; font-weight: 800; font-size: 13px;
@@ -2612,10 +2676,10 @@ body {
 .fit-bar i { display: block; height: 100%; background: var(--brand); border-radius: var(--radius-sm); }
 .fit-bar em { position: absolute; inset: 0; font-style: normal; font-size: 10px; font-weight: 800; color: var(--ink-2); display: flex; align-items: center; justify-content: center; }
 .fit-std { font-size: 11px; color: var(--ink-3); margin: 0 0 4px; }
-.grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; }
 .card {
-  position: relative; background: var(--surface); border-radius: var(--radius-lg); padding: 16px 14px 14px 14px;
-  display: flex; gap: 10px; align-items: flex-start; min-height: 86px;
+  position: relative; background: var(--surface); border-radius: var(--radius-lg); padding: 20px 16px 18px 16px;
+  display: flex; gap: 12px; align-items: flex-start; min-height: 96px;
   box-shadow: var(--shadow-md); border: 2px solid var(--line);
   transition: transform .18s var(--spring), box-shadow .18s var(--ease), border-color .18s var(--ease);
 }
@@ -2629,9 +2693,11 @@ body {
 .card.done { background: var(--ok-bg); border-color: var(--ok-bg); }
 .card.past { opacity: .55; }
 .circle {
-  width: 34px; height: 34px; border-radius: var(--radius-circle); border: 2px dashed var(--brand);
-  background: #fff; flex: 0 0 34px; cursor: pointer; color: #fff; font-weight: 800;
+  width: 36px; height: 36px; border-radius: var(--radius-circle); border: 3px solid var(--brand);
+  background: #fff; flex: 0 0 36px; cursor: pointer; color: #fff; font-weight: 800;
   transition: transform .18s var(--spring), background .18s var(--ease), border-color .18s var(--ease);
+  position: relative;
+  overflow: hidden;
 }
 .circle:not(.ok):hover { transform: scale(1.08) rotate(8deg); }
 .circle.ok { animation: checkpop .3s var(--spring); }
@@ -2653,7 +2719,7 @@ body {
 
 .foot {
   position: fixed; left: 0; right: 0; bottom: 0; background: var(--surface);
-  display: flex; align-items: center; gap: 10px; padding: 12px 22px;
+  display: flex; align-items: center; gap: 12px; padding: 12px 22px;
   box-shadow: var(--shadow-up);
 }
 .foot-label {
@@ -2680,7 +2746,7 @@ body {
 .mask { position: fixed; inset: 0; background: rgba(20,40,60,.35); display: flex; align-items: center; justify-content: center; z-index: 20; padding: 12px; overflow: auto; }
 .shop-modal { background: var(--surface); border-radius: var(--radius-lg); padding: 22px; width: min(92%, 420px); max-height: calc(100vh - 24px); max-height: calc(100dvh - 24px); overflow: auto; }
 .shop-modal h3 { margin: 0 0 14px; }
-.shop-list { display: flex; flex-direction: column; gap: 10px; }
+.shop-list { display: flex; flex-direction: column; gap: 12px; }
 .shop-item { display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--line); border-radius: var(--radius-md); padding: 12px; }
 .shop-price { color: var(--accent); font-weight: 800; }
 .redeem-hist { margin-top: 16px; border-top: 1px dashed var(--line); padding-top: 12px; }
@@ -2732,7 +2798,7 @@ body {
 .metric label { display: block; font-size: 13px; margin-bottom: 4px; }
 .daily-dialog-note, .metric-note { margin: -4px 0 8px; color: var(--ink-3); font-size: 12px; line-height: 1.5; }
 .metric-note { margin: -1px 0 4px; }
-.time-row { display: flex; gap: 10px; }
+.time-row { display: flex; gap: 12px; }
 .time-part { display: flex; align-items: center; gap: 6px; flex: 1; margin: 0; }
 .time-part span { font-size: 13px; font-weight: 700; color: var(--ink-2); flex: none; }
 .time-part input { flex: 1; }
@@ -2789,7 +2855,75 @@ body {
 .pill.star, .pill.box { cursor: pointer; border: none; font-family: inherit; }
 .pill.box.ready { animation: boxpulse 1.1s ease-in-out infinite; }
 @keyframes boxpulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.12); } }
-@keyframes checkpop { 0% { transform: scale(.75); } 70% { transform: scale(1.15); } 100% { transform: scale(1); } }
+
+/* 圆圈填充动画 */
+.circle-fill {
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  background: var(--ok);
+  transform: scale(0);
+  opacity: 0;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  z-index: 1;
+}
+
+.circle-icon {
+  position: relative;
+  z-index: 2;
+}
+
+.circle.filling .circle-fill {
+  transform: scale(1);
+  opacity: 1;
+  animation: pulse-in 0.3s ease-out;
+}
+
+@keyframes pulse-in {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.circle.ok .circle-fill {
+  transform: scale(1);
+  opacity: 1;
+}
+
+.circle.ok {
+  animation: check-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes check-pop {
+  0% { 
+    transform: scale(0.85); 
+  }
+  50% { 
+    transform: scale(1.12); 
+  }
+  100% { 
+    transform: scale(1); 
+  }
+}
+
+.circle:not(.ok):hover {
+  transform: scale(1.1) rotate(8deg);
+  border-color: var(--accent);
+}
+
+.circle:active {
+  transform: scale(0.95);
+}
+
 .box-modal { max-width: 380px; text-align: center; }
 .box-result { padding: 16px 0 8px; }
 .box-icon { font-size: 64px; animation: bounce 1s ease-in-out infinite; }
@@ -2814,7 +2948,7 @@ body {
 .tier-track { display: flex; align-items: stretch; gap: 8px; margin: 8px 0 12px; overflow-x: auto; }
 .tier-track .ach-cell { flex: 1 1 0; min-width: 88px; }
 .tier-progress { font-size: 11px; color: var(--ink-3); align-self: center; white-space: nowrap; }
-.ach-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); gap: 10px; margin: 8px 0; }
+.ach-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); gap: 12px; margin: 8px 0; }
 .ach-cell { position: relative; background: var(--surface-2); border-radius: var(--radius-lg); padding: 12px 6px; text-align: center; opacity: .5; cursor: pointer; border: 2px solid transparent; }
 .ach-cell.on { opacity: 1; background: var(--warm-2); }
 .ach-cell.bronze { border-color: #c9844a; }
@@ -2873,7 +3007,7 @@ body {
     display: flex;
     flex-direction: column;
     align-items: stretch;
-    gap: 10px;
+    gap: 12px;
     padding: 12px 14px 8px;
     padding-top: calc(12px + env(safe-area-inset-top));
   }
@@ -2889,7 +3023,7 @@ body {
   .pill { padding: 6px 10px; font-size: 13px; }
   .next { margin-left: 0; text-align: left; min-width: 0; width: 100%; font-size: 12px; }
   .cta { width: 100%; padding: 12px; font-size: 15px; }
-  .today-summary { align-items: stretch; gap: 10px; }
+  .today-summary { align-items: stretch; gap: 12px; }
   .today-progress { min-width: 100%; }
 
   .mask { padding: 12px; }
@@ -2956,7 +3090,7 @@ body {
 .morning-pop {
   position: fixed; left: 16px; top: calc(var(--topbar-height, 72px) + 8px); z-index: 40;
   max-width: min(92vw, 360px); background: var(--surface); border-radius: var(--radius-lg);
-  padding: 12px 14px; box-shadow: 0 8px 24px rgba(40,30,20,.18); display: flex; gap: 10px; align-items: center;
+  padding: 12px 14px; box-shadow: 0 8px 24px rgba(40,30,20,.18); display: flex; gap: 12px; align-items: center;
   cursor: pointer;
 }
 .morning-pop p { margin: 0; font-size: 14px; line-height: 1.45; }
@@ -2991,14 +3125,14 @@ body {
 .atlas-moon { position: absolute; right: 16%; top: 10%; color: #f4f0d8; font-size: 22px; }
 .atlas-cell-face { width: 48px; height: 48px; object-fit: contain; }
 .atlas-sil { width: 48px; height: 48px; margin: 0 auto; border-radius: 50%; background: var(--ink); opacity: .18; }
-.base-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.base-head { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
 .base-head > span:first-child { display: inline-flex; align-items: center; gap: 6px; }
 .dust-chip {
   display: inline-flex; align-items: center; font-size: 14px; font-weight: 700;
   background: var(--warm-2); color: var(--accent-ink); padding: 4px 12px; border-radius: 999px;
 }
 .toy-shop-dust { margin: 0 0 12px; }
-.toy-shop-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; margin: 8px 0 14px; }
+.toy-shop-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px; margin: 8px 0 14px; }
 .toy-shop-card {
   display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center;
   background: var(--surface-2); border-radius: var(--radius-lg); padding: 12px 8px;
