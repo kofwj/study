@@ -92,7 +92,14 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
+          echo "🔍 尝试连接到 VPS 获取 host key..."
+          ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts 2>&1 || {
+            echo "⚠️  ssh-keyscan 失败，尝试使用 StrictHostKeyChecking=no"
+            echo "Host ${{ secrets.VPS_HOST }}" >> ~/.ssh/config
+            echo "  StrictHostKeyChecking no" >> ~/.ssh/config
+            echo "  UserKnownHostsFile=/dev/null" >> ~/.ssh/config
+          }
+          echo "✅ SSH 配置完成"
       
       - name: Create static directory on VPS
         run: |
