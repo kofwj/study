@@ -6,7 +6,7 @@ import { APP_LABEL, APP_REVISION } from './version.js'
 const Admin = defineAsyncComponent(() => import('./Admin.vue'))
 import { SUBJECT_ICONS as ICONS, rankIcon, achIcon } from './icons.js'
 import { mottoFor } from './dailyMottos.js'
-import { Sun, Lock, Gift, Check, TrendingUp, Target, User, ShoppingCart, ScrollText, Medal, ChartColumn, Map, CalendarDays, RefreshCw, PartyPopper, Sparkles, BookOpen, Flame, Volume2, Egg, Sprout, Leaf, Flower, House, Landmark } from '@lucide/vue'
+import { Sun, Lock, Gift, Check, TrendingUp, Target, User, ShoppingCart, ScrollText, Medal, ChartColumn, Map, CalendarDays, RefreshCw, PartyPopper, Sparkles, BookOpen, Flame, Volume2, Egg, Sprout, Leaf, Flower, House, Landmark, Coins } from '@lucide/vue'
 
 const data = reactive({
   level: { earned: 0, balance: 0, level: '阳光萌新', next: null, next_need: 0, progress: 0 },
@@ -853,10 +853,20 @@ function ymd(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 const SUN_BUCKETS = [
-  { id: 'study', name: '学习', reasons: ['task', 'word_daily', 'word_perfect', 'test'] },
-  { id: 'daily', name: '打卡', reasons: ['daily'] },
-  { id: 'box', name: '惊喜', reasons: ['box', 'milestone'] },
+  { id: 'study', name: '学习得的', reasons: ['task', 'word_daily', 'word_perfect', 'test'], icon: BookOpen },
+  { id: 'daily', name: '打卡得的', reasons: ['daily'], icon: CalendarDays },
+  { id: 'box', name: '惊喜得的', reasons: ['box', 'milestone'], icon: Gift },
 ]
+const WD = '日一二三四五六'
+function sunRowIcon(reason) {
+  if (['task', 'word_daily', 'word_perfect', 'test'].includes(reason)) return BookOpen
+  if (reason === 'daily') return CalendarDays
+  if (reason === 'box' || reason === 'milestone') return Gift
+  if (reason === 'redeem') return ShoppingCart
+  if (reason === 'penalty' || reason === 'penalty_cancel') return Target
+  if (reason === 'cancel' || reason === 'test_cancel') return RefreshCw
+  return Sun
+}
 const sunshineStats = computed(() => {
   const rows = recentLedger.value || []
   const now = new Date()
@@ -865,7 +875,7 @@ const sunshineStats = computed(() => {
     const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i)
     const iso = ymd(d)
     const net = rows.filter(r => r.date === iso).reduce((s, r) => s + (Number(r.delta) || 0), 0)
-    days.push({ date: iso, label: `${d.getMonth() + 1}/${d.getDate()}`, net, today: i === 0 })
+    days.push({ date: iso, wd: i === 0 ? '今天' : WD[d.getDay()], net, today: i === 0 })
   }
   const weekNet = days.reduce((s, d) => s + d.net, 0)
   const maxAbs = Math.max(1, ...days.map(d => Math.abs(d.net)))
@@ -873,7 +883,7 @@ const sunshineStats = computed(() => {
     ...b,
     sun: rows.filter(r => b.reasons.includes(r.reason) && Number(r.delta) > 0)
       .reduce((s, r) => s + (Number(r.delta) || 0), 0),
-  })).filter(b => b.sun > 0)
+  }))
   const maxBucket = Math.max(1, ...buckets.map(b => b.sun), 0)
   return {
     balance: data.level.balance || 0,
@@ -1203,45 +1213,55 @@ function reloadApp() {
 
         <template v-else-if="activeTab === 'sunshine'">
           <h1><Sun class="ico" :size="20" /> 我的阳光</h1>
-          <p class="sun-lead">{{ sunshineStats.weekNet > 0 ? '这几天口袋里又多了 ' + sunshineStats.weekNet + ' 颗。' : (sunshineStats.weekNet < 0 ? '这几天花掉了一些阳光。' : '这几天阳光没怎么动。') }}</p>
+          <p class="sun-lead">
+            <PartyPopper v-if="sunshineStats.weekNet > 0" class="ico" :size="16" />
+            <Sparkles v-else class="ico" :size="16" />
+            {{ sunshineStats.weekNet > 0 ? '这几天口袋又多了 ' + sunshineStats.weekNet + ' 颗！' : (sunshineStats.weekNet < 0 ? '这几天花掉了一些阳光。' : '这几天阳光没怎么动，去做任务就会亮起来。') }}
+          </p>
           <div class="sun-hero">
             <div class="sun-box main">
-              <span>口袋里</span>
+              <i class="sun-ico pocket"><Sun :size="22" /></i>
+              <span>口袋里还有</span>
               <b>{{ sunshineStats.balance }}</b>
             </div>
             <div class="sun-box">
+              <i class="sun-ico pile"><Coins :size="20" /></i>
               <span>一共攒过</span>
               <b>{{ sunshineStats.earned }}</b>
             </div>
             <div class="sun-box">
+              <i class="sun-ico fire"><Flame :size="20" /></i>
               <span>连续打卡</span>
               <b>{{ sunshineStats.streak }}<small>天</small></b>
             </div>
           </div>
           <section class="plan-section">
-            <div class="plan-head"><h2>近 7 天进出</h2></div>
+            <div class="plan-head"><h2><CalendarDays class="ico" :size="16" /> 这周每天</h2></div>
             <div class="sun-week">
               <div v-for="d in sunshineStats.days" :key="d.date" class="sun-col">
-                <span class="sun-col-n" :class="{ down: d.net < 0, zero: !d.net }">{{ d.net ? ledgerSign(d.net) : '·' }}</span>
+                <span class="sun-col-n" :class="{ down: d.net < 0, zero: !d.net }">{{ d.net ? ledgerSign(d.net) : '0' }}</span>
                 <div class="sun-track">
-                  <i v-if="d.net" :class="{ down: d.net < 0 }" :style="{ height: Math.max(8, Math.round(Math.abs(d.net) / sunshineStats.maxAbs * 72)) + 'px' }"></i>
+                  <i v-if="d.net" :class="{ down: d.net < 0 }" :style="{ height: Math.max(10, Math.round(Math.abs(d.net) / sunshineStats.maxAbs * 68)) + 'px' }"></i>
                 </div>
-                <span :class="{ today: d.today }">{{ d.today ? '今天' : d.label }}</span>
+                <span :class="{ today: d.today }">{{ d.wd }}</span>
               </div>
             </div>
           </section>
-          <section v-if="sunshineStats.buckets.length" class="plan-section">
-            <div class="plan-head"><h2>阳光从哪来</h2></div>
-            <div class="sun-src" v-for="b in sunshineStats.buckets" :key="b.id">
-              <span>{{ b.name }}</span>
-              <div class="sun-src-bar"><i :style="{ width: Math.round(b.sun / sunshineStats.maxBucket * 100) + '%' }"></i></div>
-              <b>+{{ b.sun }}</b>
+          <section class="plan-section">
+            <div class="plan-head"><h2><Sparkles class="ico" :size="16" /> 阳光从哪来</h2></div>
+            <div class="sun-src-grid">
+              <div class="sun-src-card" v-for="b in sunshineStats.buckets" :key="b.id">
+                <i class="sun-ico" :class="b.id"><component :is="b.icon" :size="22" /></i>
+                <span>{{ b.name }}</span>
+                <b>+{{ b.sun }}</b>
+              </div>
             </div>
           </section>
           <section v-if="sunshineStats.recent.length" class="plan-section">
-            <div class="plan-head"><h2>最近进出</h2></div>
+            <div class="plan-head"><h2><ScrollText class="ico" :size="16" /> 刚才发生了什么</h2></div>
             <div class="sun-log">
               <div v-for="row in sunshineStats.recent" :key="row.id" class="sun-log-row" :class="{ down: row.delta < 0 }">
+                <i class="sun-log-ico" :class="{ down: row.delta < 0 }"><component :is="sunRowIcon(row.reason)" :size="16" /></i>
                 <div>
                   <strong>{{ ledgerLabel(row) }}</strong>
                   <small>{{ row.date }}</small>
@@ -1796,32 +1816,52 @@ body {
 .coming strong { display: block; margin: 12px 0 4px; font-size: 22px; }
 .coming em { display: block; font-style: normal; font-size: 13px; font-weight: 800; color: var(--accent-ink); margin-bottom: 8px; }
 .coming p { margin: 0; color: var(--ink-2); font-size: 14px; line-height: 1.6; }
-.sun-lead { color: var(--ink-2); margin: 0 0 14px; font-size: 14px; }
-.sun-hero { display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 10px; margin-bottom: 16px; }
-.sun-box { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 14px 16px; }
+.sun-lead { color: var(--ink-2); margin: 0 0 14px; font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 6px; }
+.sun-lead .ico { color: var(--accent-ink); flex: none; }
+.sun-hero { display: grid; grid-template-columns: 1.15fr 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+.sun-box { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 14px 14px 12px; }
 .sun-box span { display: block; font-size: 12px; color: var(--ink-3); font-weight: 700; }
-.sun-box b { display: block; margin-top: 4px; font-size: 26px; letter-spacing: -.03em; }
+.sun-box b { display: block; margin-top: 2px; font-size: 28px; letter-spacing: -.03em; }
 .sun-box small { font-size: 13px; margin-left: 3px; color: var(--ink-3); font-weight: 700; }
 .sun-box.main { background: var(--warm); border-color: transparent; }
+.sun-ico {
+  width: 36px; height: 36px; border-radius: var(--radius-circle);
+  display: inline-flex; align-items: center; justify-content: center;
+  margin-bottom: 8px; color: #fff;
+}
+.sun-ico.pocket { background: var(--accent); color: var(--accent-ink); }
+.sun-ico.pile { background: var(--brand); }
+.sun-ico.fire { background: #e86b2a; }
+.sun-ico.study { background: var(--brand); }
+.sun-ico.daily { background: #2e9e63; }
+.sun-ico.box { background: #d2514f; }
 .sun-week { display: flex; align-items: flex-end; gap: 8px; height: 140px; padding-top: 8px; }
 .sun-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100%; }
-.sun-col-n { font-size: 11px; font-weight: 800; color: var(--accent-ink); min-height: 14px; }
+.sun-col-n { font-size: 12px; font-weight: 800; color: var(--accent-ink); min-height: 16px; }
 .sun-col-n.down, .sun-col-n.zero { color: var(--ink-3); }
 .sun-track { flex: 1; width: 100%; max-width: 28px; display: flex; align-items: flex-end; justify-content: center; }
 .sun-track i { display: block; width: 100%; background: var(--accent); border-radius: 6px 6px 0 0; min-height: 6px; }
 .sun-track i.down { background: var(--ink-3); }
-.sun-col span:last-child { font-size: 11px; color: var(--ink-2); }
-.sun-col span.today { color: var(--accent-ink); font-weight: 800; }
-.sun-src { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
-.sun-src span { width: 36px; font-weight: 700; font-size: 13px; }
-.sun-src-bar { flex: 1; height: 12px; background: var(--line); border-radius: 99px; overflow: hidden; }
-.sun-src-bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--brand), var(--accent)); }
-.sun-src b { min-width: 2.4em; text-align: right; font-size: 13px; }
-.sun-log-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--surface-2); }
-.sun-log-row div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.sun-col span:last-child { font-size: 12px; color: var(--ink-2); font-weight: 700; }
+.sun-col span.today { color: var(--accent-ink); }
+.sun-src-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.sun-src-card {
+  background: var(--surface-2); border-radius: var(--radius-lg); padding: 14px 12px;
+  display: flex; flex-direction: column; align-items: flex-start; gap: 4px;
+}
+.sun-src-card span { font-size: 13px; font-weight: 700; color: var(--ink-2); }
+.sun-src-card b { font-size: 22px; letter-spacing: -.03em; }
+.sun-log-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--surface-2); }
+.sun-log-ico {
+  flex: none; width: 32px; height: 32px; border-radius: var(--radius-circle);
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--warm); color: var(--accent-ink);
+}
+.sun-log-ico.down { background: var(--surface-2); color: var(--ink-3); }
+.sun-log-row div { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
 .sun-log-row strong { font-size: 14px; }
 .sun-log-row small { color: var(--ink-3); font-size: 11px; }
-.sun-log-row b { font-variant-numeric: tabular-nums; color: var(--accent-ink); }
+.sun-log-row b { font-variant-numeric: tabular-nums; color: var(--accent-ink); font-size: 16px; }
 .sun-log-row.down b { color: var(--ink-3); }
 
 .cta {
@@ -2247,6 +2287,7 @@ body {
   .side::-webkit-scrollbar { display: none; }
   .side-split { width: 1px; height: 28px; align-self: center; margin: 0 2px; }
   .sun-hero { grid-template-columns: 1fr 1fr; }
+  .sun-src-grid { grid-template-columns: 1fr; }
   .side-sunshine, .side-split-sun { display: none; }
   .nav-group {
     display: flex; flex-direction: row; align-items: center; gap: 8px;
