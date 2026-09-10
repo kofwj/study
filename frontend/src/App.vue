@@ -1331,7 +1331,7 @@ function reloadApp() {
           <button class="nav" :class="{ on: activeTab === 'sunshine' }" @click="activeTab = 'sunshine'">
             <span><Sun class="ico" :size="15" /> 我的阳光</span>
           </button>
-          <button class="nav" :class="{ on: activeTab === 'base' }" @click="activeTab = 'base'">
+          <button class="nav" :class="{ on: activeTab === 'base' }" @click="activeTab = 'base'; loadSprites()">
             <span><House class="ico" :size="15" /> 秘密基地</span>
           </button>
           <button class="nav" :class="{ on: activeTab === 'bank' }" @click="activeTab = 'bank'">
@@ -1493,7 +1493,50 @@ function reloadApp() {
         </template>
 
         <template v-else-if="activeTab === 'base'">
-          <div class="coming-page">
+          <template v-if="sprites.base_enabled">
+            <h1><House class="ico" :size="20" /> 秘密基地</h1>
+            <div class="atlas-scene-tabs">
+              <button type="button" class="tab" :class="{ on: spriteScene === 'sun' }" @click="spriteScene = 'sun'">天台</button>
+              <button type="button" class="tab" :class="{ on: spriteScene === 'leaf' }" @click="spriteScene = 'leaf'">树屋</button>
+              <button type="button" class="tab" :class="{ on: spriteScene === 'sky' }" @click="spriteScene = 'sky'">云上</button>
+            </div>
+            <div class="atlas-stage atlas-stage-page">
+              <img class="atlas-bg" :src="baseImg(spriteScene)" alt="" />
+              <div v-if="!sprites.enabled" class="atlas-building"><b>建设中</b><span>图鉴打开以后，朋友才搬进来</span></div>
+              <template v-if="sprites.enabled" v-for="t in sceneToys(spriteScene)" :key="'p'+t.id">
+                <div class="atlas-toy" :class="[t.anim, { flip: toyFlip[t.id] }]"
+                  :style="{ left: t.x + '%', top: t.y + '%', width: t.w + '%' }"
+                  @click="t.flip && (toyFlip[t.id] = !toyFlip[t.id])">
+                  <template v-if="t.id === 'trace-pinwheel'">
+                    <img class="stick" :src="toyImg('trace-pinwheel-stick')" alt="" />
+                    <img class="blades" :src="toyImg('trace-pinwheel-blades')" alt="" />
+                  </template>
+                  <template v-else-if="t.id === 'memo-flag'">
+                    <img class="pole" :src="toyImg('memo-flag-pole')" alt="" />
+                    <img class="fabric" :src="toyImg('memo-flag-fabric')" alt="" />
+                  </template>
+                  <img v-else class="toy" :src="toyImg(t.id)" :alt="t.name" />
+                </div>
+              </template>
+              <template v-if="sprites.enabled">
+                <img v-for="b in sceneBuddies(spriteScene)" :key="'pb'+b.id" class="atlas-buddy"
+                  :src="spImg(b.id)" :alt="displayName(b)"
+                  :style="{ left: b.x + '%', top: b.y + '%', width: b.w + '%' }" />
+              </template>
+              <img v-if="sprites.enabled && spriteScene === 'sun' && sprites.today?.unit_done" class="atlas-plane" :src="toyImg('trace-plane')" alt="" />
+              <span v-if="sprites.enabled && spriteScene === 'sky' && sprites.today?.word_done" class="atlas-star">✦</span>
+              <span v-if="sprites.enabled && spriteScene === 'sky' && sprites.today?.review_clear" class="atlas-moon">☾</span>
+            </div>
+            <div v-if="sprites.enabled" class="atlas-shop">
+              <h4>玩具店 · 星尘 {{ sprites.dust }}</h4>
+              <div v-for="it in sprites.shop" :key="it.id" class="atlas-shop-row">
+                <span>{{ it.name }} · {{ it.price }} 尘</span>
+                <button v-if="it.owned" type="button" class="ghost" disabled>已有</button>
+                <button v-else type="button" class="do" :disabled="spriteBusy || sprites.dust < it.price" @click="buyToy(it.id)">买</button>
+              </div>
+            </div>
+          </template>
+          <div v-else class="coming-page">
             <div class="coming">
               <House class="ico" :size="36" />
               <strong>秘密基地</strong>
@@ -1515,6 +1558,9 @@ function reloadApp() {
           <template v-else>
             <h1><Landmark class="ico" :size="20" /> 阳光银行</h1>
           <p class="sun-lead"><Landmark class="ico" :size="16" /> 把阳光存起来，为一个小心愿慢慢攒。</p>
+          <div v-if="bankData.interest" class="bank-interest-tip">
+            📈 {{ bankData.interest.cycle === 'weekly' ? '每周六' : (bankData.interest.cycle === 'biweekly' ? '每两周六' : '每月底') }}结算利息 · 本期利率 {{ bankData.interest.rate }}% · 起存点 {{ bankData.interest.threshold }} 颗
+          </div>
           <div class="sun-hero bank-hero">
             <div class="sun-box main"><i class="sun-ico pocket"><Landmark :size="22" /></i><span>银行里有</span><b>{{ bankData.balance }}</b></div>
             <div class="sun-box"><i class="sun-ico pile"><Sun :size="20" /></i><span>口袋还剩</span><b>{{ bankData.pocket_balance }}</b></div>
@@ -2241,6 +2287,7 @@ body {
 .bank-goal p { margin: 8px 0 0; font-size: 13px; color: var(--ink-2); }
 .bank-action { margin-bottom: 20px; }
 .bank-admin-hero { margin: 18px 0; }
+.bank-interest-tip { background: var(--warm); border: 1px solid var(--accent); border-radius: var(--radius-md); padding: 10px 14px; margin-bottom: 14px; font-size: 13px; color: var(--ink); font-weight: 700; }
 
 .cta {
   border: none; border-radius: var(--radius-xl); padding: 11px 22px; font-weight: 800; font-size: 15px; cursor: pointer;
@@ -2700,6 +2747,7 @@ body {
 .atlas-scene-tabs .tab { border: 2px solid var(--line); background: var(--surface-2); border-radius: 999px; padding: 4px 12px; font: inherit; cursor: pointer; }
 .atlas-scene-tabs .tab.on { background: var(--ink); color: #fff; border-color: var(--ink); }
 .atlas-stage { position: relative; width: 100%; aspect-ratio: 1448 / 543; border-radius: 12px; overflow: hidden; background: #1a1410; margin-bottom: 12px; }
+.atlas-stage-page { max-width: 920px; overflow: visible; }
 .atlas-building {
   position: absolute; inset: 0; z-index: 8;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
