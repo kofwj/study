@@ -610,6 +610,39 @@ const recentLedger = ref([])
 const bankData = ref({ enabled: false, balance: 0, pocket_balance: 0, goal: null, requests: [], ledger: [], interest: null })
 const bankAmount = ref(5)
 const bankBusy = ref(false)
+const bankPassbookOpen = ref(false)
+const bankPending = computed(() => (bankData.value.requests || []).filter(r => r.status === 'pending'))
+function bankInterestCycle(cycle) {
+  if (cycle === 'biweekly') return '每两周'
+  if (cycle === 'monthly') return '每月'
+  return '每周六'
+}
+function bankInterestLabel(it) {
+  if (!it) return ''
+  return `${bankInterestCycle(it.cycle)}结息 ${it.rate}%`
+}
+function bankVaultPct() {
+  const bal = Number(bankData.value.balance) || 0
+  const g = bankData.value.goal
+  if (g && Number(g.target) > 0) return Math.max(0, Math.min(100, Math.round(bal / Number(g.target) * 100)))
+  if (bal <= 0) return 0
+  return Math.max(8, Math.min(88, Math.round(bal / Math.max(bal, 100) * 80)))
+}
+function bankPassbookTitle(row) {
+  if (row.reason === 'bank_interest') {
+    const c = bankData.value.interest && bankData.value.interest.cycle
+    if (c === 'biweekly') return '两周结息'
+    if (c === 'monthly') return '本月结息'
+    return '本周结息'
+  }
+  if (row.delta > 0) return '存进金库'
+  return '柜员开了门'
+}
+function bankRequestStatus(st) {
+  if (st === 'pending') return '等家长开门'
+  if (st === 'approved') return '柜员开了门'
+  return '这张单没过'
+}
 const reviewDue = ref([])
 const updateReady = ref(false)
 const celebrate = ref(null)
@@ -1118,7 +1151,7 @@ async function bankMove(kind) {
   bankBusy.value = true
   try {
     bankData.value = kind === 'deposit' ? await api.bankDeposit(amount) : await api.bankWithdraw(amount)
-    showToast(kind === 'deposit' ? `已存入 ${amount} 颗阳光` : `已提交取出 ${amount} 颗的申请`)
+    showToast(kind === 'deposit' ? `已存进金库 ${amount} 颗阳光` : `已请柜员开门，取出 ${amount} 颗`)
     await refresh()
   } catch (e) { showToast(e.message) }
   finally { bankBusy.value = false }
@@ -1741,119 +1774,97 @@ function reloadApp() {
           <div v-if="!bankData.enabled" class="coming-page">
             <div class="coming">
               <Landmark class="ico" :size="36" />
-              <strong>阳光银行</strong>
-              <em>建设中</em>
-              <p>存折还在印，以后能看阳光怎么攒、怎么花。</p>
+              <strong>阳光储蓄所</strong>
+              <em>卷帘门还没拉开</em>
+              <p>存折还在印，以后能把阳光存进金库。</p>
             </div>
           </div>
           <template v-else>
-            <div class="bank-page">
-              <div class="bank-header">
-                <div class="bank-title">
-                  <Landmark class="bank-icon" :size="28" />
-                  <div>
-                    <h1>阳光银行</h1>
-                    <p>把阳光存起来，为一个小心愿慢慢攒</p>
-                  </div>
+            <div class="bank-hall">
+              <header class="bank-sign">
+                <div class="bank-sign-board">
+                  <span class="bank-open-lamp">营业中</span>
+                  <h1>阳光储蓄所</h1>
                 </div>
-                <div v-if="bankData.interest" class="bank-interest-badge">
-                  <span class="interest-icon">📈</span>
-                  <div class="interest-info">
-                    <strong>{{ bankData.interest.rate }}% 利息</strong>
-                    <small>{{ bankData.interest.cycle === 'weekly' ? '每周六结算' : (bankData.interest.cycle === 'biweekly' ? '每两周结算' : '每月结算') }}</small>
-                  </div>
+                <div v-if="bankData.interest" class="bank-sign-rate">
+                  <strong>{{ bankInterestLabel(bankData.interest) }}</strong>
+                  <small v-if="bankData.interest.threshold">金库满 {{ bankData.interest.threshold }} 颗才结息</small>
                 </div>
-              </div>
+              </header>
 
-              <div class="bank-cards">
-                <div class="bank-card bank-card-primary">
-                  <div class="card-label">银行存款</div>
-                  <div class="card-amount">{{ bankData.balance }}</div>
-                  <div class="card-icon"><Landmark :size="32" /></div>
-                </div>
-                <div class="bank-card bank-card-secondary">
-                  <div class="card-label">口袋余额</div>
-                  <div class="card-amount">{{ bankData.pocket_balance }}</div>
-                  <div class="card-icon"><Sun :size="32" /></div>
-                </div>
-              </div>
-
-              <div v-if="!bankData.goal" class="bank-goal-card bank-goal-empty">
-                <Target class="goal-icon" :size="20" />
-                <p>还没有存钱目标。家长设一个小心愿，就能看着阳光一点点攒起来。</p>
-              </div>
-              <div v-else class="bank-goal-card">
-                <div class="goal-header">
-                  <Target class="goal-icon" :size="20" />
-                  <div class="goal-info">
-                    <strong>{{ bankData.goal.name }}</strong>
-                    <span>{{ bankData.goal.saved }} / {{ bankData.goal.target }} 颗</span>
-                  </div>
-                  <div v-if="bankData.goal.reached" class="goal-badge">已达成</div>
-                </div>
-                <div class="goal-progress">
-                  <div class="goal-bar">
-                    <div class="goal-fill" :style="{ width: Math.min(100, bankData.goal.saved / bankData.goal.target * 100) + '%' }"></div>
-                  </div>
-                  <p class="goal-tip">{{ bankData.goal.reached ? '🎉 攒够啦！可以告诉家长兑现' : `还差 ${bankData.goal.target - bankData.goal.saved} 颗阳光` }}</p>
-                </div>
-              </div>
-
-              <div class="bank-operations">
-                <div class="op-header">
-                  <h3>存取阳光</h3>
-                </div>
-                <div class="op-amounts">
-                  <button v-for="n in [5, 10, 20, 50]" :key="n" type="button" 
-                    :class="['amount-chip', { active: bankAmount === n }]" 
-                    @click="bankAmount = n">{{ n }}</button>
-                  <input v-model.number="bankAmount" type="number" min="1" class="amount-input" placeholder="自定义" />
-                </div>
-                <div class="op-buttons">
-                  <button class="op-btn op-btn-deposit" :disabled="bankBusy || bankData.pocket_balance < bankAmount" @click="bankMove('deposit')">
-                    <span>存入银行</span>
-                    <small>从口袋转入</small>
-                  </button>
-                  <button class="op-btn op-btn-withdraw" :disabled="bankBusy || bankData.balance < bankAmount" @click="bankMove('withdraw')">
-                    <span>申请取出</span>
-                    <small>需家长同意</small>
-                  </button>
-                </div>
-              </div>
-
-              <div v-if="bankData.requests?.length" class="bank-section">
-                <h3 class="section-title"><ScrollText class="ico" :size="18" /> 我的申请</h3>
-                <div class="request-list">
-                  <div v-for="r in bankData.requests" :key="r.id" class="request-item">
-                    <div class="request-info">
-                      <strong>取出 {{ r.amount }} 颗阳光</strong>
-                      <small>{{ String(r.created_at || '').slice(0, 10) }}</small>
+              <div class="bank-room">
+                <section class="bank-counter" :class="{ busy: bankBusy }">
+                  <div class="bank-window">
+                    <div class="bank-teller" aria-hidden="true">
+                      <span class="bank-teller-face">☀</span>
                     </div>
-                    <div :class="['request-status', r.status]">
-                      {{ r.status === 'pending' ? '等待审批' : (r.status === 'approved' ? '已批准' : '已拒绝') }}
+                    <div class="bank-window-sill">
+                      <span class="bank-window-tag">{{ bankBusy ? '正在递单' : '柜台' }}</span>
                     </div>
                   </div>
-                </div>
-              </div>
 
-              <div v-if="bankData.ledger?.length" class="bank-section">
-                <h3 class="section-title"><ScrollText class="ico" :size="18" /> 存取记录</h3>
-                <div class="ledger-list">
-                  <div v-for="row in bankData.ledger.slice(0, 10)" :key="row.id" class="ledger-item">
-                    <div class="ledger-icon">
-                      <Landmark v-if="row.reason === 'bank_interest'" :size="18" />
-                      <ArrowDownToLine v-else-if="row.delta > 0" :size="18" />
-                      <ArrowUpFromLine v-else :size="18" />
+                  <div class="bank-tray">
+                    <span class="bank-tray-label">口袋</span>
+                    <strong class="bank-tray-amt">{{ bankData.pocket_balance }}</strong>
+                    <span class="bank-tray-unit">颗</span>
+                  </div>
+
+                  <div class="bank-chips">
+                    <button v-for="n in [5, 10, 20, 50]" :key="n" type="button"
+                      :class="['bank-chip', { on: bankAmount === n }]"
+                      @click="bankAmount = n">{{ n }}</button>
+                    <input v-model.number="bankAmount" type="number" min="1" class="bank-chip-input" placeholder="自己写" />
+                  </div>
+
+                  <div class="bank-desk-btns">
+                    <button class="bank-act in" :disabled="bankBusy || bankData.pocket_balance < bankAmount" @click="bankMove('deposit')">
+                      <span>存进金库</span>
+                      <small>从口袋转入</small>
+                    </button>
+                    <button class="bank-act out" :disabled="bankBusy || bankData.balance < bankAmount" @click="bankMove('withdraw')">
+                      <span>请柜员开门</span>
+                      <small>需家长同意</small>
+                    </button>
+                  </div>
+
+                  <div v-if="bankPending.length" class="bank-wait">
+                    <div v-for="r in bankPending" :key="r.id" class="bank-wait-slip">
+                      <strong>取出 {{ r.amount }} 颗</strong>
+                      <em>等家长开门</em>
                     </div>
-                    <div class="ledger-info">
-                      <strong>{{ row.reason === 'bank_interest' ? '利息到账' : (row.delta > 0 ? '存入银行' : '取出到口袋') }}</strong>
+                  </div>
+                </section>
+
+                <section class="bank-vault" :class="{ reached: bankData.goal?.reached }" @click="bankPassbookOpen = !bankPassbookOpen">
+                  <div class="bank-vault-door">
+                    <i class="bank-vault-glow" :style="{ height: bankVaultPct() + '%' }"></i>
+                    <div class="bank-vault-copy">
+                      <span class="bank-tray-label">金库</span>
+                      <strong class="bank-vault-amt">{{ bankData.balance }}</strong>
+                      <span class="bank-tray-unit">颗</span>
+                    </div>
+                    <div class="bank-vault-dial" aria-hidden="true"></div>
+                  </div>
+                  <p v-if="bankData.goal?.reached" class="bank-vault-seal">攒够啦，告诉家长来开门</p>
+                  <p v-else-if="bankData.goal" class="bank-vault-note">{{ bankData.goal.name }} · {{ bankData.goal.saved }} / {{ bankData.goal.target }}</p>
+                  <p v-else class="bank-vault-note dim">家长设一个小心愿，金库就开始涨</p>
+                  <small class="bank-vault-hint">{{ bankPassbookOpen ? '再点收起存折' : '点保险柜看存折' }}</small>
+
+                  <div v-if="bankPassbookOpen" class="bank-passbook" @click.stop>
+                    <h3>存折</h3>
+                    <div v-if="!(bankData.ledger || []).length" class="bank-pass-empty">还没有进出记录</div>
+                    <div v-for="row in (bankData.ledger || []).slice(0, 10)" :key="row.id" class="bank-pass-row">
+                      <span>{{ bankPassbookTitle(row) }}</span>
                       <small>{{ row.date }}</small>
+                      <b :class="row.delta > 0 ? 'plus' : 'minus'">{{ row.delta > 0 ? '+' : '' }}{{ row.delta }}</b>
                     </div>
-                    <div :class="['ledger-amount', row.delta > 0 ? 'plus' : 'minus']">
-                      {{ row.delta > 0 ? '+' : '' }}{{ row.delta }}
+                    <div v-for="r in (bankData.requests || []).filter(x => x.status !== 'pending').slice(0, 4)" :key="'rq'+r.id" class="bank-pass-row quiet">
+                      <span>取出 {{ r.amount }} 颗</span>
+                      <small>{{ String(r.created_at || '').slice(0, 10) }}</small>
+                      <b>{{ bankRequestStatus(r.status) }}</b>
                     </div>
                   </div>
-                </div>
+                </section>
               </div>
             </div>
           </template>
@@ -2651,10 +2662,70 @@ body {
 .ledger-amount { font-size: 16px; font-weight: 800; font-variant-numeric: tabular-nums; }
 .ledger-amount.plus { color: var(--ok); }
 .ledger-amount.minus { color: var(--ink-3); }
+.bank-hall { max-width: 880px; padding-bottom: 28px; }
+.bank-sign { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.bank-sign-board { background: linear-gradient(180deg, #c45a2d, #9a3e1c); color: #fff8e8; border-radius: 8px 8px 14px 14px; padding: 12px 22px 14px; box-shadow: 0 6px 0 #6d2a12, var(--shadow-md); min-width: 220px; text-align: center; }
+.bank-sign-board h1 { margin: 4px 0 0; font-size: 26px; letter-spacing: .12em; }
+.bank-open-lamp { display: inline-block; background: #2e9e63; color: #fff; font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: var(--radius-pill); }
+.bank-sign-rate { background: #f3e2b8; border: 2px solid #c9a15b; border-radius: 8px; padding: 8px 12px; color: var(--accent-ink); }
+.bank-sign-rate strong { display: block; font-size: 14px; }
+.bank-sign-rate small { display: block; margin-top: 2px; font-size: 11px; font-weight: 700; color: var(--ink-2); }
+.bank-room { display: grid; grid-template-columns: 1.15fr .85fr; gap: 14px; align-items: start; }
+.bank-counter, .bank-vault { border-radius: 18px; position: relative; }
+.bank-counter { background: linear-gradient(180deg, #f7efe2 0%, #ead7b4 55%, #d8b07a 100%); border: 3px solid #b8874e; padding: 14px; box-shadow: var(--shadow-md); }
+.bank-counter.busy { outline: 3px solid var(--accent); }
+.bank-window { background: #7eb7d8; border: 3px solid #3e6f8c; border-radius: 12px 12px 6px 6px; min-height: 88px; position: relative; overflow: hidden; }
+.bank-teller { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); width: 54px; height: 54px; border-radius: 50%; background: #ffe08a; display: flex; align-items: center; justify-content: center; box-shadow: inset 0 -6px 0 rgba(180,110,20,.2); }
+.bank-teller-face { font-size: 26px; }
+.bank-window-sill { position: absolute; left: 0; right: 0; bottom: 0; background: #c9a36a; padding: 4px 10px; display: flex; justify-content: flex-end; }
+.bank-window-tag { font-size: 11px; font-weight: 800; color: #5a3a16; }
+.bank-tray { margin-top: 12px; background: #fff8e8; border: 2px dashed #c9a15b; border-radius: 12px; padding: 10px 14px; display: flex; align-items: baseline; gap: 8px; }
+.bank-tray-label, .bank-tray-unit { font-size: 12px; font-weight: 800; color: var(--ink-2); }
+.bank-tray-amt { font-size: 34px; font-weight: 800; letter-spacing: -.04em; font-variant-numeric: tabular-nums; color: var(--accent-ink); }
+.bank-chips { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0; }
+.bank-chip { border: 2px solid #c9a15b; background: #fff8e8; color: var(--ink); padding: 8px 12px; border-radius: 999px; cursor: pointer; font-family: inherit; font-size: 14px; font-weight: 800; min-width: 48px; }
+.bank-chip.on { background: var(--accent); color: #fff; border-color: #c07810; }
+.bank-chip-input { width: 84px; border: 2px solid #c9a15b; border-radius: 999px; padding: 8px 10px; font-size: 14px; font-family: inherit; font-weight: 700; background: #fff8e8; }
+.bank-desk-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.bank-act { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; border: none; border-radius: 12px; padding: 12px 14px; cursor: pointer; font-family: inherit; text-align: left; }
+.bank-act span { font-size: 15px; font-weight: 800; }
+.bank-act small { font-size: 12px; font-weight: 700; opacity: .8; }
+.bank-act:disabled { opacity: .45; cursor: not-allowed; }
+.bank-act.in { background: var(--accent); color: #fff; box-shadow: var(--shadow-button); }
+.bank-act.out { background: #fff8e8; color: var(--ink); border: 2px solid #c9a15b; }
+.bank-wait { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+.bank-wait-slip { display: flex; justify-content: space-between; align-items: center; gap: 8px; background: #fff3c4; border: 2px dashed #e0a020; border-radius: 8px; padding: 8px 10px; }
+.bank-wait-slip strong { font-size: 13px; }
+.bank-wait-slip em { font-style: normal; font-size: 12px; font-weight: 800; color: var(--accent-ink); }
+.bank-vault { background: linear-gradient(180deg, #6d737c, #3d424a); color: #f4efe6; padding: 14px; border: 3px solid #2b2f35; box-shadow: var(--shadow-md); cursor: pointer; }
+.bank-vault.reached { box-shadow: 0 0 0 3px #f5a524, var(--shadow-md); }
+.bank-vault-door { position: relative; overflow: hidden; min-height: 168px; border-radius: 12px; background: #2f343c; border: 2px solid #8a9098; }
+.bank-vault-glow { position: absolute; left: 0; right: 0; bottom: 0; background: linear-gradient(180deg, #ffd27a, #f5a524); opacity: .55; }
+.bank-vault-copy { position: relative; z-index: 1; padding: 18px 16px 12px; }
+.bank-vault-copy .bank-tray-label, .bank-vault-copy .bank-tray-unit { color: #f0e6d0; }
+.bank-vault-amt { display: block; font-size: 40px; font-weight: 800; letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
+.bank-vault-dial { position: absolute; right: 16px; top: 22px; width: 46px; height: 46px; border-radius: 50%; border: 6px solid #c9a15b; background: radial-gradient(circle, #eee 30%, #888 32%, #444 70%); z-index: 1; }
+.bank-vault-note, .bank-vault-seal, .bank-vault-hint { margin: 10px 0 0; font-size: 13px; font-weight: 700; line-height: 1.4; }
+.bank-vault-note.dim { opacity: .8; }
+.bank-vault-seal { background: #f5a524; color: #5a3208; border-radius: 8px; padding: 8px 10px; font-weight: 800; }
+.bank-vault-hint { display: block; opacity: .7; font-size: 11px; }
+.bank-passbook { margin-top: 12px; background: #fffdf6; color: var(--ink); border-radius: 10px; padding: 10px 12px; border: 2px solid #e4d3a8; max-height: 240px; overflow: auto; }
+.bank-passbook h3 { margin: 0 0 8px; font-size: 14px; }
+.bank-pass-empty { font-size: 13px; color: var(--ink-3); font-weight: 700; padding: 8px 0; }
+.bank-pass-row { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: baseline; padding: 7px 0; border-bottom: 1px solid #efe4c8; font-size: 13px; }
+.bank-pass-row:last-child { border-bottom: none; }
+.bank-pass-row small { color: var(--ink-3); font-weight: 700; }
+.bank-pass-row b { font-variant-numeric: tabular-nums; }
+.bank-pass-row.quiet { opacity: .78; }
+.bank-pass-row .plus { color: var(--ok); }
+.bank-pass-row .minus { color: var(--ink-3); }
 @media (max-width: 640px) {
   .bank-cards { grid-template-columns: 1fr 1fr; }
   .card-amount { font-size: 28px; }
   .op-buttons { grid-template-columns: 1fr; }
+  .bank-room { grid-template-columns: 1fr; }
+  .bank-desk-btns { grid-template-columns: 1fr; }
+  .bank-vault-amt { font-size: 32px; }
 }
 
 .cta {
