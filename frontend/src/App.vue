@@ -620,6 +620,14 @@ const companionPulse = ref(false)
 const pendingLevelUp = ref(null)
 let evolveTimer = null
 const COMPANION_IMAGES = { egg: companionEggImg, sprout: companionSproutImg, leaf: companionLeafImg, bloom: companionBloomImg }
+const CONFETTI_COLORS = ['#f5a524', '#f26f5f', '#3aa4e0', '#2e9e63']
+function confettiStyle(i, n = 18) {
+  return {
+    left: ((i + 1) * (100 / (n + 1))) + '%',
+    animationDelay: (i * 0.08) + 's',
+    '--confetti-color': CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+  }
+}
 const companion = computed(() => data.companion || {})
 const companionImage = computed(() => COMPANION_IMAGES[companion.value.stage] || companionEggImg)
 const companionEvolveImage = computed(() => COMPANION_IMAGES[companionEvolve.value?.stage] || companionEggImg)
@@ -883,6 +891,7 @@ async function checkin() {
   actionBusy.value = true
   try {
     const r = await api.checkin()
+    pulseCompanion()
     playSound('complete') || playCompleteBeep()
     if (navigator.vibrate) navigator.vibrate([40, 20, 40])
     const encouragement = getEncouragement({ type: 'checkin' })
@@ -2095,7 +2104,7 @@ function reloadApp() {
 
     <div v-if="companionEvolve" class="celebrate companion-evolve" @click="closeCompanionEvolve">
       <div class="confetti">
-        <span v-for="i in 18" :key="'e'+i" :style="{ left: (i * 5.6) + '%', animationDelay: (i * 0.08) + 's', '--confetti-color': ['#f5a524', '#f26f5f', '#3aa4e0', '#2e9e63'][i % 4] }"></span>
+        <span v-for="i in 18" :key="'e'+i" :style="confettiStyle(i)"></span>
       </div>
       <div class="celebrate-card companion-evolve-card">
         <div class="companion-big companion-evolve-figure" :class="'stage-' + (companionEvolve.stage || 'egg')">
@@ -2109,7 +2118,7 @@ function reloadApp() {
     <!-- 升级庆祝 -->
     <div v-if="celebrate" class="celebrate">
       <div class="confetti">
-        <span v-for="i in 14" :key="i" :style="{ left: (i * 7.1) + '%', animationDelay: (i * 0.09) + 's' }">•</span>
+        <span v-for="i in 18" :key="'c'+i" :style="confettiStyle(i)"></span>
       </div>
       <div class="celebrate-card">
         <div class="celebrate-icon"><component :is="rankIcon(celebrate.icon)" class="ico" :size="40" /></div>
@@ -2155,7 +2164,7 @@ function reloadApp() {
       </div>
       <div v-if="achModal" class="ach-pop" @click.self="closeAchModal">
         <div class="confetti" v-if="achNew(achModal)">
-          <span v-for="i in 14" :key="i" :style="{ left: (i * 7.1) + '%', animationDelay: (i * 0.09) + 's' }">•</span>
+          <span v-for="i in 18" :key="'a'+i" :style="confettiStyle(i)"></span>
         </div>
         <div :class="['ach-detail', achModal.rarity]">
           <div class="ach-icon"><component :is="achIcon(achModal.icon)" class="ico" :size="48" /></div>
@@ -2359,12 +2368,12 @@ body {
   flex: 0 0 52px; aspect-ratio: 1; overflow: hidden;
   border: 3px solid rgba(255,255,255,.72); box-shadow: var(--shadow-press-active);
 }
-.avatar.companion { border: none; cursor: pointer; font-family: inherit; padding: 0; color: #fff; position: relative; }
 .avatar.companion { border: none; cursor: pointer; font-family: inherit; padding: 0; color: #fff; position: relative; transition: transform .18s ease; }
 .companion-img { width: 100%; height: 100%; object-fit: contain; display: block; }
 .companion-img-big { width: 100%; height: 100%; object-fit: contain; display: block; }
 .companion-pulse { animation: companion-hop .72s cubic-bezier(.2,1.6,.4,1) both; }
 .companion-pulse .companion-img { animation: companion-wiggle .72s ease-out both; }
+.avatar.stage-egg, .companion-big.stage-egg { background: #c5ced6; color: #4a5560; }
 .avatar.stage-sprout, .companion-big.stage-sprout { background: #7dba6a; color: #fff; }
 .avatar.stage-leaf, .companion-big.stage-leaf { background: #2e8f55; color: #fff; }
 .avatar.stage-bloom, .companion-big.stage-bloom { background: #f5a524; color: #fff; }
@@ -2378,9 +2387,11 @@ body {
   padding: 22px 20px 16px; text-align: center; box-shadow: var(--shadow-lg);
 }
 .companion-big {
-  width: 88px; height: 88px; border-radius: var(--radius-circle); margin: 0 auto 10px;
+  width: 120px; height: 120px; border-radius: var(--radius-circle); margin: 0 auto 10px;
   display: flex; align-items: center; justify-content: center; color: #fff;
 }
+.companion-evolve-card { min-width: min(280px, calc(100vw - 40px)); }
+.companion-evolve-figure { width: 152px; height: 152px; margin-bottom: 4px; background: transparent; }
 .companion-sheet strong { display: block; font-size: 18px; }
 .companion-bar { margin: 10px 0 14px; background: var(--surface-2); }
 .companion-name { text-align: left; margin: 8px 0 10px; }
@@ -3022,9 +3033,11 @@ body {
 .ach-detail .do { margin-top: 12px; }
 .map-modal > .ghost, .ach-modal > .ghost { flex: 0 0 auto; }
 .confetti { position: absolute; inset: 0; z-index: 1; overflow: hidden; }
-.confetti span { position: absolute; top: -40px; font-size: 24px; color: var(--accent); animation: fall 2.6s linear forwards; }
+.confetti span { position: absolute; top: -40px; width: 9px; height: 18px; border-radius: 3px; background: var(--confetti-color, var(--accent)); transform: rotate(18deg); animation: fall 2.6s linear forwards; }
 @keyframes pop { from { transform: scale(.4); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 @keyframes bounce { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+@keyframes companion-hop { 0%,100% { transform: translateY(0) rotate(0); } 28% { transform: translateY(-9px) rotate(-4deg); } 58% { transform: translateY(1px) rotate(3deg); } 78% { transform: translateY(-4px) rotate(-2deg); } }
+@keyframes companion-wiggle { 0%,100% { transform: scale(1) rotate(0); } 35% { transform: scale(1.06) rotate(-3deg); } 65% { transform: scale(1.02) rotate(3deg); } }
 @keyframes fall { to { transform: translateY(110vh) rotate(720deg); opacity: 0; } }
 
 @media (max-width: 900px) {
@@ -3046,7 +3059,8 @@ body {
   }
   .who { width: 100%; min-width: 0; }
   .who > div { min-width: 0; flex: 1; }
-  .who > .avatar { width: 40px; height: 40px; font-size: 22px; flex: 0 0 40px; aspect-ratio: 1; }
+  .who > .avatar { width: 48px; height: 48px; font-size: 22px; flex: 0 0 48px; aspect-ratio: 1; }
+  .companion-need { display: none; }
   .kid { font-size: 18px; white-space: nowrap; }
   .hello { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .name-row { flex-wrap: nowrap; }
