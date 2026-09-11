@@ -539,7 +539,7 @@ const spriteBusy = ref(false)
 const toyShopOpen = ref(false)
 const morningShow = ref(false)
 const toyFlip = reactive({})
-const SPRITE_CACHE = 'pw2'
+const SPRITE_CACHE = 'pw3'
 function isNight() {
   const h = new Date().getHours()
   return h >= 19 || h < 6
@@ -3511,8 +3511,9 @@ body {
 }
 .atlas-toy.ready .capsule-letter .flap { transform: translateY(-12%); }
 
-.atlas-toy .toy, .atlas-toy .blades, .atlas-toy .fabric { width: 100%; display: block; pointer-events: none; }
-.atlas-toy .stick, .atlas-toy .pole { position: absolute; inset: 0; width: 100%; z-index: 3; pointer-events: none; }
+.atlas-toy .toy, .atlas-toy .blades, .atlas-toy .fabric { width: 100%; display: block; pointer-events: none; position: relative; z-index: 2; }
+.atlas-toy .stick { position: absolute; inset: 0; width: 100%; z-index: 1; pointer-events: none; }
+.atlas-toy .pole { position: absolute; inset: 0; width: 100%; z-index: 3; pointer-events: none; }
 .atlas-toy.flip .toy { transform: scaleX(-1); }
 .atlas-toy.spin-wheel .blades { transform-origin: 49.5% 43.3%; animation: spin-hub 2.8s linear infinite; }
 @keyframes spin-hub { to { transform: rotate(360deg); } }
@@ -3526,16 +3527,20 @@ body {
 .atlas-star { position: absolute; left: 18%; top: 14%; color: #ffe9a8; font-size: 18px; filter: drop-shadow(0 0 6px #ffe9a8); }
 .atlas-stage.moon-full::after {
   content: "";
-  position: absolute; right: 12%; top: 6%;
-  width: 9%; aspect-ratio: 1;
+  position: absolute;
+  left: 86.5%;
+  top: 12.6%;
+  width: 7.2%;
+  aspect-ratio: 1;
   border-radius: 50%;
+  transform: translate(-50%, -50%);
   pointer-events: none;
-  box-shadow: 0 0 18px 8px rgba(255, 244, 210, .55);
+  box-shadow: 0 0 22px 10px rgba(255, 244, 210, .45);
   animation: moon-glow 2.4s ease-in-out infinite;
 }
 @keyframes moon-glow {
-  0%, 100% { opacity: .7; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.08); }
+  0%, 100% { opacity: .55; box-shadow: 0 0 16px 8px rgba(255, 244, 210, .32); }
+  50% { opacity: 1; box-shadow: 0 0 28px 14px rgba(255, 244, 210, .55); }
 }
 .atlas-cell-face { width: 48px; height: 48px; object-fit: contain; }
 .atlas-sil { width: 48px; height: 48px; margin: 0 auto; border-radius: 50%; background: var(--ink); opacity: .18; }

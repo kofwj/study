@@ -292,6 +292,6 @@ def test_migration_recorded():
     assert len(spritemod.SPRITE_DEFS) == 12
     assert len(spritemod.BASE_ITEMS) == 6
     cap = next(x for x in spritemod.BASE_LAYOUT["leaf"] if x["id"] == "memo-capsule")
-    assert cap["y"] < 70 and cap["x"] > 50
+    assert cap["x"] > 68 and cap["y"] < 50 and cap["w"] <= 6
     wheel = next(x for x in spritemod.BASE_LAYOUT["sun"] if x["id"] == "trace-pinwheel")
     assert wheel["kind"] == "trace"
