@@ -2768,7 +2768,8 @@ body {
 .goal-fill { height: 100%; background: linear-gradient(90deg, #ffd27a, var(--accent)); border-radius: var(--radius-pill); }
 .goal-tip { margin: 8px 0 0; font-size: 13px; color: var(--ink-2); font-weight: 700; }
 .bank-operations { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-xl); padding: 16px; margin-bottom: 16px; box-shadow: var(--shadow-sm); }
-.op-header h3 { margin: 0 0 12px; font-size: 15px; }
+.op-header { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.op-header h3 { margin: 0; font-size: 15px; }
 .op-amounts { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
 .amount-chip { border: 1px solid var(--line); background: var(--surface-2); color: var(--ink); padding: 8px 14px; border-radius: var(--radius-pill); cursor: pointer; font-family: inherit; font-size: 14px; font-weight: 800; min-width: 52px; }
 .amount-chip.active { background: var(--accent); color: #fff; border-color: var(--accent); }
@@ -2853,14 +2854,42 @@ body {
 .bank-pass-row.quiet { opacity: .78; }
 .bank-pass-row .plus { color: var(--ok); }
 .bank-pass-row .minus { color: var(--ink-3); }
+@media (max-width: 1100px) {
+  .sun-page { max-width: none; }
+  .bank-title h1 { font-size: 22px; }
+  .bank-title p { font-size: 13px; }
+  .sun-week { height: 120px; gap: 4px; }
+  .sun-col-n { font-size: 11px; }
+  .sun-gap { padding: 12px; }
+  .sun-gap span { font-size: 14px; line-height: 1.35; }
+  .bank-hall { max-width: none; }
+  .bank-sign { align-items: flex-start; padding: 14px 14px 12px; }
+  .bank-sign-board h1 { font-size: 22px; }
+  .bank-room { grid-template-columns: 1fr; }
+  .bank-counter { border-right: none; border-bottom: 1px solid var(--line); }
+  .base-head { gap: 8px; }
+  .base-head .do { margin-left: auto; padding: 8px 12px; }
+  .atlas-stage-page { max-width: none; }
+  .atlas-scene-tabs .tab { min-height: 40px; }
+}
+@media (max-width: 700px) {
+  .sun-week { height: 108px; gap: 2px; }
+  .sun-col-n { font-size: 10px; }
+  .sun-track.dual i { width: 7px; }
+  .bank-desk-btns { grid-template-columns: 1fr; }
+  .bank-chips { gap: 6px; }
+  .bank-chip { min-width: 44px; padding: 8px 12px; }
+  .bank-chip-input { width: 72px; }
+  .bank-pass-row { grid-template-columns: 1fr auto; }
+  .bank-pass-row small { grid-column: 1; }
+  .atlas-scene-tabs { gap: 6px; }
+  .atlas-scene-tabs .tab { flex: 1; text-align: center; padding: 8px 10px; }
+  .atlas-stage { margin-left: -4px; margin-right: -4px; width: calc(100% + 8px); border-radius: 10px; }
+}
 @media (max-width: 640px) {
   .bank-cards { grid-template-columns: 1fr 1fr; }
   .card-amount { font-size: 28px; }
   .op-buttons { grid-template-columns: 1fr; }
-  .bank-room { grid-template-columns: 1fr; }
-  .bank-counter { border-right: none; border-bottom: 1px solid var(--line); }
-  .bank-desk-btns { grid-template-columns: 1fr; }
-  .bank-tray strong, .bank-vault-copy strong { font-size: 30px; }
 }
 
 .cta {
