@@ -565,10 +565,10 @@ function sceneToys(scene) {
   const layout = (sprites.value.layout && sprites.value.layout[scene]) || []
   const bought = new Set(sprites.value.base_items || [])
   const today = sprites.value.today || {}
-  const memos = sprites.value.memos || {}
+  const dailyDone = Number(today.daily_done || 0) > 0
   return layout.filter(t => {
     if (t.kind === 'shop') return bought.has(t.id)
-    if (t.id === 'trace-pinwheel') return !!today.daily_done
+    if (t.id === 'trace-pinwheel') return dailyDone
     if (t.id === 'memo-capsule') return true
     // 奖状/小旗要有「拿到了」的仪式，不按旧连击或旧全对补挂到树上
     if (t.id === 'memo-award' || t.id === 'memo-flag') return false
@@ -1837,7 +1837,7 @@ function reloadApp() {
                     <img class="pole" :src="toyImg('memo-flag-pole')" alt="" />
                     <img class="fabric" :src="toyImg('memo-flag-fabric')" alt="" />
                   </template>
-                  <div v-else-if="t.id === 'memo-capsule'" class="capsule-box"><span class="lid"></span><span class="body"></span></div>
+                  <div v-else-if="t.id === 'memo-capsule'" class="capsule-letter"><span class="flap"></span><span class="sheet"></span></div>
                   <img v-else class="toy" :src="toyImg(t.id)" :alt="t.name" />
                 </div>
               </template>
@@ -2402,9 +2402,9 @@ function reloadApp() {
             <img class="atlas-bg" :src="baseImg(spriteScene)" alt="" />
             <div v-if="!sprites.enabled" class="atlas-building"><b>建设中</b><span>图鉴打开以后，朋友才搬进来</span></div>
             <template v-if="sprites.enabled" v-for="t in sceneToys(spriteScene)" :key="t.id">
-              <div class="atlas-toy" :class="[t.anim, { flip: toyFlip[t.id] }]"
+              <div class="atlas-toy" :class="[t.anim, { flip: toyFlip[t.id], ready: t.id === 'memo-capsule' && capsule.state === 'ready', sealed: t.id === 'memo-capsule' && capsule.state === 'sealed' }]"
                 :style="{ left: t.x + '%', top: t.y + '%', width: t.w + '%' }"
-                @click="t.flip && (toyFlip[t.id] = !toyFlip[t.id])">
+                @click="t.id === 'memo-capsule' ? openCapsuleBox() : (t.flip && (toyFlip[t.id] = !toyFlip[t.id]))">
                 <template v-if="t.id === 'trace-pinwheel'">
                   <img class="stick" :src="toyImg('trace-pinwheel-stick')" alt="" />
                   <img class="blades" :src="toyImg('trace-pinwheel-blades')" alt="" />
@@ -2413,6 +2413,7 @@ function reloadApp() {
                   <img class="pole" :src="toyImg('memo-flag-pole')" alt="" />
                   <img class="fabric" :src="toyImg('memo-flag-fabric')" alt="" />
                 </template>
+                <div v-else-if="t.id === 'memo-capsule'" class="capsule-letter"><span class="flap"></span><span class="sheet"></span></div>
                 <img v-else class="toy" :src="toyImg(t.id)" :alt="t.name" />
               </div>
             </template>
@@ -3427,21 +3428,24 @@ body {
 .atlas-building span { font-size: 13px; opacity: .9; }
 .atlas-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
 .atlas-toy { position: absolute; transform: translate(-50%, -100%); z-index: 2; }
-.atlas-toy.ready .capsule-box { animation: jar-glow 1.6s ease-in-out infinite; }
-.atlas-toy.sealed .capsule-box { filter: saturate(.9); }
-.capsule-box { position: relative; width: 100%; aspect-ratio: 1; pointer-events: none; }
-.capsule-box .body {
-  position: absolute; left: 14%; right: 14%; top: 40%; bottom: 10%;
-  background: linear-gradient(180deg, #f6c98a, #e0a45a);
-  border: 2px solid #c4843d; border-radius: 8px 8px 10px 10px;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.35);
+.atlas-toy.ready .capsule-letter { animation: jar-glow 1.6s ease-in-out infinite; }
+.atlas-toy.sealed .capsule-letter { filter: saturate(.92); }
+.capsule-letter {
+  position: relative; width: 100%; aspect-ratio: 5 / 4; pointer-events: none;
+  filter: drop-shadow(0 2px 2px rgba(40,24,8,.28));
 }
-.capsule-box .lid {
-  position: absolute; left: 10%; right: 10%; top: 22%; height: 24%;
-  background: linear-gradient(180deg, #ffd9a0, #e8b56a);
-  border: 2px solid #c4843d; border-radius: 8px 8px 4px 4px;
+.capsule-letter .sheet {
+  position: absolute; inset: 18% 6% 4% 6%;
+  background: linear-gradient(180deg, #fff8ee, #f3e0c4);
+  border: 2px solid #c9a06a; border-radius: 3px 3px 5px 5px;
 }
-.atlas-toy.ready .capsule-box .lid { transform: translateY(-18%); }
+.capsule-letter .flap {
+  position: absolute; left: 8%; right: 8%; top: 2%; height: 42%;
+  background: linear-gradient(180deg, #f7d7a4, #e8b56a);
+  border: 2px solid #c4843d;
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+}
+.atlas-toy.ready .capsule-letter .flap { transform: translateY(-12%); }
 
 .atlas-toy .toy, .atlas-toy .blades, .atlas-toy .fabric { width: 100%; display: block; pointer-events: none; }
 .atlas-toy .stick, .atlas-toy .pole { position: absolute; inset: 0; width: 100%; z-index: 3; pointer-events: none; }
