@@ -730,10 +730,12 @@ function isTimeMetric(m) {
 }
 function formatDuration(sec) {
   if (sec == null || Number.isNaN(Number(sec))) return '—'
-  const total = Math.max(0, Math.round(Number(sec)))
-  const mm = Math.floor(total / 60)
-  const ss = total % 60
-  return mm + "'" + String(ss).padStart(2, '0') + '"'
+  const totalCs = Math.max(0, Math.round(Number(sec) * 100))
+  const mm = Math.floor(totalCs / 6000)
+  const ss = Math.floor((totalCs % 6000) / 100)
+  const cs = totalCs % 100
+  const pad = n => String(n).padStart(2, '0')
+  return mm + "'" + pad(ss) + '.' + pad(cs) + '"'
 }
 function formatMetricValue(m, v) {
   if (v == null || v === '') return '—'

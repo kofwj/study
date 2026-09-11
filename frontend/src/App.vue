@@ -720,9 +720,6 @@ function isTimeMetric(m) {
   const u = String((m && m.unit) || '')
   return u.includes('秒') || u.includes('分钟')
 }
-function timeUnitLabel(m) {
-  return String((m && m.unit) || '').includes('分钟') ? '分钟' : '秒'
-}
 function metricToSeconds(m, v) {
   if (v == null || v === '') return null
   const n = Number(v)
@@ -734,12 +731,14 @@ function secondsToMetric(m, sec) {
   const s = Number(sec)
   return String((m && m.unit) || '').includes('分钟') ? s / 60 : s
 }
+function pad2(n) { return String(n).padStart(2, '0') }
 function formatDuration(sec) {
   if (sec == null || Number.isNaN(Number(sec))) return '—'
-  const total = Math.max(0, Math.round(Number(sec)))
-  const mm = Math.floor(total / 60)
-  const ss = total % 60
-  return mm + "'" + String(ss).padStart(2, '0') + '"'
+  const totalCs = Math.max(0, Math.round(Number(sec) * 100))
+  const mm = Math.floor(totalCs / 6000)
+  const ss = Math.floor((totalCs % 6000) / 100)
+  const cs = totalCs % 100
+  return mm + "'" + pad2(ss) + '.' + pad2(cs) + '"'
 }
 function formatMetricValue(m, v) {
   if (v == null || v === '') return '—'
@@ -1004,27 +1003,45 @@ function openDaily(task) {
   dailyDialog.time = {}
   for (const m of task.metrics) {
     dailyDialog.vals[m.id] = ''
-    if (isTimeMetric(m)) dailyDialog.time[m.id] = { min: '', sec: '' }
+    if (isTimeMetric(m)) dailyDialog.time[m.id] = { min: '', sec: '', cs: '' }
   }
   dailyDialog.open = true
 }
-function clampSec(v) {
-  const n = Number(v)
-  if (v === '' || Number.isNaN(n)) return ''
-  return Math.max(0, Math.min(59, Math.round(n)))
+function clampDigits(v, max) {
+  const digits = String(v ?? '').replace(/\D/g, '').slice(0, 2)
+  if (digits === '') return ''
+  const n = Math.max(0, Math.min(max, Number(digits)))
+  return digits.length === 2 ? pad2(n) : String(n)
+}
+function onTimePart(id, field, event, max) {
+  const next = clampDigits(event.target.value, max)
+  dailyDialog.time[id][field] = next
+  event.target.value = next
+  if (field === 'sec' && next.length === 2) {
+    const el = document.getElementById('t-cs-' + id)
+    if (el) el.focus()
+  }
+}
+function timePartsToSeconds(t) {
+  if (!t) return null
+  const has = (t.min !== '' && t.min != null) || (t.sec !== '' && t.sec != null) || (t.cs !== '' && t.cs != null)
+  if (!has) return null
+  const mm = Number(t.min)
+  const ss = Number(t.sec)
+  const cs = Number(t.cs)
+  const total = (Number.isNaN(mm) ? 0 : Math.max(0, mm)) * 60
+    + (Number.isNaN(ss) ? 0 : Math.max(0, Math.min(59, ss)))
+    + (Number.isNaN(cs) ? 0 : Math.max(0, Math.min(99, cs))) / 100
+  return Math.round(total * 100) / 100
 }
 async function submitDaily(event) {
   const metrics = {}
   for (const m of dailyDialog.task.metrics) {
     if (isTimeMetric(m)) {
-      const t = dailyDialog.time[m.id] || {}
-      const mm = Number(t.min)
-      const ss = Number(t.sec)
-      const has = (t.min !== '' && t.min != null) || (t.sec !== '' && t.sec != null)
-      if (!has) continue
-      const totalSec = (Number.isNaN(mm) ? 0 : Math.max(0, mm)) * 60 + (Number.isNaN(ss) ? 0 : Math.max(0, Math.min(59, ss)))
+      const totalSec = timePartsToSeconds(dailyDialog.time[m.id])
+      if (totalSec == null) continue
       const stored = secondsToMetric(m, totalSec)
-      if (stored) metrics[m.id] = stored
+      if (stored != null && !Number.isNaN(stored)) metrics[m.id] = stored
     } else {
       const v = Number(dailyDialog.vals[m.id])
       if (v && !Number.isNaN(v)) metrics[m.id] = v
@@ -1955,8 +1972,11 @@ function reloadApp() {
           <label>{{ m.label }}</label>
           <div v-if="m.note" class="metric-note">{{ m.note }}</div>
           <div v-if="isTimeMetric(m)" class="time-row">
-            <label class="time-part"><input v-model="dailyDialog.time[m.id].min" type="number" inputmode="numeric" min="0" placeholder="0" /><span>分</span></label>
-            <label class="time-part"><input :value="dailyDialog.time[m.id].sec" type="number" inputmode="numeric" min="0" max="59" placeholder="00" @input="dailyDialog.time[m.id].sec = clampSec($event.target.value)" /><span>秒</span></label>
+            <label class="time-part"><input :value="dailyDialog.time[m.id].min" type="number" inputmode="numeric" min="0" placeholder="0" @input="dailyDialog.time[m.id].min = $event.target.value === '' ? '' : Math.max(0, Math.floor(Number($event.target.value) || 0))" /><span>分</span></label>
+            <span class="time-sep">:</span>
+            <label class="time-part"><input :id="'t-sec-' + m.id" :value="dailyDialog.time[m.id].sec" type="text" inputmode="numeric" maxlength="2" placeholder="00" @input="onTimePart(m.id, 'sec', $event, 59)" /><span>秒</span></label>
+            <span class="time-sep">.</span>
+            <label class="time-part"><input :id="'t-cs-' + m.id" :value="dailyDialog.time[m.id].cs" type="text" inputmode="numeric" maxlength="2" placeholder="00" @input="onTimePart(m.id, 'cs', $event, 99)" /><span>百分秒</span></label>
           </div>
           <input v-else v-model.number="dailyDialog.vals[m.id]" type="number" inputmode="decimal" :placeholder="m.unit" />
         </div>
@@ -2842,10 +2862,11 @@ body {
 .metric label { display: block; font-size: 13px; margin-bottom: 4px; }
 .daily-dialog-note, .metric-note { margin: -4px 0 8px; color: var(--ink-3); font-size: 12px; line-height: 1.5; }
 .metric-note { margin: -1px 0 4px; }
-.time-row { display: flex; gap: 12px; }
-.time-part { display: flex; align-items: center; gap: 6px; flex: 1; margin: 0; }
-.time-part span { font-size: 13px; font-weight: 700; color: var(--ink-2); flex: none; }
-.time-part input { flex: 1; }
+.time-row { display: flex; gap: 6px; align-items: center; }
+.time-part { display: flex; flex-direction: column; align-items: stretch; gap: 4px; flex: 1; margin: 0; min-width: 0; }
+.time-part span { font-size: 12px; font-weight: 700; color: var(--ink-3); text-align: center; }
+.time-part input { width: 100%; text-align: center; font-variant-numeric: tabular-nums; font-weight: 800; font-size: 22px; }
+.time-sep { font-weight: 800; font-size: 22px; color: var(--ink-2); padding-bottom: 16px; }
 .trend { position: absolute; top: 8px; right: 8px; border: none; background: var(--warm); border-radius: var(--radius-lg); padding: 3px 8px; font-size: 15px; cursor: pointer; line-height: 1; }
 .chart-modal { max-width: 460px; max-height: 86vh; overflow-y: auto; }
 .chart-block { margin-bottom: 12px; padding: 10px 12px; background: var(--surface-2); border-radius: var(--radius-md); }
