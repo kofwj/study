@@ -12,6 +12,7 @@ import os
 import sqlite3
 from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 BASE = Path(__file__).parent
 SEED_JSON = BASE.parent / "data" / "tasks.seed.json"
@@ -214,12 +215,23 @@ def apply_scope(conn, family_id, kid_id):
         conn.execute("SELECT set_config('app.kid_id', ?, false)", (kid_id,))
 
 
+TZ = ZoneInfo("Asia/Shanghai")
+
+
+def local_now() -> datetime:
+    frozen = (os.environ.get("SUNSHINE_NOW") or "").strip()
+    if frozen:
+        d = datetime.fromisoformat(frozen)
+        return d.replace(tzinfo=TZ) if d.tzinfo is None else d.astimezone(TZ)
+    return datetime.now(TZ)
+
+
 def now() -> str:
-    return datetime.now().isoformat(timespec="seconds")
+    return local_now().replace(tzinfo=None).isoformat(timespec="seconds")
 
 
 def today() -> str:
-    return datetime.now().strftime("%Y-%m-%d")
+    return local_now().strftime("%Y-%m-%d")
 
 
 def connect(admin=False):
@@ -1091,6 +1103,33 @@ CREATE TABLE IF NOT EXISTS capsules (
         conn.execute("GRANT SELECT, INSERT, UPDATE, DELETE ON capsules TO sunshine_app")
 
 
+def _migrate_036(conn):
+    """阳光储蓄所定存单：小孩自选天数，到期结息。"""
+    conn.execute("""
+CREATE TABLE IF NOT EXISTS bank_deposits (
+  id TEXT PRIMARY KEY,
+  kid_id TEXT NOT NULL,
+  family_id TEXT NOT NULL,
+  amount INTEGER NOT NULL,
+  days INTEGER NOT NULL,
+  rate REAL NOT NULL,
+  started_on TEXT NOT NULL,
+  mature_on TEXT NOT NULL,
+  state TEXT NOT NULL,
+  closed_on TEXT,
+  interest_paid INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL
+)""")
+    conn.execute("CREATE INDEX IF NOT EXISTS ix_bank_deposits_kid_state ON bank_deposits(kid_id, state, mature_on)")
+    if conn.pg:
+        conn.execute("ALTER TABLE bank_deposits ENABLE ROW LEVEL SECURITY")
+        conn.execute("ALTER TABLE bank_deposits FORCE ROW LEVEL SECURITY")
+        conn.execute("DROP POLICY IF EXISTS iso ON bank_deposits")
+        conn.execute(
+            "CREATE POLICY iso ON bank_deposits USING (kid_id = current_setting('app.kid_id', true)) "
+            "WITH CHECK (kid_id = current_setting('app.kid_id', true))")
+        conn.execute("GRANT SELECT, INSERT, UPDATE, DELETE ON bank_deposits TO sunshine_app")
+
 def _migrate_027(conn):
     """家长一次性找回码哈希 + 登录/注册限流落库。"""
     _add_column(conn, "families", "recovery_hash TEXT")
@@ -1150,6 +1189,7 @@ MIGRATIONS = (
     ("033_bank_interest", _migrate_033),
     ("034_sprites", _migrate_034),
     ("035_capsules", _migrate_035),
+    ("036_bank_deposits", _migrate_036),
 )
 
 

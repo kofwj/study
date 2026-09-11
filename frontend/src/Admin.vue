@@ -1284,6 +1284,7 @@ onMounted(load)
       </div>
       <div v-if="bankInterest.enabled" class="dim">
         <p>💡 利息是什么？银行为「存在这里的阳光」付一点报酬，鼓励孩子延迟满足、积累财富。</p>
+        <p>这里的利率只管<strong>活期</strong>。孩子还能自己开定存单：7 天 2%、10 天 3%、15 天 5%、30 天 8%、60 天 12%。到期一次结息；提前支取按已过天数打五折，当天存当天取没有利息。</p>
         <p>利率不宜过高，否则孩子可能失去做任务的动力。建议低年级 3%–5%、高年级 5%–8%。</p>
         <p v-if="bankInterest.last_settle">上次结算：{{ bankInterest.last_settle }}</p>
         <button class="ghost-s mt8" @click="settleInterestNow">立即结算（测试）</button>

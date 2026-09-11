@@ -5,7 +5,7 @@ import tempfile
 from pathlib import Path
 
 os.environ.pop("DATABASE_URL", None)
-os.environ["SUNSHINE_DB"] = str(Path(tempfile.mkdtemp()) / "t.db")
+os.environ["SUNSHINE_DB"] = str(Path(tempfile.mkdtemp()) / f"{Path(__file__).stem}.db")
 
 import db  # noqa: E402
 

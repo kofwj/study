@@ -7,7 +7,7 @@ from pathlib import Path
 
 os.environ.pop("DATABASE_URL", None)
 os.environ.pop("DATABASE_APP_URL", None)
-os.environ["SUNSHINE_DB"] = str(Path(tempfile.mkdtemp()) / "t.db")
+os.environ["SUNSHINE_DB"] = str(Path(tempfile.mkdtemp()) / f"{Path(__file__).stem}.db")
 os.environ["SECRET_KEY"] = "test-secret"
 
 import db  # noqa: E402
@@ -53,7 +53,9 @@ def test_capsule_seal_hide_and_reopen():
         assert r.status_code == 200, r.text
         assert r.json()["state"] == "empty"
         kinds = {o["kind"] for o in r.json()["options"]}
-        assert kinds == {"next_term", "streak30"}
+        assert kinds == {"week", "month", "next_term", "year", "streak30", "custom"}
+        assert r.json()["questions"]
+        assert r.json()["min_open_on"]
 
         r = cli.post("/api/capsule", json=_body())
         assert r.status_code == 200, r.text
@@ -92,6 +94,8 @@ def test_capsule_validates_text():
         assert cli.post("/api/capsule", json=_body(q_good="!!!")).status_code == 400
         assert cli.post("/api/capsule", json=_body(q_line="哈" * 41)).status_code == 400
         assert cli.post("/api/capsule", json=_body(when_kind="birthday")).status_code == 400
+        assert cli.post("/api/capsule", json=_body(when_kind="custom")).status_code == 400
+        assert cli.post("/api/capsule", json=_body(when_kind="custom", open_on="2000-01-01")).status_code == 400
 
 
 def test_streak30_needs_overnight_then_thirty():
@@ -105,9 +109,36 @@ def test_streak30_needs_overnight_then_thirty():
     assert capmod._streak30_ready(row30, today + timedelta(days=30), 40) is True
 
 
+def test_week_and_custom_open_on():
+    today = date(2026, 9, 11)
+    assert capmod.open_on_for("week", today, 0) == date(2026, 9, 18)
+    assert capmod.open_on_for("month", today, 0) == date(2026, 10, 11)
+    assert capmod.open_on_for("year", today, 0) == date(2027, 9, 11)
+    assert capmod.open_on_for("custom", today, 0, "2026-12-25") == date(2026, 12, 25)
+    try:
+        capmod.open_on_for("custom", today, 0, "2026-09-11")
+        assert False
+    except capmod.CapsuleError as e:
+        assert e.status == 400
+
+
+def test_custom_seal_uses_picked_day():
+    db.init_db()
+    _wipe_capsules()
+    with TestClient(main.app) as cli:
+        _login(cli)
+        day = cli.get("/api/capsule").json()["min_open_on"]
+        r = cli.post("/api/capsule", json=_body(when_kind="custom", open_on=day))
+        assert r.status_code == 200, r.text
+        assert r.json()["capsule"]["when_kind"] == "custom"
+        assert r.json()["capsule"]["open_on"] == day
+
+
 if __name__ == "__main__":
     test_next_term_anchor()
     test_capsule_seal_hide_and_reopen()
     test_capsule_validates_text()
     test_streak30_needs_overnight_then_thirty()
+    test_week_and_custom_open_on()
+    test_custom_seal_uses_picked_day()
     print("capsules ok")

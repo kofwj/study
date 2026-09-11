@@ -25,6 +25,7 @@ const data = reactive({
   active_term: '',
   cursors: {},
   today_checkin: false,
+  checkin_window: { open: true, from: '07:00', until: '21:00', hint: '', now: '' },
   subjects: [],
   hidden_subjects: [],
   units: [],
@@ -325,6 +326,7 @@ function syncWordPhase() {
 }
 async function openWords(kind) {
   if (wordDialog.busy) return
+  if (!guardCheckinOpen()) return
   wordDialog.filter = kind === 'due' ? 'due' : 'new'
   wordDialog.busy = true
   try {
@@ -452,17 +454,31 @@ const sprites = ref({
   base_items: [], on_duty: '', today: {}, morning: { new: false, who: '', text: '' },
   memos: { award: false, flag: false }, star_cost: 12,
 })
-const capsule = ref({ state: 'empty', capsule: null, wait: '', options: [], now: null })
+const capsule = ref({ state: 'empty', capsule: null, wait: '', options: [], now: null, questions: [], min_open_on: '', max_open_on: '' })
 const capsuleOpen = ref(false)
 const capsuleBusy = ref(false)
 const capsuleOpenedView = ref(false)
-const capsuleForm = reactive({ when_kind: 'next_term', q_good: '', q_wish: '', q_line: '' })
+const CAPSULE_Q_FALLBACK = [
+  { key: 'q_good', label: '现在最拿手的一件事', placeholder: '比如：口算很快', examples: ['口算很快', '跳绳能连跳很多下', '英语单词记得住'] },
+  { key: 'q_wish', label: '还想变好的一件事', placeholder: '比如：把字写得更工整', examples: ['把字写得更工整', '英语听写少错几个', '早睡早起不磨蹭'] },
+  { key: 'q_line', label: '想对以后的自己说的一句', placeholder: '比如：别忘了现在有多努力', examples: ['别忘了现在有多努力', '以后的我要对自己说加油', '希望你还喜欢运动'] },
+]
+const capsuleForm = reactive({ when_kind: 'week', open_on: '', q_good: '', q_wish: '', q_line: '' })
+const capsuleQuestions = computed(() => (capsule.value.questions && capsule.value.questions.length) ? capsule.value.questions : CAPSULE_Q_FALLBACK)
 function resetCapsuleForm() {
   const opts = capsule.value.options || []
-  capsuleForm.when_kind = (opts[0] && opts[0].kind) || 'next_term'
+  capsuleForm.when_kind = (opts[0] && opts[0].kind) || 'week'
+  capsuleForm.open_on = capsule.value.min_open_on || ''
   capsuleForm.q_good = ''
   capsuleForm.q_wish = ''
   capsuleForm.q_line = ''
+}
+function pickCapsuleWhen(kind) {
+  capsuleForm.when_kind = kind
+  if (kind === 'custom' && !capsuleForm.open_on) capsuleForm.open_on = capsule.value.min_open_on || ''
+}
+function fillCapsuleHint(key, text) {
+  capsuleForm[key] = text
 }
 function capsuleDateText(iso) {
   if (!iso) return ''
@@ -479,7 +495,7 @@ function applyCapsule(p) {
   capsule.value = p
 }
 async function loadCapsule() {
-  try { applyCapsule(await api.capsule()) } catch { capsule.value = { state: 'empty', capsule: null, wait: '', options: [], now: null } }
+  try { applyCapsule(await api.capsule()) } catch { capsule.value = { state: 'empty', capsule: null, wait: '', options: [], now: null, questions: [], min_open_on: '', max_open_on: '' } }
 }
 function closeCapsuleBox() {
   capsuleOpen.value = false
@@ -501,10 +517,15 @@ function startNextCapsule() {
 }
 async function submitCapsule() {
   if (capsuleBusy.value) return
+  if (capsuleForm.when_kind === 'custom' && !capsuleForm.open_on) {
+    showToast('选一个开封的日子')
+    return
+  }
   capsuleBusy.value = true
   try {
     applyCapsule(await api.capsuleSeal({
       when_kind: capsuleForm.when_kind,
+      open_on: capsuleForm.when_kind === 'custom' ? capsuleForm.open_on : '',
       q_good: capsuleForm.q_good,
       q_wish: capsuleForm.q_wish,
       q_line: capsuleForm.q_line,
@@ -698,11 +719,13 @@ function closeBoxMask() {
 const rankMapOpen = ref(false)
 const rankMap = ref(null)
 const recentLedger = ref([])
-const bankData = ref({ enabled: false, balance: 0, pocket_balance: 0, goal: null, requests: [], ledger: [], interest: null })
+const bankData = ref({ enabled: false, balance: 0, locked: 0, available: 0, pocket_balance: 0, goal: null, requests: [], ledger: [], interest: null, deposit_terms: [], deposits: [] })
 const bankAmount = ref(5)
+const bankDays = ref(0)
 const bankBusy = ref(false)
 const bankPassbookOpen = ref(false)
 const bankPending = computed(() => (bankData.value.requests || []).filter(r => r.status === 'pending'))
+const bankActiveDeposits = computed(() => (bankData.value.deposits || []).filter(d => d.state === 'active'))
 function bankInterestCycle(cycle) {
   if (cycle === 'biweekly') return '每两周'
   if (cycle === 'monthly') return '每月'
@@ -710,7 +733,13 @@ function bankInterestCycle(cycle) {
 }
 function bankInterestLabel(it) {
   if (!it) return ''
-  return `${bankInterestCycle(it.cycle)}结息 ${it.rate}%`
+  return `活期 ${bankInterestCycle(it.cycle)}结息 ${it.rate}%`
+}
+function bankTermOn(days) {
+  return Number(bankDays.value) === Number(days)
+}
+function pickBankDays(days) {
+  bankDays.value = Number(bankDays.value) === Number(days) ? 0 : Number(days)
 }
 function bankVaultPct() {
   const bal = Number(bankData.value.balance) || 0
@@ -721,18 +750,27 @@ function bankVaultPct() {
 }
 function bankPassbookTitle(row) {
   if (row.reason === 'bank_interest') {
+    if (String(row.note || '').includes('提前')) return '提前支取利息'
+    if (String(row.note || '').includes('到期') || String(row.note || '').includes('存单')) return '定存到期利息'
     const c = bankData.value.interest && bankData.value.interest.cycle
     if (c === 'biweekly') return '两周结息'
     if (c === 'monthly') return '本月结息'
     return '本周结息'
   }
-  if (row.delta > 0) return '存进金库'
+  if (row.delta > 0) return String(row.note || '').includes('定存') ? '开了一张存单' : '存进金库'
   return '柜员开了门'
 }
 function bankRequestStatus(st) {
   if (st === 'pending') return '等家长开门'
   if (st === 'approved') return '柜员开了门'
   return '这张单没过'
+}
+function bankDepositHint(d) {
+  if (!d) return ''
+  if (d.state === 'matured') return `到期已结 ${d.interest_paid} 颗`
+  if (d.state === 'broken') return `提前支取，利息 ${d.interest_paid} 颗`
+  if (d.left_days === 0) return '今天到期'
+  return `还要等 ${d.left_days} 天 · 到期 +${d.mature_interest}`
 }
 const reviewDue = ref([])
 const updateReady = ref(false)
@@ -1010,9 +1048,18 @@ async function refresh() {
     loading.value = false
   }
 }
-
+const checkinClosed = computed(() => data.checkin_window && data.checkin_window.open === false)
+function checkinClosedHint() {
+  return (data.checkin_window && data.checkin_window.hint) || '每天 7:00 到 21:00 才能打卡'
+}
+function guardCheckinOpen() {
+  if (!checkinClosed.value) return true
+  showToast(checkinClosedHint())
+  return false
+}
 async function checkin() {
   if (actionBusy.value) return
+  if (!guardCheckinOpen()) return
   actionBusy.value = true
   try {
     const r = await api.checkin()
@@ -1031,6 +1078,7 @@ async function toggleTaskWithAnim(task, event) {
   if (task.done || actionBusy.value) {
     return toggleTask(task, event)
   }
+  if (!guardCheckinOpen()) return
   checkingTask.value = task.id
   setTimeout(async () => {
     await toggleTask(task, event)
@@ -1048,6 +1096,7 @@ async function toggleTask(task, event) {
     return
   }
   if (actionBusy.value) return
+  if (!task.done && !guardCheckinOpen()) return
   actionBusy.value = true
   try {
     if (task.done) {
@@ -1139,6 +1188,7 @@ function dailySubmitLabel(task) {
 }
 function openDaily(task) {
   if (task.done_today) return
+  if (!guardCheckinOpen()) return
   dailyDialog.task = task
   dailyDialog.vals = {}
   dailyDialog.time = {}
@@ -1243,8 +1293,27 @@ async function bankMove(kind) {
   if (bankBusy.value) return
   bankBusy.value = true
   try {
-    bankData.value = kind === 'deposit' ? await api.bankDeposit(amount) : await api.bankWithdraw(amount)
-    showToast(kind === 'deposit' ? `已存进金库 ${amount} 颗阳光` : `已请柜员开门，取出 ${amount} 颗`)
+    if (kind === 'deposit') {
+      const days = Number(bankDays.value) || 0
+      bankData.value = await api.bankDeposit(amount, days || undefined)
+      showToast(days ? `开了 ${days} 天存单，存进 ${amount} 颗` : `已存进金库 ${amount} 颗阳光`)
+    } else {
+      bankData.value = await api.bankWithdraw(amount)
+      showToast(`已请柜员开门，取出 ${amount} 颗`)
+    }
+    await refresh()
+  } catch (e) { showToast(e.message) }
+  finally { bankBusy.value = false }
+}
+async function bankBreak(d) {
+  if (!d || bankBusy.value) return
+  const pay = Number(d.early_interest) || 0
+  const ok = window.confirm(pay ? `提前支取只给一半进度的利息，大约 ${pay} 颗。确定吗？` : '今天刚存，提前支取没有利息。确定吗？')
+  if (!ok) return
+  bankBusy.value = true
+  try {
+    bankData.value = await api.bankBreakDeposit(d.id)
+    showToast(pay ? `提前支取了，利息 ${pay} 颗` : '提前支取了，这次没有利息')
     await refresh()
   } catch (e) { showToast(e.message) }
   finally { bankBusy.value = false }
@@ -1636,9 +1705,10 @@ function reloadApp() {
       <!-- 左栏 -->
       <aside class="side">
         <!-- 每日签到 - 放在最上面 -->
-        <button class="nav nav-checkin" :class="{ done: data.today_checkin }" @click="checkin" :disabled="data.today_checkin">
-          <span><CalendarDays class="ico" :size="15" /> {{ data.today_checkin ? '今日已签到' : '每日签到' }}</span>
+        <button class="nav nav-checkin" :class="{ done: data.today_checkin, closed: checkinClosed && !data.today_checkin }" @click="checkin" :disabled="data.today_checkin || checkinClosed">
+          <span><CalendarDays class="ico" :size="15" /> {{ data.today_checkin ? '今日已签到' : (checkinClosed ? '现在打烊' : '每日签到') }}</span>
         </button>
+        <p v-if="checkinClosed && !data.today_checkin" class="checkin-closed">{{ checkinClosedHint() }}</p>
         <div class="side-split" role="separator"></div>
         <div class="nav-group">
           <button class="nav" :class="{ on: activeTab === '今日推荐' }" @click="activeTab = '今日推荐'">
@@ -1708,6 +1778,7 @@ function reloadApp() {
                 <RefreshCw class="ico" :size="18" /> 每日打卡
                 <em class="daily-motto" :title="dailyMotto.text + ' · ' + dailyMotto.from">{{ dailyMotto.text }}<i>{{ dailyMotto.from }}</i></em>
               </h2>
+              <p v-if="checkinClosed" class="checkin-closed in-page">{{ checkinClosedHint() }}</p>
             </div>
             <div class="grid plan-grid">
               <template v-for="it in todayCheckinItems" :key="it.key">
@@ -1893,11 +1964,13 @@ function reloadApp() {
                 <div class="bank-sign-board">
                   <span class="bank-open-lamp">营业中</span>
                   <h1>阳光储蓄所</h1>
-                  <p>口袋的阳光，存进金库才生息</p>
+                  <p>口袋的阳光，存进金库才生息。定存越久，到期越多。</p>
                 </div>
-                <div v-if="bankData.interest" class="bank-sign-rate">
-                  <strong>{{ bankInterestLabel(bankData.interest) }}</strong>
-                  <small v-if="bankData.interest.threshold">满 {{ bankData.interest.threshold }} 颗才结息</small>
+                <div v-if="bankData.interest || bankData.locked" class="bank-sign-rate">
+                  <strong v-if="bankData.interest">{{ bankInterestLabel(bankData.interest) }}</strong>
+                  <strong v-else>定存锁着 {{ bankData.locked }} 颗</strong>
+                  <small v-if="bankData.interest && bankData.interest.threshold">活期满 {{ bankData.interest.threshold }} 颗才结息</small>
+                  <small v-if="bankData.locked">定存锁着 {{ bankData.locked }} 颗</small>
                 </div>
               </header>
 
@@ -1907,7 +1980,7 @@ function reloadApp() {
                     <Landmark class="bank-teller-ico" :size="28" />
                     <div>
                       <strong>{{ bankBusy ? '正在递单' : '柜台' }}</strong>
-                      <small>把口袋里的阳光交给金库</small>
+                      <small>{{ bankDays ? '先选天数，再存成定存' : '不选天数就是活期' }}</small>
                     </div>
                   </div>
 
@@ -1924,15 +1997,36 @@ function reloadApp() {
                     <input v-model.number="bankAmount" type="number" min="1" class="bank-chip-input" placeholder="自己写" />
                   </div>
 
+                  <div class="bank-terms">
+                    <span class="bank-kicker">存多久</span>
+                    <button type="button" :class="['bank-chip', { on: !bankDays }]" @click="bankDays = 0">活期</button>
+                    <button v-for="t in (bankData.deposit_terms || [])" :key="t.days" type="button"
+                      :class="['bank-chip', { on: bankTermOn(t.days) }]"
+                      @click="pickBankDays(t.days)">
+                      {{ t.label }}
+                      <small>{{ t.hint }}</small>
+                    </button>
+                  </div>
+
                   <div class="bank-desk-btns">
                     <button class="bank-act in" :disabled="bankBusy || bankData.pocket_balance < bankAmount" @click="bankMove('deposit')">
-                      <span>存进金库</span>
-                      <small>从口袋转入</small>
+                      <span>{{ bankDays ? '开存单' : '存进金库' }}</span>
+                      <small>{{ bankDays ? bankDays + ' 天后再给利息' : '从口袋转入活期' }}</small>
                     </button>
-                    <button class="bank-act out" :disabled="bankBusy || bankData.balance < bankAmount" @click="bankMove('withdraw')">
+                    <button class="bank-act out" :disabled="bankBusy || (bankData.available || 0) < bankAmount" @click="bankMove('withdraw')">
                       <span>请柜员开门</span>
-                      <small>需家长同意</small>
+                      <small>只能取活期 {{ bankData.available || 0 }} 颗</small>
                     </button>
+                  </div>
+
+                  <div v-if="bankActiveDeposits.length" class="bank-deposits">
+                    <div v-for="d in bankActiveDeposits" :key="d.id" class="bank-dep">
+                      <div>
+                        <strong>{{ d.amount }} 颗 · {{ d.days }} 天</strong>
+                        <small>{{ bankDepositHint(d) }}</small>
+                      </div>
+                      <button type="button" class="ghost" :disabled="bankBusy" @click.stop="bankBreak(d)">提前支取</button>
+                    </div>
                   </div>
 
                   <div v-if="bankPending.length" class="bank-wait">
@@ -1950,6 +2044,7 @@ function reloadApp() {
                       <span class="bank-kicker">金库</span>
                       <strong>{{ bankData.balance }}</strong>
                       <span>颗</span>
+                      <small v-if="bankData.locked">活期 {{ bankData.available || 0 }} · 定存 {{ bankData.locked }}</small>
                     </div>
                   </div>
                   <p v-if="bankData.goal?.reached" class="bank-vault-seal">攒够啦，告诉家长来开门</p>
@@ -2128,21 +2223,30 @@ function reloadApp() {
           <button class="do big" @click="startNextCapsule">写下一封</button>
           <button class="ghost" @click="closeCapsuleBox">关上</button>
         </template>
-        <template v-else>
-          <div class="cap-opts">
-            <button v-for="o in capsule.options" :key="o.kind" type="button"
-              :class="['cap-opt', { on: capsuleForm.when_kind === o.kind }]"
-              @click="capsuleForm.when_kind = o.kind">
-              <strong>{{ o.label }}</strong>
-              <small>{{ o.hint }}</small>
-            </button>
-          </div>
-          <label class="fld"><span>现在最拿手的一件事</span><input v-model="capsuleForm.q_good" maxlength="40" /></label>
-          <label class="fld"><span>还想变好的一件事</span><input v-model="capsuleForm.q_wish" maxlength="40" /></label>
-          <label class="fld"><span>想对以后的自己说的一句</span><input v-model="capsuleForm.q_line" maxlength="40" /></label>
-          <button class="do big" :disabled="capsuleBusy" @click="submitCapsule">封进箱子</button>
-          <button class="ghost" @click="closeCapsuleBox">取消</button>
-        </template>
+         <template v-else>
+           <p class="dim-s cap-lead">什么时候拆开？也可以自己选一天。</p>
+           <div class="cap-opts">
+             <button v-for="o in capsule.options" :key="o.kind" type="button"
+               :class="['cap-opt', { on: capsuleForm.when_kind === o.kind }]"
+               @click="pickCapsuleWhen(o.kind)">
+               <strong>{{ o.label }}</strong>
+               <small>{{ o.hint }}</small>
+             </button>
+           </div>
+           <label v-if="capsuleForm.when_kind === 'custom'" class="fld">
+             <span>开封那天</span>
+             <input type="date" v-model="capsuleForm.open_on" :min="capsule.min_open_on" :max="capsule.max_open_on" />
+           </label>
+           <label v-for="q in capsuleQuestions" :key="q.key" class="fld">
+             <span>{{ q.label }}</span>
+             <input v-model="capsuleForm[q.key]" maxlength="40" :placeholder="q.placeholder" />
+             <div class="cap-hints">
+               <button v-for="ex in q.examples" :key="ex" type="button" class="cap-hint" @click="fillCapsuleHint(q.key, ex)">{{ ex }}</button>
+             </div>
+           </label>
+           <button class="do big" :disabled="capsuleBusy" @click="submitCapsule">封进箱子</button>
+           <button class="ghost" @click="closeCapsuleBox">取消</button>
+         </template>
       </div>
     </div>
 
@@ -2644,11 +2748,23 @@ body {
   background: var(--warm);
   color: var(--ink-2);
   cursor: default;
+}
+.nav-checkin.closed {
+  background: var(--surface-2);
+  color: var(--ink-2);
   box-shadow: none;
 }
 .nav-checkin .ico {
   color: inherit;
 }
+.checkin-closed {
+  margin: 6px 10px 2px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink-2);
+  line-height: 1.4;
+}
+.checkin-closed.in-page { margin: 0 0 10px; }
 
 .side-split {
   height: 1px;
@@ -2826,6 +2942,15 @@ body {
 .bank-sign-rate { flex: none; background: var(--surface); border: 1px solid rgba(245,165,36,.35); border-radius: var(--radius-lg); padding: 8px 12px; }
 .bank-sign-rate strong { display: block; font-size: 14px; color: var(--accent-ink); }
 .bank-sign-rate small { display: block; margin-top: 2px; font-size: 11px; font-weight: 700; color: var(--ink-2); }
+.bank-terms { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 12px; }
+.bank-terms .bank-kicker { width: 100%; }
+.bank-terms .bank-chip { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 0; min-width: 64px; padding: 8px 12px; }
+.bank-terms .bank-chip small { font-size: 11px; font-weight: 700; opacity: .78; }
+.bank-deposits { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+.bank-dep { display: flex; justify-content: space-between; align-items: center; gap: 8px; background: var(--surface-2); border-radius: var(--radius-lg); padding: 10px 12px; }
+.bank-dep strong { display: block; font-size: 13px; }
+.bank-dep small { display: block; margin-top: 2px; font-size: 12px; color: var(--ink-2); font-weight: 700; }
+.bank-vault-copy small { display: block; margin-top: 6px; font-size: 12px; font-weight: 700; opacity: .8; }
 .bank-room { display: grid; grid-template-columns: 1.15fr .85fr; gap: 0; align-items: stretch; }
 .bank-counter, .bank-vault { background: transparent; border: none; border-radius: 0; padding: 16px 18px 18px; box-shadow: none; }
 .bank-counter { border-right: 1px solid var(--line); }
@@ -3090,7 +3215,9 @@ body {
 .shop-modal { background: var(--surface); border-radius: var(--radius-lg); padding: 22px; width: min(92%, 420px); max-height: calc(100vh - 24px); max-height: calc(100dvh - 24px); overflow: auto; }
 .shop-modal h3 { margin: 0 0 14px; }
 .cap-wait { margin: 0 0 8px; font-size: 18px; font-weight: 800; }
-.cap-opts { display: grid; gap: 8px; margin: 0 0 12px; }
+.cap-lead { margin: 0 0 10px; }
+.cap-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 0 0 12px; }
+@media (max-width: 420px) { .cap-opts { grid-template-columns: 1fr; } }
 .cap-opt {
   display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left;
   border: 1px solid var(--line); background: var(--surface-2); border-radius: var(--radius-md);
@@ -3106,6 +3233,12 @@ body {
 .cap-snap small { display: block; color: var(--ink-3); font-size: 12px; }
 .cap-q { margin: 0 0 10px; font-size: 15px; line-height: 1.5; }
 .cap-q small { display: block; color: var(--ink-3); font-size: 12px; margin-bottom: 2px; }
+.cap-hints { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.cap-hint {
+  border: 1px dashed var(--line); background: var(--surface-2); color: var(--ink-2);
+  border-radius: 999px; padding: 4px 8px; font-size: 12px; cursor: pointer; font-family: inherit;
+}
+.cap-hint:hover { border-color: var(--accent); background: var(--warm); }
 .fld { display: block; margin: 0 0 10px; }
 .fld span { display: block; font-size: 12px; font-weight: 700; color: var(--ink-3); margin-bottom: 4px; }
 .fld input { width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius-sm); font-size: 15px; font-family: inherit; }

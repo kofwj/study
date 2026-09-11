@@ -9,6 +9,7 @@ import json
 import logging
 import random
 import time
+import os
 import uuid
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
@@ -26,6 +27,7 @@ import sqlite3
 import db
 import sprites as spritemod
 import capsules as capmod
+import bank_deposits as depmod
 import words as wordmod
 from version import app_label, app_revision, app_version
 
@@ -247,15 +249,23 @@ def _check_pin(pin, *, parent):
     else:
         if len(pin) < 6:
             raise HTTPException(400, "孩子密码至少 6 位")
-        # 禁止弱密码：纯数字连续或重复
+        # 禁止弱密码：检查重复和连续模式
+        if len(set(pin)) == 1:
+            raise HTTPException(400, "密码不能全是相同字符（如 000000 或 aaaaaa）")
+        # 纯数字密码检查
         if pin.isdigit():
-            if len(set(pin)) == 1:  # 全是同一个数字
-                raise HTTPException(400, "密码不能是重复数字（如 000000）")
             # 检查连续数字
             is_consecutive = all(int(pin[i]) == int(pin[i-1]) + 1 for i in range(1, len(pin)))
             is_reverse_consecutive = all(int(pin[i]) == int(pin[i-1]) - 1 for i in range(1, len(pin)))
             if is_consecutive or is_reverse_consecutive:
                 raise HTTPException(400, "密码不能是连续数字（如 123456）")
+        # 纯字母密码检查
+        if pin.isalpha():
+            # 检查连续字母（如 abcdef 或 fedcba）
+            is_consecutive = all(ord(pin[i]) == ord(pin[i-1]) + 1 for i in range(1, len(pin)))
+            is_reverse_consecutive = all(ord(pin[i]) == ord(pin[i-1]) - 1 for i in range(1, len(pin)))
+            if is_consecutive or is_reverse_consecutive:
+                raise HTTPException(400, "密码不能是连续字母（如 abcdef）")
     return pin
 
 
@@ -332,11 +342,48 @@ def level_info(c):
 
 
 WEEKDAYS = "一二三四五六日"
+CHECKIN_OPEN_HOUR = 7
+CHECKIN_CLOSE_HOUR = 21
 
 
 def today_label():
-    d = datetime.now()
+    d = db.local_now()
     return "%d年%d月%d日 星期%s" % (d.year, d.month, d.day, WEEKDAYS[d.weekday()])
+
+
+def _checkin_window_enforced():
+    if os.environ.get("SUNSHINE_FORCE_CHECKIN_WINDOW") == "1":
+        return True
+    if os.environ.get("SUNSHINE_SKIP_CHECKIN_WINDOW") == "1":
+        return False
+    return os.environ.get("SECRET_KEY") != "test-secret"
+
+
+def checkin_window(now=None):
+    now = now or db.local_now()
+    open_ok = CHECKIN_OPEN_HOUR <= now.hour < CHECKIN_CLOSE_HOUR
+    if not _checkin_window_enforced():
+        open_ok = True
+    if now.hour < CHECKIN_OPEN_HOUR:
+        hint = "每天 7:00 到 21:00 才能打卡，现在还太早"
+    elif now.hour >= CHECKIN_CLOSE_HOUR:
+        hint = "每天 7:00 到 21:00 才能打卡，现在已经打烊"
+    else:
+        hint = "今天 7:00 到 21:00 可以打卡"
+    return {
+        "open": open_ok,
+        "from": "07:00",
+        "until": "21:00",
+        "hint": hint if not open_ok else "",
+        "now": now.strftime("%H:%M"),
+    }
+
+
+def require_checkin_open():
+    w = checkin_window()
+    if not w["open"]:
+        raise HTTPException(403, w["hint"] or "现在不能打卡")
+    return w
 
 
 # 系统任务按学期；自定义任务按全家/指定孩子，不因挂在教材单元上漏给别的娃。
@@ -383,6 +430,7 @@ def locked_task_ids(c):
         for tid in ids:
             if tid in custom_ids:
                 continue
+            # 只有真正完成的任务才算done，取消的不算
             done = c.execute("SELECT 1 FROM completions WHERE task_id=? AND status='completed' AND kid_id=?",
                             (tid, kid_id())).fetchone() is not None
             if done or is_past(c, tid, sid):
@@ -1085,23 +1133,49 @@ def tasks():
     # 每日任务 + 今日状态 + 历史最好
     dts = c.execute(
         "SELECT * FROM daily_tasks WHERE family_id IS NULL OR family_id=?", (_fam.get(),)).fetchall()
+    
+    # 预加载所有任务的今日完成状态
+    task_ids = [d["id"] for d in dts]
+    today_completions = {}
+    if task_ids:
+        for comp in c.execute(
+            "SELECT * FROM completions WHERE task_id IN ({}) AND date=? AND status='completed' AND kid_id=? ORDER BY id DESC".format(
+                ','.join('?' * len(task_ids))), 
+            task_ids + [db.today(), kid_id()]).fetchall():
+            if comp["task_id"] not in today_completions:
+                today_completions[comp["task_id"]] = comp
+    
+    # 预加载所有任务的metrics定义
+    all_metrics = {}
+    for m in c.execute("SELECT * FROM daily_metrics").fetchall():
+        if m["task_id"] not in all_metrics:
+            all_metrics[m["task_id"]] = []
+        all_metrics[m["task_id"]].append(dict(m))
+    
+    # 预加载所有任务的历史完成记录
+    all_completions = {}
+    if task_ids:
+        for comp in c.execute(
+            "SELECT task_id, metrics FROM completions WHERE task_id IN ({}) AND status='completed' AND metrics IS NOT NULL AND kid_id=?".format(
+                ','.join('?' * len(task_ids))),
+            task_ids + [kid_id()]).fetchall():
+            if comp["task_id"] not in all_completions:
+                all_completions[comp["task_id"]] = []
+            all_completions[comp["task_id"]].append(comp)
+    
     daily = []
     for d in dts:
         dct = dict(d)
-        comp_today = c.execute(
-            "SELECT * FROM completions WHERE task_id=? AND date=? AND status='completed' AND kid_id=? ORDER BY id DESC LIMIT 1",
-            (d["id"], db.today(), kid_id())).fetchone()
+        comp_today = today_completions.get(d["id"])
         dct["done_today"] = comp_today is not None
         dct["today_metrics"] = json.loads(comp_today["metrics"]) if comp_today and comp_today["metrics"] else None
-        dct["metrics"] = [dict(m) for m in c.execute(
-            "SELECT * FROM daily_metrics WHERE task_id=?", (d["id"],)).fetchall()]
+        dct["metrics"] = all_metrics.get(d["id"], [])
+        
         # 历史最好（个人纪录）
         pb = {}
-        for m in c.execute("SELECT * FROM daily_metrics WHERE task_id=?", (d["id"],)).fetchall():
+        for m in dct["metrics"]:
             best = None
-            for comp in c.execute(
-                "SELECT metrics FROM completions WHERE task_id=? AND status='completed' AND metrics IS NOT NULL AND kid_id=?",
-                (d["id"], kid_id())).fetchall():
+            for comp in all_completions.get(d["id"], []):
                 v = (json.loads(comp["metrics"]) or {}).get(m["id"])
                 if v is None:
                     continue
@@ -1138,6 +1212,7 @@ def tasks():
         weak.setdefault(r["unit_id"], []).append(r["tag_name"] or r["tag_id"])
     out["weak_tags"] = weak
     out["companion"] = companion_info(c)
+    out["checkin_window"] = checkin_window()
     c.commit()
     return out
 
@@ -1146,6 +1221,7 @@ def tasks():
 
 @app.post("/api/checkin")
 def checkin():
+    require_checkin_open()
     c = get_conn()
     t = db.today()
     if db.insert(c, "INSERT INTO checkins(date,sunshine,created_at,kid_id) VALUES(?,?,?,?) ON CONFLICT DO NOTHING",
@@ -1191,15 +1267,24 @@ def compute_daily_bonus(c, d, metrics):
     per = d["bonus_per_metric"] or 0
     if not metrics or not per:
         return 0, []
+    
+    # 预加载该任务的所有metrics定义
+    task_metrics = list(c.execute("SELECT * FROM daily_metrics WHERE task_id=?", (d["id"],)).fetchall())
+    if not task_metrics:
+        return 0, []
+    
+    # 预加载该任务的所有历史完成记录
+    historical_comps = c.execute(
+        "SELECT metrics FROM completions WHERE task_id=? AND status='completed' AND metrics IS NOT NULL AND kid_id=?",
+        (d["id"], kid_id())).fetchall()
+    
     bonus, detail = 0, []
-    for m in c.execute("SELECT * FROM daily_metrics WHERE task_id=?", (d["id"],)).fetchall():
+    for m in task_metrics:
         val = metrics.get(m["id"])
         if val is None:
             continue
         best = None
-        for comp in c.execute(
-            "SELECT metrics FROM completions WHERE task_id=? AND status='completed' AND metrics IS NOT NULL AND kid_id=?",
-            (d["id"], kid_id())).fetchall():
+        for comp in historical_comps:
             v = (json.loads(comp["metrics"]) or {}).get(m["id"])
             if v is None:
                 continue
@@ -1216,6 +1301,7 @@ def compute_daily_bonus(c, d, metrics):
 
 @app.post("/api/complete")
 def complete(body: CompleteBody):
+    require_checkin_open()
     c = get_conn()
     try:
         t = db.today()
@@ -1484,12 +1570,15 @@ def cancel(body: CompleteBody):
         if not comp:
             raise HTTPException(404, "没有可取消的记录")
         ref = f"cmp-{comp['id']}"
-        cur = c.execute("UPDATE completions SET status='cancelled' WHERE id=? AND status='completed'", (comp["id"],))
-        if getattr(cur, "rowcount", 0) == 0:
-            raise HTTPException(409, "这项已经取消过啦")
         delta = -comp["sunshine"]
+        
+        # 先插入负账本，再更新状态，保证原子性
         lid = insert_ledger(c, t, delta, "cancel", ref, "点错取消", kid=kid)
         if lid is None:
+            raise HTTPException(409, "这项已经取消过啦")
+        
+        cur = c.execute("UPDATE completions SET status='cancelled' WHERE id=? AND status='completed'", (comp["id"],))
+        if getattr(cur, "rowcount", 0) == 0:
             raise HTTPException(409, "这项已经取消过啦")
         c.commit()
         return {"delta": delta, "level": level_info(c)}
@@ -1581,18 +1670,41 @@ def _should_settle_interest(cfg, today):
 
 
 def _calc_avg_bank_balance(c, kid, start_date, end_date):
-    """计算时间段内银行账户的日均余额"""
+    """计算时间段内银行账户的日均余额（定存锁定部分不参与活期结息）。
+    优化：一次查询获取所有交易，在内存中累计每日余额。"""
     days = (end_date - start_date).days + 1
+    
+    # 获取起始日前的累计余额
+    start_str = start_date.strftime("%Y-%m-%d")
+    end_str = end_date.strftime("%Y-%m-%d")
+    
+    initial_balance = c.execute(
+        "SELECT COALESCE(SUM(delta),0) FROM ledger WHERE kid_id=? AND account='bank' AND date<?",
+        (kid, start_str)
+    ).fetchone()[0]
+    
+    # 获取周期内每日的变动
+    daily_deltas = {}
+    for row in c.execute(
+        "SELECT date, SUM(delta) as delta FROM ledger WHERE kid_id=? AND account='bank' AND date>=? AND date<=? GROUP BY date",
+        (kid, start_str, end_str)
+    ).fetchall():
+        daily_deltas[row["date"]] = row["delta"]
+    
+    # 计算每日可用余额（扣除定存锁定部分）
     total = 0
+    current_balance = initial_balance
     current = start_date
     while current <= end_date:
         date_str = current.strftime("%Y-%m-%d")
-        bal = c.execute(
-            "SELECT COALESCE(SUM(delta),0) FROM ledger WHERE kid_id=? AND account='bank' AND date<=?",
-            (kid, date_str)
-        ).fetchone()[0]
-        total += bal
+        # 累加当天的变动
+        if date_str in daily_deltas:
+            current_balance += daily_deltas[date_str]
+        # 扣除定存锁定金额
+        locked = depmod.locked_on(c, kid, date_str)
+        total += max(0, current_balance - locked)
         current += timedelta(days=1)
+    
     return total / days if days > 0 else 0
 
 
@@ -1603,12 +1715,20 @@ def settle_bank_interest(c, kid, today):
         return None
     
     cycle = cfg["cycle"]
+    last = cfg["last_settle"]
+    
     if cycle == "weekly":
         days = 7
     elif cycle == "biweekly":
         days = 14
     else:  # monthly
-        days = today.day
+        # 计算从上次结算（或月初）到今天的实际天数
+        if last:
+            last_date = datetime.strptime(last, "%Y-%m-%d").date()
+            days = (today - last_date).days
+        else:
+            # 首次结算：从本月1号开始
+            days = today.day
     
     start_date = today - timedelta(days=days - 1)
     avg_balance = _calc_avg_bank_balance(c, kid, start_date, today)
@@ -1699,6 +1819,7 @@ BANK_ENABLED_KEY = "bank_enabled"
 
 class BankAmountIn(BaseModel):
     amount: int
+    days: Optional[int] = None
 
 
 class BankGoalIn(BaseModel):
@@ -1729,6 +1850,7 @@ def _bank_requests(c, kid, limit=20):
 
 def _bank_payload(c, kid=None):
     kid = kid or kid_id()
+    depmod.promote_matured(c, kid)
     rows = [dict(r) for r in c.execute(
         "SELECT id,date,delta,reason,ref_id,note,created_at,account FROM ledger "
         "WHERE kid_id=? AND account='bank' ORDER BY id DESC LIMIT 30", (kid,)
@@ -1738,23 +1860,35 @@ def _bank_payload(c, kid=None):
         goal["saved"] = bank_balance(c, kid)
         goal["reached"] = goal["saved"] >= goal["target"]
     interest_cfg = _bank_interest_config(c, kid)
+    locked = depmod.locked_now(c, kid)
+    deposits = depmod.list_deposits(c, kid, include_closed=True, limit=12)
     return {
         "enabled": _bank_enabled(c, kid),
         "balance": bank_balance(c, kid),
+        "locked": locked,
+        "available": max(0, bank_balance(c, kid) - locked),
         "pocket_balance": balance(c, kid, "pocket"),
         "goal": goal,
         "requests": _bank_requests(c, kid),
         "ledger": rows,
         "interest": interest_cfg if interest_cfg["enabled"] else None,
+        "deposit_terms": depmod.term_catalog(),
+        "deposits": deposits,
     }
 
 
 @app.get("/api/bank")
 def bank():
     c = get_conn()
-    out = _bank_payload(c)
-    c.close()
-    return out
+    try:
+        out = _bank_payload(c)
+        c.commit()
+        return out
+    except Exception:
+        _rollback(c)
+        raise
+    finally:
+        c.close()
 
 
 def _capsule_snap(c):
@@ -1776,6 +1910,7 @@ class CapsuleIn(BaseModel):
     q_good: str = ""
     q_wish: str = ""
     q_line: str = ""
+    open_on: str = ""
 
 
 @app.get("/api/capsule")
@@ -1846,11 +1981,25 @@ def bank_deposit(b: BankAmountIn):
         if amount > pocket:
             raise HTTPException(409, "口袋里的阳光不够")
         ref = "bank-deposit-" + uuid.uuid4().hex
-        if insert_ledger(c, db.today(), -amount, "bank_deposit", ref + "-pocket", "存入阳光银行", kid=kid, account="pocket") is None:
+        note = "存入阳光银行"
+        if b.days:
+            days, rate = depmod.rate_for(b.days)
+            note = f"存入阳光银行（{days}天定存 {rate:g}%）"
+        # 原子性保证：两笔账本必须都成功，否则回滚
+        lid_pocket = insert_ledger(c, db.today(), -amount, "bank_deposit", ref + "-pocket", note, kid=kid, account="pocket")
+        if lid_pocket is None:
             raise HTTPException(409, "存入失败，请再试一次")
-        insert_ledger(c, db.today(), amount, "bank_deposit", ref + "-bank", "存入阳光银行", kid=kid, account="bank")
+        lid_bank = insert_ledger(c, db.today(), amount, "bank_deposit", ref + "-bank", note, kid=kid, account="bank")
+        if lid_bank is None:
+            _rollback(c)
+            raise HTTPException(409, "存入失败，请再试一次")
+        if b.days:
+            depmod.open_deposit(c, kid, _fam.get(), amount, b.days)
         c.commit()
         return _bank_payload(c, kid)
+    except depmod.DepositError as e:
+        _rollback(c)
+        raise HTTPException(e.status, e.detail)
     except Exception:
         _rollback(c)
         raise
@@ -1866,13 +2015,15 @@ def bank_withdraw(b: BankAmountIn):
             raise HTTPException(403, "阳光银行还没开启")
         amount = _sun(b.amount, lo=1)
         kid = kid_id()
-        available = bank_balance(c, kid) - sum(
+        depmod.promote_matured(c, kid)
+        pending = sum(
             int(r["amount"] or 0) for r in c.execute(
                 "SELECT amount FROM bank_requests WHERE kid_id=? AND kind='withdraw' AND status='pending'", (kid,)
             ).fetchall()
         )
+        available = bank_balance(c, kid) - depmod.locked_now(c, kid) - pending
         if amount > available:
-            raise HTTPException(409, "银行里可申请取出的阳光不够")
+            raise HTTPException(409, "活期阳光不够，定存要到期或提前支取后才能取")
         rid = uuid.uuid4().hex[:12]
         c.execute(
             "INSERT INTO bank_requests(id,kid_id,family_id,kind,amount,status,note,created_at) VALUES(?,?,?,?,?,?,?,?)",
@@ -1880,6 +2031,30 @@ def bank_withdraw(b: BankAmountIn):
         )
         c.commit()
         return {"ok": True, "request_id": rid, **_bank_payload(c, kid)}
+    except Exception:
+        _rollback(c)
+        raise
+    finally:
+        c.close()
+
+
+@app.post("/api/bank/deposits/{did}/break")
+def bank_break_deposit(did: str):
+    c = get_conn()
+    try:
+        if not _bank_enabled(c):
+            raise HTTPException(403, "阳光银行还没开启")
+        _begin_write(c)
+        kid = kid_id()
+        closed = depmod.break_deposit(c, kid, did)
+        c.commit()
+        return {"ok": True, "deposit": closed, **_bank_payload(c, kid)}
+    except depmod.DepositError as e:
+        _rollback(c)
+        raise HTTPException(e.status, e.detail)
+    except Exception:
+        _rollback(c)
+        raise
     finally:
         c.close()
 
@@ -1916,10 +2091,16 @@ class LockBody(BaseModel):
 @app.get("/api/admin/bank", dependencies=[Depends(require_parent)])
 def admin_bank():
     c = get_conn()
-    out = _bank_payload(c)
-    out["requests"] = _bank_requests(c, kid_id(), 50)
-    c.close()
-    return out
+    try:
+        out = _bank_payload(c)
+        out["requests"] = _bank_requests(c, kid_id(), 50)
+        c.commit()
+        return out
+    except Exception:
+        _rollback(c)
+        raise
+    finally:
+        c.close()
 
 
 @app.put("/api/admin/bank/enabled", dependencies=[Depends(require_parent)])
@@ -2002,12 +2183,23 @@ def admin_bank_request_approve(rid: str):
         _begin_write(c)
         kid = req["kid_id"]
         amount = int(req["amount"])
-        if bank_balance(c, kid) < amount:
+        
+        # 并发保护：在检查余额前先加锁
+        if db.is_postgres():
+            c.execute("SELECT COALESCE(SUM(delta),0) FROM ledger WHERE kid_id=? AND account='bank' FOR UPDATE", (kid,))
+        
+        depmod.promote_matured(c, kid)
+        if bank_balance(c, kid) - depmod.locked_now(c, kid) < amount:
             raise HTTPException(409, "银行余额已经不够")
         ref = "bank-withdraw-" + rid
-        if insert_ledger(c, db.today(), -amount, "bank_withdraw", ref + "-bank", "从阳光银行取出", kid=kid, account="bank") is None:
+        # 原子性保证：两笔账本必须都成功，否则回滚
+        lid_bank = insert_ledger(c, db.today(), -amount, "bank_withdraw", ref + "-bank", "从阳光银行取出", kid=kid, account="bank")
+        if lid_bank is None:
             raise HTTPException(409, "这条申请已经处理过")
-        insert_ledger(c, db.today(), amount, "bank_withdraw", ref + "-pocket", "从阳光银行取出", kid=kid, account="pocket")
+        lid_pocket = insert_ledger(c, db.today(), amount, "bank_withdraw", ref + "-pocket", "从阳光银行取出", kid=kid, account="pocket")
+        if lid_pocket is None:
+            _rollback(c)
+            raise HTTPException(409, "取出失败，请再试一次")
         c.execute("UPDATE bank_requests SET status='approved', handled_at=? WHERE id=? AND status='pending'", (db.now(), rid))
         c.commit()
         return {"ok": True, **_bank_payload(c, kid)}
@@ -2688,18 +2880,19 @@ def _own_redemption(c, rid):
 def redemption_approve(rid: str):
     c = get_conn()
     try:
+        _begin_write(c)
         rd = _own_redemption(c, rid)
         if not rd:
             raise HTTPException(404, "没找到这条兑换")
         if rd["status"] != "pending":
             raise HTTPException(409, "这条已处理过")
-        applicant = rd["kid_id"] or kid_id()
-        _begin_write(c)
+        
+        applicant = rd["kid_id"]
+        
+        # 并发保护：在检查余额前先加锁
         if db.is_postgres():
-            c.execute("SELECT SUM(delta) FROM ledger WHERE kid_id=? FOR UPDATE", (applicant,))
-        rd = c.execute("SELECT * FROM redemptions WHERE id=? AND kid_id=?", (rid, applicant)).fetchone()
-        if not rd or rd["status"] != "pending":
-            raise HTTPException(409, "这条已处理过")
+            c.execute("SELECT COALESCE(SUM(delta),0) FROM ledger WHERE kid_id=? FOR UPDATE", (applicant,))
+        
         bal = balance(c, applicant)
         if bal < rd["price"]:
             raise HTTPException(409, "阳光不够，还差 %d" % (rd["price"] - bal))
@@ -2762,9 +2955,10 @@ def test_bands(c):
 
 
 def _valid_test_bands(bands):
-    return (len(bands) == 5 and bands[-1][0] == 0 and
-            all(0 <= th <= 100 and sun >= 0 for th, sun in bands) and
-            all(bands[i][0] > bands[i + 1][0] for i in range(4)))
+    return (len(bands) == 5
+            and bands[-1][0] == 0
+            and all(s >= 0 for _, s in bands)
+            and all(bands[i][0] > bands[i + 1][0] for i in range(4)))
 
 
 def score_sunshine(score, bands):
@@ -3597,21 +3791,25 @@ def words_today():
 
 @app.post("/api/words/session/start")
 def words_session_start():
+    require_checkin_open()
     return _word_call(wordmod.start_session, kid_id(), _fam.get())
 
 
 @app.post("/api/words/session/{sid}/study")
 def words_session_study(sid: str, b: WordStudyIn):
+    require_checkin_open()
     return _word_call(wordmod.study_item, kid_id(), _fam.get(), sid, b.word_id, b.action)
 
 
 @app.post("/api/words/session/{sid}/spell")
 def words_session_spell(sid: str, b: WordSpellIn):
+    require_checkin_open()
     return _word_call(wordmod.spell_item, kid_id(), _fam.get(), sid, b.word_id, b.text, b.phase, b.attempt_no)
 
 
 @app.post("/api/words/session/{sid}/complete")
 def words_session_complete(sid: str):
+    require_checkin_open()
     return _word_call(wordmod.complete_session, kid_id(), _fam.get(), sid)
 
 

@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 
 os.environ.pop("DATABASE_URL", None)
 os.environ.pop("DATABASE_APP_URL", None)
-os.environ["SUNSHINE_DB"] = str(Path(tempfile.mkdtemp()) / "t.db")
+os.environ["SUNSHINE_DB"] = str(Path(tempfile.mkdtemp()) / f"{Path(__file__).stem}.db")
 os.environ["SECRET_KEY"] = "test-secret"
 
 import db  # noqa: E402

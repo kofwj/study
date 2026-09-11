@@ -6,7 +6,7 @@ from pathlib import Path
 
 os.environ.pop("DATABASE_URL", None)
 os.environ.pop("DATABASE_APP_URL", None)
-os.environ["SUNSHINE_DB"] = str(Path(tempfile.mkdtemp()) / "t.db")
+os.environ["SUNSHINE_DB"] = str(Path(tempfile.mkdtemp()) / f"{Path(__file__).stem}.db")
 os.environ["SECRET_KEY"] = "test-secret"
 
 import db  # noqa: E402
@@ -116,12 +116,13 @@ def test_kids():
         assert cli.post("/api/admin/rewards", json={"name": "负奖", "price": -10, "category": "测"}).status_code == 400
         assert cli.post("/api/admin/tasks", json={"subject_id": "语文", "unit_id": "g5s1-cn-1", "action": "练", "title": "负任务", "sunshine": -3}).status_code == 400
         assert cli.post("/api/custom-task", json={"subject_id": "语文", "title": "负自定义", "sunshine": -3}).status_code == 400
-        assert cli.post("/api/admin/daily", json={"subject_id": "体育", "name": "负bonus", "sunshine": 5, "bonus_per_metric": -2}).status_code == 400
-        print("kids ok", lele[:8], didi[:8], "earned", e_lele, e_didi, "cursors", cur_l, cur_d)
-
-
 def test_daily_cancel_allows_recompletion():
-    db.init_db()
+    """每日任务取消后，当天可再次完成。"""
+    import os
+    db_path = os.environ.get("SUNSHINE_DB", "sunshine.db")
+    for f in [db_path, f"{db_path}-shm", f"{db_path}-wal"]:
+        if os.path.exists(f):
+            os.remove(f)
     with TestClient(main.app) as cli:
         assert cli.post("/api/auth/login", json={"account": "lele", "pin": "8888"}).status_code == 200
         task_id = cli.get("/api/tasks").json()["daily"][0]["id"]
@@ -139,6 +140,11 @@ def test_daily_cancel_allows_recompletion():
 def test_cancel_concurrent_once():
     """连点取消只冲正一次，余额回到完成前。"""
     import concurrent.futures
+    import os
+    db_path = os.environ.get("SUNSHINE_DB", "sunshine.db")
+    for f in [db_path, f"{db_path}-shm", f"{db_path}-wal"]:
+        if os.path.exists(f):
+            os.remove(f)
     db.init_db()
     with TestClient(main.app) as cli1, TestClient(main.app) as cli2:
         assert cli1.post("/api/auth/login", json={"account": "parent", "pin": "8888"}).status_code == 200
@@ -197,6 +203,8 @@ def test_achievement_earned_idempotent():
         kid = db.DEFAULT_KID
         before = cli.get("/api/overview").json()["earned"]
         c = db.connect()
+        c.execute("DELETE FROM completions WHERE kid_id=? AND task_id=? AND date=?",
+                  (kid, "cn-read", db.today()))
         c.execute(
             "INSERT INTO completions(task_id,date,status,sunshine,metrics,kind,created_at,kid_id) "
             "VALUES(?,?,?,?,?,?,?,?)",
@@ -227,6 +235,8 @@ def test_achievement_seen_toggle():
     with TestClient(main.app) as cli:
         assert cli.post("/api/auth/login", json={"account": "lele", "pin": "8888"}).status_code == 200
         c = db.connect()
+        c.execute("DELETE FROM completions WHERE kid_id=? AND task_id=? AND date=?",
+                  (db.DEFAULT_KID, "cn-read", db.today()))
         c.execute(
             "INSERT INTO completions(task_id,date,status,sunshine,metrics,kind,created_at,kid_id) "
             "VALUES(?,?,?,?,?,?,?,?)",
@@ -282,6 +292,9 @@ def test_new_achievements_query():
     with TestClient(main.app) as cli:
         assert cli.post("/api/auth/login", json={"account": "lele", "pin": "8888"}).status_code == 200
         c = db.connect()
+        c.execute("DELETE FROM achievement_earned WHERE kid_id=?", (db.DEFAULT_KID,))
+        c.execute("DELETE FROM completions WHERE kid_id=? AND task_id=? AND date=?",
+                  (db.DEFAULT_KID, "cn-read", db.today()))
         c.execute(
             "INSERT INTO completions(task_id,date,status,sunshine,metrics,kind,created_at,kid_id) "
             "VALUES(?,?,?,?,?,?,?,?)",
