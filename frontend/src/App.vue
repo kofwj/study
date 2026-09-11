@@ -1593,7 +1593,7 @@ function reloadApp() {
           <img :src="companionImage" alt="伙伴" class="companion-img" />
         </button>
         <img v-if="dutySprite" class="duty-face" :src="spImg(dutySprite.id)" :alt="displayName(dutySprite)" />
-        <div>
+        <div class="who-copy">
           <div class="hello">{{ data.today || '今天' }}</div>
           <div class="name-row">
             <b class="kid">{{ data.kid_name }}</b>
@@ -1605,19 +1605,18 @@ function reloadApp() {
       </div>
       <div class="pills">
         <span class="pill sun"><i></i> {{ data.level.balance }}</span>
-        <span class="pill fire"><Flame class="ico" :size="15" /> 连续打卡 {{ data.streak }} 天</span>
+        <span class="pill fire"><Flame class="ico" :size="15" /> <span class="pill-long">连续打卡 </span>{{ data.streak }}<span class="pill-long"> 天</span></span>
         <button class="pill star" @click="openRankMap"><component :is="rankIcon(data.level.level_icon)" class="ico" :size="15" /> {{ data.level.level }}</button>
-        <button class="pill ach" @click="openAch"><Medal class="ico" :size="15" /> 成就 <em v-if="newAchCount" class="ach-pill-new">{{ newAchCount }}</em></button>
+        <button class="pill ach" @click="openAch"><Medal class="ico" :size="15" /> <span class="pill-long">成就</span><em v-if="newAchCount" class="ach-pill-new">{{ newAchCount }}</em></button>
         <button class="pill box" :class="{ ready: boxes.avail > 0 }" @click="openBox">
-          <Gift class="ico" :size="15" /> {{ boxes.avail > 0 ? '宝箱 ×' + boxes.avail : '宝箱' }}
+          <Gift class="ico" :size="15" /> <span class="pill-long">{{ boxes.avail > 0 ? '宝箱 ×' + boxes.avail : '宝箱' }}</span><span class="pill-short">{{ boxes.avail > 0 ? '×' + boxes.avail : '' }}</span>
         </button>
       </div>
       <div class="next">
-        <span v-if="data.level.next">
-          <component :is="rankIcon(data.level.level_icon)" class="ico" :size="14" /> {{ data.level.level }}
-          · 再得 {{ data.level.next_need - data.level.earned }} <Sun class="ico sun" :size="13" /> 升级 <component :is="rankIcon(data.level.next_icon)" class="ico" :size="14" /> {{ data.level.next }}
+        <span v-if="data.level.next" class="next-copy">
+          再得 {{ data.level.next_need - data.level.earned }} <Sun class="ico sun" :size="13" /> 到{{ data.level.next }}
         </span>
-        <span v-else><component :is="rankIcon(data.level.level_icon)" class="ico" :size="14" /> 最高等级</span>
+        <span v-else class="next-copy">最高等级</span>
         <div class="next-bar"><i :style="{ width: data.level.progress + '%' }"></i></div>
       </div>
     </header>
@@ -2549,6 +2548,8 @@ body {
   position: sticky; top: var(--update-bar-height, 0px); z-index: 10;
 }
 .who { display: flex; align-items: center; gap: 12px; min-width: 180px; }
+.who-copy { min-width: 0; }
+.pill-short { display: none; }
 .avatar {
   width: 52px; height: 52px; border-radius: var(--radius-circle); background: var(--accent);
   color: #fff; font-weight: 800; font-size: 22px; letter-spacing: 0;
@@ -3312,6 +3313,36 @@ body {
 @keyframes companion-wiggle { 0%,100% { transform: scale(1) rotate(0); } 35% { transform: scale(1.06) rotate(-3deg); } 65% { transform: scale(1.02) rotate(3deg); } }
 @keyframes fall { to { transform: translateY(110vh) rotate(720deg); opacity: 0; } }
 
+@media (max-width: 1100px) {
+  .topbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "who pills"
+      "next next";
+    align-items: center;
+    column-gap: 10px;
+    row-gap: 6px;
+    padding: 8px 12px 8px;
+    padding-top: calc(8px + env(safe-area-inset-top));
+  }
+  .who { grid-area: who; width: auto; min-width: 0; gap: 8px; }
+  .who-copy { min-width: 0; flex: 1; }
+  .who > .avatar { width: 40px; height: 40px; font-size: 18px; flex: 0 0 40px; aspect-ratio: 1; }
+  .hello, .companion-line, .companion-need { display: none; }
+  .kid { font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .name-row { flex-wrap: nowrap; }
+  .rename { font-size: 12px; white-space: nowrap; flex: 0 0 auto; }
+  .rename-txt { display: none; }
+  .pills { grid-area: pills; width: auto; flex: 0 0 auto; flex-wrap: nowrap; justify-content: flex-end; gap: 6px; }
+  .pill { padding: 5px 8px; font-size: 12px; }
+  .pill-long { display: none; }
+  .pill-short { display: inline; }
+  .next { grid-area: next; margin-left: 0; text-align: left; min-width: 0; width: 100%; font-size: 11px; }
+  .next-copy { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+  .next-bar { margin-top: 4px; }
+}
+
 @media (max-width: 900px) {
   .plan-section.review-today { padding: 12px; }
   .word-en { font-size: 32px; }
@@ -3321,29 +3352,8 @@ body {
   .plan-head h2 { font-size: 15px; }
   .review-card-meta { align-items: flex-start; flex-direction: column; gap: 4px; }
   .desk { padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
-  .topbar {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 12px;
-    padding: 12px 14px 8px;
-    padding-top: calc(12px + env(safe-area-inset-top));
-  }
-  .who { width: 100%; min-width: 0; }
-  .who > div { min-width: 0; flex: 1; }
-  .who > .avatar { width: 48px; height: 48px; font-size: 22px; flex: 0 0 48px; aspect-ratio: 1; }
-  .companion-need { display: none; }
-  .kid { font-size: 18px; white-space: nowrap; }
-  .hello { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .name-row { flex-wrap: nowrap; }
-  .rename { font-size: 12px; white-space: nowrap; flex: 0 0 auto; }
-  .rename-txt { display: none; }
-  .pills { width: 100%; justify-content: flex-start; flex-wrap: wrap; gap: 8px; }
-  .pill { padding: 6px 10px; font-size: 13px; }
-  .next { margin-left: 0; text-align: left; min-width: 0; width: 100%; font-size: 12px; }
   .cta { width: 100%; padding: 12px; font-size: 15px; }
   .today-summary { align-items: stretch; gap: 12px; }
-  .today-progress { min-width: 100%; }
 
   .mask { padding: 12px; }
   .shop-modal { width: 100%; max-width: none; }
@@ -3372,6 +3382,8 @@ body {
 
 /* 手机：顶下一行胶囊。最近阳光不挤进横条。 */
 @media (max-width: 700px) {
+  .pills { overflow-x: auto; max-width: 100%; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+  .pills::-webkit-scrollbar { display: none; }
   .body { flex-direction: column; gap: 0; padding: 0; }
   .side {
     width: 100%; flex: none; border-radius: 0;
