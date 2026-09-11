@@ -25,6 +25,7 @@ import sqlite3
 
 import db
 import sprites as spritemod
+import capsules as capmod
 import words as wordmod
 from version import app_label, app_revision, app_version
 
@@ -1755,6 +1756,82 @@ def bank():
     c.close()
     return out
 
+
+def _capsule_snap(c):
+    kid = kid_id()
+    return capmod.snapshot_now(
+        c, kid,
+        term_id=active_term(c),
+        level=level_info(c),
+        earned=earned(c, kid),
+        streak=streak(c, kid),
+        companion=companion_info(c, kid),
+        pocket=balance(c, kid, "pocket"),
+        bank=bank_balance(c, kid),
+    )
+
+
+class CapsuleIn(BaseModel):
+    when_kind: str
+    q_good: str = ""
+    q_wish: str = ""
+    q_line: str = ""
+
+
+@app.get("/api/capsule")
+def capsule_get():
+    c = get_conn()
+    try:
+        kid = kid_id()
+        s = streak(c, kid)
+        out = capmod.get_payload(c, kid, s, _capsule_snap(c))
+        c.commit()
+        return out
+    except Exception:
+        _rollback(c)
+        raise
+    finally:
+        c.close()
+
+
+@app.post("/api/capsule")
+def capsule_seal(b: CapsuleIn):
+    c = get_conn()
+    try:
+        kid = kid_id()
+        s = streak(c, kid)
+        snap = _capsule_snap(c)
+        cap = capmod.seal(c, kid, _fam.get(), b.model_dump(), streak=s, snap=snap)
+        c.commit()
+        return capmod.get_payload(c, kid, s, snap)
+    except capmod.CapsuleError as e:
+        _rollback(c)
+        raise HTTPException(e.status, e.detail)
+    except Exception:
+        _rollback(c)
+        raise
+    finally:
+        c.close()
+
+
+@app.post("/api/capsule/open")
+def capsule_open():
+    c = get_conn()
+    try:
+        kid = kid_id()
+        s = streak(c, kid)
+        snap = _capsule_snap(c)
+        opened = capmod.open_capsule(c, kid, s, snap)
+        c.commit()
+        return opened
+    except capmod.CapsuleError as e:
+        _rollback(c)
+        raise HTTPException(e.status, e.detail)
+    except Exception:
+        _rollback(c)
+        raise
+    finally:
+        c.close()
 
 @app.post("/api/bank/deposit")
 def bank_deposit(b: BankAmountIn):

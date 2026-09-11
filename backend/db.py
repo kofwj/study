@@ -1061,6 +1061,36 @@ CREATE TABLE IF NOT EXISTS achievement_earned (
         conn.execute("GRANT SELECT, INSERT, UPDATE, DELETE ON achievement_earned TO sunshine_app")
 
 
+def _migrate_035(conn):
+    """时间胶囊：给未来自己的一封信。正文不进 kid_settings。"""
+    conn.execute("""
+CREATE TABLE IF NOT EXISTS capsules (
+  id TEXT PRIMARY KEY,
+  kid_id TEXT NOT NULL,
+  family_id TEXT NOT NULL,
+  state TEXT NOT NULL,
+  when_kind TEXT NOT NULL,
+  open_on TEXT,
+  sealed_on TEXT NOT NULL,
+  opened_on TEXT,
+  q_good TEXT NOT NULL,
+  q_wish TEXT NOT NULL,
+  q_line TEXT NOT NULL,
+  snapshot TEXT NOT NULL,
+  created_at TEXT NOT NULL
+)""")
+    conn.execute("CREATE INDEX IF NOT EXISTS ix_capsules_kid_state ON capsules(kid_id, state, sealed_on)")
+    conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS ux_capsules_active ON capsules(kid_id) WHERE state IN ('sealed','ready')")
+    if conn.pg:
+        conn.execute("ALTER TABLE capsules ENABLE ROW LEVEL SECURITY")
+        conn.execute("ALTER TABLE capsules FORCE ROW LEVEL SECURITY")
+        conn.execute("DROP POLICY IF EXISTS iso ON capsules")
+        conn.execute(
+            "CREATE POLICY iso ON capsules USING (kid_id = current_setting('app.kid_id', true)) "
+            "WITH CHECK (kid_id = current_setting('app.kid_id', true))")
+        conn.execute("GRANT SELECT, INSERT, UPDATE, DELETE ON capsules TO sunshine_app")
+
+
 def _migrate_027(conn):
     """家长一次性找回码哈希 + 登录/注册限流落库。"""
     _add_column(conn, "families", "recovery_hash TEXT")
@@ -1119,6 +1149,7 @@ MIGRATIONS = (
     ("032_sunshine_bank", _migrate_032),
     ("033_bank_interest", _migrate_033),
     ("034_sprites", _migrate_034),
+    ("035_capsules", _migrate_035),
 )
 
 

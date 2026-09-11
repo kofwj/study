@@ -6,7 +6,7 @@ import { APP_LABEL, APP_REVISION } from './version.js'
 const Admin = defineAsyncComponent(() => import('./Admin.vue'))
 import { SUBJECT_ICONS as ICONS, rankIcon, achIcon } from './icons.js'
 import { mottoFor } from './dailyMottos.js'
-import { Sun, Lock, Gift, Check, TrendingUp, Target, User, ShoppingCart, ScrollText, Medal, ChartColumn, Map, CalendarDays, RefreshCw, PartyPopper, Sparkles, BookOpen, Flame, Volume2, House, Landmark, Coins, ArrowDownToLine, ArrowUpFromLine, Globe, FileText } from '@lucide/vue'
+import { Sun, Lock, Gift, Check, TrendingUp, Target, User, ShoppingCart, ScrollText, Medal, ChartColumn, Map, CalendarDays, RefreshCw, PartyPopper, Sparkles, BookOpen, Flame, Volume2, House, Landmark, Coins, ArrowDownToLine, ArrowUpFromLine, Globe, FileText, Mail } from '@lucide/vue'
 
 // companion 插画
 import companionEggImg from './assets/companion-egg.png'
@@ -452,6 +452,85 @@ const sprites = ref({
   base_items: [], on_duty: '', today: {}, morning: { new: false, who: '', text: '' },
   memos: { award: false, flag: false }, star_cost: 12,
 })
+const capsule = ref({ state: 'empty', capsule: null, wait: '', options: [], now: null })
+const capsuleOpen = ref(false)
+const capsuleBusy = ref(false)
+const capsuleOpenedView = ref(false)
+const capsuleForm = reactive({ when_kind: 'next_term', q_good: '', q_wish: '', q_line: '' })
+function resetCapsuleForm() {
+  const opts = capsule.value.options || []
+  capsuleForm.when_kind = (opts[0] && opts[0].kind) || 'next_term'
+  capsuleForm.q_good = ''
+  capsuleForm.q_wish = ''
+  capsuleForm.q_line = ''
+}
+function capsuleDateText(iso) {
+  if (!iso) return ''
+  const [y, m, d] = String(iso).split('-')
+  return `${Number(y)}年${Number(m)}月${Number(d)}日`
+}
+function snapLine(s) {
+  if (!s) return '还没记下'
+  const who = s.companion_name || s.companion_stage_name || '阳光芽'
+  return `${s.level || '—'} · 连打 ${s.streak || 0} 天 · ${who}`
+}
+function applyCapsule(p) {
+  if (!p) return
+  capsule.value = p
+}
+async function loadCapsule() {
+  try { applyCapsule(await api.capsule()) } catch { capsule.value = { state: 'empty', capsule: null, wait: '', options: [], now: null } }
+}
+function closeCapsuleBox() {
+  capsuleOpen.value = false
+  if (capsuleOpenedView.value) capsuleOpenedView.value = false
+}
+function openCapsuleBox() {
+  if (capsule.value.state === 'empty' && !capsuleOpenedView.value) resetCapsuleForm()
+  capsuleOpen.value = true
+  spriteScene.value = 'leaf'
+}
+function goOpenCapsule() {
+  activeTab.value = 'base'
+  spriteScene.value = 'leaf'
+  loadSprites()
+  openCapsuleBox()
+}
+function startNextCapsule() {
+  capsuleOpenedView.value = false
+  resetCapsuleForm()
+}
+async function submitCapsule() {
+  if (capsuleBusy.value) return
+  capsuleBusy.value = true
+  try {
+    applyCapsule(await api.capsuleSeal({
+      when_kind: capsuleForm.when_kind,
+      q_good: capsuleForm.q_good,
+      q_wish: capsuleForm.q_wish,
+      q_line: capsuleForm.q_line,
+    }))
+    capsuleOpenedView.value = false
+    capsuleOpen.value = false
+    showToast('封进箱子了，到那天再拆')
+  } catch (e) { showToast(e.message) }
+  finally { capsuleBusy.value = false }
+}
+async function openCapsuleLetter() {
+  if (capsuleBusy.value) return
+  capsuleBusy.value = true
+  try {
+    const opened = await api.capsuleOpen()
+    applyCapsule(await api.capsule())
+    if (opened) {
+      capsule.value.capsule = { ...(capsule.value.capsule || {}), ...opened, state: 'opened' }
+      if (opened.now) capsule.value.now = opened.now
+    }
+    capsuleOpenedView.value = true
+    showToast('拆开了')
+  } catch (e) { showToast(e.message) }
+  finally { capsuleBusy.value = false }
+}
 const spritesOpen = ref(false)
 const spriteDetail = ref(null)
 const spriteNick = ref('')
@@ -490,6 +569,7 @@ function sceneToys(scene) {
   return layout.filter(t => {
     if (t.kind === 'shop') return bought.has(t.id)
     if (t.id === 'trace-pinwheel') return !!today.daily_done
+    if (t.id === 'memo-capsule') return true
     // 奖状/小旗要有「拿到了」的仪式，不按旧连击或旧全对补挂到树上
     if (t.id === 'memo-award' || t.id === 'memo-flag') return false
     return false
@@ -874,13 +954,14 @@ async function doLogout() {
 
 async function refresh() {
   try {
-    const [t, r, bx, rv, led, ach, wd, bk, sp] = await Promise.all([
+    const [t, r, bx, rv, led, ach, wd, bk, sp, cap] = await Promise.all([
       api.tasks(), api.rewards(), api.boxes(),
       api.reviewDue().catch(() => []), api.ledger().catch(() => []),
       api.achievements().catch(() => null),
       api.wordsToday().catch(() => null),
       api.bank().catch(() => null),
       api.sprites().catch(() => null),
+      api.capsule().catch(() => null),
     ])
     const prevId = data.level && data.level.level_id
     const prevEarned = data.level && (data.level.earned || 0)
@@ -909,6 +990,7 @@ async function refresh() {
       sprites.value = { ...sprites.value, ...sp, loaded: true }
       if (sp.enabled && sp.base_enabled && sp.morning && sp.morning.new) morningShow.value = true
     }
+    if (cap) applyCapsule(cap)
     err.value = ''
   } catch (e) {
     if (e.status === 401) { me.value = null; authed.value = false }
@@ -1381,6 +1463,7 @@ const todayCheckinItems = computed(() => {
     items.push({ key: d.id, kind: 'daily', d })
   }
   putWord()
+  if (capsule.value.state === 'ready') items.unshift({ key: 'capsule', kind: 'capsule' })
   return items
 })
 const tabDailies = computed(() => {
@@ -1618,7 +1701,14 @@ function reloadApp() {
             </div>
             <div class="grid plan-grid">
               <template v-for="it in todayCheckinItems" :key="it.key">
-                <div v-if="it.kind === 'word'" class="card enter word-daily-card" role="button" @click="openWordLane(it.lane)">
+                <div v-if="it.kind === 'capsule'" class="card enter word-daily-card" role="button" @click="goOpenCapsule">
+                  <button type="button" class="circle" @click.stop="goOpenCapsule"><Mail :size="15" /></button>
+                  <div class="card-body">
+                    <div class="card-title">时间胶囊</div>
+                    <div class="card-detail">有一封给自己的信可以拆了</div>
+                  </div>
+                </div>
+                <div v-else-if="it.kind === 'word'" class="card enter word-daily-card" role="button" @click="openWordLane(it.lane)">
                   <button type="button" class="circle" @click.stop="openWordLane(it.lane)"></button>
                   <div class="card-body">
                     <div class="card-title">{{ it.lane === 'due' ? '今日复习' : '今日新词' }}</div>
@@ -1736,9 +1826,9 @@ function reloadApp() {
               <img class="atlas-bg" :src="baseImg(spriteScene)" alt="" />
               <div v-if="!sprites.enabled" class="atlas-building"><b>建设中</b><span>图鉴打开以后，朋友才搬进来</span></div>
               <template v-if="sprites.enabled" v-for="t in sceneToys(spriteScene)" :key="'p'+t.id">
-                <div class="atlas-toy" :class="[t.anim, { flip: toyFlip[t.id] }]"
+                <div class="atlas-toy" :class="[t.anim, { flip: toyFlip[t.id], ready: t.id === 'memo-capsule' && capsule.state === 'ready', sealed: t.id === 'memo-capsule' && capsule.state === 'sealed' }]"
                   :style="{ left: t.x + '%', top: t.y + '%', width: t.w + '%' }"
-                  @click="t.flip && (toyFlip[t.id] = !toyFlip[t.id])">
+                  @click="t.id === 'memo-capsule' ? openCapsuleBox() : (t.flip && (toyFlip[t.id] = !toyFlip[t.id]))">
                   <template v-if="t.id === 'trace-pinwheel'">
                     <img class="stick" :src="toyImg('trace-pinwheel-stick')" alt="" />
                     <img class="blades" :src="toyImg('trace-pinwheel-blades')" alt="" />
@@ -1747,6 +1837,7 @@ function reloadApp() {
                     <img class="pole" :src="toyImg('memo-flag-pole')" alt="" />
                     <img class="fabric" :src="toyImg('memo-flag-fabric')" alt="" />
                   </template>
+                  <div v-else-if="t.id === 'memo-capsule'" class="capsule-box"><span class="lid"></span><span class="body"></span></div>
                   <img v-else class="toy" :src="toyImg(t.id)" :alt="t.name" />
                 </div>
               </template>
@@ -1993,6 +2084,48 @@ function reloadApp() {
           </div>
         </div>
         <button class="ghost" @click="toyShopOpen = false">关闭</button>
+      </div>
+    </div>
+
+    <div v-if="capsuleOpen" class="mask" @click.self="closeCapsuleBox">
+      <div class="shop-modal enter">
+        <h3>给以后的自己</h3>
+        <template v-if="capsule.state === 'sealed'">
+          <p class="cap-wait">给 {{ capsuleDateText(capsule.capsule && capsule.capsule.open_on) || '以后' }} 的自己</p>
+          <p class="dim-s">{{ capsule.wait }}。还不能看里面写了什么。</p>
+          <button class="ghost" @click="closeCapsuleBox">关上</button>
+        </template>
+        <template v-else-if="capsule.state === 'ready'">
+          <p>箱子可以拆了。</p>
+          <button class="do big" :disabled="capsuleBusy" @click="openCapsuleLetter">拆开</button>
+          <button class="ghost" @click="closeCapsuleBox">等一会儿</button>
+        </template>
+        <template v-else-if="capsuleOpenedView && capsule.capsule && capsule.capsule.q_line">
+          <div class="cap-snap">
+            <div><small>那时的你</small><strong>{{ snapLine(capsule.capsule.snapshot) }}</strong></div>
+            <div><small>现在的你</small><strong>{{ snapLine(capsule.now) }}</strong></div>
+          </div>
+          <p class="cap-q"><small>最拿手</small>{{ capsule.capsule.q_good }}</p>
+          <p class="cap-q"><small>还想变好</small>{{ capsule.capsule.q_wish }}</p>
+          <p class="cap-q"><small>给以后的自己</small>{{ capsule.capsule.q_line }}</p>
+          <button class="do big" @click="startNextCapsule">写下一封</button>
+          <button class="ghost" @click="closeCapsuleBox">关上</button>
+        </template>
+        <template v-else>
+          <div class="cap-opts">
+            <button v-for="o in capsule.options" :key="o.kind" type="button"
+              :class="['cap-opt', { on: capsuleForm.when_kind === o.kind }]"
+              @click="capsuleForm.when_kind = o.kind">
+              <strong>{{ o.label }}</strong>
+              <small>{{ o.hint }}</small>
+            </button>
+          </div>
+          <label class="fld"><span>现在最拿手的一件事</span><input v-model="capsuleForm.q_good" maxlength="40" /></label>
+          <label class="fld"><span>还想变好的一件事</span><input v-model="capsuleForm.q_wish" maxlength="40" /></label>
+          <label class="fld"><span>想对以后的自己说的一句</span><input v-model="capsuleForm.q_line" maxlength="40" /></label>
+          <button class="do big" :disabled="capsuleBusy" @click="submitCapsule">封进箱子</button>
+          <button class="ghost" @click="closeCapsuleBox">取消</button>
+        </template>
       </div>
     </div>
 
@@ -2905,6 +3038,27 @@ body {
 .mask { position: fixed; inset: 0; background: rgba(20,40,60,.35); display: flex; align-items: center; justify-content: center; z-index: 20; padding: 12px; overflow: auto; }
 .shop-modal { background: var(--surface); border-radius: var(--radius-lg); padding: 22px; width: min(92%, 420px); max-height: calc(100vh - 24px); max-height: calc(100dvh - 24px); overflow: auto; }
 .shop-modal h3 { margin: 0 0 14px; }
+.cap-wait { margin: 0 0 8px; font-size: 18px; font-weight: 800; }
+.cap-opts { display: grid; gap: 8px; margin: 0 0 12px; }
+.cap-opt {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left;
+  border: 1px solid var(--line); background: var(--surface-2); border-radius: var(--radius-md);
+  padding: 10px 12px; cursor: pointer; font-family: inherit;
+}
+.cap-opt.on { border-color: var(--accent); background: var(--warm); }
+.cap-opt strong { font-size: 14px; }
+.cap-opt small { color: var(--ink-3); font-size: 12px; }
+.cap-snap {
+  display: grid; gap: 8px; margin: 0 0 12px; padding: 10px 12px;
+  background: var(--warm); border-radius: var(--radius-md);
+}
+.cap-snap small { display: block; color: var(--ink-3); font-size: 12px; }
+.cap-q { margin: 0 0 10px; font-size: 15px; line-height: 1.5; }
+.cap-q small { display: block; color: var(--ink-3); font-size: 12px; margin-bottom: 2px; }
+.fld { display: block; margin: 0 0 10px; }
+.fld span { display: block; font-size: 12px; font-weight: 700; color: var(--ink-3); margin-bottom: 4px; }
+.fld input { width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius-sm); font-size: 15px; font-family: inherit; }
+
 .shop-list { display: flex; flex-direction: column; gap: 12px; }
 .shop-item { display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--line); border-radius: var(--radius-md); padding: 12px; }
 .shop-price { color: var(--accent); font-weight: 800; }
@@ -3273,6 +3427,22 @@ body {
 .atlas-building span { font-size: 13px; opacity: .9; }
 .atlas-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
 .atlas-toy { position: absolute; transform: translate(-50%, -100%); z-index: 2; }
+.atlas-toy.ready .capsule-box { animation: jar-glow 1.6s ease-in-out infinite; }
+.atlas-toy.sealed .capsule-box { filter: saturate(.9); }
+.capsule-box { position: relative; width: 100%; aspect-ratio: 1; pointer-events: none; }
+.capsule-box .body {
+  position: absolute; left: 14%; right: 14%; top: 40%; bottom: 10%;
+  background: linear-gradient(180deg, #f6c98a, #e0a45a);
+  border: 2px solid #c4843d; border-radius: 8px 8px 10px 10px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.35);
+}
+.capsule-box .lid {
+  position: absolute; left: 10%; right: 10%; top: 22%; height: 24%;
+  background: linear-gradient(180deg, #ffd9a0, #e8b56a);
+  border: 2px solid #c4843d; border-radius: 8px 8px 4px 4px;
+}
+.atlas-toy.ready .capsule-box .lid { transform: translateY(-18%); }
+
 .atlas-toy .toy, .atlas-toy .blades, .atlas-toy .fabric { width: 100%; display: block; pointer-events: none; }
 .atlas-toy .stick, .atlas-toy .pole { position: absolute; inset: 0; width: 100%; z-index: 3; pointer-events: none; }
 .atlas-toy.flip .toy { transform: scaleX(-1); }

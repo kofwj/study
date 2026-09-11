@@ -61,6 +61,7 @@ BASE_LAYOUT = {
         {"id": "leaf-jars", "name": "萤火虫瓶", "x": 20, "y": 34, "w": 11, "kind": "shop", "anim": "glow"},
         {"id": "memo-award", "name": "奖状", "x": 45, "y": 43, "w": 10, "kind": "memo"},
         {"id": "memo-flag", "name": "小旗", "x": 11, "y": 87, "w": 10, "kind": "memo", "anim": "wave"},
+        {"id": "memo-capsule", "name": "时间胶囊", "x": 68, "y": 92, "w": 11, "kind": "memo"},
     ],
     "sky": [
         {"id": "sky-balloon", "name": "热气球", "x": 19, "y": 56, "w": 18, "kind": "shop",

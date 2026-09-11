@@ -61,6 +61,9 @@ export const api = {
   bank: () => j('/api/bank'),
   bankDeposit: (amount) => j('/api/bank/deposit', { method: 'POST', ...body({ amount }) }),
   bankWithdraw: (amount) => j('/api/bank/withdraw', { method: 'POST', ...body({ amount }) }),
+  capsule: () => j('/api/capsule'),
+  capsuleSeal: (o) => j('/api/capsule', { method: 'POST', ...body(o) }),
+  capsuleOpen: () => j('/api/capsule/open', { method: 'POST' }),
 
   admin: {
     changePin: (pin, current) => j('/api/admin/pin', { method: 'POST', ...body({ pin, current }) }),
