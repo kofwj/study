@@ -2033,16 +2033,15 @@ function reloadApp() {
 
                   <div class="bank-desk-btns">
                     <button class="bank-act in" :disabled="bankBusy || bankClosed || bankData.pocket_balance < bankAmount" @click="bankMove('deposit')">
-
                       <span>{{ bankDays ? '开存单' : '存进金库' }}</span>
                       <small>{{ bankDays ? bankDays + ' 天后再给利息' : '从口袋转入活期' }}</small>
+                    </button>
                     <button class="bank-act out" :disabled="bankBusy || bankClosed || (bankData.available || 0) < bankAmount" @click="bankMove('withdraw')">
-
-                    <button class="bank-act out" :disabled="bankBusy || (bankData.available || 0) < bankAmount" @click="bankMove('withdraw')">
                       <span>请柜员开门</span>
                       <small>只能取活期 {{ bankData.available || 0 }} 颗</small>
                     </button>
                   </div>
+
 
                   <div v-if="bankActiveDeposits.length" class="bank-deposits">
                     <div v-for="d in bankActiveDeposits" :key="d.id" class="bank-dep">
