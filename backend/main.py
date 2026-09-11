@@ -1165,6 +1165,27 @@ class CompleteBody(BaseModel):
     metrics: Optional[dict] = None
 
 
+def _metric_num(metrics, key):
+    if not metrics:
+        return 0
+    try:
+        v = metrics.get(key)
+        if v is None or v == "":
+            return 0
+        return float(v)
+    except (TypeError, ValueError):
+        return 0
+
+
+def daily_award(c, d, metrics):
+    """每日打卡阳光。围棋对弈：至少赢 1 局才发任务阳光，只输不给。"""
+    bonus, detail = compute_daily_bonus(c, d, metrics)
+    base = int(d["sunshine"] or 0)
+    if d["id"] == "go-play" and _metric_num(metrics, "win") < 1:
+        return 0, 0, []
+    return base + bonus, bonus, detail
+
+
 def compute_daily_bonus(c, d, metrics):
     per = d["bonus_per_metric"] or 0
     if not metrics or not per:
@@ -1219,16 +1240,19 @@ def complete(body: CompleteBody):
         d = c.execute("SELECT * FROM daily_tasks WHERE id=? AND (family_id IS NULL OR family_id=?)",
                       (tid, _fam.get())).fetchone()
         if d:
-            bonus, detail = compute_daily_bonus(c, d, body.metrics)
-            delta = d["sunshine"] + bonus
+            delta, bonus, detail = daily_award(c, d, body.metrics)
             mj = json.dumps(body.metrics) if body.metrics else None
             cid = db.insert(c, "INSERT INTO completions(task_id,date,status,sunshine,metrics,kind,created_at,kid_id) "
                             "VALUES(?,?,?,?,?,?,?,?) ON CONFLICT DO NOTHING",
                             (tid, t, "completed", delta, mj, "daily", db.now(), kid_id()))
             if cid is None:
                 raise HTTPException(409, "今天这项已完成过啦")
-            insert_ledger(c, t, delta, "daily", f"cmp-{cid}",
-                             d["name"] + ("（破纪录 +%d）" % bonus if bonus else ""))
+            note = d["name"]
+            if bonus:
+                note += "（破纪录 +%d）" % bonus
+            elif d["id"] == "go-play" and delta == 0:
+                note += "（今天没赢，阳光下次再给）"
+            insert_ledger(c, t, delta, "daily", f"cmp-{cid}", note)
             m = maybe_milestone(c)
             c.commit()
             res = {"delta": delta, "bonus": bonus, "bonus_detail": detail, "milestone": m, "level": level_info(c)}

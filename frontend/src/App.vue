@@ -866,7 +866,7 @@ async function refresh() {
     rewards.value = r
     boxes.value = bx
     const hidden = new Set(data.hidden_subjects || [])
-    if (hidden.has(activeTab.value)) activeTab.value = '今日推荐'
+    if (hidden.has(activeTab.value) || SIDEBAR_DAILY_ONLY.has(activeTab.value)) activeTab.value = '今日推荐'
     reviewDue.value = (rv || []).filter(x => !hidden.has(x.subject_id))
     recentLedger.value = led || []
     if (bk) bankData.value = bk
@@ -996,6 +996,21 @@ const chartDays = computed(() => {
   return days
 })
 const dailyDialog = reactive({ open: false, task: null, vals: {}, time: {} })
+function isGoPlay(task) { return !!(task && task.id === 'go-play') }
+function goWinCount(src) {
+  const n = Number(src && src.win)
+  return Number.isNaN(n) ? 0 : n
+}
+const goDialogWins = computed(() => goWinCount(dailyDialog.vals))
+function dailySunshineHint(task) {
+  if (!task) return ''
+  if (isGoPlay(task)) return `看「赢了几局」：填 1 或更多才给 +${task.sunshine || 5} 阳光。赢 0 局（空着也算 0）不给，输了几局不影响`
+  return `打卡 +${task.sunshine || 5} 阳光`
+}
+function dailySubmitLabel(task) {
+  if (isGoPlay(task) && goDialogWins.value < 1) return '记下对局，这次没有阳光'
+  return '打卡，赚阳光'
+}
 function openDaily(task) {
   if (task.done_today) return
   dailyDialog.task = task
@@ -1043,8 +1058,10 @@ async function submitDaily(event) {
       const stored = secondsToMetric(m, totalSec)
       if (stored != null && !Number.isNaN(stored)) metrics[m.id] = stored
     } else {
-      const v = Number(dailyDialog.vals[m.id])
-      if (v && !Number.isNaN(v)) metrics[m.id] = v
+      const raw = dailyDialog.vals[m.id]
+      if (raw === '' || raw == null) continue
+      const v = Number(raw)
+      if (!Number.isNaN(v)) metrics[m.id] = v
     }
   }
   if (actionBusy.value) return
@@ -1054,15 +1071,17 @@ async function submitDaily(event) {
     pulseCompanion()
     playSound('complete') || playCompleteBeep()
     if (navigator.vibrate) navigator.vibrate([50, 30, 50])
-    if (event) flyPlus(event.clientX, event.clientY, `+${r.delta} 阳光`)
+    if (event && r.delta > 0) flyPlus(event.clientX, event.clientY, `+${r.delta} 阳光`)
     const encouragement = getEncouragement({
       type: 'taskComplete',
       reward: r.delta,
       isRecord: r.bonus > 0,
     })
-    const msg = r.bonus > 0 
-      ? `${encouragement}！破纪录了 +${r.delta} 阳光（+${r.bonus} 奖励）`
-      : `${encouragement}！+${r.delta} 阳光`
+    let msg
+    if (r.bonus > 0) msg = `${encouragement}！破纪录了 +${r.delta} 阳光（+${r.bonus} 奖励）`
+    else if (r.delta > 0) msg = `${encouragement}！+${r.delta} 阳光`
+    else if (isGoPlay(dailyDialog.task)) msg = '记下了。赢了 0 局，这次没有阳光'
+    else msg = `${encouragement}！记下了`
     showToast(msg + milestoneTxt(r.milestone))
     dailyDialog.open = false
     await refresh()
@@ -1390,10 +1409,14 @@ function subjectRank(id) {
   const i = SUBJECT_ORDER.indexOf(id)
   return i < 0 ? 99 : i
 }
+const SIDEBAR_DAILY_ONLY = new Set(['体育', '围棋'])
 const orderedSubjects = computed(() => {
-  // 有内容才出现；家长关掉的科目（默认道法）不进孩子侧栏
+  // 有课本进度才进侧栏；体育/围棋只有每日打卡，放今日推荐
   const hidden = new Set(data.hidden_subjects || [])
-  const list = data.subjects.filter(s => (subjectProgress.value[s.id] || {}).total > 0 && !hidden.has(s.id))
+  const list = data.subjects.filter(s => {
+    if (hidden.has(s.id) || SIDEBAR_DAILY_ONLY.has(s.id)) return false
+    return (subjectProgress.value[s.id] || {}).total > 0
+  })
   list.sort((a, b) => SUBJECT_ORDER.indexOf(a.id) - SUBJECT_ORDER.indexOf(b.id))
   return list
 })
@@ -1579,7 +1602,7 @@ function reloadApp() {
                       <div class="fit-bar"><i :style="{ width: fitnessBar(it.d).pct + '%' }"></i><em>{{ fitnessBar(it.d).status }}</em></div>
                       <div class="fit-std">{{ fitnessBar(it.d).lines }}</div>
                     </template>
-                    <div class="plus">{{ it.d.subject_id || '体育' }} · +{{ it.d.sunshine || 5 }} <Sun class="ico sun" :size="12" /></div>
+                    <div class="plus">{{ dailySunshineHint(it.d) }} <Sun class="ico sun" :size="12" /></div>
                   </div>
                   <button class="trend" @click="openChart(it.d)" title="看趋势"><TrendingUp :size="15" /></button>
                 </div>
@@ -1870,7 +1893,7 @@ function reloadApp() {
                     <div class="fit-bar"><i :style="{ width: fitnessBar(d).pct + '%' }"></i><em>{{ fitnessBar(d).status }}</em></div>
                     <div class="fit-std">{{ fitnessBar(d).lines }}</div>
                   </template>
-                  <div class="plus">+{{ d.sunshine }} <Sun class="ico sun" :size="12" /></div>
+                  <div class="plus">{{ dailySunshineHint(d) }} <Sun class="ico sun" :size="12" /></div>
                 </div>
                 <button class="trend" @click="openChart(d)" title="看趋势"><TrendingUp :size="15" /></button>
               </div>
@@ -1968,6 +1991,7 @@ function reloadApp() {
       <div class="shop-modal enter">
         <h3>{{ dailyDialog.task.name }}</h3>
         <p v-if="dailyDialog.task.note" class="daily-dialog-note">怎么做：{{ dailyDialog.task.note }}</p>
+        <p v-if="isGoPlay(dailyDialog.task)" class="daily-dialog-award">{{ dailySunshineHint(dailyDialog.task) }}</p>
         <div v-for="m in dailyDialog.task.metrics" :key="m.id" class="metric">
           <label>{{ m.label }}</label>
           <div v-if="m.note" class="metric-note">{{ m.note }}</div>
@@ -1978,9 +2002,9 @@ function reloadApp() {
             <span class="time-sep">.</span>
             <label class="time-part"><input :id="'t-cs-' + m.id" :value="dailyDialog.time[m.id].cs" type="text" inputmode="numeric" maxlength="2" placeholder="00" @input="onTimePart(m.id, 'cs', $event, 99)" /><span>百分秒</span></label>
           </div>
-          <input v-else v-model.number="dailyDialog.vals[m.id]" type="number" inputmode="decimal" :placeholder="m.unit" />
+          <input v-else v-model.number="dailyDialog.vals[m.id]" type="number" inputmode="decimal" min="0" :placeholder="m.unit" />
         </div>
-        <button class="do big" @click="submitDaily($event)">打卡，赚阳光 <Sun class="ico" :size="15" /></button>
+        <button class="do big" @click="submitDaily($event)">{{ dailySubmitLabel(dailyDialog.task) }} <Sun v-if="!(isGoPlay(dailyDialog.task) && goDialogWins < 1)" class="ico" :size="15" /></button>
         <button class="ghost" @click="dailyDialog.open = false">取消</button>
       </div>
     </div>
@@ -2861,6 +2885,7 @@ body {
 .metric { margin-bottom: 10px; }
 .metric label { display: block; font-size: 13px; margin-bottom: 4px; }
 .daily-dialog-note, .metric-note { margin: -4px 0 8px; color: var(--ink-3); font-size: 12px; line-height: 1.5; }
+.daily-dialog-award { margin: -2px 0 10px; color: var(--accent-ink); font-size: 13px; line-height: 1.5; font-weight: 700; }
 .metric-note { margin: -1px 0 4px; }
 .time-row { display: flex; gap: 6px; align-items: center; }
 .time-part { display: flex; flex-direction: column; align-items: stretch; gap: 4px; flex: 1; margin: 0; min-width: 0; }
