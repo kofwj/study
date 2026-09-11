@@ -490,10 +490,9 @@ function openCapsuleBox() {
   capsuleOpen.value = true
   spriteScene.value = 'leaf'
 }
-function goOpenCapsule() {
-  activeTab.value = 'base'
+async function goOpenCapsule() {
   spriteScene.value = 'leaf'
-  loadSprites()
+  await goBase()
   openCapsuleBox()
 }
 function startNextCapsule() {
@@ -540,13 +539,20 @@ const spriteBusy = ref(false)
 const toyShopOpen = ref(false)
 const morningShow = ref(false)
 const toyFlip = reactive({})
+const SPRITE_CACHE = 'pw2'
 function isNight() {
   const h = new Date().getHours()
   return h >= 19 || h < 6
 }
-function spImg(id) { return `/sprites/${id}.webp` }
-function toyImg(id) { return `/sprites/toys/${id}.webp` }
-function baseImg(scene) { return `/sprites/base/${scene}-${isNight() ? 'night' : 'day'}.webp` }
+function spImg(id) { return `/sprites/${id}.webp?v=${SPRITE_CACHE}` }
+function toyImg(id) { return `/sprites/toys/${id}.webp?v=${SPRITE_CACHE}` }
+function baseImg(scene) { return `/sprites/base/${scene}-${isNight() ? 'night' : 'day'}.webp?v=${SPRITE_CACHE}` }
+const morningPending = computed(() => !!(
+  sprites.value.enabled && sprites.value.base_enabled && sprites.value.morning?.new && sprites.value.morning?.text
+))
+function maybeShowMorning() {
+  if (morningPending.value) morningShow.value = true
+}
 function displayName(it) { return (it.nickname && it.nickname.trim()) || it.name }
 const dutySprite = computed(() => {
   if (!sprites.value.enabled || !sprites.value.base_enabled || !sprites.value.on_duty) return null
@@ -617,15 +623,20 @@ async function loadSprites() {
   try {
     const sp = await api.sprites()
     sprites.value = { ...sprites.value, ...sp, loaded: true }
-    if (sp.enabled && sp.base_enabled && sp.morning && sp.morning.new) morningShow.value = true
   } catch {
     sprites.value.enabled = false
   }
+}
+async function goBase() {
+  activeTab.value = 'base'
+  await loadSprites()
+  maybeShowMorning()
 }
 async function openSprites() {
   await loadSprites()
   if (!sprites.value.enabled && !sprites.value.base_enabled) return
   spritesOpen.value = true
+  maybeShowMorning()
 }
 function openSpriteCell(it) {
   if (!it.owned) { showToast('连续打卡开宝箱才会遇到它'); return }
@@ -988,7 +999,7 @@ async function refresh() {
     if (wd) applyWordToday(wd)
     if (sp) {
       sprites.value = { ...sprites.value, ...sp, loaded: true }
-      if (sp.enabled && sp.base_enabled && sp.morning && sp.morning.new) morningShow.value = true
+      if (activeTab.value === 'base' || spritesOpen.value) maybeShowMorning()
     }
     if (cap) applyCapsule(cap)
     err.value = ''
@@ -1644,7 +1655,7 @@ function reloadApp() {
           <button class="nav" :class="{ on: activeTab === 'sunshine' }" @click="activeTab = 'sunshine'">
             <span><Sun class="ico" :size="15" /> 我的阳光</span>
           </button>
-          <button class="nav" :class="{ on: activeTab === 'base' }" @click="activeTab = 'base'; loadSprites()">
+          <button class="nav" :class="{ on: activeTab === 'base' }" @click="goBase">
             <span><House class="ico" :size="15" /> 秘密基地</span>
           </button>
           <button class="nav" :class="{ on: activeTab === 'bank' }" @click="activeTab = 'bank'">
@@ -1816,12 +1827,20 @@ function reloadApp() {
               <span v-if="sprites.enabled" class="dust-chip">星尘 {{ sprites.dust }}</span>
               <button v-if="sprites.enabled" type="button" class="do" @click="toyShopOpen = true">玩具店</button>
             </h1>
+            <div v-if="morningShow && sprites.morning?.text" class="morning-note" @click="ackMorning">
+              <img v-if="sprites.morning.who" class="duty-face" :src="spImg(sprites.morning.who)" alt="" />
+              <div>
+                <strong>昨晚报</strong>
+                <p>{{ sprites.morning.text }}</p>
+                <small>点一下收好</small>
+              </div>
+            </div>
             <div class="atlas-scene-tabs">
               <button type="button" class="tab" :class="{ on: spriteScene === 'sun' }" @click="spriteScene = 'sun'">天台</button>
               <button type="button" class="tab" :class="{ on: spriteScene === 'leaf' }" @click="spriteScene = 'leaf'">树屋</button>
               <button type="button" class="tab" :class="{ on: spriteScene === 'sky' }" @click="spriteScene = 'sky'">云上</button>
             </div>
-            <div class="atlas-stage atlas-stage-page">
+            <div class="atlas-stage atlas-stage-page" :class="{ 'moon-full': sprites.enabled && spriteScene === 'sky' && sprites.today?.review_clear }">
               <img class="atlas-bg" :src="baseImg(spriteScene)" alt="" />
               <div v-if="!sprites.enabled" class="atlas-building"><b>建设中</b><span>图鉴打开以后，朋友才搬进来</span></div>
               <template v-if="sprites.enabled" v-for="t in sceneToys(spriteScene)" :key="'p'+t.id">
@@ -1847,7 +1866,6 @@ function reloadApp() {
               </template>
               <img v-if="sprites.enabled && spriteScene === 'sun' && sprites.today?.unit_done" class="atlas-plane" :src="toyImg('trace-plane')" alt="" />
               <span v-if="sprites.enabled && spriteScene === 'sky' && sprites.today?.word_done" class="atlas-star">✦</span>
-              <span v-if="sprites.enabled && spriteScene === 'sky' && sprites.today?.review_clear" class="atlas-moon">☾</span>
             </div>
           </template>
           <div v-else class="coming-page">
@@ -2383,21 +2401,24 @@ function reloadApp() {
       </div>
     </div>
 
-    <div v-if="morningShow && sprites.morning?.text" class="morning-pop" @click="ackMorning">
-      <img v-if="sprites.morning.who" class="duty-face" :src="spImg(sprites.morning.who)" alt="" />
-      <p>{{ sprites.morning.text }}</p>
-    </div>
-
     <div v-if="spritesOpen" class="mask" @click.self="spritesOpen = false">
       <div class="shop-modal ach-modal atlas-modal">
         <h3 class="base-head">{{ sprites.enabled ? ('阳光图鉴 ' + sprites.owned + '/12') : '秘密基地' }} <span v-if="sprites.enabled" class="dust-chip">星尘 {{ sprites.dust }}</span></h3>
         <div class="ach-body">
+          <div v-if="morningShow && sprites.morning?.text" class="morning-note" @click="ackMorning">
+            <img v-if="sprites.morning.who" class="duty-face" :src="spImg(sprites.morning.who)" alt="" />
+            <div>
+              <strong>昨晚报</strong>
+              <p>{{ sprites.morning.text }}</p>
+              <small>点一下收好</small>
+            </div>
+          </div>
           <div v-if="sprites.base_enabled" class="atlas-scene-tabs">
             <button type="button" class="tab" :class="{ on: spriteScene === 'sun' }" @click="spriteScene = 'sun'">天台</button>
             <button type="button" class="tab" :class="{ on: spriteScene === 'leaf' }" @click="spriteScene = 'leaf'">树屋</button>
             <button type="button" class="tab" :class="{ on: spriteScene === 'sky' }" @click="spriteScene = 'sky'">云上</button>
           </div>
-          <div v-if="sprites.base_enabled" class="atlas-stage">
+          <div v-if="sprites.base_enabled" class="atlas-stage" :class="{ 'moon-full': sprites.enabled && spriteScene === 'sky' && sprites.today?.review_clear }">
             <img class="atlas-bg" :src="baseImg(spriteScene)" alt="" />
             <div v-if="!sprites.enabled" class="atlas-building"><b>建设中</b><span>图鉴打开以后，朋友才搬进来</span></div>
             <template v-if="sprites.enabled" v-for="t in sceneToys(spriteScene)" :key="t.id">
@@ -2423,7 +2444,6 @@ function reloadApp() {
             </template>
             <img v-if="sprites.enabled && spriteScene === 'sun' && sprites.today?.unit_done" class="atlas-plane" :src="toyImg('trace-plane')" alt="" />
             <span v-if="sprites.enabled && spriteScene === 'sky' && sprites.today?.word_done" class="atlas-star">✦</span>
-            <span v-if="sprites.enabled && spriteScene === 'sky' && sprites.today?.review_clear" class="atlas-moon">☾</span>
           </div>
           <details v-if="sprites.enabled" v-for="g in sprites.series" :key="g.id" class="ach-series" open>
             <summary>{{ g.name }} {{ g.owned }}/{{ g.total }}</summary>
@@ -3447,13 +3467,16 @@ body {
 .box-egg { font-size: 56px; animation: wobble 1s ease-in-out infinite; }
 .box-face { width: 96px; height: 96px; object-fit: contain; display: block; margin: 0 auto 8px; }
 @keyframes wobble { 0%,100% { transform: rotate(-8deg); } 50% { transform: rotate(8deg); } }
-.morning-pop {
-  position: fixed; left: 16px; top: calc(var(--topbar-height, 72px) + 8px); z-index: 40;
-  max-width: min(92vw, 360px); background: var(--surface); border-radius: var(--radius-lg);
-  padding: 12px 14px; box-shadow: 0 8px 24px rgba(40,30,20,.18); display: flex; gap: 12px; align-items: center;
-  cursor: pointer;
+.morning-note {
+  display: flex; gap: 12px; align-items: flex-start;
+  max-width: 920px; margin: 0 0 10px;
+  background: var(--warm-2); border: 2px solid var(--line); border-radius: var(--radius-lg);
+  padding: 10px 12px; cursor: pointer;
 }
-.morning-pop p { margin: 0; font-size: 14px; line-height: 1.45; }
+.morning-note .duty-face { width: 36px; height: 36px; flex: 0 0 36px; }
+.morning-note strong { display: block; font-size: 13px; color: var(--accent-ink); }
+.morning-note p { margin: 2px 0 0; font-size: 14px; line-height: 1.45; }
+.morning-note small { color: var(--ink-3); font-size: 12px; }
 .atlas-dust { float: right; font-size: 13px; font-weight: 600; color: var(--ink-2); }
 .atlas-scene-tabs { display: flex; gap: 8px; margin: 0 0 8px; }
 .atlas-scene-tabs .tab { border: 2px solid var(--line); background: var(--surface-2); border-radius: 999px; padding: 4px 12px; font: inherit; cursor: pointer; }
@@ -3500,8 +3523,20 @@ body {
 .atlas-buddy { position: absolute; transform: translate(-50%, -100%); z-index: 5; filter: drop-shadow(0 2px 3px rgba(0,0,0,.3)); pointer-events: none; }
 .atlas-plane { position: absolute; width: 10%; top: 28%; left: -12%; animation: plane-fly 4.5s linear infinite; z-index: 6; }
 @keyframes plane-fly { to { left: 110%; top: 18%; } }
-.atlas-star { position: absolute; left: 18%; top: 14%; color: #ffe9a8; font-size: 18px; }
-.atlas-moon { position: absolute; right: 16%; top: 10%; color: #f4f0d8; font-size: 22px; }
+.atlas-star { position: absolute; left: 18%; top: 14%; color: #ffe9a8; font-size: 18px; filter: drop-shadow(0 0 6px #ffe9a8); }
+.atlas-stage.moon-full::after {
+  content: "";
+  position: absolute; right: 12%; top: 6%;
+  width: 9%; aspect-ratio: 1;
+  border-radius: 50%;
+  pointer-events: none;
+  box-shadow: 0 0 18px 8px rgba(255, 244, 210, .55);
+  animation: moon-glow 2.4s ease-in-out infinite;
+}
+@keyframes moon-glow {
+  0%, 100% { opacity: .7; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.08); }
+}
 .atlas-cell-face { width: 48px; height: 48px; object-fit: contain; }
 .atlas-sil { width: 48px; height: 48px; margin: 0 auto; border-radius: 50%; background: var(--ink); opacity: .18; }
 .base-head { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
