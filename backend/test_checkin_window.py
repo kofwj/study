@@ -5,8 +5,7 @@ from datetime import datetime
 
 os.environ.pop("DATABASE_URL", None)
 os.environ.pop("DATABASE_APP_URL", None)
-os.environ["SECRET_KEY"] = "prod-secret"
-os.environ["SUNSHINE_FORCE_CHECKIN_WINDOW"] = "1"
+os.environ["SECRET_KEY"] = "test-secret"
 
 import db  # noqa: E402
 import main  # noqa: E402
@@ -18,14 +17,17 @@ def _at(h, m=0):
 
 def test_window_hours():
     os.environ["SUNSHINE_FORCE_CHECKIN_WINDOW"] = "1"
-    early = main.checkin_window(_at(6, 59))
-    assert early["open"] is False and "太早" in early["hint"]
-    open7 = main.checkin_window(_at(7, 0))
-    assert open7["open"] is True and open7["hint"] == ""
-    open20 = main.checkin_window(_at(20, 59))
-    assert open20["open"] is True
-    closed = main.checkin_window(_at(21, 0))
-    assert closed["open"] is False and "打烊" in closed["hint"]
+    try:
+        early = main.checkin_window(_at(6, 59))
+        assert early["open"] is False and "太早" in early["hint"]
+        open7 = main.checkin_window(_at(7, 0))
+        assert open7["open"] is True and open7["hint"] == ""
+        open20 = main.checkin_window(_at(20, 59))
+        assert open20["open"] is True
+        closed = main.checkin_window(_at(21, 0))
+        assert closed["open"] is False and "打烊" in closed["hint"]
+    finally:
+        os.environ.pop("SUNSHINE_FORCE_CHECKIN_WINDOW", None)
 
 
 def test_tests_skip_window_by_default():
@@ -44,16 +46,21 @@ def test_api_rejects_after_hours():
     os.environ["SUNSHINE_NOW"] = "2026-09-11T22:10:00"
     os.environ["SUNSHINE_DB"] = str(Path(tempfile.mkdtemp()) / "w.db")
     db.init_db()
-    with TestClient(main.app) as cli:
-        assert cli.post("/api/auth/login", json={"account": "lele", "pin": "8888"}).status_code == 200
-        r = cli.post("/api/checkin")
-        assert r.status_code == 403
-        assert "打烊" in r.json()["detail"]
-        daily = cli.get("/api/tasks").json()["daily"][0]["id"]
-        r = cli.post("/api/complete", json={"task_id": daily})
-        assert r.status_code == 403
-        r = cli.post("/api/words/session/start")
-        assert r.status_code == 403
+    try:
+        with TestClient(main.app) as cli:
+            assert cli.post("/api/auth/login", json={"account": "lele", "pin": "8888"}).status_code == 200
+            r = cli.post("/api/checkin")
+            assert r.status_code == 403
+            assert "打烊" in r.json()["detail"]
+            daily = cli.get("/api/tasks").json()["daily"][0]["id"]
+            r = cli.post("/api/complete", json={"task_id": daily})
+            assert r.status_code == 403
+            r = cli.post("/api/words/session/start")
+            assert r.status_code == 403
+    finally:
+        os.environ.pop("SUNSHINE_NOW", None)
+        os.environ.pop("SUNSHINE_FORCE_CHECKIN_WINDOW", None)
+        os.environ["SECRET_KEY"] = "test-secret"
 
 
 if __name__ == "__main__":

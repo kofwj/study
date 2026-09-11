@@ -344,6 +344,9 @@ def level_info(c):
 WEEKDAYS = "一二三四五六日"
 CHECKIN_OPEN_HOUR = 7
 CHECKIN_CLOSE_HOUR = 21
+BANK_OPEN_HOUR = 8
+BANK_CLOSE_HOUR = 20
+
 
 
 def today_label():
@@ -351,12 +354,21 @@ def today_label():
     return "%d年%d月%d日 星期%s" % (d.year, d.month, d.day, WEEKDAYS[d.weekday()])
 
 
-def _checkin_window_enforced():
-    if os.environ.get("SUNSHINE_FORCE_CHECKIN_WINDOW") == "1":
+def _hours_enforced(force_key, skip_key):
+    if os.environ.get(force_key) == "1":
         return True
-    if os.environ.get("SUNSHINE_SKIP_CHECKIN_WINDOW") == "1":
+    if os.environ.get(skip_key) == "1":
         return False
     return os.environ.get("SECRET_KEY") != "test-secret"
+
+
+def _checkin_window_enforced():
+    return _hours_enforced("SUNSHINE_FORCE_CHECKIN_WINDOW", "SUNSHINE_SKIP_CHECKIN_WINDOW")
+
+
+def _bank_window_enforced():
+    return _hours_enforced("SUNSHINE_FORCE_BANK_WINDOW", "SUNSHINE_SKIP_BANK_WINDOW")
+
 
 
 def checkin_window(now=None):
@@ -384,6 +396,34 @@ def require_checkin_open():
     if not w["open"]:
         raise HTTPException(403, w["hint"] or "现在不能打卡")
     return w
+
+
+def bank_window(now=None):
+    now = now or db.local_now()
+    open_ok = BANK_OPEN_HOUR <= now.hour < BANK_CLOSE_HOUR
+    if not _bank_window_enforced():
+        open_ok = True
+    if now.hour < BANK_OPEN_HOUR:
+        hint = "储蓄所每天 8:00 到 20:00 营业，现在还太早"
+    elif now.hour >= BANK_CLOSE_HOUR:
+        hint = "储蓄所每天 8:00 到 20:00 营业，现在已经打烊"
+    else:
+        hint = "今天 8:00 到 20:00 可以存取"
+    return {
+        "open": open_ok,
+        "from": "08:00",
+        "until": "20:00",
+        "hint": hint if not open_ok else "",
+        "now": now.strftime("%H:%M"),
+    }
+
+
+def require_bank_open():
+    w = bank_window()
+    if not w["open"]:
+        raise HTTPException(403, w["hint"] or "储蓄所现在打烊了")
+    return w
+
 
 
 # 系统任务按学期；自定义任务按全家/指定孩子，不因挂在教材单元上漏给别的娃。
@@ -1874,7 +1914,10 @@ def _bank_payload(c, kid=None):
         "interest": interest_cfg if interest_cfg["enabled"] else None,
         "deposit_terms": depmod.term_catalog(),
         "deposits": deposits,
+        "hours": bank_window(),
     }
+
+
 
 
 @app.get("/api/bank")
@@ -1970,7 +2013,9 @@ def capsule_open():
 
 @app.post("/api/bank/deposit")
 def bank_deposit(b: BankAmountIn):
+    require_bank_open()
     c = get_conn()
+
     try:
         if not _bank_enabled(c):
             raise HTTPException(403, "阳光银行还没开启")
@@ -2009,7 +2054,9 @@ def bank_deposit(b: BankAmountIn):
 
 @app.post("/api/bank/withdraw")
 def bank_withdraw(b: BankAmountIn):
+    require_bank_open()
     c = get_conn()
+
     try:
         if not _bank_enabled(c):
             raise HTTPException(403, "阳光银行还没开启")
@@ -2040,7 +2087,9 @@ def bank_withdraw(b: BankAmountIn):
 
 @app.post("/api/bank/deposits/{did}/break")
 def bank_break_deposit(did: str):
+    require_bank_open()
     c = get_conn()
+
     try:
         if not _bank_enabled(c):
             raise HTTPException(403, "阳光银行还没开启")

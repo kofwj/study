@@ -719,13 +719,24 @@ function closeBoxMask() {
 const rankMapOpen = ref(false)
 const rankMap = ref(null)
 const recentLedger = ref([])
-const bankData = ref({ enabled: false, balance: 0, locked: 0, available: 0, pocket_balance: 0, goal: null, requests: [], ledger: [], interest: null, deposit_terms: [], deposits: [] })
+const bankData = ref({ enabled: false, balance: 0, locked: 0, available: 0, pocket_balance: 0, goal: null, requests: [], ledger: [], interest: null, deposit_terms: [], deposits: [], hours: { open: true, from: '08:00', until: '20:00', hint: '', now: '' } })
+
 const bankAmount = ref(5)
 const bankDays = ref(0)
 const bankBusy = ref(false)
 const bankPassbookOpen = ref(false)
 const bankPending = computed(() => (bankData.value.requests || []).filter(r => r.status === 'pending'))
 const bankActiveDeposits = computed(() => (bankData.value.deposits || []).filter(d => d.state === 'active'))
+const bankClosed = computed(() => bankData.value.hours && bankData.value.hours.open === false)
+function bankClosedHint() {
+  return (bankData.value.hours && bankData.value.hours.hint) || '储蓄所每天 8:00 到 20:00 营业'
+}
+function guardBankOpen() {
+  if (!bankClosed.value) return true
+  showToast(bankClosedHint())
+  return false
+}
+
 function bankInterestCycle(cycle) {
   if (cycle === 'biweekly') return '每两周'
   if (cycle === 'monthly') return '每月'
@@ -1288,9 +1299,11 @@ async function openShop() {
   try { myRedeems.value = await api.redemptions() } catch {}
 }
 async function bankMove(kind) {
+  if (!guardBankOpen()) return
   const amount = Number(bankAmount.value)
   if (!Number.isInteger(amount) || amount < 1) return showToast('请输入正整数阳光')
   if (bankBusy.value) return
+
   bankBusy.value = true
   try {
     if (kind === 'deposit') {
@@ -1306,7 +1319,9 @@ async function bankMove(kind) {
   finally { bankBusy.value = false }
 }
 async function bankBreak(d) {
+  if (!guardBankOpen()) return
   if (!d || bankBusy.value) return
+
   const pay = Number(d.early_interest) || 0
   const ok = window.confirm(pay ? `提前支取只给一半进度的利息，大约 ${pay} 颗。确定吗？` : '今天刚存，提前支取没有利息。确定吗？')
   if (!ok) return
@@ -1962,9 +1977,9 @@ function reloadApp() {
             <div class="bank-hall">
               <header class="bank-sign">
                 <div class="bank-sign-board">
-                  <span class="bank-open-lamp">营业中</span>
+                  <span class="bank-open-lamp" :class="{ closed: bankClosed }">{{ bankClosed ? '已打烊' : '营业中' }}</span>
                   <h1>阳光储蓄所</h1>
-                  <p>活期随时可取；定存锁几天，到期一次多给一点。</p>
+                  <p>{{ bankClosed ? bankClosedHint() : '每天 8:00 到 20:00 营业。活期随时可取；定存锁几天，到期一次多给一点。' }}</p>
                 </div>
                 <div v-if="bankData.interest || bankData.locked" class="bank-sign-rate">
                   <strong v-if="bankData.interest">{{ bankInterestLabel(bankData.interest) }}</strong>
@@ -1976,13 +1991,14 @@ function reloadApp() {
               </header>
 
               <div class="bank-room">
-                <section class="bank-counter" :class="{ busy: bankBusy }">
+                <section class="bank-counter" :class="{ busy: bankBusy, closed: bankClosed }">
                   <div class="bank-window">
                     <Landmark class="bank-teller-ico" :size="28" />
                     <div>
-                      <strong>{{ bankBusy ? '正在递单' : '柜台' }}</strong>
-                      <small>{{ bankDays ? '先选天数，再存成定存' : '不选天数就是活期' }}</small>
+                      <strong>{{ bankClosed ? '柜台下班了' : (bankBusy ? '正在递单' : '柜台') }}</strong>
+                      <small>{{ bankClosed ? '现在不能存取，金库和存折还能看' : (bankDays ? '先选天数，再存成定存' : '不选天数就是活期') }}</small>
                     </div>
+
                   </div>
 
                   <div class="bank-tray">
@@ -1994,29 +2010,34 @@ function reloadApp() {
                   <div class="bank-chips">
                     <button v-for="n in [5, 10, 20, 50]" :key="n" type="button"
                       :class="['bank-chip', { on: bankAmount === n }]"
+                      :disabled="bankClosed"
                       @click="bankAmount = n">{{ n }}</button>
-                    <input v-model.number="bankAmount" type="number" min="1" class="bank-chip-input" placeholder="自己写" />
+                    <input v-model.number="bankAmount" type="number" min="1" class="bank-chip-input" placeholder="自己写" :disabled="bankClosed" />
                   </div>
 
                   <div class="bank-terms">
                     <span class="bank-kicker">存多久</span>
-                    <button type="button" :class="['bank-chip', { on: !bankDays }]" @click="bankDays = 0">
+                    <button type="button" :class="['bank-chip', { on: !bankDays }]" :disabled="bankClosed" @click="bankDays = 0">
                       活期
                       <small>随时可取</small>
                     </button>
                     <button v-for="t in (bankData.deposit_terms || [])" :key="t.days" type="button"
                       :class="['bank-chip', { on: bankTermOn(t.days) }]"
+                      :disabled="bankClosed"
                       @click="pickBankDays(t.days)">
+
                       {{ t.label }}
                       <small>{{ t.hint }}</small>
                     </button>
                   </div>
 
                   <div class="bank-desk-btns">
-                    <button class="bank-act in" :disabled="bankBusy || bankData.pocket_balance < bankAmount" @click="bankMove('deposit')">
+                    <button class="bank-act in" :disabled="bankBusy || bankClosed || bankData.pocket_balance < bankAmount" @click="bankMove('deposit')">
+
                       <span>{{ bankDays ? '开存单' : '存进金库' }}</span>
                       <small>{{ bankDays ? bankDays + ' 天后再给利息' : '从口袋转入活期' }}</small>
-                    </button>
+                    <button class="bank-act out" :disabled="bankBusy || bankClosed || (bankData.available || 0) < bankAmount" @click="bankMove('withdraw')">
+
                     <button class="bank-act out" :disabled="bankBusy || (bankData.available || 0) < bankAmount" @click="bankMove('withdraw')">
                       <span>请柜员开门</span>
                       <small>只能取活期 {{ bankData.available || 0 }} 颗</small>
@@ -2029,7 +2050,8 @@ function reloadApp() {
                         <strong>{{ d.amount }} 颗 · {{ d.days }} 天</strong>
                         <small>{{ bankDepositHint(d) }}</small>
                       </div>
-                      <button type="button" class="ghost" :disabled="bankBusy" @click.stop="bankBreak(d)">提前支取</button>
+                      <button type="button" class="ghost" :disabled="bankBusy || bankClosed" @click.stop="bankBreak(d)">提前支取</button>
+
                     </div>
                   </div>
 
@@ -2943,6 +2965,8 @@ body {
 .bank-sign-board h1 { margin: 6px 0 0; font-size: 26px; letter-spacing: -.03em; }
 .bank-sign-board p { margin: 4px 0 0; color: var(--ink-2); font-size: 13px; font-weight: 600; }
 .bank-open-lamp { display: inline-block; background: var(--ok-bg); color: var(--ok); font-size: 11px; font-weight: 800; padding: 3px 8px; border-radius: var(--radius-pill); }
+.bank-open-lamp.closed { background: #e8eef3; color: var(--ink-2); }
+
 .bank-sign-rate { flex: none; background: var(--surface); border: 1px solid rgba(245,165,36,.35); border-radius: var(--radius-lg); padding: 8px 12px; }
 .bank-sign-rate strong { display: block; font-size: 14px; color: var(--accent-ink); }
 .bank-sign-rate small { display: block; margin-top: 2px; font-size: 11px; font-weight: 700; color: var(--ink-2); }
@@ -2961,6 +2985,8 @@ body {
 .bank-room { display: grid; grid-template-columns: 1.15fr .85fr; gap: 0; align-items: stretch; }
 .bank-counter, .bank-vault { background: transparent; border: none; border-radius: 0; padding: 16px 18px 18px; box-shadow: none; }
 .bank-counter { border-right: 1px solid var(--line); }
+.bank-counter.closed { opacity: .78; }
+
 .bank-counter.busy { box-shadow: var(--shadow-button); }
 .bank-window { display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--surface-2); border-radius: var(--radius-lg); }
 .bank-teller-ico { flex: none; width: 44px; height: 44px; padding: 8px; border-radius: var(--radius-lg); background: linear-gradient(160deg, #ffd27a, var(--accent)); color: var(--accent-ink); }
@@ -2973,6 +2999,8 @@ body {
 .bank-chips { display: flex; gap: 8px; flex-wrap: wrap; margin: 14px 0 12px; }
 .bank-chip { border: 1px solid var(--line); background: var(--surface-2); color: var(--ink); padding: 8px 14px; border-radius: var(--radius-pill); cursor: pointer; font-family: inherit; font-size: 14px; font-weight: 800; min-width: 48px; }
 .bank-chip.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+.bank-chip:disabled, .bank-chip-input:disabled { opacity: .45; cursor: not-allowed; }
+
 .bank-chip-input { width: 88px; border: 1px solid var(--line); border-radius: var(--radius-pill); padding: 8px 12px; font-size: 14px; font-family: inherit; font-weight: 700; }
 .bank-desk-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .bank-act { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; border: none; border-radius: var(--radius-lg); padding: 12px 14px; cursor: pointer; font-family: inherit; text-align: left; }
