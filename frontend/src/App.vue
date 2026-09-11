@@ -733,7 +733,7 @@ function bankInterestCycle(cycle) {
 }
 function bankInterestLabel(it) {
   if (!it) return ''
-  return `活期 ${bankInterestCycle(it.cycle)}结息 ${it.rate}%`
+  return `活期 ${bankInterestCycle(it.cycle)} ${it.rate}%`
 }
 function bankTermOn(days) {
   return Number(bankDays.value) === Number(days)
@@ -1964,13 +1964,14 @@ function reloadApp() {
                 <div class="bank-sign-board">
                   <span class="bank-open-lamp">营业中</span>
                   <h1>阳光储蓄所</h1>
-                  <p>口袋的阳光，存进金库才生息。定存越久，到期越多。</p>
+                  <p>活期随时可取；定存锁几天，到期一次多给一点。</p>
                 </div>
                 <div v-if="bankData.interest || bankData.locked" class="bank-sign-rate">
                   <strong v-if="bankData.interest">{{ bankInterestLabel(bankData.interest) }}</strong>
                   <strong v-else>定存锁着 {{ bankData.locked }} 颗</strong>
+                  <small v-if="bankData.interest">只算没锁进存单的阳光</small>
                   <small v-if="bankData.interest && bankData.interest.threshold">活期满 {{ bankData.interest.threshold }} 颗才结息</small>
-                  <small v-if="bankData.locked">定存锁着 {{ bankData.locked }} 颗</small>
+                  <small v-if="bankData.locked">定存锁着 {{ bankData.locked }} 颗，不拿活期息</small>
                 </div>
               </header>
 
@@ -1999,7 +2000,10 @@ function reloadApp() {
 
                   <div class="bank-terms">
                     <span class="bank-kicker">存多久</span>
-                    <button type="button" :class="['bank-chip', { on: !bankDays }]" @click="bankDays = 0">活期</button>
+                    <button type="button" :class="['bank-chip', { on: !bankDays }]" @click="bankDays = 0">
+                      活期
+                      <small>随时可取</small>
+                    </button>
                     <button v-for="t in (bankData.deposit_terms || [])" :key="t.days" type="button"
                       :class="['bank-chip', { on: bankTermOn(t.days) }]"
                       @click="pickBankDays(t.days)">
@@ -2942,10 +2946,13 @@ body {
 .bank-sign-rate { flex: none; background: var(--surface); border: 1px solid rgba(245,165,36,.35); border-radius: var(--radius-lg); padding: 8px 12px; }
 .bank-sign-rate strong { display: block; font-size: 14px; color: var(--accent-ink); }
 .bank-sign-rate small { display: block; margin-top: 2px; font-size: 11px; font-weight: 700; color: var(--ink-2); }
-.bank-terms { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 12px; }
-.bank-terms .bank-kicker { width: 100%; }
-.bank-terms .bank-chip { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 0; min-width: 64px; padding: 8px 12px; }
-.bank-terms .bank-chip small { font-size: 11px; font-weight: 700; opacity: .78; }
+.bank-terms { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 0 0 12px; align-items: stretch; }
+.bank-terms .bank-kicker { grid-column: 1 / -1; }
+.bank-terms .bank-chip {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  width: 100%; min-height: 58px; min-width: 0; padding: 8px 6px; border-radius: var(--radius-lg); text-align: center;
+}
+.bank-terms .bank-chip small { font-size: 11px; font-weight: 700; opacity: .78; line-height: 1.2; }
 .bank-deposits { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
 .bank-dep { display: flex; justify-content: space-between; align-items: center; gap: 8px; background: var(--surface-2); border-radius: var(--radius-lg); padding: 10px 12px; }
 .bank-dep strong { display: block; font-size: 13px; }
@@ -3022,6 +3029,7 @@ body {
   .sun-col-n { font-size: 10px; }
   .sun-track.dual i { width: 7px; }
   .bank-desk-btns { grid-template-columns: 1fr; }
+  .bank-terms { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .bank-chips { gap: 6px; }
   .bank-chip { min-width: 44px; padding: 8px 12px; }
   .bank-chip-input { width: 72px; }
