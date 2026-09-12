@@ -11,13 +11,17 @@ import { Sun, Lock, Gift, Check, TrendingUp, Target, User, ShoppingCart, ScrollT
 import { soundManager, playSound, playCompleteBeep, playCoinBeep } from './sounds.js'
 import { getEncouragement, getCompanionMessage } from './encouragements.js'
 import { SUBJECT_ORDER, n1, isGoPlay } from './format.js'
-import { data, loading, err, me, authed, isAdmin, mustChangePin, pendingRecovery, rewards, achievements, boxes, recentLedger, reviewDue, activeTab, toast, showToast, newAchCount, achNew, companion, companionImage, companionTitle, companionPulse, companionEvolve, pendingLevelUp, pulseCompanion, showLevelCelebrate, triggerCompanionEvolve } from './store.js'
+import { data, loading, err, me, authed, isAdmin, mustChangePin, pendingRecovery, rewards, achievements, boxes, recentLedger, reviewDue, activeTab, toast, showToast, newAchCount, achNew, companion, companionImage, companionTitle, companionPulse, companionEvolve, pendingLevelUp, pulseCompanion, showLevelCelebrate, triggerCompanionEvolve, wordToday, wordDueCard, wordNewCard, wordSun, sprites, capsule, spriteScene, spritesOpen, dutySprite, spImg, displayName, loadSprites, maybeShowMorning, applyCapsule, todayPenalty } from './store.js'
+import SunshinePage from './components/SunshinePage.vue'
 import TrendChart from './components/TrendChart.vue'
 import AchievementsModal from './components/AchievementsModal.vue'
 import ShopDrawer from './components/ShopDrawer.vue'
 import LoginScreen from './components/LoginScreen.vue'
 import DailyDialog from './components/DailyDialog.vue'
 import CompanionDrawer from './components/CompanionDrawer.vue'
+import WordPractice from './components/WordPractice.vue'
+import SpritesBase from './components/SpritesBase.vue'
+import CapsuleBox from './components/CapsuleBox.vue'
 import BankPage from './components/BankPage.vue'
 const topbarEl = ref(null)
 const updateBarEl = ref(null)
@@ -42,11 +46,7 @@ function observeChrome() {
 watch([topbarEl, updateBarEl], observeChrome)
 onBeforeUnmount(() => {
   topbarObserver?.disconnect()
-  if (wordPeekTimer) clearTimeout(wordPeekTimer)
-  if (wordNextTimer) clearTimeout(wordNextTimer)
   boxTimers.forEach(clearTimeout)
-  try { if (typeof speechSynthesis !== 'undefined') speechSynthesis.removeEventListener('voiceschanged', loadWordVoices) } catch {}
-  try { if (typeof speechSynthesis !== 'undefined') speechSynthesis.cancel() } catch {}
 })
 const checkingTask = ref(null) // 记录正在打卡的任务 ID
 const actionBusy = ref(false)
@@ -56,592 +56,31 @@ function openShop() { shopRef.value?.open() }
 // 成就墙弹窗（components/AchievementsModal.vue）
 const achRef = ref(null)
 function openAch() { achRef.value?.open() }
-
-const wordToday = ref({ enabled: false, finished: false, session: null, config: {} })
-const wordInputEl = ref(null)
-const WORD_PEEK_MAX = 1
-const wordDialog = reactive({
-  open: false, itemIndex: 0, phase: 'look', input: '', busy: false,
-  feedback: null, peekUntil: 0, peekN: {}, heard: {}, filter: 'new', sid: '',
-})
-let wordPeekTimer = null
-let wordNextTimer = null
-function wordItems() { return wordToday.value.session?.items || [] }
-function wordLaneOf(item) { return item && item.source === 'due' ? 'due' : 'new' }
-function wordLaneItems(kind) {
-  const k = kind || wordDialog.filter
-  if (k === 'all') return wordItems()
-  return wordItems().filter(x => wordLaneOf(x) === k)
-}
-const wordRemaining = computed(() => wordItems().filter(x => x.state !== 'done').length)
-const wordCurrent = computed(() => wordLaneItems()[wordDialog.itemIndex] || null)
-const wordCfg = computed(() => wordToday.value.config || {})
-const wordTtsOn = computed(() => wordCfg.value.tts !== false)
-const wordSun = computed(() => (wordCfg.value.base_sunshine != null ? wordCfg.value.base_sunshine : 3))
-function buildWordLane(kind) {
-  const t = wordToday.value
-  if (!t.enabled) return null
-  const sess = t.session
-  const counts = (sess && sess.counts) || {}
-  const items = wordLaneItems(kind)
-  let total = items.length
-  if (!total && sess) total = Number(kind === 'due' ? counts.due : counts.new) || 0
-  if (!total && !sess && !t.finished) {
-    if (kind === 'due') total = Number(t.backlog_due) || 0
-    else total = 1
-  }
-  if (!total) return null
-  const left = items.length ? items.filter(x => x.state !== 'done').length : total
-  const finished = !!(t.finished || (sess && sess.state === 'completed') || (items.length && left === 0))
-  let detail = kind === 'due' ? '到期的词，直接默写' : '本课新词，先看再写'
-  if (finished) detail = kind === 'due' ? `复习完成 · ${total} 个` : `新词完成 · ${total} 个`
-  else if (items.length) detail = `还剩 ${left} 个 · ${kind === 'due' ? '到期复习' : '本课新词'}`
-  else detail = kind === 'due' ? `约 ${total} 个到期` : '去学几个新词'
-  return { kind, title: kind === 'due' ? '今日复习' : '今日新词', detail, finished, left, total, sun: wordSun.value }
-}
-const wordDueCard = computed(() => buildWordLane('due'))
-const wordNewCard = computed(() => buildWordLane('new'))
-const wordOtherLane = computed(() => wordDialog.filter === 'due' ? 'new' : 'due')
-const wordOtherCard = computed(() => buildWordLane(wordOtherLane.value))
-const wordPos = computed(() => {
-  const items = wordLaneItems()
-  const total = items.length
-  const done = items.filter(x => x.state === 'done').length
-  const cur = !total ? 0 : (done === total ? total : done + 1)
-  return { cur, total, done, pct: total ? Math.round(done / total * 100) : 0 }
-})
-const wordOverlayTitle = computed(() => {
-  if (wordDialog.filter === 'due') return '今日复习'
-  if (wordDialog.filter === 'new') return '今日新词'
-  return '今日单词'
-})
-const wordSlotCells = computed(() => {
-  const w = wordCurrent.value?.word || ''
-  const letters = String(wordDialog.input || '').replace(/[^A-Za-z']/g, '')
-  let li = 0
-  return [...w].map(ch => {
-    if (ch === ' ') return { kind: 'space', fill: '', cur: false }
-    if (ch === '-') return { kind: 'hyphen', fill: '-', cur: false }
-    const fill = letters[li] || ''
-    const cur = li === letters.length
-    li += 1
-    return { kind: 'letter', fill, cur }
-  })
-})
-function spellSubmitText() {
-  const w = wordCurrent.value?.word || ''
-  const letters = String(wordDialog.input || '').replace(/[^A-Za-z']/g, '')
-  let li = 0
-  let out = ''
-  for (const ch of w) {
-    if (ch === ' ' || ch === '-') out += ch
-    else out += letters[li++] || ''
-  }
-  return out.trim().slice(0, 60)
-}
-function ipaText(w) { return (w && String(w.ipa || '').trim()) ? w.ipa : '暂无音标' }
-function applyWordToday(t) {
-  if (!t) return
-  const sid = (t.session && t.session.id) || ''
-  if (sid && sid !== wordDialog.sid) {
-    wordDialog.sid = sid
-    wordDialog.peekN = {}
-    wordDialog.heard = {}
-  }
-  wordToday.value = t
-  const items = wordLaneItems()
-  const i = items.findIndex(x => x.state !== 'done')
-  wordDialog.itemIndex = i < 0 ? 0 : i
-}
-function wordPeekLeft(id) {
-  if (!id) return 0
-  return Math.max(0, WORD_PEEK_MAX - (wordDialog.peekN[id] || 0))
-}
-let wordUtter = null
-let wordVoices = []
-function ttsReady() { return typeof speechSynthesis !== 'undefined' }
-function loadWordVoices() {
-  if (!ttsReady()) return []
-  try { wordVoices = speechSynthesis.getVoices() || [] } catch { wordVoices = [] }
-  return wordVoices
-}
-function pickWordVoice(lang) {
-  const want = (lang || wordCfg.value.tts_lang || 'en-GB').toLowerCase()
-  const list = loadWordVoices()
-  const en = list.filter(v => String(v.lang || '').toLowerCase().startsWith('en'))
-  if (!en.length) return null
-  return en.find(v => String(v.lang || '').toLowerCase() === want)
-    || en.find(v => String(v.lang || '').toLowerCase().startsWith(want.slice(0, 2)))
-    || en[0]
-}
-function stopWordSpeech() {
-  wordUtter = null
-  try { if (nativeTts()) SunshineTts.stop() } catch {}
-  try { if (ttsReady()) speechSynthesis.cancel() } catch {}
-}
-function nativeTts() {
-  try { return typeof SunshineTts !== 'undefined' && SunshineTts && typeof SunshineTts.speak === 'function' } catch { return false }
-}
-function speakWord(word, lang) {
-  const text = String(word || '').trim()
-  if (!text) return false
-  const useLang = lang || wordCfg.value.tts_lang || 'en-GB'
-  try {
-    if (nativeTts()) {
-      SunshineTts.speak(text, useLang)
-      return true
-    }
-  } catch {}
-  if (!ttsReady()) return false
-  try {
-    speechSynthesis.cancel()
-    const u = new SpeechSynthesisUtterance(text)
-    const voice = pickWordVoice(useLang)
-    if (voice) {
-      u.voice = voice
-      u.lang = voice.lang || useLang
-    } else {
-      u.lang = useLang
-    }
-    u.rate = 0.85
-    u.onerror = () => { if (wordUtter === u) wordUtter = null }
-    u.onend = () => { if (wordUtter === u) wordUtter = null }
-    wordUtter = u
-    speechSynthesis.speak(u)
-    return true
-  } catch { return false }
-}
-function hearWord() {
-  const w = wordCurrent.value
-  if (!w) return
-  if (speakWord(w.word)) return
-  if (!ttsReady() && !nativeTts()) return showToast('这台设备暂时不能朗读，先看音标')
-  loadWordVoices()
-  setTimeout(() => {
-    if (!speakWord(w.word)) showToast('这台设备暂时不能朗读，先看音标')
-  }, 280)
-}
-function wordPhaseOf(item) {
-  if (!item) return 'done'
-  if (item.state === 'retry') return 'retry'
-  if (item.state === 'spell') return 'spell'
-  if (item.state === 'done') return 'done'
-  return item.source === 'due' ? 'spell' : 'look'
-}
-function focusWordInput() {
-  if (wordDialog.phase !== 'spell' && wordDialog.phase !== 'retry') return
-  nextTick(() => wordInputEl.value && wordInputEl.value.focus())
-}
-function maybeAutoSpeak() {
-  const it = wordCurrent.value
-  const cfg = wordCfg.value
-  if (wordDialog.phase !== 'look' || !it || !wordTtsOn.value || !cfg.tts_autoplay) return
-  if (wordDialog.peekUntil) return
-  if (wordDialog.heard[it.word_id]) return
-  wordDialog.heard[it.word_id] = 1
-  speakWord(it.word, cfg.tts_lang)
-}
-function syncWordPhase() {
-  const items = wordLaneItems()
-  const sess = wordToday.value.session
-  if (!sess || !items.length || items.every(x => x.state === 'done') || sess.state === 'completed' || wordToday.value.finished) {
-    wordDialog.phase = 'done'
-    wordDialog.feedback = null
-    return
-  }
-  if (wordDialog.peekUntil && Date.now() < wordDialog.peekUntil) {
-    wordDialog.phase = 'look'
-    return
-  }
-  const i = items.findIndex(x => x.state !== 'done')
-  wordDialog.itemIndex = i < 0 ? 0 : i
-  wordDialog.phase = wordPhaseOf(items[wordDialog.itemIndex])
-  maybeAutoSpeak()
-  focusWordInput()
-}
-async function openWords(kind) {
-  if (wordDialog.busy) return
+// 单词练习（components/WordPractice.vue）；共享状态 wordToday 与卡片派生在 store
+const wordRef = ref(null)
+function openWordLane(kind) {
   if (!guardCheckinOpen()) return
-  wordDialog.filter = kind === 'due' ? 'due' : 'new'
-  wordDialog.busy = true
-  try {
-    let t = await api.wordsToday()
-    if (t.enabled && !t.finished && !t.session) t = await api.wordsStart()
-    applyWordToday(t)
-    if (!t.enabled) { showToast('单词练习还没开'); return }
-    if (t.finished && !t.session) { showToast('这一单元的词都练过了'); return }
-    if (!wordLaneItems().length) {
-      showToast(kind === 'due' ? '今天没有到期复习' : '今天没有新词')
-      return
-    }
-    wordDialog.input = ''
-    wordDialog.feedback = null
-    wordDialog.peekUntil = 0
-    wordDialog.open = true
-    syncWordPhase()
-  } catch (e) { showToast(e.message) }
-  finally { wordDialog.busy = false }
+  wordRef.value?.open(kind)
 }
-function openWordLane(kind) { openWords(kind) }
-function closeWords() {
-  wordDialog.open = false
-  wordDialog.feedback = null
-  wordDialog.peekUntil = 0
-  clearTimeout(wordPeekTimer)
-  clearTimeout(wordNextTimer)
-  stopWordSpeech()
-}
-async function wordKnown() {
-  const it = wordCurrent.value
-  const sid = wordToday.value.session && wordToday.value.session.id
-  if (!it || !sid || wordDialog.busy) return
-  wordDialog.busy = true
-  try {
-    applyWordToday(await api.wordsStudy(sid, it.word_id, 'known'))
-    wordDialog.input = ''
-    wordDialog.feedback = null
-    wordDialog.phase = 'spell'
-    focusWordInput()
-  } catch (e) { showToast(e.message) }
-  finally { wordDialog.busy = false }
-}
-async function wordAgain() {
-  const it = wordCurrent.value
-  const sid = wordToday.value.session && wordToday.value.session.id
-  if (!it || !sid || wordDialog.busy) return
-  wordDialog.busy = true
-  try {
-    applyWordToday(await api.wordsStudy(sid, it.word_id, 'again'))
-    wordDialog.input = ''
-    wordDialog.feedback = null
-    syncWordPhase()
-  } catch (e) { showToast(e.message) }
-  finally { wordDialog.busy = false }
-}
-function wordPeek() {
-  const it = wordCurrent.value
-  if (!it || it.source !== 'due' || wordDialog.busy) return
-  if (wordDialog.phase !== 'spell') return
-  if (wordPeekLeft(it.word_id) <= 0) { showToast('这题不能再看了，先写；写错了会看到正确答案'); return }
-  wordDialog.peekN[it.word_id] = (wordDialog.peekN[it.word_id] || 0) + 1
-  wordDialog.peekUntil = Date.now() + 2000
-  wordDialog.phase = 'look'
-  clearTimeout(wordPeekTimer)
-  wordPeekTimer = setTimeout(() => {
-    wordDialog.peekUntil = 0
-    if (wordDialog.open) { wordDialog.phase = 'spell'; focusWordInput() }
-  }, 2000)
-}
-function wordGoNext() {
-  wordDialog.feedback = null
-  wordDialog.input = ''
-  wordDialog.busy = false
-  syncWordPhase()
-}
-async function wordCheck() {
-  const it = wordCurrent.value
-  const sid = wordToday.value.session && wordToday.value.session.id
-  if (!it || !sid || wordDialog.busy) return
-  const text = spellSubmitText()
-  if (!text) { showToast('先写一写'); return }
-  const retry = wordDialog.phase === 'retry' || it.state === 'retry'
-  wordDialog.busy = true
-  try {
-    const t = await api.wordsSpell(sid, {
-      word_id: it.word_id, text, phase: retry ? 'retry' : 'spell', attempt_no: 1,
-    })
-    applyWordToday(t)
-    const right = t.result === 'right'
-    wordDialog.feedback = { kind: right ? 'right' : 'wrong', typed: text }
-    if (right) {
-      clearTimeout(wordNextTimer)
-      wordNextTimer = setTimeout(wordGoNext, 800)
-      return
-    }
-    wordDialog.phase = 'retry'
-    if (!retry) wordDialog.input = firstLetter(it.word)
-  } catch (e) { showToast(e.message) }
-  finally {
-    if (!(wordDialog.feedback && wordDialog.feedback.kind === 'right')) wordDialog.busy = false
-  }
-}
-async function wordCollect() {
-  const sess = wordToday.value.session
-  if (!sess || wordDialog.busy) return
-  if (sess.state === 'completed') { closeWords(); return }
-  wordDialog.busy = true
-  try {
-    applyWordToday(await api.wordsComplete(sess.id))
-    wordDialog.phase = 'done'
-    await refresh()
-  } catch (e) { showToast(e.message) }
-  finally { wordDialog.busy = false }
-}
-
-const boxOpen = ref(false)
-const boxResult = ref(null)
-const boxPhase = ref('sun')
-let boxTimers = []
-const sprites = ref({
-  enabled: false, base_enabled: false, loaded: false,
-  dust: 0, owned: 0, total: 12, series: [], layout: {}, shop: [],
-  base_items: [], on_duty: '', today: {}, morning: { new: false, who: '', text: '' },
-  memos: { award: false, flag: false }, star_cost: 12,
-})
-const capsule = ref({ state: 'empty', capsule: null, wait: '', options: [], now: null, questions: [], min_open_on: '', max_open_on: '' })
-const capsuleOpen = ref(false)
-const capsuleBusy = ref(false)
-const capsuleOpenedView = ref(false)
-const CAPSULE_Q_FALLBACK = [
-  { key: 'q_good', label: '现在最拿手的一件事', placeholder: '比如：口算很快', examples: ['口算很快', '跳绳能连跳很多下', '英语单词记得住'] },
-  { key: 'q_wish', label: '还想变好的一件事', placeholder: '比如：把字写得更工整', examples: ['把字写得更工整', '英语听写少错几个', '早睡早起不磨蹭'] },
-  { key: 'q_line', label: '想对以后的自己说的一句', placeholder: '比如：别忘了现在有多努力', examples: ['别忘了现在有多努力', '以后的我要对自己说加油', '希望你还喜欢运动'] },
-]
-const capsuleForm = reactive({ when_kind: 'week', open_on: '', q_good: '', q_wish: '', q_line: '' })
-const capsuleQuestions = computed(() => (capsule.value.questions && capsule.value.questions.length) ? capsule.value.questions : CAPSULE_Q_FALLBACK)
-function resetCapsuleForm() {
-  const opts = capsule.value.options || []
-  capsuleForm.when_kind = (opts[0] && opts[0].kind) || 'week'
-  capsuleForm.open_on = capsule.value.min_open_on || ''
-  capsuleForm.q_good = ''
-  capsuleForm.q_wish = ''
-  capsuleForm.q_line = ''
-}
-function pickCapsuleWhen(kind) {
-  capsuleForm.when_kind = kind
-  if (kind === 'custom' && !capsuleForm.open_on) capsuleForm.open_on = capsule.value.min_open_on || ''
-}
-function fillCapsuleHint(key, text) {
-  capsuleForm[key] = text
-}
-function capsuleDateText(iso) {
-  if (!iso) return ''
-  const [y, m, d] = String(iso).split('-')
-  return `${Number(y)}年${Number(m)}月${Number(d)}日`
-}
-function snapLine(s) {
-  if (!s) return '还没记下'
-  const who = s.companion_name || s.companion_stage_name || '阳光芽'
-  return `${s.level || '—'} · 连打 ${s.streak || 0} 天 · ${who}`
-}
-function applyCapsule(p) {
-  if (!p) return
-  capsule.value = p
-}
-async function loadCapsule() {
-  try { applyCapsule(await api.capsule()) } catch { capsule.value = { state: 'empty', capsule: null, wait: '', options: [], now: null, questions: [], min_open_on: '', max_open_on: '' } }
-}
-function closeCapsuleBox() {
-  capsuleOpen.value = false
-  if (capsuleOpenedView.value) capsuleOpenedView.value = false
-}
-function openCapsuleBox() {
-  if (capsule.value.state === 'empty' && !capsuleOpenedView.value) resetCapsuleForm()
-  capsuleOpen.value = true
-  spriteScene.value = 'leaf'
-}
+// 时间胶囊（components/CapsuleBox.vue）+ 秘密基地（components/SpritesBase.vue）
+const capsuleRef = ref(null)
+const baseRef = ref(null)
+function openCapsuleBox() { capsuleRef.value?.open() }
 async function goOpenCapsule() {
-  spriteScene.value = 'leaf'
   await goBase()
-  openCapsuleBox()
-}
-function startNextCapsule() {
-  capsuleOpenedView.value = false
-  resetCapsuleForm()
-}
-async function submitCapsule() {
-  if (capsuleBusy.value) return
-  if (capsuleForm.when_kind === 'custom' && !capsuleForm.open_on) {
-    showToast('选一个开封的日子')
-    return
-  }
-  capsuleBusy.value = true
-  try {
-    applyCapsule(await api.capsuleSeal({
-      when_kind: capsuleForm.when_kind,
-      open_on: capsuleForm.when_kind === 'custom' ? capsuleForm.open_on : '',
-      q_good: capsuleForm.q_good,
-      q_wish: capsuleForm.q_wish,
-      q_line: capsuleForm.q_line,
-    }))
-    capsuleOpenedView.value = false
-    capsuleOpen.value = false
-    showToast('封进箱子了，到那天再拆')
-  } catch (e) { showToast(e.message) }
-  finally { capsuleBusy.value = false }
-}
-async function openCapsuleLetter() {
-  if (capsuleBusy.value) return
-  capsuleBusy.value = true
-  try {
-    const opened = await api.capsuleOpen()
-    applyCapsule(await api.capsule())
-    if (opened) {
-      capsule.value.capsule = { ...(capsule.value.capsule || {}), ...opened, state: 'opened' }
-      if (opened.now) capsule.value.now = opened.now
-    }
-    capsuleOpenedView.value = true
-    showToast('拆开了')
-  } catch (e) { showToast(e.message) }
-  finally { capsuleBusy.value = false }
-}
-const spritesOpen = ref(false)
-const spriteDetail = ref(null)
-const spriteNick = ref('')
-const spriteFlavor = ref('')
-const spriteScene = ref('sun')
-const spriteBusy = ref(false)
-const toyShopOpen = ref(false)
-const morningShow = ref(false)
-const toyFlip = reactive({})
-const SPRITE_CACHE = 'pw3'
-function isNight() {
-  const h = new Date().getHours()
-  return h >= 19 || h < 6
-}
-function spImg(id) { return `/sprites/${id}.webp?v=${SPRITE_CACHE}` }
-function toyImg(id) { return `/sprites/toys/${id}.webp?v=${SPRITE_CACHE}` }
-function baseImg(scene) { return `/sprites/base/${scene}-${isNight() ? 'night' : 'day'}.webp?v=${SPRITE_CACHE}` }
-const morningPending = computed(() => !!(
-  sprites.value.enabled && sprites.value.base_enabled && sprites.value.morning?.new && sprites.value.morning?.text
-))
-function maybeShowMorning() {
-  if (morningPending.value) morningShow.value = true
-}
-function displayName(it) { return (it.nickname && it.nickname.trim()) || it.name }
-const dutySprite = computed(() => {
-  if (!sprites.value.enabled || !sprites.value.base_enabled || !sprites.value.on_duty) return null
-  for (const s of sprites.value.series || []) {
-    const it = (s.items || []).find(x => x.id === sprites.value.on_duty && x.owned)
-    if (it) return it
-  }
-  return null
-})
-const FLOOR = {
-  sun: [{ x: 52, y: 90 }, { x: 66, y: 90 }, { x: 78, y: 90 }],
-  leaf: [{ x: 30, y: 92 }, { x: 42, y: 92 }, { x: 72, y: 92 }],
-  sky: [{ x: 38, y: 86 }, { x: 50, y: 86 }, { x: 62, y: 86 }],
-}
-function sceneToys(scene) {
-  const layout = (sprites.value.layout && sprites.value.layout[scene]) || []
-  const bought = new Set(sprites.value.base_items || [])
-  const today = sprites.value.today || {}
-  const dailyDone = Number(today.daily_done || 0) > 0
-  return layout.filter(t => {
-    if (t.kind === 'shop') return bought.has(t.id)
-    if (t.id === 'trace-pinwheel') return dailyDone
-    if (t.id === 'memo-capsule') return true
-    // 奖状/小旗要有「拿到了」的仪式，不按旧连击或旧全对补挂到树上
-    if (t.id === 'memo-award' || t.id === 'memo-flag') return false
-    return false
-  })
-}
-function sceneBuddies(scene) {
-  const ser = (sprites.value.series || []).find(s => s.id === scene)
-  const owned = (ser?.items || []).filter(x => x.owned)
-  const toys = sceneToys(scene)
-  const seats = toys.filter(t => t.sit)
-  const used = new Set()
-  const out = []
-  const duty = sprites.value.on_duty
-  const moon = toys.find(t => t.id === 'sky-moonbed')
-  if (scene === 'sky' && moon && isNight() && duty) {
-    const d = owned.find(x => x.id === duty)
-    if (d) {
-      out.push({ ...d, x: moon.x, y: moon.y - 8, w: moon.sit?.w || 8, pose: 'lie' })
-      used.add(d.id)
-    }
-  }
-  for (const seat of seats) {
-    if (seat.id === 'sky-moonbed') continue
-    const who = owned.find(x => !used.has(x.id))
-    if (!who) break
-    used.add(who.id)
-    out.push({
-      ...who,
-      x: seat.x - 4 + (seat.sit.x - 50) * seat.w / 100,
-      y: seat.y - (100 - (seat.sit.y || 70)) * 0.12,
-      w: seat.sit.w || 8,
-      pose: seat.pose || 'sit',
-    })
-  }
-  const floors = FLOOR[scene] || []
-  let fi = 0
-  for (const who of owned) {
-    if (used.has(who.id) || fi >= floors.length) continue
-    out.push({ ...who, x: floors[fi].x, y: floors[fi].y, w: 8, pose: 'stand' })
-    fi += 1
-  }
-  return out
-}
-async function loadSprites() {
-  try {
-    const sp = await api.sprites()
-    sprites.value = { ...sprites.value, ...sp, loaded: true }
-  } catch {
-    sprites.value.enabled = false
-  }
+  capsuleRef.value?.open()
 }
 async function goBase() {
   activeTab.value = 'base'
   await loadSprites()
   maybeShowMorning()
 }
-async function openSprites() {
-  await loadSprites()
-  if (!sprites.value.enabled && !sprites.value.base_enabled) return
-  spritesOpen.value = true
-  maybeShowMorning()
-}
-function openSpriteCell(it) {
-  if (!it.owned) { showToast('连续打卡开宝箱才会遇到它'); return }
-  spriteDetail.value = it
-  spriteNick.value = it.nickname || ''
-  spriteFlavor.value = it.flavor || ''
-}
-async function saveSpriteProfile() {
-  const it = spriteDetail.value
-  if (!it) return
-  try {
-    const out = await api.spriteProfile(it.id, { nickname: spriteNick.value, flavor: spriteFlavor.value })
-    Object.assign(it, out)
-    showToast('已记住')
-    await loadSprites()
-  } catch (e) { showToast(e.message) }
-}
-async function starSprite() {
-  const it = spriteDetail.value
-  if (!it) return
-  try {
-    const out = await api.spriteStar(it.id)
-    it.stars = out.stars
-    sprites.value.dust = out.dust
-    showToast('亮了一颗星')
-  } catch (e) { showToast(e.message) }
-}
-async function buyToy(id) {
-  if (spriteBusy.value) return
-  spriteBusy.value = true
-  try {
-    const out = await api.baseBuy(id)
-    sprites.value.dust = out.dust
-    sprites.value.base_items = out.base_items
-    showToast('放到秘密基地啦')
-  } catch (e) { showToast(e.message) }
-  finally { spriteBusy.value = false }
-}
-async function toggleDuty(id) {
-  try {
-    const on = sprites.value.on_duty === id
-    const out = on ? await api.spriteDutyClear() : await api.spriteDuty(id)
-    sprites.value.on_duty = out.on_duty
-  } catch (e) { showToast(e.message) }
-}
-async function ackMorning() {
-  morningShow.value = false
-  try { await api.morningAck() } catch {}
-  if (sprites.value.morning) sprites.value.morning.new = false
-}
+function openSprites() { baseRef.value?.openSprites() }
+
+const boxOpen = ref(false)
+const boxResult = ref(null)
+const boxPhase = ref('sun')
+let boxTimers = []
 function closeBoxMask() {
   if (boxResult.value && boxResult.value.kind === 'sprite' && (boxPhase.value === 'sun' || boxPhase.value === 'egg')) return
   boxOpen.value = false
@@ -770,9 +209,10 @@ async function refresh() {
     reviewDue.value = (rv || []).filter(x => !hidden.has(x.subject_id))
     recentLedger.value = led || []
     if (Array.isArray(ach)) achievements.value = ach
-    if (wd) applyWordToday(wd)
+    if (wd) wordToday.value = wd
     if (sp) {
-      sprites.value = { ...sprites.value, ...sp, loaded: true }
+      Object.assign(sprites.value, sp)
+      sprites.value.loaded = true
       if (activeTab.value === 'base' || spritesOpen.value) maybeShowMorning()
     }
     if (cap) applyCapsule(cap)
@@ -947,146 +387,11 @@ async function openRankMap() {
   rankMapOpen.value = true
   try { rankMap.value = await api.ranks() } catch {}
 }
-function ledgerLabel(row) {
-  const note = (row.note || '').trim()
-  if (row.reason === 'penalty') {
-    const reason = note.split('：')[0] || '约定'
-    return '约定 · ' + reason
-  }
-  if (row.reason === 'penalty_cancel') return '家长撤回了约定'
-  if (row.reason === 'redeem') return note ? '兑换 ' + note : '兑换'
-  if (row.reason === 'cancel') return '取消打卡'
-  if (row.reason === 'test') return note || '单元测试'
-  if (row.reason === 'test_cancel') return '删除测试'
-  if (row.reason === 'box') return '连击宝箱'
-  if (row.reason === 'milestone') return note || '连击奖励'
-  if (row.reason === 'word_daily') return '今日单词背默'
-  if (row.reason === 'word_perfect') return '单词默写全对'
-  if (row.reason === 'daily') return note || '每日打卡'
-  if (row.reason === 'task') return note || '完成任务'
-  if (row.reason === 'bank_deposit') return '存入阳光银行'
-  if (row.reason === 'bank_withdraw') return '从银行取出'
-  if (row.reason === 'bank_interest') return '银行利息'
-  return note || '阳光变动'
-}
-function ledgerSign(n) {
-  const v = Number(n) || 0
-  return (v > 0 ? '+' : '') + v
-}
-function ymd(d) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
-const SUN_TRANSFER = new Set(['bank_deposit', 'bank_withdraw', 'bank_interest'])
-const SUN_EARN = new Set(['task', 'daily', 'word_daily', 'word_perfect', 'test', 'box', 'milestone'])
-const SUN_REVERT = new Set(['cancel', 'test_cancel'])
-const SUN_SPEND = new Set(['redeem'])
-const SUN_PATHS = [
-  { id: 'task', name: '课文任务', hint: '把今天的课往前推', reasons: ['task'], icon: BookOpen, tab: null },
-  { id: 'word', name: '英语单词', hint: '复习或新词还没写完', reasons: ['word_daily', 'word_perfect'], icon: Globe, tab: '英语' },
-  { id: 'daily', name: '每日打卡', hint: '今天的打卡还空着', reasons: ['daily'], icon: CalendarDays, tab: '今日推荐' },
-  { id: 'test', name: '单元测试', hint: '测完告诉家长登分', reasons: ['test'], icon: FileText, tab: null },
-  { id: 'box', name: '宝箱连击', hint: '连续打卡才会开箱', reasons: ['box', 'milestone'], icon: Gift, tab: null },
-]
-const WD = '日一二三四五六'
-function pocketRow(r) { return (r.account || 'pocket') === 'pocket' }
-function sunDelta(r) { return Number(r.delta) || 0 }
-function isSunEarn(r) { return pocketRow(r) && SUN_EARN.has(r.reason) }
-function isSunRevert(r) { return pocketRow(r) && SUN_REVERT.has(r.reason) }
-function isSunSpend(r) { return pocketRow(r) && SUN_SPEND.has(r.reason) && sunDelta(r) < 0 }
-function sunRowIcon(reason) {
-  if (['task', 'word_daily', 'word_perfect', 'test'].includes(reason)) return BookOpen
-  if (reason === 'daily') return CalendarDays
-  if (reason === 'box' || reason === 'milestone') return Gift
-  if (reason === 'redeem') return ShoppingCart
-  if (reason === 'penalty' || reason === 'penalty_cancel') return Target
-  if (reason === 'cancel' || reason === 'test_cancel') return RefreshCw
-  return Sun
-}
-function sunSum(rows, pred) {
-  return rows.filter(pred).reduce((s, r) => s + Math.abs(sunDelta(r)), 0)
-}
-function sunSumSigned(rows, pred) {
-  return rows.filter(pred).reduce((s, r) => s + sunDelta(r), 0)
-}
-const sunshineStats = computed(() => {
-  const rows = (recentLedger.value || []).filter(pocketRow)
-  const now = new Date()
-  const dayList = []
-  for (let i = 13; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i)
-    dayList.push(ymd(d))
-  }
-  const weekDates = dayList.slice(7)
-  const prevDates = dayList.slice(0, 7)
-  const weekSet = new Set(weekDates)
-  const prevSet = new Set(prevDates)
-  const days = weekDates.map((iso, i) => {
-    const dayRows = rows.filter(r => r.date === iso)
-    const inn = Math.max(0, sunSumSigned(dayRows, r => isSunEarn(r) || isSunRevert(r)))
-    const out = sunSum(dayRows, isSunSpend)
-    const [yy, mm, dd] = iso.split('-').map(Number)
-    const d = new Date(yy, mm - 1, dd) // 本地时区解析，避免 'YYYY-MM-DD' 被当 UTC 导致星期错一天
-    return { date: iso, wd: i === 6 ? '今天' : WD[d.getDay()], inn, out, today: i === 6, quiet: inn === 0 }
-  })
-  const weekIn = Math.max(0, sunSumSigned(rows.filter(r => weekSet.has(r.date)), r => isSunEarn(r) || isSunRevert(r)))
-  const weekOut = days.reduce((s, d) => s + d.out, 0)
-  const maxAbs = Math.max(1, ...days.map(d => Math.max(d.inn, d.out)))
-  const paths = SUN_PATHS.map(p => {
-    const week = sunSum(rows.filter(r => weekSet.has(r.date) && p.reasons.includes(r.reason)), isSunEarn)
-    const prev = sunSum(rows.filter(r => prevSet.has(r.date) && p.reasons.includes(r.reason)), isSunEarn)
-    let vs = '这周还没有'
-    if (week > 0 && prev === 0) vs = '这周刚开始有'
-    else if (week > prev) vs = `比上周多 ${week - prev}`
-    else if (week < prev) vs = `比上周少 ${prev - week}`
-    else if (week > 0) vs = '和上周差不多'
-    return { ...p, week, prev, vs }
-  })
-  const maxPath = Math.max(1, ...paths.map(p => p.week), 0)
-  const top = [...paths].sort((a, b) => b.week - a.week)[0]
-  return {
-    days, weekIn, weekOut, maxAbs, paths, maxPath,
-    quiet: days.filter(d => d.quiet && !d.today),
-    topName: top && top.week ? top.name : '',
-    recent: rows.slice(0, 10),
-  }
-})
-const sunshineGaps = computed(() => {
-  const g = []
-  const st = sunshineStats.value
-  if (dailyTodo.value.length) g.push({ id: 'daily', text: `今天还有 ${dailyTodo.value.length} 项打卡没做`, go: '今日推荐' })
-  if (wordDueCard.value && !wordDueCard.value.finished) g.push({ id: 'word-due', text: `单词复习还剩 ${wordDueCard.value.left} 个`, lane: 'due' })
-  if (wordNewCard.value && !wordNewCard.value.finished) g.push({ id: 'word-new', text: `新词还剩 ${wordNewCard.value.left} 个`, lane: 'new' })
-  if (reviewDue.value.length) g.push({ id: 'review', text: `有 ${reviewDue.value.length} 项复习到期了`, go: '今日推荐' })
-  if (studyNext.value.length) g.push({ id: 'study', text: `课文还没往前：${studyNext.value[0].subject_id}`, go: studyNext.value[0].subject_id })
-  if (st.quiet.length) g.push({ id: 'quiet', text: `这周有 ${st.quiet.length} 天没有攒到阳光` })
-  const emptyPath = st.paths.find(p => p.week === 0 && (p.id === 'task' || p.id === 'daily' || p.id === 'word'))
-  if (emptyPath) g.push({ id: 'path-' + emptyPath.id, text: `这周还没有「${emptyPath.name}」的阳光`, go: emptyPath.tab || '今日推荐' })
-  if (st.weekOut > st.weekIn && st.weekOut) g.push({ id: 'spend', text: `这周兑换了 ${st.weekOut}，只攒了 ${st.weekIn}` })
-  if (todayPenalty.value) g.push({ id: 'penalty', text: `今天有约定：${todayPenalty.value.reason}` })
-  const seen = new Set()
-  return g.filter(x => (seen.has(x.id) ? false : seen.add(x.id)))
-})
-const sunshineLead = computed(() => {
-  const st = sunshineStats.value
-  const gap = sunshineGaps.value[0]
-  if (gap) return gap.text
-  if (st.topName) return `这周阳光主要来自${st.topName}`
-  return '去做任务，口袋就会亮起来'
-})
+// 阳光统计页（components/SunshinePage.vue）：今日约定在 store，账本数学在组件
 function goSunGap(g) {
   if (g.lane) openWordLane(g.lane)
   else if (g.go) activeTab.value = g.go
 }
-const todayPenalty = computed(() => {
-  const today = data.today
-  const rows = recentLedger.value || []
-  const cancels = new Set(rows.filter(r => r.reason === 'penalty_cancel').map(r => r.ref_id))
-  const active = rows.filter(r => r.reason === 'penalty' && r.date === today && !cancels.has(r.ref_id))
-  if (!active.length) return null
-  const n = active.reduce((s, r) => s + Math.abs(Number(r.delta) || 0), 0)
-  const reason = ((active[0].note || '').split('：')[0] || '约定').trim()
-  return { n, count: active.length, reason }
-})
 
 const unitName = (id) => data.units.find(u => u.id === id)?.name || ''
 const bySubject = computed(() => {
@@ -1210,10 +515,6 @@ onMounted(async () => {
       soundManager.tested = true
     }
   }, { once: true })
-  if (ttsReady()) {
-    loadWordVoices()
-    try { speechSynthesis.addEventListener('voiceschanged', loadWordVoices) } catch {}
-  }
   try {
     me.value = await api.me()
     authed.value = true
@@ -1406,119 +707,11 @@ function reloadApp() {
         </template>
 
         <template v-else-if="activeTab === 'sunshine'">
-          <div class="sun-page">
-            <div class="bank-header">
-              <div class="bank-title">
-                <TrendingUp class="bank-icon" :size="28" />
-                <div>
-                  <h1>我的阳光</h1>
-                  <p>{{ sunshineLead }}</p>
-                </div>
-              </div>
-            </div>
-
-            <div v-if="sunshineGaps.length" class="sun-gaps">
-              <h3 class="section-title"><Target class="ico" :size="18" /> 还没做好</h3>
-              <button v-for="g in sunshineGaps.slice(0, 5)" :key="g.id" type="button" class="sun-gap" :disabled="!g.go && !g.lane" @click="goSunGap(g)">
-                <span>{{ g.text }}</span>
-                <em v-if="g.go || g.lane">去看看</em>
-              </button>
-            </div>
-            <div v-else class="sun-gaps ok">
-              <p>这周该做的都有阳光进账，继续保持。</p>
-            </div>
-
-            <div class="bank-operations">
-              <div class="op-header">
-                <h3>这周趋势</h3>
-                <span class="sun-week-sum">攒 {{ sunshineStats.weekIn }} · 兑换 {{ sunshineStats.weekOut }}</span>
-              </div>
-              <div class="sun-week">
-                <div v-for="d in sunshineStats.days" :key="d.date" class="sun-col" :class="{ quiet: d.quiet && !d.today }">
-                  <span class="sun-col-n" :class="{ zero: !d.inn }">{{ d.inn ? '+' + d.inn : '0' }}</span>
-                  <div class="sun-track dual">
-                    <i class="in" :style="{ height: Math.max(d.inn ? 8 : 0, Math.round(d.inn / sunshineStats.maxAbs * 68)) + 'px' }"></i>
-                    <i class="out" :style="{ height: Math.max(d.out ? 8 : 0, Math.round(d.out / sunshineStats.maxAbs * 68)) + 'px' }"></i>
-                  </div>
-                  <span :class="{ today: d.today }">{{ d.wd }}</span>
-                </div>
-              </div>
-              <p class="sun-week-legend"><i class="in"></i> 攒到的 <i class="out"></i> 商店兑换</p>
-            </div>
-
-            <div class="bank-operations">
-              <div class="op-header"><h3>五条途径</h3></div>
-              <div class="sun-path-list">
-                <div v-for="p in sunshineStats.paths" :key="p.id" class="sun-path" :class="{ miss: !p.week }">
-                  <i class="sun-ico" :class="p.id"><component :is="p.icon" :size="18" /></i>
-                  <div>
-                    <strong>{{ p.name }}</strong>
-                    <small>{{ p.week ? p.vs : p.hint }}</small>
-                  </div>
-                  <b>{{ p.week ? '+' + p.week : '0' }}</b>
-                  <div class="goal-bar src-bar"><i class="goal-fill" :style="{ width: Math.round(p.week / sunshineStats.maxPath * 100) + '%' }"></i></div>
-                </div>
-              </div>
-            </div>
-          </div>
+          <SunshinePage :daily-todo="dailyTodo" :study-next="studyNext" @navigate="goSunGap" />
         </template>
 
         <template v-else-if="activeTab === 'base'">
-          <template v-if="sprites.base_enabled">
-            <h1 class="base-head">
-              <span><House class="ico" :size="20" /> 秘密基地</span>
-              <span v-if="sprites.enabled" class="dust-chip">星尘 {{ sprites.dust }}</span>
-              <button v-if="sprites.enabled" type="button" class="do" @click="toyShopOpen = true">玩具店</button>
-            </h1>
-            <div v-if="morningShow && sprites.morning?.text" class="morning-note" @click="ackMorning">
-              <img v-if="sprites.morning.who" class="duty-face" :src="spImg(sprites.morning.who)" alt="" />
-              <div>
-                <strong>昨晚报</strong>
-                <p>{{ sprites.morning.text }}</p>
-                <small>点一下收好</small>
-              </div>
-            </div>
-            <div class="atlas-scene-tabs">
-              <button type="button" class="tab" :class="{ on: spriteScene === 'sun' }" @click="spriteScene = 'sun'">天台</button>
-              <button type="button" class="tab" :class="{ on: spriteScene === 'leaf' }" @click="spriteScene = 'leaf'">树屋</button>
-              <button type="button" class="tab" :class="{ on: spriteScene === 'sky' }" @click="spriteScene = 'sky'">云上</button>
-            </div>
-            <div class="atlas-stage atlas-stage-page" :class="{ 'moon-full': sprites.enabled && spriteScene === 'sky' && sprites.today?.review_clear }">
-              <img class="atlas-bg" :src="baseImg(spriteScene)" alt="" />
-              <div v-if="!sprites.enabled" class="atlas-building"><b>建设中</b><span>图鉴打开以后，朋友才搬进来</span></div>
-              <template v-if="sprites.enabled" v-for="t in sceneToys(spriteScene)" :key="'p'+t.id">
-                <div class="atlas-toy" :class="[t.anim, { flip: toyFlip[t.id], ready: t.id === 'memo-capsule' && capsule.state === 'ready', sealed: t.id === 'memo-capsule' && capsule.state === 'sealed' }]"
-                  :style="{ left: t.x + '%', top: t.y + '%', width: t.w + '%' }"
-                  @click="t.id === 'memo-capsule' ? openCapsuleBox() : (t.flip && (toyFlip[t.id] = !toyFlip[t.id]))">
-                  <template v-if="t.id === 'trace-pinwheel'">
-                    <img class="stick" :src="toyImg('trace-pinwheel-stick')" alt="" />
-                    <img class="blades" :src="toyImg('trace-pinwheel-blades')" alt="" />
-                  </template>
-                  <template v-else-if="t.id === 'memo-flag'">
-                    <img class="pole" :src="toyImg('memo-flag-pole')" alt="" />
-                    <img class="fabric" :src="toyImg('memo-flag-fabric')" alt="" />
-                  </template>
-                  <div v-else-if="t.id === 'memo-capsule'" class="capsule-letter"><span class="flap"></span><span class="sheet"></span></div>
-                  <img v-else class="toy" :src="toyImg(t.id)" :alt="t.name" />
-                </div>
-              </template>
-              <template v-if="sprites.enabled">
-                <img v-for="b in sceneBuddies(spriteScene)" :key="'pb'+b.id" class="atlas-buddy"
-                  :src="spImg(b.id)" :alt="displayName(b)"
-                  :style="{ left: b.x + '%', top: b.y + '%', width: b.w + '%' }" />
-              </template>
-              <img v-if="sprites.enabled && spriteScene === 'sun' && sprites.today?.unit_done" class="atlas-plane" :src="toyImg('trace-plane')" alt="" />
-              <span v-if="sprites.enabled && spriteScene === 'sky' && sprites.today?.word_done" class="atlas-star">✦</span>
-            </div>
-          </template>
-          <div v-else class="coming-page">
-            <div class="coming">
-              <House class="ico" :size="36" />
-              <strong>秘密基地</strong>
-              <em>建设中</em>
-              <p>小房子还在搭，以后可以藏贴纸、日记和悄悄话。</p>
-            </div>
-          </div>
+          <SpritesBase ref="baseRef" @open-capsule="openCapsuleBox" />
         </template>
 
         <template v-else-if="activeTab === 'bank'">
@@ -1613,73 +806,8 @@ function reloadApp() {
     <!-- 商店抽屉（components/ShopDrawer.vue） -->
     <ShopDrawer ref="shopRef" @changed="refresh" />
 
-    <div v-if="toyShopOpen" class="mask" @click.self="toyShopOpen = false">
-      <div class="shop-modal enter toy-shop-modal">
-        <h3>玩具店</h3>
-        <p class="dust-chip toy-shop-dust">你有星尘 {{ sprites.dust }}</p>
-        <div class="toy-shop-grid">
-          <div v-for="it in sprites.shop" :key="it.id" class="toy-shop-card" :class="{ have: it.owned }">
-            <img :src="toyImg(it.id)" :alt="it.name" />
-            <b>{{ it.name }}</b>
-            <span>{{ it.price }} 星尘</span>
-            <button v-if="it.owned" type="button" class="ghost" disabled>已有</button>
-            <button v-else type="button" class="do" :disabled="spriteBusy || sprites.dust < it.price" @click="buyToy(it.id)">换</button>
-          </div>
-        </div>
-        <button class="ghost" @click="toyShopOpen = false">关闭</button>
-      </div>
-    </div>
-
-    <div v-if="capsuleOpen" class="mask" @click.self="closeCapsuleBox">
-      <div class="shop-modal enter">
-        <h3>给以后的自己</h3>
-        <template v-if="capsule.state === 'sealed'">
-          <p class="cap-wait">给 {{ capsuleDateText(capsule.capsule && capsule.capsule.open_on) || '以后' }} 的自己</p>
-          <p class="dim-s">{{ capsule.wait }}。还不能看里面写了什么。</p>
-          <button class="ghost" @click="closeCapsuleBox">关上</button>
-        </template>
-        <template v-else-if="capsule.state === 'ready'">
-          <p>箱子可以拆了。</p>
-          <button class="do big" :disabled="capsuleBusy" @click="openCapsuleLetter">拆开</button>
-          <button class="ghost" @click="closeCapsuleBox">等一会儿</button>
-        </template>
-        <template v-else-if="capsuleOpenedView && capsule.capsule && capsule.capsule.q_line">
-          <div class="cap-snap">
-            <div><small>那时的你</small><strong>{{ snapLine(capsule.capsule.snapshot) }}</strong></div>
-            <div><small>现在的你</small><strong>{{ snapLine(capsule.now) }}</strong></div>
-          </div>
-          <p class="cap-q"><small>最拿手</small>{{ capsule.capsule.q_good }}</p>
-          <p class="cap-q"><small>还想变好</small>{{ capsule.capsule.q_wish }}</p>
-          <p class="cap-q"><small>给以后的自己</small>{{ capsule.capsule.q_line }}</p>
-          <button class="do big" @click="startNextCapsule">写下一封</button>
-          <button class="ghost" @click="closeCapsuleBox">关上</button>
-        </template>
-         <template v-else>
-           <p class="dim-s cap-lead">什么时候拆开？也可以自己选一天。</p>
-           <div class="cap-opts">
-             <button v-for="o in capsule.options" :key="o.kind" type="button"
-               :class="['cap-opt', { on: capsuleForm.when_kind === o.kind }]"
-               @click="pickCapsuleWhen(o.kind)">
-               <strong>{{ o.label }}</strong>
-               <small>{{ o.hint }}</small>
-             </button>
-           </div>
-           <label v-if="capsuleForm.when_kind === 'custom'" class="fld">
-             <span>开封那天</span>
-             <input type="date" v-model="capsuleForm.open_on" :min="capsule.min_open_on" :max="capsule.max_open_on" />
-           </label>
-           <label v-for="q in capsuleQuestions" :key="q.key" class="fld">
-             <span>{{ q.label }}</span>
-             <input v-model="capsuleForm[q.key]" maxlength="40" :placeholder="q.placeholder" />
-             <div class="cap-hints">
-               <button v-for="ex in q.examples" :key="ex" type="button" class="cap-hint" @click="fillCapsuleHint(q.key, ex)">{{ ex }}</button>
-             </div>
-           </label>
-           <button class="do big" :disabled="capsuleBusy" @click="submitCapsule">封进箱子</button>
-           <button class="ghost" @click="closeCapsuleBox">取消</button>
-         </template>
-      </div>
-    </div>
+    <!-- 时间胶囊（components/CapsuleBox.vue） -->
+    <CapsuleBox ref="capsuleRef" />
 
     <!-- 每日打卡弹窗（components/DailyDialog.vue） -->
     <DailyDialog ref="dailyRef" @submit="submitDaily" />
@@ -1689,74 +817,8 @@ function reloadApp() {
 
     <p v-if="err" class="err">{{ err }}</p>
 
-    <div v-if="wordDialog.open" class="mask" @click.self="closeWords">
-      <div class="shop-modal word-modal">
-        <div class="word-top">
-          <strong>{{ wordOverlayTitle }}</strong>
-          <span>{{ wordPos.cur }} / {{ wordPos.total }}</span>
-        </div>
-        <div class="word-bar"><i :style="{ width: wordPos.pct + '%' }"></i></div>
-        <div v-if="wordCurrent && wordDialog.phase !== 'done'" class="word-tag">{{ wordCurrent.source === 'due' ? '复习' : '新学' }}</div>
-
-        <div v-if="wordDialog.phase === 'look' && wordCurrent" class="word-pane">
-          <div class="word-en">{{ wordCurrent.word }}</div>
-          <div class="word-ipa">{{ ipaText(wordCurrent) }}</div>
-          <div class="word-cn">{{ wordCurrent.cn }}</div>
-          <button v-if="wordTtsOn" type="button" class="word-hear" :disabled="wordDialog.busy" aria-label="听读音" @click="hearWord">
-            <Volume2 :size="18" /> 听读音
-          </button>
-          <p v-if="wordCurrent.example_en" class="word-ex">{{ wordCurrent.example_en }}</p>
-          <div v-if="!wordDialog.peekUntil" class="word-actions">
-            <button type="button" class="word-sec" :disabled="wordDialog.busy" @click="wordAgain">再看一次</button>
-            <button type="button" class="do word-main" :disabled="wordDialog.busy" @click="wordKnown">去默写</button>
-          </div>
-        </div>
-
-        <div v-else-if="(wordDialog.phase === 'spell' || wordDialog.phase === 'retry') && wordCurrent" class="word-pane">
-          <p v-if="wordDialog.phase === 'retry'" class="word-retry-note">再写一次，不计分</p>
-          <div class="word-cn big">{{ wordCurrent.cn }}</div>
-          <div class="word-slots" :class="wordDialog.feedback && wordDialog.feedback.kind" @click="focusWordInput">
-            <i v-for="(s, i) in wordSlotCells" :key="i" :class="[s.kind, { cur: s.cur && !wordDialog.feedback }]">{{ s.fill }}</i>
-            <input v-if="!wordDialog.feedback" ref="wordInputEl" v-model="wordDialog.input" class="word-input-ghost"
-              type="text" inputmode="text" autocomplete="off" autocapitalize="none" spellcheck="false"
-              enterkeyhint="done" :disabled="wordDialog.busy" maxlength="60" aria-label="默写单词"
-              @keyup.enter="wordCheck" />
-          </div>
-          <div v-if="wordDialog.feedback && wordDialog.feedback.kind === 'right'" class="word-fb ok">
-            <div class="word-en fade">{{ wordCurrent.word }}</div>
-            <div class="word-ipa fade">{{ ipaText(wordCurrent) }}</div>
-          </div>
-          <template v-else-if="wordDialog.feedback && wordDialog.feedback.kind === 'wrong'">
-            <p class="word-wrong">你写了 {{ wordDialog.feedback.typed }} · 正确 {{ wordCurrent.word }}</p>
-            <div class="word-ipa">{{ ipaText(wordCurrent) }}</div>
-            <button v-if="wordTtsOn" type="button" class="word-hear" aria-label="听读音" @click="hearWord">
-              <Volume2 :size="18" /> 听读音
-            </button>
-            <button v-if="wordCurrent.state === 'done'" type="button" class="do word-main" @click="wordGoNext">下一题</button>
-            <button v-else type="button" class="do word-main" @click="wordDialog.feedback = null; focusWordInput()">再写一次</button>
-          </template>
-          <template v-else>
-            <button type="button" class="do word-main" :disabled="wordDialog.busy" @click="wordCheck">检查</button>
-            <button v-if="wordCurrent.source === 'due' && wordDialog.phase === 'spell' && wordPeekLeft(wordCurrent.word_id) > 0" type="button" class="word-sec" :disabled="wordDialog.busy" @click="wordPeek">忘了，看一眼</button>
-          </template>
-        </div>
-
-        <div v-else-if="wordDialog.phase === 'done'" class="word-pane word-done">
-          <h3>{{ wordDialog.filter === 'due' ? '复习完成' : '新词完成' }}</h3>
-          <p v-if="wordOtherCard && !wordOtherCard.finished">{{ wordDialog.filter === 'due' ? '新词还没练' : '复习还没练' }} · {{ wordOtherCard.left }} 个</p>
-          <p v-else>复习 {{ (wordToday.session && wordToday.session.counts && wordToday.session.counts.due) || 0 }} · 新学 {{ (wordToday.session && wordToday.session.counts && wordToday.session.counts.new) || 0 }}</p>
-          <p v-if="!(wordOtherCard && !wordOtherCard.finished)">首轮正确 {{ (wordToday.session && wordToday.session.counts && wordToday.session.counts.correct_first_try) || 0 }} / {{ wordItems().length }}</p>
-          <p v-if="wordToday.session && wordToday.session.reward" class="word-sun">+{{ wordToday.session.reward.base }} 阳光</p>
-          <p v-if="wordToday.session && wordToday.session.reward && wordToday.session.reward.perfect" class="word-sun">+{{ wordToday.session.reward.perfect }} 全对</p>
-          <button v-if="wordOtherCard && !wordOtherCard.finished" type="button" class="do big" :disabled="wordDialog.busy" @click="openWords(wordOtherLane)">
-            去练{{ wordOtherLane === 'due' ? '复习' : '新词' }}
-          </button>
-          <button v-else type="button" class="do big" :disabled="wordDialog.busy" @click="wordCollect">
-            {{ wordToday.session && wordToday.session.state === 'completed' ? '关闭' : '收下阳光' }}
-          </button>
-        </div>
-      </div>
-    </div>
+    <!-- 单词练习（components/WordPractice.vue） -->
+    <WordPractice ref="wordRef" @collected="refresh" />
 
     <!-- +N 阳光飞出 -->
     <div v-for="f in floaters" :key="f.id" class="floater" :style="{ left: f.x + 'px', top: f.y + 'px' }">{{ f.text }}</div>
@@ -1786,88 +848,7 @@ function reloadApp() {
       </div>
     </div>
 
-    <div v-if="spritesOpen" class="mask" @click.self="spritesOpen = false">
-      <div class="shop-modal ach-modal atlas-modal">
-        <h3 class="base-head">{{ sprites.enabled ? ('阳光图鉴 ' + sprites.owned + '/12') : '秘密基地' }} <span v-if="sprites.enabled" class="dust-chip">星尘 {{ sprites.dust }}</span></h3>
-        <div class="ach-body">
-          <div v-if="morningShow && sprites.morning?.text" class="morning-note" @click="ackMorning">
-            <img v-if="sprites.morning.who" class="duty-face" :src="spImg(sprites.morning.who)" alt="" />
-            <div>
-              <strong>昨晚报</strong>
-              <p>{{ sprites.morning.text }}</p>
-              <small>点一下收好</small>
-            </div>
-          </div>
-          <div v-if="sprites.base_enabled" class="atlas-scene-tabs">
-            <button type="button" class="tab" :class="{ on: spriteScene === 'sun' }" @click="spriteScene = 'sun'">天台</button>
-            <button type="button" class="tab" :class="{ on: spriteScene === 'leaf' }" @click="spriteScene = 'leaf'">树屋</button>
-            <button type="button" class="tab" :class="{ on: spriteScene === 'sky' }" @click="spriteScene = 'sky'">云上</button>
-          </div>
-          <div v-if="sprites.base_enabled" class="atlas-stage" :class="{ 'moon-full': sprites.enabled && spriteScene === 'sky' && sprites.today?.review_clear }">
-            <img class="atlas-bg" :src="baseImg(spriteScene)" alt="" />
-            <div v-if="!sprites.enabled" class="atlas-building"><b>建设中</b><span>图鉴打开以后，朋友才搬进来</span></div>
-            <template v-if="sprites.enabled" v-for="t in sceneToys(spriteScene)" :key="t.id">
-              <div class="atlas-toy" :class="[t.anim, { flip: toyFlip[t.id], ready: t.id === 'memo-capsule' && capsule.state === 'ready', sealed: t.id === 'memo-capsule' && capsule.state === 'sealed' }]"
-                :style="{ left: t.x + '%', top: t.y + '%', width: t.w + '%' }"
-                @click="t.id === 'memo-capsule' ? openCapsuleBox() : (t.flip && (toyFlip[t.id] = !toyFlip[t.id]))">
-                <template v-if="t.id === 'trace-pinwheel'">
-                  <img class="stick" :src="toyImg('trace-pinwheel-stick')" alt="" />
-                  <img class="blades" :src="toyImg('trace-pinwheel-blades')" alt="" />
-                </template>
-                <template v-else-if="t.id === 'memo-flag'">
-                  <img class="pole" :src="toyImg('memo-flag-pole')" alt="" />
-                  <img class="fabric" :src="toyImg('memo-flag-fabric')" alt="" />
-                </template>
-                <div v-else-if="t.id === 'memo-capsule'" class="capsule-letter"><span class="flap"></span><span class="sheet"></span></div>
-                <img v-else class="toy" :src="toyImg(t.id)" :alt="t.name" />
-              </div>
-            </template>
-            <template v-if="sprites.enabled">
-              <img v-for="b in sceneBuddies(spriteScene)" :key="'b'+b.id" class="atlas-buddy"
-                :src="spImg(b.id)" :alt="displayName(b)"
-                :style="{ left: b.x + '%', top: b.y + '%', width: b.w + '%' }" />
-            </template>
-            <img v-if="sprites.enabled && spriteScene === 'sun' && sprites.today?.unit_done" class="atlas-plane" :src="toyImg('trace-plane')" alt="" />
-            <span v-if="sprites.enabled && spriteScene === 'sky' && sprites.today?.word_done" class="atlas-star">✦</span>
-          </div>
-          <details v-if="sprites.enabled" v-for="g in sprites.series" :key="g.id" class="ach-series" open>
-            <summary>{{ g.name }} {{ g.owned }}/{{ g.total }}</summary>
-            <div class="ach-grid">
-              <div v-for="it in g.items" :key="it.id" class="ach-cell" :class="{ on: it.owned }" @click="openSpriteCell(it)">
-                <img v-if="it.owned" class="atlas-cell-face" :src="spImg(it.id)" :alt="displayName(it)" />
-                <div v-else class="atlas-sil"></div>
-                <div class="ach-name">{{ it.owned ? displayName(it) : '？？' }}</div>
-                <div v-if="it.owned" class="ach-prog">{{ '★'.repeat(it.stars) }}{{ '☆'.repeat(3 - it.stars) }}</div>
-              </div>
-            </div>
-          </details>
-          <p v-if="sprites.enabled && sprites.base_enabled" class="dim atlas-shop-hint">玩具在秘密基地的玩具店里买。</p>
-        </div>
-        <button class="ghost" @click="spritesOpen = false">关闭</button>
-      </div>
-      <div v-if="spriteDetail" class="ach-pop" @click.self="spriteDetail = null">
-        <div class="ach-detail">
-          <img class="box-face" :src="spImg(spriteDetail.id)" :alt="displayName(spriteDetail)" />
-          <h3>{{ spriteDetail.name }}</h3>
-          <p class="dim">{{ spriteDetail.flavor }}</p>
-          <p>{{ '★'.repeat(spriteDetail.stars) }}{{ '☆'.repeat(3 - spriteDetail.stars) }}</p>
-          <label class="fld companion-name"><span>昵称</span>
-            <input v-model="spriteNick" maxlength="8" placeholder="1 到 8 个字" />
-          </label>
-          <label class="fld companion-name"><span>一句介绍</span>
-            <input v-model="spriteFlavor" maxlength="16" placeholder="最多 16 个字" />
-          </label>
-          <button type="button" class="do" @click="saveSpriteProfile">保存</button>
-          <button type="button" class="ghost" :disabled="spriteDetail.stars >= 3 || sprites.dust < sprites.star_cost" @click="starSprite">
-            {{ spriteDetail.stars >= 3 ? '已经三颗星了' : (sprites.star_cost + ' 星尘升一星') }}
-          </button>
-          <button v-if="sprites.base_enabled" type="button" class="ghost" @click="toggleDuty(spriteDetail.id)">
-            {{ sprites.on_duty === spriteDetail.id ? '取消值班' : '设为值班' }}
-          </button>
-          <button type="button" class="ghost" @click="spriteDetail = null">关闭</button>
-        </div>
-      </div>
-    </div>
+    <!-- 秘密基地 + 阳光图鉴（components/SpritesBase.vue） -->
 
     <!-- 成长地图 -->
     <div v-if="rankMapOpen" class="mask" @click.self="rankMapOpen = false">
@@ -2495,41 +1476,6 @@ body {
 .do.big { width: 100%; padding: 12px; margin-top: 8px; }
 .ghost { width: 100%; margin-top: 8px; border: none; background: none; color: var(--ink-3); cursor: pointer; }
 .word-daily-card { cursor: pointer; }
-.word-modal { max-width: 420px; text-align: center; }
-.word-top { display: flex; justify-content: space-between; align-items: center; font-weight: 800; }
-.word-bar { height: 6px; background: var(--surface-2); border-radius: 99px; margin: 8px 0 10px; overflow: hidden; }
-.word-bar i { display: block; height: 100%; background: var(--accent); }
-.word-tag { display: inline-block; font-size: 12px; font-weight: 800; color: var(--accent-ink); background: var(--warm); border-radius: var(--radius-pill); padding: 2px 10px; margin-bottom: 8px; }
-.word-en { font-size: 34px; font-weight: 800; line-height: 1.2; word-break: break-word; }
-.word-ipa { margin-top: 6px; font-size: 16px; color: var(--ink-2); font-family: ui-serif, "Times New Roman", serif; }
-.word-cn { margin-top: 8px; font-size: 18px; font-weight: 700; }
-.word-cn.big { font-size: 28px; margin: 8px 0 14px; }
-.word-ex { margin: 10px 0 0; color: var(--ink-3); font-size: 13px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.word-hear, .word-sec, .word-main {
-  min-height: 44px; min-width: 44px; margin-top: 12px; border: none; border-radius: var(--radius-lg);
-  font-weight: 800; cursor: pointer; font-family: inherit; padding: 0 16px;
-}
-.word-hear { background: var(--surface-2); color: var(--ink); display: inline-flex; align-items: center; gap: 6px; }
-.word-sec { background: none; color: var(--ink-3); }
-.word-actions { display: flex; gap: 8px; justify-content: center; margin-top: 16px; }
-.word-actions .word-sec, .word-actions .word-main { flex: 1; margin-top: 0; }
-.word-slots { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: 8px 0 14px; min-height: 40px; position: relative; cursor: text; }
-.word-slots i { width: 22px; height: 32px; border-bottom: 2px solid var(--ink-3); display: inline-flex; align-items: flex-end; justify-content: center; font-weight: 800; font-size: 20px; line-height: 1; }
-.word-slots i.space { width: 12px; border: none; }
-.word-slots i.hyphen { border: none; align-items: center; }
-.word-slots i.cur { border-color: var(--accent); }
-.word-slots.right i { border-color: var(--ok); color: var(--ok); }
-.word-slots.wrong i { border-color: var(--accent); color: var(--accent-ink); }
-.word-input-ghost {
-  position: absolute; inset: 0; opacity: 0; border: 0; padding: 0; margin: 0;
-  width: 100%; height: 100%; font-size: 16px; background: transparent; caret-color: transparent;
-}
-.word-retry-note { margin: 0 0 6px; font-size: 13px; color: var(--ink-3); }
-.word-wrong { margin: 8px 0; color: var(--accent-ink); font-weight: 700; }
-.word-fb.ok .fade { animation: wordfade .8s ease; }
-@keyframes wordfade { from { opacity: 0; } to { opacity: 1; } }
-.word-done h3 { margin: 8px 0 10px; }
-.word-sun { font-size: 20px; font-weight: 800; color: var(--accent); }
 .trend { position: absolute; top: 8px; right: 8px; border: none; background: var(--warm); border-radius: var(--radius-lg); padding: 3px 8px; font-size: 15px; cursor: pointer; line-height: 1; }
 .shop-modal input { width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius-sm); font-size: 15px; }
 .parent { border: none; background: none; color: var(--ink-3); font-size: 13px; font-weight: 700; cursor: pointer; padding: 10px 4px; white-space: nowrap; }
