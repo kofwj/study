@@ -72,7 +72,9 @@ const activeTerm = ref('g5s1')
 const activeSubject = ref('')
 const cursors = ref({})
 const progressLock = ref(true)
-const hiddenSubjects = ref([])
+const weeklyGoal = ref(50)
+const weeklyGoalBusy = ref(false)
+
 const bankData = ref({ enabled: false, balance: 0, pocket_balance: 0, goal: null, requests: [], ledger: [] })
 const bankRequests = ref([])
 const bankGoal = reactive({ name: '', target: 100 })
@@ -156,7 +158,8 @@ async function loadAll() {
     selectedKid.value = ks[0].id
     setSelectedKid(ks[0].id)
   }
-  const [r, rk, t, rd, wk, ts, ig, cat, wps, rv, ft, pn] = await Promise.all([api.rewards(), api.admin.ranks(), api.tasks(), api.admin.redemptions(), api.admin.weekly(), api.admin.tests(), api.admin.insights(), api.admin.unitTags(), api.admin.weakPoints(''), api.admin.reviewDue(), api.admin.familyToday(), api.admin.penalties().catch(() => ({ items: [], summary: null }))])
+  const [r, rk, t, rd, wk, ts, ig, cat, wps, rv, ft, pn, sun] = await Promise.all([api.rewards(), api.admin.ranks(), api.tasks(), api.admin.redemptions(), api.admin.weekly(), api.admin.tests(), api.admin.insights(), api.admin.unitTags(), api.admin.weakPoints(''), api.admin.reviewDue(), api.admin.familyToday(), api.admin.penalties().catch(() => ({ items: [], summary: null })), api.ledgerSummary(0).catch(() => null)])
+
   rewards.value = r
   ranks.value = rk
   subjects.value = t.subjects
@@ -175,7 +178,9 @@ async function loadAll() {
   if (!activeSubject.value || !unitsBySubject.value[activeSubject.value]) activeSubject.value = Object.keys(unitsBySubject.value)[0] || ''
   cursors.value = t.cursors || {}
   progressLock.value = t.progress_lock === '1'
+  weeklyGoal.value = sun && sun.weekly_goal != null ? sun.weekly_goal : 50
   hiddenSubjects.value = t.hidden_subjects || []
+
   redemptions.value = rd
   weekly.value = wk
   familyToday.value = ft || { today: '', kids: [] }
@@ -851,6 +856,18 @@ async function toggleLock() {
     showToast(progressLock.value ? '进度锁已开：只能打当前单元' : '进度锁已关：可自由打卡')
   } catch (e) { showToast(e.message) }
 }
+
+async function saveWeeklyGoal() {
+  const n = Math.max(0, Math.min(10000, Math.round(Number(weeklyGoal.value) || 0)))
+  weeklyGoalBusy.value = true
+  try {
+    const r = await api.setWeeklyGoal(n)
+    weeklyGoal.value = r.weekly_goal
+    showToast(n ? `本周目标设为 ${n}` : '已关掉本周目标')
+  } catch (e) { showToast(e.message) }
+  finally { weeklyGoalBusy.value = false }
+}
+
 
 async function toggleSubjectVisible(id) {
   const on = !subjectShown(id)
@@ -1773,7 +1790,16 @@ get up	起床</pre>
 
     <section v-if="section === 'kids'" class="a-card">
       <h3>孩子账号</h3>
+      <div v-if="currentKidName" class="add-box">
+        <div class="add-title">{{ currentKidName }}的本周攒阳光目标</div>
+        <p class="dim">默认 50；填 0 就关掉进度条。孩子端也能改。</p>
+        <div class="frm-row">
+          <label class="fld w84"><span>目标阳光</span><input v-model.number="weeklyGoal" type="number" min="0" max="10000" /></label>
+          <button class="ok" @click="saveWeeklyGoal" :disabled="weeklyGoalBusy">保存目标</button>
+        </div>
+      </div>
       <p v-if="!terms.length" class="dim">学期列表还没载入，退出再进一次家长端。</p>
+
       <div class="kid-card" v-for="k in kids" :key="k.id">
         <label class="fld"><span>家里怎么叫</span><input v-model="k.name" placeholder="如：乐乐" /></label>
         <label class="fld"><span>登录账号</span><input v-model="k.account" placeholder="如：lele" /></label>

@@ -2165,6 +2165,31 @@ EARN_REASONS = {"task", "daily", "word_daily", "word_perfect", "test", "box", "m
 REVERT_REASONS = {"cancel", "test_cancel"}
 SPEND_REASONS = {"redeem"}
 PATH_OF = {"task": "task", "word_daily": "word", "word_perfect": "word", "daily": "daily", "test": "test", "box": "box", "milestone": "box"}
+WEEKLY_GOAL_KEY = "weekly_goal"
+WEEKLY_GOAL_DEFAULT = 50
+
+
+def _weekly_goal_of(c, kid):
+    raw = db.get_kid_setting(c, kid, WEEKLY_GOAL_KEY, None)
+    if raw is None or str(raw).strip() == "":
+        return WEEKLY_GOAL_DEFAULT
+    try:
+        n = int(raw)
+    except (TypeError, ValueError):
+        return WEEKLY_GOAL_DEFAULT
+    return max(0, min(10000, n))
+
+
+def _set_weekly_goal(c, kid, n):
+    try:
+        v = int(n)
+    except (TypeError, ValueError):
+        raise HTTPException(400, "目标要填数字")
+    if v < 0 or v > 10000:
+        raise HTTPException(400, "目标填 0 到 10000，0 表示关掉")
+    db.set_kid_setting(c, kid, WEEKLY_GOAL_KEY, str(v))
+    return v
+
 
 
 def _summary_blank_day(d):
@@ -2255,12 +2280,31 @@ def ledger_summary(offset: int = 0):
         "ORDER BY date, id",
         (kid, start, end)).fetchall()]
     penalty_today = _penalty_today_payload(c, kid, today.isoformat())
+    weekly_goal = _weekly_goal_of(c, kid)
     c.close()
     days = _summary_fill_days(monday, rows)
     prev_week = _summary_fill_days(prev_monday, rows)
     return {"today": today.isoformat(), "week_start": start, "offset": offset, "days": days,
             "prev_week": prev_week, "penalty_today": penalty_today, "redemptions": redemptions,
-            "week_in": sum(d["earn"] for d in days), "week_out": sum(d["spend"] for d in days)}
+            "week_in": sum(d["earn"] for d in days), "week_out": sum(d["spend"] for d in days),
+            "weekly_goal": weekly_goal}
+
+
+class WeeklyGoalIn(BaseModel):
+    goal: int = WEEKLY_GOAL_DEFAULT
+
+
+@app.put("/api/ledger/weekly-goal")
+def set_weekly_goal(b: WeeklyGoalIn):
+    """本周攒阳光目标。家长和孩子都能改；0=关闭。默认 50。"""
+    c = get_conn()
+    try:
+        n = _set_weekly_goal(c, kid_id(), b.goal)
+        c.commit()
+        return {"weekly_goal": n}
+    finally:
+        c.close()
+
 
 
 

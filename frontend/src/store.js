@@ -189,9 +189,10 @@ export function maybeShowMorning() {
 // ---- 阳光账本：周聚合 + 今日约定（阳光页与今日推荐共用）----
 export const ledgerSummary = ref({
   today: '', week_start: '', offset: 0, days: [], prev_week: [],
-  penalty_today: null, week_in: 0, week_out: 0, redemptions: [],
+  penalty_today: null, week_in: 0, week_out: 0, redemptions: [], weekly_goal: 50,
 })
 export const weekOffset = ref(0)
+
 
 export const todayPenalty = computed(() => {
   const s = ledgerSummary.value

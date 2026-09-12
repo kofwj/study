@@ -130,8 +130,38 @@ const sunshineStats = computed(() => {
     rangeLabel: start && end ? `${md(start)}–${md(end)}` : '',
     offset: Number(s.offset || 0),
     redemptions: s.redemptions || [],
+    weeklyGoal: Math.max(0, Number(s.weekly_goal) || 0),
   }
 })
+const weekGoalBar = computed(() => {
+  const st = sunshineStats.value
+  const goal = st.weeklyGoal
+  if (!goal) return null
+  const got = st.weekIn
+  const over = Math.max(0, got - goal)
+  const pct = Math.min(100, Math.round(got / goal * 100))
+  let text = `本周目标 ${got}/${goal}`
+  if (over) text = `本周目标 ${got}/${goal} · 超标 ${over}`
+  else if (got >= goal) text = `本周目标 ${got}/${goal} · 达标了`
+  return { goal, got, over, pct, done: got >= goal, text }
+})
+const editingGoal = ref(false)
+const goalDraft = ref(50)
+const goalBusy = ref(false)
+function openGoalEdit() {
+  goalDraft.value = sunshineStats.value.weeklyGoal || 50
+  editingGoal.value = true
+}
+async function saveGoal() {
+  const n = Math.max(0, Math.min(10000, Math.round(Number(goalDraft.value) || 0)))
+  goalBusy.value = true
+  try {
+    const r = await api.setWeeklyGoal(n)
+    ledgerSummary.value = { ...ledgerSummary.value, weekly_goal: r.weekly_goal }
+    editingGoal.value = false
+  } catch { /* 保留编辑态 */ }
+  finally { goalBusy.value = false }
+}
 const sunshineGaps = computed(() => {
   const g = []
   const st = sunshineStats.value
@@ -183,6 +213,23 @@ function fmtDelta(n) {
         </div>
       </div>
     </div>
+    <div v-if="weekGoalBar" class="sun-week-goal" :class="{ done: weekGoalBar.done }">
+      <div class="sun-week-goal-row">
+        <strong>{{ weekGoalBar.text }}</strong>
+        <button v-if="!editingGoal" type="button" class="sun-goal-edit" @click="openGoalEdit">改目标</button>
+      </div>
+      <div class="goal-bar sun-week-goal-bar"><i class="goal-fill" :style="{ width: weekGoalBar.pct + '%' }"></i></div>
+      <div v-if="editingGoal" class="sun-goal-form">
+        <input v-model.number="goalDraft" type="number" min="0" max="10000" />
+        <button type="button" class="sun-goal-edit" :disabled="goalBusy" @click="saveGoal">保存</button>
+        <button type="button" class="sun-goal-edit ghost" :disabled="goalBusy" @click="editingGoal = false">取消</button>
+        <span class="sun-goal-hint">0 表示关掉</span>
+      </div>
+    </div>
+    <div v-else class="sun-week-goal off">
+      <button type="button" class="sun-goal-edit" @click="openGoalEdit">设本周攒阳光目标</button>
+    </div>
+
 
     <div v-if="sunshineGaps.length" class="sun-gaps">
       <h3 class="section-title"><Target class="ico" :size="18" /> 还没做好</h3>

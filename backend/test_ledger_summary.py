@@ -115,10 +115,30 @@ def test_ledger_summary():
         d2 = cli.get("/api/ledger/summary").json()
         assert d2["week_in"] == 99
         assert d2["penalty_today"] is None
+        assert d2["weekly_goal"] == 50
 
         # 未登录 401
         assert cli.post("/api/auth/logout").status_code == 200
         assert cli.get("/api/ledger/summary").status_code == 401
+
+
+def test_weekly_goal():
+    db.init_db()
+    with TestClient(main.app) as cli:
+        assert cli.post("/api/auth/register", json={"account": "goalparent", "pin": "parent123", "family_name": "目标家"}).status_code == 200
+        r = cli.post("/api/admin/kids", json={"name": "甲", "account": "goalkid", "pin": "111222", "term_id": "g5s1"})
+        assert r.status_code == 200, r.text
+        assert cli.post("/api/auth/login", json={"account": "goalkid", "pin": "111222"}).status_code == 200
+        assert cli.get("/api/ledger/summary").json()["weekly_goal"] == 50
+        r = cli.put("/api/ledger/weekly-goal", json={"goal": 32})
+        assert r.status_code == 200 and r.json()["weekly_goal"] == 32
+        assert cli.get("/api/ledger/summary").json()["weekly_goal"] == 32
+        assert cli.put("/api/ledger/weekly-goal", json={"goal": 0}).json()["weekly_goal"] == 0
+        assert cli.put("/api/ledger/weekly-goal", json={"goal": -1}).status_code == 400
+        assert cli.post("/api/auth/login", json={"account": "goalparent", "pin": "parent123"}).status_code == 200
+        assert cli.put("/api/ledger/weekly-goal", json={"goal": 80}).json()["weekly_goal"] == 80
+        assert cli.get("/api/ledger/summary").json()["weekly_goal"] == 80
+
 
 
 def test_summary_offset_clamped():

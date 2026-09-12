@@ -1097,6 +1097,20 @@ body {
 .sun-day-list li.down b, .sun-redeem b { color: var(--ink-3); font-variant-numeric: tabular-nums; }
 .sun-redeem { margin-top: 12px; }
 .sun-redeem h4 { margin: 0 0 8px; font-size: 13px; font-weight: 800; color: var(--ink-2); }
+.sun-week-goal { margin: 0 0 16px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-xl); padding: 12px 14px; }
+.sun-week-goal.done { background: var(--ok-bg); border-color: transparent; }
+.sun-week-goal.done strong { color: var(--ok); }
+.sun-week-goal.off { background: transparent; border: 0; padding: 0 0 12px; }
+.sun-week-goal-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+.sun-week-goal-row strong { font-size: 14px; }
+.sun-week-goal-bar { height: 12px; background: var(--surface-2); }
+.sun-week-goal.done .goal-fill { background: linear-gradient(90deg, #8ee0ad, var(--ok)); }
+.sun-goal-edit { border: 0; background: var(--warm); color: var(--accent-ink); font: inherit; font-size: 12px; font-weight: 800; padding: 4px 10px; border-radius: var(--radius-pill); cursor: pointer; }
+.sun-goal-edit.ghost { background: var(--surface-2); color: var(--ink-2); }
+.sun-goal-form { display: flex; align-items: center; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+.sun-goal-form input { width: 88px; font: inherit; font-weight: 800; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line); }
+.sun-goal-hint { font-size: 12px; font-weight: 700; color: var(--ink-3); }
+
 .sun-path-list { display: flex; flex-direction: column; gap: 8px; }
 .sun-path { display: grid; grid-template-columns: 36px 1fr auto; grid-template-areas: "ico name amt" "bar bar bar"; gap: 2px 10px; align-items: center; background: var(--surface-2); border-radius: var(--radius-lg); padding: 12px; }
 .sun-path.miss { opacity: .72; }

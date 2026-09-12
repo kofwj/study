@@ -58,6 +58,7 @@ export const api = {
   ledger: () => j('/api/ledger?limit=60'),
   ledgerSummary: (offset = 0) => j('/api/ledger/summary?offset=' + encodeURIComponent(offset)),
   ledgerDay: (date) => j('/api/ledger?date=' + encodeURIComponent(date)),
+  setWeeklyGoal: (goal) => j('/api/ledger/weekly-goal', { method: 'PUT', ...body({ goal }) }),
 
 
   setKidName: (name) => j('/api/kid-name', { method: 'POST', ...body({ name }) }),
