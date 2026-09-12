@@ -1081,9 +1081,18 @@ body {
 .sun-gap em { font-style: normal; font-size: 12px; font-weight: 800; color: var(--accent-ink); background: var(--warm); padding: 4px 10px; border-radius: var(--radius-pill); }
 .sun-week-sum { font-size: 12px; font-weight: 800; color: var(--ink-2); }
 .sun-track.dual { display: flex; align-items: flex-end; justify-content: center; gap: 3px; }
+.sun-track.dual i { width: 10px; min-height: 0; border-radius: 5px 5px 0 0; transition: height 120ms ease; }
+.sun-pair { position: relative; display: flex; align-items: flex-end; width: 10px; height: 68px; }
+.sun-pair i { position: absolute; left: 0; bottom: 0; width: 10px; }
+.sun-pair i.ghost { opacity: .28; z-index: 0; }
+.sun-pair i.in, .sun-pair i.out { z-index: 1; }
 .sun-col.quiet .sun-col-n { color: var(--danger); }
 .sun-week-legend { display: flex; align-items: center; gap: 6px; margin: 10px 0 0; font-size: 12px; font-weight: 700; color: var(--ink-3); }
 .sun-week-legend i { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
+@media (prefers-reduced-motion: reduce) {
+  .sun-track.dual i { transition: none; }
+}
+
 .sun-week-nav { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 4px 0 2px; }
 .sun-week-btn { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 1px solid var(--line); background: var(--surface); border-radius: var(--radius-circle); color: var(--ink); cursor: pointer; }
 .sun-week-btn:disabled { opacity: .35; cursor: default; }
