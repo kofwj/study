@@ -10,6 +10,7 @@ import json
 import logging
 import calendar
 import random
+import secrets
 import time
 import os
 import uuid
@@ -3730,13 +3731,25 @@ def kids_list(request: Request):
     return [dict(r) for r in rows]
 
 
+def _gen_kid_pin() -> str:
+    """不指定密码时随机生成 6 位孩子密码，避开弱模式（全同/连续），不合规就重抽。"""
+    while True:
+        p = "".join(secrets.choice("0123456789") for _ in range(6))
+        try:
+            _check_pin(p, parent=False)
+            return p
+        except HTTPException:
+            continue
+
+
 @app.post("/api/admin/kids", dependencies=[Depends(require_parent)])
 def kids_create(b: KidIn, request: Request):
     name = (b.name or "").strip()[:12]
     if not name:
         raise HTTPException(400, "名字不能为空")
     account = (b.account or name).strip().lower()
-    pin = _check_pin(b.pin or "0129", parent=False)
+    auto_pin = not (b.pin or "").strip()
+    pin = _gen_kid_pin() if auto_pin else _check_pin(b.pin, parent=False)
     u = request.state.user
     # 账号全局唯一：RLS 只让看本家，这里走特权连接查全部家庭
     pc = db.connect(admin=True)
@@ -3760,7 +3773,8 @@ def kids_create(b: KidIn, request: Request):
         (kid, u["family_id"], "kid", name, "", db.hash_pin(pin), b.term_id or "g5s1", account, db.now(), "", _gender(b.gender)))
     c.execute("INSERT INTO profiles(user_id,family_id) VALUES(?,?) ON CONFLICT DO NOTHING", (kid, u["family_id"]))
     c.commit(); c.close()
-    return {"id": kid, "account": account}
+    # 自动生成的密码只在创建响应里出现一次，由家长转告孩子
+    return {"id": kid, "account": account, **({"pin": pin} if auto_pin else {})}
 
 
 @app.put("/api/admin/kids/{kid}", dependencies=[Depends(require_parent)])

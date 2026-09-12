@@ -14,6 +14,22 @@ from fastapi.testclient import TestClient
 import main  # noqa: E402
 
 
+def test_kid_auto_pin():
+    """不填密码时随机生成 6 位 PIN，不再用固定的 0129。"""
+    db.init_db()
+    with TestClient(main.app) as cli:
+        assert cli.post("/api/auth/login", json={"account": "parent", "pin": "8888"}).status_code == 200
+        r = cli.post("/api/admin/kids", json={"name": "小满", "account": "xiaoman", "term_id": "g5s1"})
+        assert r.status_code == 200, r.text
+        pin = r.json().get("pin")
+        assert pin and len(pin) == 6 and pin.isdigit()
+        assert pin != "0129"
+        # 自动生成的密码能登录孩子账号
+        assert cli.post("/api/auth/logout").status_code == 200
+        r = cli.post("/api/auth/login", json={"account": "xiaoman", "pin": pin})
+        assert r.status_code == 200, r.text
+
+
 def test_kids():
     db.init_db()
     with TestClient(main.app) as cli:

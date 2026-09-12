@@ -604,12 +604,14 @@ async function pickKid(id) {
 async function addKid() {
   if (!newKid.name) return showToast('填名字')
   if (!(newKid.account || '').trim()) return showToast('填登录账号')
-  if (!(newKid.pin || '').trim()) return showToast('设一个密码，至少 6 位')
+  if ((newKid.pin || '').trim() && newKid.pin.length < 6) return showToast('密码至少 6 位')
   try {
-    await api.admin.createKid({ ...newKid })
+    const r = await api.admin.createKid({ ...newKid })
+    const kidName = newKid.name || r.account || '孩子'
     newKid.name = newKid.account = newKid.pin = newKid.pin2 = ''
     newKid.gender = ''
-    showToast('已添加')
+    if (r && r.pin) alert(`已添加。${kidName}的登录密码是：${r.pin}\n（系统随机生成，只显示这一次，请记下来告诉孩子）`)
+    else showToast('已添加')
     await load()
   } catch (e) { showToast(e.message) }
 }
@@ -1828,7 +1830,7 @@ get up	起床</pre>
         <div class="frm-row">
           <label class="fld grow"><span>家里怎么叫</span><input v-model="newKid.name" placeholder="如：弟弟" /></label>
           <label class="fld grow"><span>登录账号</span><input v-model="newKid.account" placeholder="如：didi" /></label>
-          <label class="fld grow"><span>密码</span><input v-model="newKid.pin" type="password" autocomplete="new-password" placeholder="至少 6 位，不要重复或连续数字" /></label>
+          <label class="fld grow"><span>密码</span><input v-model="newKid.pin" type="password" autocomplete="new-password" placeholder="留空自动生成；自填至少 6 位" /></label>
         </div>
         <div class="frm-row">
           <label class="fld grow"><span>现在读哪册</span>
