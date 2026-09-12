@@ -44,7 +44,6 @@ onBeforeUnmount(() => {
   if (wordPeekTimer) clearTimeout(wordPeekTimer)
   if (wordNextTimer) clearTimeout(wordNextTimer)
   boxTimers.forEach(clearTimeout)
-  window.removeEventListener('sw-update', onSwUpdate)
   try { if (typeof speechSynthesis !== 'undefined') speechSynthesis.removeEventListener('voiceschanged', loadWordVoices) } catch {}
   try { if (typeof speechSynthesis !== 'undefined') speechSynthesis.cancel() } catch {}
 })

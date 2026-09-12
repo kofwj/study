@@ -8,7 +8,7 @@ import { reactive, ref } from 'vue'
 import { Sun, Lock } from '@lucide/vue'
 import { api } from '../api.js'
 import { APP_LABEL, APP_REVISION } from '../version.js'
-import { me, authed, isAdmin, mustChangePin, pendingRecovery, showToast } from '../store.js'
+import { me, authed, isAdmin, mustChangePin, pendingRecovery, toast, showToast } from '../store.js'
 
 const props = defineProps({ mode: { type: String, default: 'login' } })
 const emit = defineEmits(['ready'])
