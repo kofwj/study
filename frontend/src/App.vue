@@ -712,9 +712,15 @@ function afterKidLogin(r) {
   if (r && r.role !== 'parent') refresh()
 }
 const loginRef = ref(null)
-function exitAdmin() {
+async function exitAdmin() {
+  // 家长会话不能直接当孩子会话渲染；退出后台后回到孩子登录页，避免角色状态残留导致白屏。
+  await api.logout().catch(() => {})
+  me.value = null
   isAdmin.value = false
-  refresh()
+  mustChangePin.value = false
+  authed.value = false
+  pendingRecovery.value = ''
+  activeTab.value = '今日推荐'
 }
 async function openParent() {
   if (me.value && me.value.role === 'parent') {
