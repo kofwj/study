@@ -144,3 +144,31 @@ async function openCapsuleLetter() {
     </div>
   </div>
 </template>
+
+<style scoped>
+.cap-wait { margin: 0 0 8px; font-size: 18px; font-weight: 800; }
+.cap-lead { margin: 0 0 10px; }
+.cap-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 0 0 12px; }
+@media (max-width: 420px) { .cap-opts { grid-template-columns: 1fr; } }
+.cap-opt {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left;
+  border: 1px solid var(--line); background: var(--surface-2); border-radius: var(--radius-md);
+  padding: 10px 12px; cursor: pointer; font-family: inherit;
+}
+.cap-opt.on { border-color: var(--accent); background: var(--warm); }
+.cap-opt strong { font-size: 14px; }
+.cap-opt small { color: var(--ink-3); font-size: 12px; }
+.cap-snap {
+  display: grid; gap: 8px; margin: 0 0 12px; padding: 10px 12px;
+  background: var(--warm); border-radius: var(--radius-md);
+}
+.cap-snap small { display: block; color: var(--ink-3); font-size: 12px; }
+.cap-q { margin: 0 0 10px; font-size: 15px; line-height: 1.5; }
+.cap-q small { display: block; color: var(--ink-3); font-size: 12px; margin-bottom: 2px; }
+.cap-hints { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.cap-hint {
+  border: 1px dashed var(--line); background: var(--surface-2); color: var(--ink-2);
+  border-radius: 999px; padding: 4px 8px; font-size: 12px; cursor: pointer; font-family: inherit;
+}
+.cap-hint:hover { border-color: var(--accent); background: var(--warm); }
+</style>
