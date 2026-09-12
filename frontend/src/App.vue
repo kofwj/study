@@ -17,7 +17,11 @@ import companionBloomImg from './assets/companion-bloom.png'
 import { soundManager, playSound, playCompleteBeep, playCoinBeep, playLevelUpBeep, playEvolveBeep } from './sounds.js'
 import { getEncouragement, getCompanionMessage } from './encouragements.js'
 import { SUBJECT_ORDER, pad2, n1, isTimeMetric, metricToSeconds, secondsToMetric, formatDuration, formatMetricValue } from './format.js'
-import { data, loading, err, me, authed, isAdmin, mustChangePin, rewards, achievements, boxes, recentLedger, reviewDue, activeTab } from './store.js'
+import { data, loading, err, me, authed, isAdmin, mustChangePin, rewards, achievements, boxes, recentLedger, reviewDue, activeTab, toast, showToast, newAchCount, achNew } from './store.js'
+import TrendChart from './components/TrendChart.vue'
+import AchievementsModal from './components/AchievementsModal.vue'
+import ShopDrawer from './components/ShopDrawer.vue'
+import { confettiStyle } from './celebrate.js'
 const topbarEl = ref(null)
 const updateBarEl = ref(null)
 const topbarHeight = ref(0)
@@ -45,61 +49,19 @@ onBeforeUnmount(() => {
   if (evolveTimer) clearTimeout(evolveTimer)
   if (wordPeekTimer) clearTimeout(wordPeekTimer)
   if (wordNextTimer) clearTimeout(wordNextTimer)
-  if (toastTimer) clearTimeout(toastTimer)
   boxTimers.forEach(clearTimeout)
   window.removeEventListener('sw-update', onSwUpdate)
   try { if (typeof speechSynthesis !== 'undefined') speechSynthesis.removeEventListener('voiceschanged', loadWordVoices) } catch {}
   try { if (typeof speechSynthesis !== 'undefined') speechSynthesis.cancel() } catch {}
 })
-const toast = ref('')
 const checkingTask = ref(null) // 记录正在打卡的任务 ID
 const actionBusy = ref(false)
-const shopOpen = ref(false)
-const myRedeems = ref([])
-const achOpen = ref(false)
-const achModal = ref(null)
-const SERIES_NAME = { milestone: '里程碑', study: '学科', habit: '坚持', wealth: '阳光' }
-const SERIES_ORDER = ['milestone', 'study', 'habit', 'wealth']
-const RARITY_LABEL = { bronze: '青铜', silver: '白银', gold: '黄金', legend: '传说' }
-function achOn(a) { return !!(a && (a.earned || a.unlocked)) }
-function achNew(a) { return achOn(a) && Number(a.seen) === 0 }
-const newAchCount = computed(() => achievements.value.filter(achNew).length)
-const achBySeries = computed(() => {
-  const groups = {}
-  for (const a of achievements.value) {
-    const s = a.series || 'milestone'
-    ;(groups[s] ||= []).push(a)
-  }
-  return SERIES_ORDER.filter(s => groups[s]).concat(Object.keys(groups).filter(s => !SERIES_ORDER.includes(s)))
-    .map(s => ({ id: s, name: SERIES_NAME[s] || s, items: groups[s] }))
-})
-function seriesTiers(items) {
-  const seen = []
-  for (const a of items) {
-    if (a.tier && !seen.includes(a.tier)) seen.push(a.tier)
-  }
-  return seen
-}
-function timeAgo(iso) {
-  if (!iso) return ''
-  const t = new Date(iso)
-  if (Number.isNaN(t.getTime())) return ''
-  const sec = Math.max(0, (Date.now() - t.getTime()) / 1000)
-  if (sec < 60) return '刚刚'
-  if (sec < 3600) return Math.floor(sec / 60) + ' 分钟前'
-  if (sec < 86400) return Math.floor(sec / 3600) + ' 小时前'
-  const d = Math.floor(sec / 86400)
-  if (d === 1) return '昨天'
-  if (d < 30) return d + ' 天前'
-  return String(iso).slice(0, 10)
-}
-function pickUnseenAch() {
-  const fresh = achievements.value.filter(achNew)
-  if (!fresh.length) return null
-  const order = { legend: 0, gold: 1, silver: 2, bronze: 3 }
-  fresh.sort((a, b) => (order[a.rarity] ?? 9) - (order[b.rarity] ?? 9))
-  return fresh[0]
-}
+// 商店抽屉（components/ShopDrawer.vue）
+const shopRef = ref(null)
+function openShop() { shopRef.value?.open() }
+// 成就墙弹窗（components/AchievementsModal.vue）
+const achRef = ref(null)
+function openAch() { achRef.value?.open() }
 
 const wordToday = ref({ enabled: false, finished: false, session: null, config: {} })
 const wordInputEl = ref(null)
@@ -769,14 +731,6 @@ const companionPulse = ref(false)
 const pendingLevelUp = ref(null)
 let evolveTimer = null
 const COMPANION_IMAGES = { egg: companionEggImg, sprout: companionSproutImg, leaf: companionLeafImg, bloom: companionBloomImg }
-const CONFETTI_COLORS = ['#f5a524', '#f26f5f', '#3aa4e0', '#2e9e63']
-function confettiStyle(i, n = 18) {
-  return {
-    left: ((i + 1) * (100 / (n + 1))) + '%',
-    animationDelay: (i * 0.08) + 's',
-    '--confetti-color': CONFETTI_COLORS[i % CONFETTI_COLORS.length],
-  }
-}
 const companion = computed(() => data.companion || {})
 const companionImage = computed(() => COMPANION_IMAGES[companion.value.stage] || companionEggImg)
 const companionEvolveImage = computed(() => COMPANION_IMAGES[companionEvolve.value?.stage] || companionEggImg)
@@ -824,16 +778,11 @@ function closeCompanionEvolve() {
   }
 }
 
-const chartOpen = reactive({ open: false, task: null, history: [] })
+// 趋势图弹窗（components/TrendChart.vue）
+const chartRef = ref(null)
 const renaming = ref(false)
 const renameVal = ref('')
 
-let toastTimer = null
-function showToast(msg) {
-  toast.value = msg
-  clearTimeout(toastTimer)
-  toastTimer = setTimeout(() => (toast.value = ''), 2800)
-}
 // 打卡飘出 +N 阳光
 const floaters = ref([])
 let floaterId = 0
@@ -1085,44 +1034,8 @@ async function toggleTask(task, event) {
 }
 
 async function openChart(task) {
-  try {
-    const hist = await api.dailyHistory(task.id)
-    chartOpen.task = task
-    chartOpen.history = hist
-    chartOpen.open = true
-  } catch (e) { showToast(e.message) }
+  chartRef.value?.open(task)
 }
-// 为某维度算趋势折线坐标 + 个人纪录定位
-function lineFor(m) {
-  const hist = (chartOpen.history || []).filter(h => h.metrics && h.metrics[m.id] != null && h.metrics[m.id] !== '')
-  const vals = hist.map(h => Number(h.metrics[m.id]))
-  if (!vals.length) return { pts: '', dots: [], min: '—', max: '—', bestY: 0 }
-  const min = Math.min(...vals), max = Math.max(...vals)
-  const span = (max - min) || 1
-  const W = 288, H = 92, padL = 14, padR = 14, padT = 12, padB = 20
-  const n = vals.length
-  const bestVal = m.direction === 'lower_better' ? min : max
-  const dots = vals.map((v, i) => {
-    const x = n === 1 ? (W - padL - padR) / 2 + padL : padL + i * (W - padL - padR) / (n - 1)
-    const y = padT + (1 - (v - min) / span) * (H - padT - padB)
-    return { x: +x.toFixed(1), y: +y.toFixed(1), v, best: v === bestVal }
-  })
-  const bestY = dots.find(p => p.best).y
-  return { pts: dots.map(p => `${p.x},${p.y}`).join(' '), dots, min, max, bestY,
-           sum: vals.reduce((a, b) => a + b, 0), count: n }
-}
-// 无数值维度任务（眼保健操/阅读/练字）：近 14 天打卡日历
-const chartDays = computed(() => {
-  const done = new Set((chartOpen.history || []).map(h => h.date))
-  const days = []
-  const now = new Date()
-  for (let i = 13; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i)
-    const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-    days.push({ date: iso, daynum: d.getDate(), done: done.has(iso), today: i === 0 })
-  }
-  return days
-})
 const dailyDialog = reactive({ open: false, task: null, vals: {}, time: {} })
 function isGoPlay(task) { return !!(task && task.id === 'go-play') }
 function goWinCount(src) {
@@ -1228,21 +1141,6 @@ async function cancelDaily(task) {
   finally { actionBusy.value = false }
 }
 
-async function redeem(reward) {
-  if (actionBusy.value) return
-  actionBusy.value = true
-  try {
-    const r = await api.redeem(reward.id)
-    showToast(`已提交「${reward.name}」，等家长同意`)
-    shopOpen.value = false
-    await refresh()
-  } catch (e) { showToast(e.message) }
-  finally { actionBusy.value = false }
-}
-async function openShop() {
-  shopOpen.value = true
-  try { myRedeems.value = await api.redemptions() } catch {}
-}
 async function bankMove(kind) {
   if (!guardBankOpen()) return
   const amount = Number(bankAmount.value)
@@ -1278,26 +1176,7 @@ async function bankBreak(d) {
   } catch (e) { showToast(e.message) }
   finally { bankBusy.value = false }
 }
-const STATUS_TXT = { pending: '等家长同意', done: '已兑换', delivered: '已兑现', rejected: '家长没同意' }
 const milestoneTxt = (m) => (m && m.length) ? m.map(([d, b]) => ` · 连续 ${d} 天 +${b} 阳光`).join('') : ''
-async function openAch() {
-  achOpen.value = true
-  try {
-    achievements.value = await api.achievements()
-    if (!achModal.value) achModal.value = pickUnseenAch()
-  } catch {}
-}
-function openAchDetail(a) { achModal.value = a }
-async function closeAchModal() {
-  const a = achModal.value
-  achModal.value = null
-  if (a && achNew(a)) {
-    try { await api.markAchievementSeen(a.id) } catch {}
-    a.seen = 1
-    const next = pickUnseenAch()
-    if (next) achModal.value = next
-  }
-}
 async function openBox() {
   if (boxes.value.avail <= 0) {
     const need = (boxes.value.earned + 1) * 3 - boxes.value.streak
@@ -2127,30 +2006,8 @@ function reloadApp() {
       <button class="shop-fab" @click="openShop"><ShoppingCart class="ico" :size="16" /> 商店</button>
     </footer>
 
-    <!-- 商店抽屉 -->
-    <div v-if="shopOpen" class="mask" @click.self="shopOpen = false">
-      <div class="shop-modal enter">
-        <h3><ShoppingCart class="ico" :size="18" /> 阳光兑换商店</h3>
-        <div class="shop-list">
-          <div v-for="r in rewards" :key="r.id" class="shop-item">
-            <div>
-              <div class="shop-name">{{ r.name }} · 需家长同意</div>
-              <div class="shop-price"><Sun class="ico sun" :size="14" /> {{ r.price }}</div>
-            </div>
-            <button class="do" :disabled="data.level.balance < r.price" @click="redeem(r)">申请</button>
-          </div>
-        </div>
-        <div v-if="myRedeems.length" class="redeem-hist">
-          <h4><ScrollText class="ico" :size="15" /> 兑换记录</h4>
-          <div v-for="rd in myRedeems" :key="rd.id" class="redeem-row">
-            <span>{{ rd.name }}</span>
-            <span class="dim-s">-{{ rd.price }} <Sun class="ico sun" :size="12" /></span>
-            <span :class="{ wait: rd.status === 'pending' }">{{ STATUS_TXT[rd.status] || rd.status }}</span>
-          </div>
-        </div>
-        <button class="ghost" @click="shopOpen = false">关闭</button>
-      </div>
-    </div>
+    <!-- 商店抽屉（components/ShopDrawer.vue） -->
+    <ShopDrawer ref="shopRef" @changed="refresh" />
 
     <div v-if="toyShopOpen" class="mask" @click.self="toyShopOpen = false">
       <div class="shop-modal enter toy-shop-modal">
@@ -2243,50 +2100,8 @@ function reloadApp() {
       </div>
     </div>
 
-    <!-- 跳绳趋势 -->
-    <div v-if="chartOpen.open" class="mask" @click.self="chartOpen.open = false">
-      <div class="shop-modal chart-modal">
-        <h3><TrendingUp class="ico" :size="18" /> {{ chartOpen.task?.name }} 成长趋势</h3>
-
-        <div v-if="!chartOpen.history.length" class="dim-s">还没打过卡，坚持一下吧！</div>
-
-        <!-- 有数值维度：折线图 + 个人纪录 -->
-        <template v-if="chartOpen.history.length && (chartOpen.task?.metrics || []).length">
-          <div v-for="m in chartOpen.task.metrics" :key="m.id" class="chart-block">
-            <div class="chart-head">
-              <span class="chart-title">{{ m.label }}</span>
-              <span class="chart-scale">{{ formatMetricValue(m, lineFor(m).min) }} ~ {{ formatMetricValue(m, lineFor(m).max) }}</span>
-            </div>
-            <svg viewBox="0 0 288 92" class="chart-svg" preserveAspectRatio="none">
-              <line v-if="lineFor(m).dots.length" x1="14" :y1="lineFor(m).bestY" x2="274" :y2="lineFor(m).bestY" class="chart-pb-line" />
-              <polyline :points="lineFor(m).pts" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
-              <circle v-for="(p, i) in lineFor(m).dots" :key="i" :cx="p.x" :cy="p.y" :r="p.best ? 5 : 3.5" :fill="p.best ? 'var(--danger)' : 'var(--accent)'" stroke="#fff" stroke-width="1.5">
-                <title>{{ formatMetricValue(m, p.v) }}</title>
-              </circle>
-            </svg>
-            <div class="chart-pb"><Medal class="ico" :size="13" /> 个人纪录 {{ formatMetricValue(m, chartOpen.task.pb?.[m.id]) }} · 共 {{ lineFor(m).count }} 次</div>
-          </div>
-        </template>
-
-        <!-- 无数值维度：打卡日历 -->
-        <template v-else-if="chartOpen.history.length">
-          <div class="cal-block">
-            <div class="chart-head">
-              <span class="chart-title">坚持打卡</span>
-              <span class="chart-scale">共打卡 {{ chartOpen.history.length }} 次</span>
-            </div>
-            <div class="cal-row">
-              <div v-for="d in chartDays" :key="d.date" class="cal-cell" :class="{ on: d.done, today: d.today }">
-                {{ d.daynum }}
-              </div>
-            </div>
-            <div class="cal-legend">近 14 天 · 绿色=已打卡 · 橙色框=今天</div>
-          </div>
-        </template>
-
-        <button class="ghost" @click="chartOpen.open = false">关闭</button>
-      </div>
-    </div>
+    <!-- 跳绳趋势（components/TrendChart.vue） -->
+    <TrendChart ref="chartRef" />
 
     <p v-if="err" class="err">{{ err }}</p>
 
@@ -2405,56 +2220,8 @@ function reloadApp() {
       </div>
     </div>
 
-    <!-- 成就墙 -->
-    <div v-if="achOpen" class="mask" @click.self="achOpen = false">
-      <div class="shop-modal ach-modal">
-        <h3>
-          <Medal class="ico" :size="18" /> 我的成就
-          <span v-if="newAchCount" class="ach-head-new">{{ newAchCount }} 个新</span>
-        </h3>
-        <div class="ach-body">
-          <details v-for="g in achBySeries" :key="g.id" class="ach-series" open>
-            <summary>{{ g.name }} ({{ g.items.filter(achOn).length }}/{{ g.items.length }})</summary>
-            <div v-for="tier in seriesTiers(g.items)" :key="tier" class="tier-track">
-              <div v-for="a in g.items.filter(x => x.tier === tier)" :key="a.id"
-                class="ach-cell" :class="[a.rarity, { on: achOn(a), new: achNew(a) }]"
-                @click="openAchDetail(a)">
-                <div class="ach-icon"><component :is="achIcon(a.icon)" class="ico" :size="24" /></div>
-                <div class="ach-name">{{ a.name }}</div>
-                <div class="ach-prog">{{ Math.min(a.current, a.target) }}/{{ a.target }}</div>
-                <span v-if="achNew(a)" class="new-dot">NEW</span>
-              </div>
-              <span class="tier-progress">{{ (g.items.find(x => x.tier === tier) || {}).chain_progress }}</span>
-            </div>
-            <div class="ach-grid">
-              <div v-for="a in g.items.filter(x => !x.tier)" :key="a.id"
-                class="ach-cell" :class="[a.rarity, { on: achOn(a), new: achNew(a) }]"
-                @click="openAchDetail(a)">
-                <div class="ach-icon"><component :is="achIcon(a.icon)" class="ico" :size="24" /></div>
-                <div class="ach-name">{{ a.name }}</div>
-                <div class="ach-prog">{{ Math.min(a.current, a.target) }}/{{ a.target }}</div>
-                <span v-if="achNew(a)" class="new-dot">NEW</span>
-              </div>
-            </div>
-          </details>
-        </div>
-        <button class="ghost" @click="achOpen = false">关闭</button>
-      </div>
-      <div v-if="achModal" class="ach-pop" @click.self="closeAchModal">
-        <div class="confetti" v-if="achNew(achModal)">
-          <span v-for="i in 18" :key="'a'+i" :style="confettiStyle(i)"></span>
-        </div>
-        <div :class="['ach-detail', achModal.rarity]">
-          <div class="ach-icon"><component :is="achIcon(achModal.icon)" class="ico" :size="48" /></div>
-          <h3>{{ achModal.name }}</h3>
-          <p>{{ achModal.desc }}</p>
-          <p class="rarity-label">{{ RARITY_LABEL[achModal.rarity] || achModal.rarity }}</p>
-          <p v-if="achModal.earned_at" class="earned-time">{{ timeAgo(achModal.earned_at) }}获得</p>
-          <p v-else class="earned-time">{{ Math.min(achModal.current, achModal.target) }}/{{ achModal.target }}</p>
-          <button class="do" @click="closeAchModal">关闭</button>
-        </div>
-      </div>
-    </div>
+    <!-- 成就墙（components/AchievementsModal.vue） -->
+    <AchievementsModal ref="achRef" />
 
     <!-- 连击宝箱 -->
     <div v-if="boxOpen" class="mask" @click.self="closeBoxMask">
@@ -3223,13 +2990,6 @@ body {
 .fld span { display: block; font-size: 12px; font-weight: 700; color: var(--ink-3); margin-bottom: 4px; }
 .fld input { width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius-sm); font-size: 15px; font-family: inherit; }
 
-.shop-list { display: flex; flex-direction: column; gap: 12px; }
-.shop-item { display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--line); border-radius: var(--radius-md); padding: 12px; }
-.shop-price { color: var(--accent); font-weight: 800; }
-.redeem-hist { margin-top: 16px; border-top: 1px dashed var(--line); padding-top: 12px; }
-.redeem-hist h4 { margin: 0 0 8px; font-size: 13px; color: var(--ink-3); }
-.redeem-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 13px; padding: 4px 0; }
-.redeem-row .wait { color: var(--accent); font-weight: 700; }
 .dim-s { color: var(--ink-3); }
 .do { border: none; background: var(--brand); color: #fff; border-radius: var(--radius-lg); padding: 8px 16px; font-weight: 800; cursor: pointer; }
 .do:disabled { background: var(--line); cursor: default; }
@@ -3282,20 +3042,6 @@ body {
 .time-part input { width: 100%; text-align: center; font-variant-numeric: tabular-nums; font-weight: 800; font-size: 22px; }
 .time-sep { font-weight: 800; font-size: 22px; color: var(--ink-2); padding-bottom: 16px; }
 .trend { position: absolute; top: 8px; right: 8px; border: none; background: var(--warm); border-radius: var(--radius-lg); padding: 3px 8px; font-size: 15px; cursor: pointer; line-height: 1; }
-.chart-modal { max-width: 460px; max-height: 86vh; overflow-y: auto; }
-.chart-block { margin-bottom: 12px; padding: 10px 12px; background: var(--surface-2); border-radius: var(--radius-md); }
-.chart-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
-.chart-title { font-weight: 700; font-size: 14px; color: var(--ink); }
-.chart-scale { font-size: 12px; color: var(--ink-3); }
-.chart-svg { width: 100%; height: 92px; display: block; }
-.chart-pb-line { stroke: var(--danger); stroke-width: 1.5; stroke-dasharray: 4 4; opacity: .55; }
-.chart-pb { font-size: 12px; color: var(--accent-ink); margin-top: 6px; }
-.cal-block { padding: 10px 12px; background: var(--surface-2); border-radius: var(--radius-md); }
-.cal-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
-.cal-cell { width: 34px; height: 34px; border-radius: var(--radius-sm); background: var(--surface-2); color: var(--ink-3); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; border: 2px solid transparent; }
-.cal-cell.on { background: var(--ok); color: #fff; }
-.cal-cell.today { border-color: var(--accent); }
-.cal-legend { font-size: 11px; color: var(--ink-3); margin-top: 8px; }
 .shop-modal input, .metric input { width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius-sm); font-size: 15px; }
 .parent { border: none; background: none; color: var(--ink-3); font-size: 13px; font-weight: 700; cursor: pointer; padding: 10px 4px; white-space: nowrap; }
 .err { color: var(--danger); text-align: center; }
