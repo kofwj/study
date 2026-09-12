@@ -3,6 +3,13 @@
 
 export const SUBJECT_ORDER = ['语文', '数学', '英语', '科学', '道法', '体育', '音美', '综合', '围棋']
 
+// 围棋每日任务的约定 id 与胜负计数
+export const isGoPlay = (task) => !!(task && task.id === 'go-play')
+export function goWinCount(src) {
+  const n = Number(src && src.win)
+  return Number.isNaN(n) ? 0 : n
+}
+
 export function pad2(n) { return String(n).padStart(2, '0') }
 
 export function n1(v) {

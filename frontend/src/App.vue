@@ -8,21 +8,16 @@ import { SUBJECT_ICONS as ICONS, rankIcon, achIcon } from './icons.js'
 import { mottoFor } from './dailyMottos.js'
 import { Sun, Lock, Gift, Check, TrendingUp, Target, User, ShoppingCart, ScrollText, Medal, ChartColumn, Map, CalendarDays, RefreshCw, PartyPopper, Sparkles, BookOpen, Flame, Volume2, House, Landmark, Coins, ArrowDownToLine, ArrowUpFromLine, Globe, FileText, Mail } from '@lucide/vue'
 
-// companion 插画
-import companionEggImg from './assets/companion-egg.png'
-import companionSproutImg from './assets/companion-sprout.png'
-import companionLeafImg from './assets/companion-leaf.png'
-import companionBloomImg from './assets/companion-bloom.png'
-
-import { soundManager, playSound, playCompleteBeep, playCoinBeep, playLevelUpBeep, playEvolveBeep } from './sounds.js'
+import { soundManager, playSound, playCompleteBeep, playCoinBeep } from './sounds.js'
 import { getEncouragement, getCompanionMessage } from './encouragements.js'
-import { SUBJECT_ORDER, pad2, n1, isTimeMetric, metricToSeconds, secondsToMetric, formatDuration, formatMetricValue } from './format.js'
-import { data, loading, err, me, authed, isAdmin, mustChangePin, pendingRecovery, rewards, achievements, boxes, recentLedger, reviewDue, activeTab, toast, showToast, newAchCount, achNew } from './store.js'
+import { SUBJECT_ORDER, n1, isGoPlay } from './format.js'
+import { data, loading, err, me, authed, isAdmin, mustChangePin, pendingRecovery, rewards, achievements, boxes, recentLedger, reviewDue, activeTab, toast, showToast, newAchCount, achNew, companion, companionImage, companionTitle, companionPulse, companionEvolve, pendingLevelUp, pulseCompanion, showLevelCelebrate, triggerCompanionEvolve } from './store.js'
 import TrendChart from './components/TrendChart.vue'
 import AchievementsModal from './components/AchievementsModal.vue'
 import ShopDrawer from './components/ShopDrawer.vue'
 import LoginScreen from './components/LoginScreen.vue'
-import { confettiStyle } from './celebrate.js'
+import DailyDialog from './components/DailyDialog.vue'
+import CompanionDrawer from './components/CompanionDrawer.vue'
 const topbarEl = ref(null)
 const updateBarEl = ref(null)
 const topbarHeight = ref(0)
@@ -46,8 +41,6 @@ function observeChrome() {
 watch([topbarEl, updateBarEl], observeChrome)
 onBeforeUnmount(() => {
   topbarObserver?.disconnect()
-  if (companionPulseTimer) clearTimeout(companionPulseTimer)
-  if (evolveTimer) clearTimeout(evolveTimer)
   if (wordPeekTimer) clearTimeout(wordPeekTimer)
   if (wordNextTimer) clearTimeout(wordNextTimer)
   boxTimers.forEach(clearTimeout)
@@ -724,60 +717,14 @@ function bankDepositHint(d) {
   return `还要等 ${d.left_days} 天 · 到期 +${d.mature_interest}`
 }
 const updateReady = ref(false)
-const celebrate = ref(null)
-const companionOpen = ref(false)
-const companionNameDraft = ref('')
-const companionEvolve = ref(null)
-const companionPulse = ref(false)
-const pendingLevelUp = ref(null)
-let evolveTimer = null
-const COMPANION_IMAGES = { egg: companionEggImg, sprout: companionSproutImg, leaf: companionLeafImg, bloom: companionBloomImg }
-const companion = computed(() => data.companion || {})
-const companionImage = computed(() => COMPANION_IMAGES[companion.value.stage] || companionEggImg)
-const companionEvolveImage = computed(() => COMPANION_IMAGES[companionEvolve.value?.stage] || companionEggImg)
-let companionPulseTimer = null
-function pulseCompanion() {
-  companionPulse.value = false
-  if (companionPulseTimer) clearTimeout(companionPulseTimer)
-  requestAnimationFrame(() => { companionPulse.value = true })
-  companionPulseTimer = setTimeout(() => { companionPulse.value = false; companionPulseTimer = null }, 720)
-}
-const companionTitle = computed(() => {
-  const c = companion.value
-  const stage = c.stage_name || '阳光蛋'
-  return (c.name && String(c.name).trim()) ? (c.name.trim() + ' · ' + stage) : stage
+// 伙伴抽屉（components/CompanionDrawer.vue）；庆祝层状态在 store
+const drawerRef = ref(null)
+const spriteButton = computed(() => {
+  if (sprites.value.enabled) return `阳光图鉴 ${sprites.value.owned}/12`
+  if (sprites.value.base_enabled) return '秘密基地'
+  return ''
 })
-function openCompanion() {
-  companionNameDraft.value = (companion.value.name || '').trim()
-  companionOpen.value = true
-  loadSprites()
-}
-async function saveCompanionName() {
-  try {
-    const out = await api.companionName(companionNameDraft.value)
-    data.companion = out
-    showToast('已记住这个名字')
-  } catch (e) { showToast(e.message) }
-}
-function showLevelCelebrate(payload) {
-  celebrate.value = payload
-  playSound('levelup') || playLevelUpBeep()
-  if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 100])
-  setTimeout(() => (celebrate.value = null), 2800)
-}
-function closeCompanionEvolve() {
-  if (!companionEvolve.value) return
-  playSound('evolve') || playEvolveBeep()
-  if (navigator.vibrate) navigator.vibrate([80, 40, 80, 40, 120])
-  companionEvolve.value = null
-  if (evolveTimer) { clearTimeout(evolveTimer); evolveTimer = null }
-  api.ackCompanionEvolve().then(out => { if (out) data.companion = out }).catch(() => {})
-  if (pendingLevelUp.value) {
-    const p = pendingLevelUp.value
-    pendingLevelUp.value = null
-    showLevelCelebrate(p)
-  }
-}
+function openCompanion() { drawerRef.value?.open() }
 
 // 趋势图弹窗（components/TrendChart.vue）
 const chartRef = ref(null)
@@ -868,11 +815,7 @@ async function refresh() {
     const prevId = data.level && data.level.level_id
     const prevEarned = data.level && (data.level.earned || 0)
     Object.assign(data, t)
-    if (t.companion && t.companion.evolve && !companionEvolve.value) {
-      companionEvolve.value = t.companion
-      if (evolveTimer) clearTimeout(evolveTimer)
-      evolveTimer = setTimeout(closeCompanionEvolve, 2800)
-    }
+    triggerCompanionEvolve(t.companion && t.companion.evolve ? t.companion : null)
     // 升级检测：等级变了且累计阳光增加了才庆祝（取消扣回导致的降级不庆祝）
     if (prevId && t.level.level_id !== prevId && t.level.earned >= prevEarned) {
       const payload = { icon: t.level.level_icon || '', name: t.level.level }
@@ -988,80 +931,18 @@ async function toggleTask(task, event) {
 async function openChart(task) {
   chartRef.value?.open(task)
 }
-const dailyDialog = reactive({ open: false, task: null, vals: {}, time: {} })
-function isGoPlay(task) { return !!(task && task.id === 'go-play') }
-function goWinCount(src) {
-  const n = Number(src && src.win)
-  return Number.isNaN(n) ? 0 : n
-}
-const goDialogWins = computed(() => goWinCount(dailyDialog.vals))
-function dailySunshineHint(task) {
-  if (!task) return ''
-  if (isGoPlay(task)) return `看「赢了几局」：填 1 或更多才给 +${task.sunshine || 5} 阳光。赢 0 局（空着也算 0）不给，输了几局不影响`
-  return `打卡 +${task.sunshine || 5} 阳光`
-}
-function dailySubmitLabel(task) {
-  if (isGoPlay(task) && goDialogWins.value < 1) return '记下对局，这次没有阳光'
-  return '打卡，赚阳光'
-}
-function openDaily(task) {
+// 每日打卡弹窗（components/DailyDialog.vue）：表单在组件里，业务动作（发阳光/庆祝/刷新）在这里
+const dailyRef = ref(null)
+async function openDaily(task) {
   if (task.done_today) return
   if (!guardCheckinOpen()) return
-  dailyDialog.task = task
-  dailyDialog.vals = {}
-  dailyDialog.time = {}
-  for (const m of task.metrics) {
-    dailyDialog.vals[m.id] = ''
-    if (isTimeMetric(m)) dailyDialog.time[m.id] = { min: '', sec: '', cs: '' }
-  }
-  dailyDialog.open = true
+  dailyRef.value?.open(task)
 }
-function clampDigits(v, max) {
-  const digits = String(v ?? '').replace(/\D/g, '').slice(0, 2)
-  if (digits === '') return ''
-  const n = Math.max(0, Math.min(max, Number(digits)))
-  return digits.length === 2 ? pad2(n) : String(n)
-}
-function onTimePart(id, field, event, max) {
-  const next = clampDigits(event.target.value, max)
-  dailyDialog.time[id][field] = next
-  event.target.value = next
-  if (field === 'sec' && next.length === 2) {
-    const el = document.getElementById('t-cs-' + id)
-    if (el) el.focus()
-  }
-}
-function timePartsToSeconds(t) {
-  if (!t) return null
-  const has = (t.min !== '' && t.min != null) || (t.sec !== '' && t.sec != null) || (t.cs !== '' && t.cs != null)
-  if (!has) return null
-  const mm = Number(t.min)
-  const ss = Number(t.sec)
-  const cs = Number(t.cs)
-  const total = (Number.isNaN(mm) ? 0 : Math.max(0, mm)) * 60
-    + (Number.isNaN(ss) ? 0 : Math.max(0, Math.min(59, ss)))
-    + (Number.isNaN(cs) ? 0 : Math.max(0, Math.min(99, cs))) / 100
-  return Math.round(total * 100) / 100
-}
-async function submitDaily(event) {
-  const metrics = {}
-  for (const m of dailyDialog.task.metrics) {
-    if (isTimeMetric(m)) {
-      const totalSec = timePartsToSeconds(dailyDialog.time[m.id])
-      if (totalSec == null) continue
-      const stored = secondsToMetric(m, totalSec)
-      if (stored != null && !Number.isNaN(stored)) metrics[m.id] = stored
-    } else {
-      const raw = dailyDialog.vals[m.id]
-      if (raw === '' || raw == null) continue
-      const v = Number(raw)
-      if (!Number.isNaN(v)) metrics[m.id] = v
-    }
-  }
+async function submitDaily({ task, metrics, event }) {
   if (actionBusy.value) return
   actionBusy.value = true
   try {
-    const r = await api.complete(dailyDialog.task.id, metrics)
+    const r = await api.complete(task.id, metrics)
     pulseCompanion()
     playSound('complete') || playCompleteBeep()
     if (navigator.vibrate) navigator.vibrate([50, 30, 50])
@@ -1074,10 +955,10 @@ async function submitDaily(event) {
     let msg
     if (r.bonus > 0) msg = `${encouragement}！破纪录了 +${r.delta} 阳光（+${r.bonus} 奖励）`
     else if (r.delta > 0) msg = `${encouragement}！+${r.delta} 阳光`
-    else if (isGoPlay(dailyDialog.task)) msg = '记下了。赢了 0 局，这次没有阳光'
+    else if (isGoPlay(task)) msg = '记下了。赢了 0 局，这次没有阳光'
     else msg = `${encouragement}！记下了`
     showToast(msg + milestoneTxt(r.milestone))
-    dailyDialog.open = false
+    dailyRef.value?.close()
     await refresh()
   } catch (e) { showToast(e.message) }
   finally { actionBusy.value = false }
@@ -2019,28 +1900,8 @@ function reloadApp() {
       </div>
     </div>
 
-    <!-- 跳绳弹窗 -->
-    <div v-if="dailyDialog.open" class="mask" @click.self="dailyDialog.open = false">
-      <div class="shop-modal enter">
-        <h3>{{ dailyDialog.task.name }}</h3>
-        <p v-if="dailyDialog.task.note" class="daily-dialog-note">怎么做：{{ dailyDialog.task.note }}</p>
-        <p v-if="isGoPlay(dailyDialog.task)" class="daily-dialog-award">{{ dailySunshineHint(dailyDialog.task) }}</p>
-        <div v-for="m in dailyDialog.task.metrics" :key="m.id" class="metric">
-          <label>{{ m.label }}</label>
-          <div v-if="m.note" class="metric-note">{{ m.note }}</div>
-          <div v-if="isTimeMetric(m)" class="time-row">
-            <label class="time-part"><input :value="dailyDialog.time[m.id].min" type="number" inputmode="numeric" min="0" placeholder="0" @input="dailyDialog.time[m.id].min = $event.target.value === '' ? '' : Math.max(0, Math.floor(Number($event.target.value) || 0))" /><span>分</span></label>
-            <span class="time-sep">:</span>
-            <label class="time-part"><input :id="'t-sec-' + m.id" :value="dailyDialog.time[m.id].sec" type="text" inputmode="numeric" maxlength="2" placeholder="00" @input="onTimePart(m.id, 'sec', $event, 59)" /><span>秒</span></label>
-            <span class="time-sep">.</span>
-            <label class="time-part"><input :id="'t-cs-' + m.id" :value="dailyDialog.time[m.id].cs" type="text" inputmode="numeric" maxlength="2" placeholder="00" @input="onTimePart(m.id, 'cs', $event, 99)" /><span>百分秒</span></label>
-          </div>
-          <input v-else v-model.number="dailyDialog.vals[m.id]" type="number" inputmode="decimal" min="0" :placeholder="m.unit" />
-        </div>
-        <button class="do big" @click="submitDaily($event)">{{ dailySubmitLabel(dailyDialog.task) }} <Sun v-if="!(isGoPlay(dailyDialog.task) && goDialogWins < 1)" class="ico" :size="15" /></button>
-        <button class="ghost" @click="dailyDialog.open = false">取消</button>
-      </div>
-    </div>
+    <!-- 每日打卡弹窗（components/DailyDialog.vue） -->
+    <DailyDialog ref="dailyRef" @submit="submitDaily" />
 
     <!-- 跳绳趋势（components/TrendChart.vue） -->
     <TrendChart ref="chartRef" />
@@ -2119,48 +1980,8 @@ function reloadApp() {
     <!-- +N 阳光飞出 -->
     <div v-for="f in floaters" :key="f.id" class="floater" :style="{ left: f.x + 'px', top: f.y + 'px' }">{{ f.text }}</div>
 
-    <div v-if="companionOpen" class="mask" @click.self="companionOpen = false">
-      <div class="companion-sheet enter">
-        <div class="companion-big" :class="['stage-' + (companion.stage || 'egg'), companion.aura ? 'aura-' + companion.aura : '']">
-          <img :src="companionImage" alt="伙伴" class="companion-img-big" />
-        </div>
-        <strong>{{ companionTitle }}</strong>
-        <p v-if="companion.next_stage" class="dim">再 {{ Math.max(0, (companion.next_need || 0) - (companion.earned || 0)) }} 阳光到{{ companion.next_stage_name }}</p>
-        <p v-else class="dim">开完花了，继续攒阳光也不会掉</p>
-        <div class="next-bar companion-bar"><i :style="{ width: (companion.progress || 0) + '%' }"></i></div>
-        <label class="fld companion-name"><span>给它起名</span>
-          <input v-model="companionNameDraft" maxlength="8" placeholder="1 到 8 个字" @keyup.enter="saveCompanionName" />
-        </label>
-        <button type="button" class="do" @click="saveCompanionName">保存</button>
-        <button v-if="sprites.enabled || sprites.base_enabled" type="button" class="ghost" @click="companionOpen = false; openSprites()">{{ sprites.enabled ? ('阳光图鉴 ' + sprites.owned + '/12') : '秘密基地' }}</button>
-        <button type="button" class="ghost" @click="companionOpen = false">关闭</button>
-      </div>
-    </div>
-
-    <div v-if="companionEvolve" class="celebrate companion-evolve" @click="closeCompanionEvolve">
-      <div class="confetti">
-        <span v-for="i in 18" :key="'e'+i" :style="confettiStyle(i)"></span>
-      </div>
-      <div class="celebrate-card companion-evolve-card">
-        <div class="companion-big companion-evolve-figure" :class="'stage-' + (companionEvolve.stage || 'egg')">
-          <img :src="companionEvolveImage" alt="伙伴成长了" class="companion-img-big" />
-        </div>
-        <div class="celebrate-title"><PartyPopper class="ico" :size="16" /> 长大了</div>
-        <div class="celebrate-name">{{ companionEvolve.name ? companionEvolve.name + ' · ' : '' }}{{ companionEvolve.stage_name }}</div>
-      </div>
-    </div>
-
-    <!-- 升级庆祝 -->
-    <div v-if="celebrate" class="celebrate">
-      <div class="confetti">
-        <span v-for="i in 18" :key="'c'+i" :style="confettiStyle(i)"></span>
-      </div>
-      <div class="celebrate-card">
-        <div class="celebrate-icon"><component :is="rankIcon(celebrate.icon)" class="ico" :size="40" /></div>
-        <div class="celebrate-title"><PartyPopper class="ico" :size="16" /> 升级</div>
-        <div class="celebrate-name"><component :is="rankIcon(celebrate.icon)" class="ico" :size="18" /> {{ celebrate.name }}</div>
-      </div>
-    </div>
+    <!-- 伙伴抽屉 + 庆祝层（components/CompanionDrawer.vue） -->
+    <CompanionDrawer ref="drawerRef" :sprite-button="spriteButton" @opened="loadSprites" @open-sprites="openSprites" />
 
     <!-- 成就墙（components/AchievementsModal.vue） -->
     <AchievementsModal ref="achRef" />
@@ -2928,18 +2749,8 @@ body {
 @keyframes wordfade { from { opacity: 0; } to { opacity: 1; } }
 .word-done h3 { margin: 8px 0 10px; }
 .word-sun { font-size: 20px; font-weight: 800; color: var(--accent); }
-.metric { margin-bottom: 10px; }
-.metric label { display: block; font-size: 13px; margin-bottom: 4px; }
-.daily-dialog-note, .metric-note { margin: -4px 0 8px; color: var(--ink-3); font-size: 12px; line-height: 1.5; }
-.daily-dialog-award { margin: -2px 0 10px; color: var(--accent-ink); font-size: 13px; line-height: 1.5; font-weight: 700; }
-.metric-note { margin: -1px 0 4px; }
-.time-row { display: flex; gap: 6px; align-items: center; }
-.time-part { display: flex; flex-direction: column; align-items: stretch; gap: 4px; flex: 1; margin: 0; min-width: 0; }
-.time-part span { font-size: 12px; font-weight: 700; color: var(--ink-3); text-align: center; }
-.time-part input { width: 100%; text-align: center; font-variant-numeric: tabular-nums; font-weight: 800; font-size: 22px; }
-.time-sep { font-weight: 800; font-size: 22px; color: var(--ink-2); padding-bottom: 16px; }
 .trend { position: absolute; top: 8px; right: 8px; border: none; background: var(--warm); border-radius: var(--radius-lg); padding: 3px 8px; font-size: 15px; cursor: pointer; line-height: 1; }
-.shop-modal input, .metric input { width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius-sm); font-size: 15px; }
+.shop-modal input { width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius-sm); font-size: 15px; }
 .parent { border: none; background: none; color: var(--ink-3); font-size: 13px; font-weight: 700; cursor: pointer; padding: 10px 4px; white-space: nowrap; }
 .err { color: var(--danger); text-align: center; }
 

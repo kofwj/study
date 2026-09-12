@@ -3,6 +3,12 @@
 // 各功能块的专属状态（wordToday/sprites/capsule/bankData）留在原块，
 // 全部拆完后 refresh() 才迁进来——先迁状态不迁中枢，保证每步行为零变化。
 import { reactive, ref, computed } from 'vue'
+import { api } from './api.js'
+import { playSound, playLevelUpBeep, playEvolveBeep } from './sounds.js'
+import companionEggImg from './assets/companion-egg.png'
+import companionSproutImg from './assets/companion-sprout.png'
+import companionLeafImg from './assets/companion-leaf.png'
+import companionBloomImg from './assets/companion-bloom.png'
 
 export const data = reactive({
   level: { earned: 0, balance: 0, level: '阳光萌新', next: null, next_need: 0, progress: 0 },
@@ -56,4 +62,57 @@ export function showToast(msg) {
   toast.value = msg
   clearTimeout(toastTimer)
   toastTimer = setTimeout(() => (toast.value = ''), 2800)
+}
+
+// ---- 伙伴与全局庆祝（refresh/各业务动作都会触发）----
+export const COMPANION_IMAGES = { egg: companionEggImg, sprout: companionSproutImg, leaf: companionLeafImg, bloom: companionBloomImg }
+export const companion = computed(() => data.companion || {})
+export const companionImage = computed(() => COMPANION_IMAGES[companion.value.stage] || companionEggImg)
+export const companionTitle = computed(() => {
+  const c = companion.value
+  const stage = c.stage_name || '阳光蛋'
+  return (c.name && String(c.name).trim()) ? (c.name.trim() + ' · ' + stage) : stage
+})
+export const celebrate = ref(null)
+export const companionEvolve = ref(null)
+export const companionEvolveImage = computed(() => COMPANION_IMAGES[companionEvolve.value?.stage] || companionEggImg)
+export const companionPulse = ref(false)
+export const pendingLevelUp = ref(null)
+let evolveTimer = null
+let companionPulseTimer = null
+
+export function pulseCompanion() {
+  companionPulse.value = false
+  if (companionPulseTimer) clearTimeout(companionPulseTimer)
+  requestAnimationFrame(() => { companionPulse.value = true })
+  companionPulseTimer = setTimeout(() => { companionPulse.value = false; companionPulseTimer = null }, 720)
+}
+
+export function showLevelCelebrate(payload) {
+  celebrate.value = payload
+  playSound('levelup') || playLevelUpBeep()
+  if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 100])
+  setTimeout(() => (celebrate.value = null), 2800)
+}
+
+export function closeCompanionEvolve() {
+  if (!companionEvolve.value) return
+  playSound('evolve') || playEvolveBeep()
+  if (navigator.vibrate) navigator.vibrate([80, 40, 80, 40, 120])
+  companionEvolve.value = null
+  if (evolveTimer) { clearTimeout(evolveTimer); evolveTimer = null }
+  api.ackCompanionEvolve().then(out => { if (out) data.companion = out }).catch(() => {})
+  if (pendingLevelUp.value) {
+    const p = pendingLevelUp.value
+    pendingLevelUp.value = null
+    showLevelCelebrate(p)
+  }
+}
+
+// refresh 检测到伙伴可进化时触发；两秒半后自动收起
+export function triggerCompanionEvolve(info) {
+  if (!info || companionEvolve.value) return
+  companionEvolve.value = info
+  if (evolveTimer) clearTimeout(evolveTimer)
+  evolveTimer = setTimeout(closeCompanionEvolve, 2800)
 }
