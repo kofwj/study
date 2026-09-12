@@ -2141,10 +2141,24 @@ def bank_break_deposit(did: str):
 # ---------------- 流水 ----------------
 
 @app.get("/api/ledger")
-def ledger(limit: int = 20):
+def ledger(limit: int = 20, date: Optional[str] = None):
     c = get_conn()
-    return [dict(r) for r in c.execute(
-        "SELECT * FROM ledger WHERE kid_id=? ORDER BY id DESC LIMIT ?", (kid_id(), limit)).fetchall()]
+    kid = kid_id()
+    if date:
+        try:
+            datetime.strptime(date, "%Y-%m-%d")
+        except ValueError:
+            raise HTTPException(400, "日期不对")
+        rows = c.execute(
+            "SELECT * FROM ledger WHERE kid_id=? AND account='pocket' AND date=? ORDER BY id DESC",
+            (kid, date)).fetchall()
+        c.close()
+        return [dict(r) for r in rows]
+    rows = c.execute(
+        "SELECT * FROM ledger WHERE kid_id=? ORDER BY id DESC LIMIT ?", (kid, limit)).fetchall()
+    c.close()
+    return [dict(r) for r in rows]
+
 
 
 EARN_REASONS = {"task", "daily", "word_daily", "word_perfect", "test", "box", "milestone", "bank_deposit", "bank_interest"}
@@ -2235,16 +2249,19 @@ def ledger_summary(offset: int = 0):
         "AND (account='pocket' OR reason='bank_interest') "
         "GROUP BY date, reason, account",
         (kid, range_start, end)).fetchall()
-
-
-
+    redemptions = [dict(r) for r in c.execute(
+        "SELECT date, note, delta FROM ledger "
+        "WHERE kid_id=? AND account='pocket' AND reason='redeem' AND date BETWEEN ? AND ? "
+        "ORDER BY date, id",
+        (kid, start, end)).fetchall()]
     penalty_today = _penalty_today_payload(c, kid, today.isoformat())
     c.close()
     days = _summary_fill_days(monday, rows)
     prev_week = _summary_fill_days(prev_monday, rows)
     return {"today": today.isoformat(), "week_start": start, "offset": offset, "days": days,
-            "prev_week": prev_week, "penalty_today": penalty_today,
+            "prev_week": prev_week, "penalty_today": penalty_today, "redemptions": redemptions,
             "week_in": sum(d["earn"] for d in days), "week_out": sum(d["spend"] for d in days)}
+
 
 
 

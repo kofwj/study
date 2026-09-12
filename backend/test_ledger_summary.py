@@ -35,7 +35,8 @@ def test_ledger_summary():
         seed(c, kid, "2026-09-09", -20, "bank_deposit", "s3-pocket")  # 口袋转出（生产符号）
         seed(c, kid, "2026-09-09", 20, "bank_deposit", "s3-bank", account="bank")  # 银行侧不重复计
         seed(c, kid, "2026-09-09", 1, "bank_interest", "s3-int", account="bank")  # 利息算攒到
-        seed(c, kid, "2026-09-09", -10, "redeem", "s4")             # 周三 兑换 -10
+        seed(c, kid, "2026-09-09", -10, "redeem", "s4", note="兑换贴纸")  # 周三 兑换 -10
+
         seed(c, kid, "2026-09-07", 2, "milestone", "s5")            # 周一 连击 +2（box 途径）
         seed(c, kid, "2026-09-13", 4, "word_perfect", "s6")         # 周日 单词全对 +4
         seed(c, kid, "2026-09-09", 50, "task", "s-bank", account="bank")  # 其它银行流水不计入
@@ -77,10 +78,19 @@ def test_ledger_summary():
         # 周内未来天（周四~周六）为 0
         assert all(d["days"][i]["earn"] == 0 for i in (3, 4, 5))
         assert d["week_in"] == 32 and d["week_out"] == 10
+        assert d["redemptions"] == [{"date": "2026-09-09", "note": "兑换贴纸", "delta": -10}]
+
+        day = cli.get("/api/ledger?date=2026-09-09").json()
+        assert all(r["date"] == "2026-09-09" and r.get("account", "pocket") == "pocket" for r in day)
+        assert any(r["reason"] == "daily" and r["delta"] == 3 for r in day)
+        assert any(r["reason"] == "redeem" and r["delta"] == -10 for r in day)
+        assert not any(r["reason"] == "bank_interest" for r in day)
+        assert cli.get("/api/ledger?date=09-09").status_code == 400
 
         assert d["prev_week"][2]["earn"] == 7
         assert d["penalty_today"]["n"] == 5 and d["penalty_today"]["count"] == 1
         assert d["penalty_today"]["reason"] == "作业拖拉"
+
 
         # 撤回约定后 penalty_today 清空
         c = db.connect(admin=True)
@@ -97,6 +107,8 @@ def test_ledger_summary():
         d = r.json()
         assert d["week_start"] == "2026-08-31"
         assert d["days"][2]["earn"] == 7 and d["week_in"] == 7
+        assert d["redemptions"] == []
+
 
         # 多娃隔离：乙只见自己的 99，看不到甲的流水
         assert cli.post("/api/auth/login", json={"account": "sumkid2", "pin": "111222"}).status_code == 200

@@ -11,7 +11,8 @@ import { Sun, Lock, Gift, Check, TrendingUp, Target, User, ShoppingCart, Medal, 
 import { soundManager, playSound, playCompleteBeep, playCoinBeep } from './sounds.js'
 import { getEncouragement, getCompanionMessage } from './encouragements.js'
 import { SUBJECT_ORDER, n1, isGoPlay } from './format.js'
-import { data, loading, err, me, authed, isAdmin, mustChangePin, pendingRecovery, rewards, achievements, boxes, recentLedger, ledgerSummary, reviewDue, activeTab, toast, showToast, newAchCount, achNew, companion, companionImage, companionTitle, companionPulse, companionEvolve, pendingLevelUp, pulseCompanion, showLevelCelebrate, triggerCompanionEvolve, wordToday, wordDueCard, wordNewCard, wordSun, sprites, capsule, spriteScene, spritesOpen, dutySprite, spImg, displayName, loadSprites, maybeShowMorning, applyCapsule, todayPenalty } from './store.js'
+import { data, loading, err, me, authed, isAdmin, mustChangePin, pendingRecovery, rewards, achievements, boxes, recentLedger, ledgerSummary, weekOffset, reviewDue, activeTab, toast, showToast, newAchCount, achNew, companion, companionImage, companionTitle, companionPulse, companionEvolve, pendingLevelUp, pulseCompanion, showLevelCelebrate, triggerCompanionEvolve, wordToday, wordDueCard, wordNewCard, wordSun, sprites, capsule, spriteScene, spritesOpen, dutySprite, spImg, displayName, loadSprites, maybeShowMorning, applyCapsule, todayPenalty } from './store.js'
+
 
 import SunshinePage from './components/SunshinePage.vue'
 import TrendChart from './components/TrendChart.vue'
@@ -185,7 +186,8 @@ async function refresh() {
     const [t, r, bx, rv, led, sum, ach, wd, sp, cap] = await Promise.all([
       api.tasks(), api.rewards(), api.boxes(),
       api.reviewDue().catch(() => []), api.ledger().catch(() => []),
-      api.ledgerSummary(0).catch(() => null),
+      api.ledgerSummary(weekOffset.value || 0).catch(() => null),
+
       api.achievements().catch(() => null),
       api.wordsToday().catch(() => null),
       api.sprites().catch(() => null),
@@ -209,7 +211,8 @@ async function refresh() {
     if (hidden.has(activeTab.value) || SIDEBAR_DAILY_ONLY.has(activeTab.value)) activeTab.value = '今日推荐'
     reviewDue.value = (rv || []).filter(x => !hidden.has(x.subject_id))
     recentLedger.value = led || []
-    if (sum) ledgerSummary.value = sum
+    if (sum && Number(sum.offset || 0) === Number(weekOffset.value || 0)) ledgerSummary.value = sum
+
 
     if (Array.isArray(ach)) achievements.value = ach
     if (wd) wordToday.value = wd
@@ -1040,7 +1043,8 @@ body {
 .sun-ico.daily { background: #2e9e63; }
 .sun-ico.box { background: #d2514f; }
 .sun-week { display: flex; align-items: flex-end; gap: 8px; height: 140px; padding-top: 8px; }
-.sun-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100%; }
+.sun-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100%; border: 0; background: transparent; padding: 0; font-family: inherit; cursor: pointer; }
+
 .sun-col-n { font-size: 12px; font-weight: 800; color: var(--accent-ink); min-height: 16px; }
 .sun-col-n.down, .sun-col-n.zero { color: var(--ink-3); }
 .sun-track { flex: 1; width: 100%; max-width: 28px; display: flex; align-items: flex-end; justify-content: center; }
@@ -1077,12 +1081,22 @@ body {
 .sun-gap em { font-style: normal; font-size: 12px; font-weight: 800; color: var(--accent-ink); background: var(--warm); padding: 4px 10px; border-radius: var(--radius-pill); }
 .sun-week-sum { font-size: 12px; font-weight: 800; color: var(--ink-2); }
 .sun-track.dual { display: flex; align-items: flex-end; justify-content: center; gap: 3px; }
-.sun-track.dual i { width: 10px; min-height: 0; border-radius: 5px 5px 0 0; }
-.sun-track.dual i.in, .sun-week-legend i.in { background: var(--accent); }
-.sun-track.dual i.out, .sun-week-legend i.out { background: var(--ink-3); }
 .sun-col.quiet .sun-col-n { color: var(--danger); }
 .sun-week-legend { display: flex; align-items: center; gap: 6px; margin: 10px 0 0; font-size: 12px; font-weight: 700; color: var(--ink-3); }
 .sun-week-legend i { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
+.sun-week-nav { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 4px 0 2px; }
+.sun-week-btn { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 1px solid var(--line); background: var(--surface); border-radius: var(--radius-circle); color: var(--ink); cursor: pointer; }
+.sun-week-btn:disabled { opacity: .35; cursor: default; }
+.sun-week-range { font-size: 13px; font-weight: 800; color: var(--ink-2); min-width: 88px; text-align: center; }
+.sun-col.open { background: var(--warm); border-radius: 10px 10px 0 0; }
+.sun-day-panel { margin-top: 10px; background: var(--surface-2); border-radius: var(--radius-lg); padding: 10px 12px; }
+.sun-day-empty { margin: 0; font-size: 13px; font-weight: 700; color: var(--ink-3); }
+.sun-day-list, .sun-redeem ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.sun-day-list li, .sun-redeem li { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 13px; font-weight: 700; }
+.sun-day-list b { font-variant-numeric: tabular-nums; color: var(--accent-ink); }
+.sun-day-list li.down b, .sun-redeem b { color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.sun-redeem { margin-top: 12px; }
+.sun-redeem h4 { margin: 0 0 8px; font-size: 13px; font-weight: 800; color: var(--ink-2); }
 .sun-path-list { display: flex; flex-direction: column; gap: 8px; }
 .sun-path { display: grid; grid-template-columns: 36px 1fr auto; grid-template-areas: "ico name amt" "bar bar bar"; gap: 2px 10px; align-items: center; background: var(--surface-2); border-radius: var(--radius-lg); padding: 12px; }
 .sun-path.miss { opacity: .72; }

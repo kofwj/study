@@ -1,10 +1,12 @@
 <script setup>
 // 阳光统计页：周趋势、五条途径、还没做好清单。
-// 周合计读 /api/ledger/summary（自然周）；recentLedger 留给 Phase 2 下钻；
+// 周合计读 /api/ledger/summary（自然周）；点柱拉当日 pocket 明细；
 // dailyTodo/studyNext 是父级计算属性，props 传入；点跳转 emit('navigate', gap)。
-import { computed } from 'vue'
-import { TrendingUp, Target, BookOpen, Globe, CalendarDays, FileText, Gift } from '@lucide/vue'
-import { ledgerSummary, data, wordDueCard, wordNewCard, reviewDue, todayPenalty } from '../store.js'
+import { computed, ref, watch } from 'vue'
+import { TrendingUp, Target, BookOpen, Globe, CalendarDays, FileText, Gift, ChevronLeft, ChevronRight } from '@lucide/vue'
+import { api } from '../api.js'
+import { ledgerSummary, weekOffset, data, wordDueCard, wordNewCard, reviewDue, todayPenalty } from '../store.js'
+
 const props = defineProps({
   dailyTodo: { type: Array, default: () => [] },
   studyNext: { type: Array, default: () => [] },
@@ -21,6 +23,12 @@ const SUN_PATHS = [
   { id: 'test', name: '单元测试', hint: '测完告诉家长登分', reasons: ['test'], icon: FileText, tab: null },
   { id: 'box', name: '宝箱连击', hint: '连续打卡才会开箱', reasons: ['box', 'milestone'], icon: Gift, tab: null },
 ]
+const REASON_LABEL = {
+  task: '课文任务', daily: '每日打卡', word_daily: '单词练习', word_perfect: '单词全对',
+  test: '单元测试', box: '开宝箱', milestone: '连击奖励', bank_deposit: '存进银行',
+  bank_interest: '银行利息', cancel: '取消打卡', test_cancel: '删测试', redeem: '商店兑换',
+  penalty: '约定扣分', penalty_cancel: '撤回约定',
+}
 const WD = '日一二三四五六'
 function pocketRow(r) { return (r.account || 'pocket') === 'pocket' }
 function sunDelta(r) { return Number(r.delta) || 0 }
@@ -30,10 +38,61 @@ function isSunSpend(r) { return pocketRow(r) && SUN_SPEND.has(r.reason) && sunDe
 function pathSum(days, id) {
   return (days || []).reduce((s, d) => s + (Number(d.by_reason && d.by_reason[id]) || 0), 0)
 }
+function md(iso) {
+  const p = String(iso || '').split('-')
+  return `${Number(p[1])}/${Number(p[2])}`
+}
 
+const loadingWeek = ref(false)
+let weekSeq = 0
+async function loadWeek(offset) {
+  const n = Math.max(0, Math.min(52, Number(offset) || 0))
+  weekOffset.value = n
+  const seq = ++weekSeq
+  loadingWeek.value = true
+  try {
+    const s = await api.ledgerSummary(n)
+    if (seq !== weekSeq) return
+    ledgerSummary.value = s
+  } catch { /* 沿用已有聚合 */ }
+  finally { if (seq === weekSeq) loadingWeek.value = false }
+}
+function shiftWeek(dir) {
+  const next = Math.max(0, Math.min(52, (weekOffset.value || 0) + dir))
+  if (next === (weekOffset.value || 0)) return
+  openDate.value = ''
+  dayRows.value = []
+  loadWeek(next)
+}
+
+const openDate = ref('')
+const dayRows = ref([])
+const dayLoading = ref(false)
+let daySeq = 0
+async function toggleDay(iso) {
+  if (openDate.value === iso) {
+    openDate.value = ''
+    dayRows.value = []
+    return
+  }
+  openDate.value = iso
+  const seq = ++daySeq
+  dayLoading.value = true
+  try {
+    const rows = await api.ledgerDay(iso)
+    if (seq !== daySeq) return
+    dayRows.value = rows || []
+  } catch {
+    if (seq !== daySeq) return
+    dayRows.value = []
+  } finally { if (seq === daySeq) dayLoading.value = false }
+}
+watch(() => ledgerSummary.value && ledgerSummary.value.week_start, () => {
+  openDate.value = ''
+  dayRows.value = []
+})
 
 const sunshineStats = computed(() => {
-
   const s = ledgerSummary.value || {}
   const today = s.today || data.today
   const rawDays = s.days || []
@@ -49,7 +108,6 @@ const sunshineStats = computed(() => {
   })
   const weekIn = Math.max(0, s.week_in == null ? days.reduce((n, d) => n + d.inn, 0) : Number(s.week_in) || 0)
   const weekOut = s.week_out == null ? days.reduce((n, d) => n + d.out, 0) : Number(s.week_out) || 0
-
   const maxAbs = Math.max(1, ...days.map(d => Math.max(d.inn, d.out)), 0)
   const paths = SUN_PATHS.map(p => {
     const week = pathSum(rawDays, p.id)
@@ -63,15 +121,21 @@ const sunshineStats = computed(() => {
   })
   const maxPath = Math.max(1, ...paths.map(p => p.week), 0)
   const top = [...paths].sort((a, b) => b.week - a.week)[0]
+  const start = s.week_start || (days[0] && days[0].date) || ''
+  const end = days[6] && days[6].date || ''
   return {
     days, weekIn, weekOut, maxAbs, paths, maxPath,
     quiet: days.filter(d => d.quiet && !d.today),
     topName: top && top.week ? top.name : '',
+    rangeLabel: start && end ? `${md(start)}–${md(end)}` : '',
+    offset: Number(s.offset || 0),
+    redemptions: s.redemptions || [],
   }
 })
 const sunshineGaps = computed(() => {
   const g = []
   const st = sunshineStats.value
+  if (st.offset) return []
   if (props.dailyTodo.length) g.push({ id: 'daily', text: `今天还有 ${props.dailyTodo.length} 项打卡没做`, go: '今日推荐' })
   if (wordDueCard.value && !wordDueCard.value.finished) g.push({ id: 'word-due', text: `单词复习还剩 ${wordDueCard.value.left} 个`, lane: 'due' })
   if (wordNewCard.value && !wordNewCard.value.finished) g.push({ id: 'word-new', text: `新词还剩 ${wordNewCard.value.left} 个`, lane: 'new' })
@@ -87,6 +151,10 @@ const sunshineGaps = computed(() => {
 })
 const sunshineLead = computed(() => {
   const st = sunshineStats.value
+  if (st.offset) {
+    if (st.weekIn || st.weekOut) return `${st.rangeLabel} 攒了 ${st.weekIn}，兑换 ${st.weekOut}`
+    return `${st.rangeLabel} 没有阳光进出`
+  }
   const gap = sunshineGaps.value[0]
   if (gap) return gap.text
   if (st.topName) return `这周阳光主要来自${st.topName}`
@@ -94,6 +162,13 @@ const sunshineLead = computed(() => {
 })
 function goSunGap(g) {
   emit('navigate', g)
+}
+function rowLabel(r) {
+  return (r.note && String(r.note).trim()) || REASON_LABEL[r.reason] || r.reason || '阳光'
+}
+function fmtDelta(n) {
+  const v = Number(n) || 0
+  return v > 0 ? '+' + v : String(v)
 }
 </script>
 
@@ -116,7 +191,7 @@ function goSunGap(g) {
         <em v-if="g.go || g.lane">去看看</em>
       </button>
     </div>
-    <div v-else class="sun-gaps ok">
+    <div v-else-if="!sunshineStats.offset" class="sun-gaps ok">
       <p>这周该做的都有阳光进账，继续保持。</p>
     </div>
 
@@ -125,17 +200,45 @@ function goSunGap(g) {
         <h3>这周趋势</h3>
         <span class="sun-week-sum">攒 {{ sunshineStats.weekIn }} · 兑换 {{ sunshineStats.weekOut }}</span>
       </div>
+      <div class="sun-week-nav">
+        <button type="button" class="sun-week-btn" :disabled="sunshineStats.offset >= 52 || loadingWeek" @click="shiftWeek(1)" aria-label="上一周">
+          <ChevronLeft :size="18" />
+        </button>
+        <span class="sun-week-range">{{ sunshineStats.rangeLabel || '本周' }}</span>
+        <button type="button" class="sun-week-btn" :disabled="!sunshineStats.offset || loadingWeek" @click="shiftWeek(-1)" aria-label="下一周">
+          <ChevronRight :size="18" />
+        </button>
+      </div>
       <div class="sun-week">
-        <div v-for="d in sunshineStats.days" :key="d.date" class="sun-col" :class="{ quiet: d.quiet && !d.today }">
+        <button v-for="d in sunshineStats.days" :key="d.date" type="button" class="sun-col" :class="{ quiet: d.quiet && !d.today, open: openDate === d.date }" @click="toggleDay(d.date)">
           <span class="sun-col-n" :class="{ zero: !d.inn }">{{ d.inn ? '+' + d.inn : '0' }}</span>
           <div class="sun-track dual">
             <i class="in" :style="{ height: Math.max(d.inn ? 8 : 0, Math.round(d.inn / sunshineStats.maxAbs * 68)) + 'px' }"></i>
             <i class="out" :style="{ height: Math.max(d.out ? 8 : 0, Math.round(d.out / sunshineStats.maxAbs * 68)) + 'px' }"></i>
           </div>
           <span :class="{ today: d.today }">{{ d.wd }}</span>
-        </div>
+        </button>
       </div>
-      <p class="sun-week-legend"><i class="in"></i> 攒到的 <i class="out"></i> 商店兑换</p>
+      <p class="sun-week-legend"><i class="in"></i> 攒到的 <i class="out"></i> 商店兑换 · 点一天看明细</p>
+      <div v-if="openDate" class="sun-day-panel">
+        <p v-if="dayLoading" class="sun-day-empty">在看 {{ md(openDate) }} 的流水…</p>
+        <p v-else-if="!dayRows.length" class="sun-day-empty">这一天还没有口袋流水</p>
+        <ul v-else class="sun-day-list">
+          <li v-for="r in dayRows" :key="r.id" :class="{ down: (Number(r.delta) || 0) < 0 }">
+            <span>{{ rowLabel(r) }}</span>
+            <b>{{ fmtDelta(r.delta) }}</b>
+          </li>
+        </ul>
+      </div>
+      <div v-if="sunshineStats.redemptions.length" class="sun-redeem">
+        <h4>本周兑换</h4>
+        <ul>
+          <li v-for="(r, i) in sunshineStats.redemptions" :key="i">
+            <span>{{ md(r.date) }} · {{ r.note || '商店兑换' }}</span>
+            <b>{{ fmtDelta(r.delta) }}</b>
+          </li>
+        </ul>
+      </div>
     </div>
 
     <div class="bank-operations">

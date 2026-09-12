@@ -57,6 +57,8 @@ export const api = {
   reviewDue: () => j('/api/review-due'),
   ledger: () => j('/api/ledger?limit=60'),
   ledgerSummary: (offset = 0) => j('/api/ledger/summary?offset=' + encodeURIComponent(offset)),
+  ledgerDay: (date) => j('/api/ledger?date=' + encodeURIComponent(date)),
+
 
   setKidName: (name) => j('/api/kid-name', { method: 'POST', ...body({ name }) }),
   dailyHistory: (id) => j(`/api/daily/${id}/history`),
