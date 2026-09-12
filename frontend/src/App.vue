@@ -11,7 +11,8 @@ import { Sun, Lock, Gift, Check, TrendingUp, Target, User, ShoppingCart, Medal, 
 import { soundManager, playSound, playCompleteBeep, playCoinBeep } from './sounds.js'
 import { getEncouragement, getCompanionMessage } from './encouragements.js'
 import { SUBJECT_ORDER, n1, isGoPlay } from './format.js'
-import { data, loading, err, me, authed, isAdmin, mustChangePin, pendingRecovery, rewards, achievements, boxes, recentLedger, reviewDue, activeTab, toast, showToast, newAchCount, achNew, companion, companionImage, companionTitle, companionPulse, companionEvolve, pendingLevelUp, pulseCompanion, showLevelCelebrate, triggerCompanionEvolve, wordToday, wordDueCard, wordNewCard, wordSun, sprites, capsule, spriteScene, spritesOpen, dutySprite, spImg, displayName, loadSprites, maybeShowMorning, applyCapsule, todayPenalty } from './store.js'
+import { data, loading, err, me, authed, isAdmin, mustChangePin, pendingRecovery, rewards, achievements, boxes, recentLedger, ledgerSummary, reviewDue, activeTab, toast, showToast, newAchCount, achNew, companion, companionImage, companionTitle, companionPulse, companionEvolve, pendingLevelUp, pulseCompanion, showLevelCelebrate, triggerCompanionEvolve, wordToday, wordDueCard, wordNewCard, wordSun, sprites, capsule, spriteScene, spritesOpen, dutySprite, spImg, displayName, loadSprites, maybeShowMorning, applyCapsule, todayPenalty } from './store.js'
+
 import SunshinePage from './components/SunshinePage.vue'
 import TrendChart from './components/TrendChart.vue'
 import AchievementsModal from './components/AchievementsModal.vue'
@@ -181,14 +182,16 @@ let refreshSeq = 0
 async function refresh() {
   const seq = ++refreshSeq
   try {
-    const [t, r, bx, rv, led, ach, wd, sp, cap] = await Promise.all([
+    const [t, r, bx, rv, led, sum, ach, wd, sp, cap] = await Promise.all([
       api.tasks(), api.rewards(), api.boxes(),
       api.reviewDue().catch(() => []), api.ledger().catch(() => []),
+      api.ledgerSummary(0).catch(() => null),
       api.achievements().catch(() => null),
       api.wordsToday().catch(() => null),
       api.sprites().catch(() => null),
       api.capsule().catch(() => null),
     ])
+
     if (seq !== refreshSeq) return // 已有更新的刷新在途，丢弃旧响应避免回滚新状态
     const prevId = data.level && data.level.level_id
     const prevEarned = data.level && (data.level.earned || 0)
@@ -206,6 +209,8 @@ async function refresh() {
     if (hidden.has(activeTab.value) || SIDEBAR_DAILY_ONLY.has(activeTab.value)) activeTab.value = '今日推荐'
     reviewDue.value = (rv || []).filter(x => !hidden.has(x.subject_id))
     recentLedger.value = led || []
+    if (sum) ledgerSummary.value = sum
+
     if (Array.isArray(ach)) achievements.value = ach
     if (wd) wordToday.value = wd
     if (sp) {
@@ -385,7 +390,8 @@ async function openRankMap() {
   rankMapOpen.value = true
   try { rankMap.value = await api.ranks() } catch {}
 }
-// 阳光统计页（components/SunshinePage.vue）：今日约定在 store，账本数学在组件
+// 阳光统计页：今日约定与周聚合在 store；账本明细仍 refresh 拉一份留给下钻
+
 function goSunGap(g) {
   if (g.lane) openWordLane(g.lane)
   else if (g.go) activeTab.value = g.go

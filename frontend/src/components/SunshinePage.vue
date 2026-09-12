@@ -1,21 +1,17 @@
 <script setup>
 // 阳光统计页：周趋势、五条途径、还没做好清单。
-// 账本数据读 store.recentLedger；dailyTodo/studyNext 是父级计算属性，props 传入；
-// 点跳转 emit('navigate', gap)，由父级切 tab 或打开单词练习。
+// 周合计读 /api/ledger/summary（自然周）；recentLedger 留给 Phase 2 下钻；
+// dailyTodo/studyNext 是父级计算属性，props 传入；点跳转 emit('navigate', gap)。
 import { computed } from 'vue'
 import { TrendingUp, Target, BookOpen, Globe, CalendarDays, FileText, Gift } from '@lucide/vue'
-import { recentLedger, data, wordDueCard, wordNewCard, reviewDue, todayPenalty } from '../store.js'
-
+import { ledgerSummary, data, wordDueCard, wordNewCard, reviewDue, todayPenalty } from '../store.js'
 const props = defineProps({
   dailyTodo: { type: Array, default: () => [] },
   studyNext: { type: Array, default: () => [] },
 })
 const emit = defineEmits(['navigate'])
 
-function ymd(d) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
-const SUN_EARN = new Set(['task', 'daily', 'word_daily', 'word_perfect', 'test', 'box', 'milestone'])
+const SUN_EARN = new Set(['task', 'daily', 'word_daily', 'word_perfect', 'test', 'box', 'milestone', 'bank_deposit', 'bank_interest'])
 const SUN_REVERT = new Set(['cancel', 'test_cancel'])
 const SUN_SPEND = new Set(['redeem'])
 const SUN_PATHS = [
@@ -31,38 +27,33 @@ function sunDelta(r) { return Number(r.delta) || 0 }
 function isSunEarn(r) { return pocketRow(r) && SUN_EARN.has(r.reason) }
 function isSunRevert(r) { return pocketRow(r) && SUN_REVERT.has(r.reason) }
 function isSunSpend(r) { return pocketRow(r) && SUN_SPEND.has(r.reason) && sunDelta(r) < 0 }
-function sunSum(rows, pred) {
-  return rows.filter(pred).reduce((s, r) => s + Math.abs(sunDelta(r)), 0)
+function pathSum(days, id) {
+  return (days || []).reduce((s, d) => s + (Number(d.by_reason && d.by_reason[id]) || 0), 0)
 }
-function sunSumSigned(rows, pred) {
-  return rows.filter(pred).reduce((s, r) => s + sunDelta(r), 0)
-}
+
+
 const sunshineStats = computed(() => {
-  const rows = (recentLedger.value || []).filter(pocketRow)
-  const now = new Date()
-  const dayList = []
-  for (let i = 13; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i)
-    dayList.push(ymd(d))
-  }
-  const weekDates = dayList.slice(7)
-  const prevDates = dayList.slice(0, 7)
-  const weekSet = new Set(weekDates)
-  const prevSet = new Set(prevDates)
-  const days = weekDates.map((iso, i) => {
-    const dayRows = rows.filter(r => r.date === iso)
-    const inn = Math.max(0, sunSumSigned(dayRows, r => isSunEarn(r) || isSunRevert(r)))
-    const out = sunSum(dayRows, isSunSpend)
-    const [yy, mm, dd] = iso.split('-').map(Number)
-    const d = new Date(yy, mm - 1, dd) // 本地时区解析，避免 'YYYY-MM-DD' 被当 UTC 导致星期错一天
-    return { date: iso, wd: i === 6 ? '今天' : WD[d.getDay()], inn, out, today: i === 6, quiet: inn === 0 }
+
+  const s = ledgerSummary.value || {}
+  const today = s.today || data.today
+  const rawDays = s.days || []
+  const prevDays = s.prev_week || []
+  const days = rawDays.map(d => {
+    const [yy, mm, dd] = String(d.date || '').split('-').map(Number)
+    const dt = new Date(yy, mm - 1, dd)
+    const isToday = d.date === today
+    const inn = Math.max(0, Number(d.earn) || 0)
+    const out = Math.max(0, Number(d.spend) || 0)
+    const future = today && d.date > today
+    return { date: d.date, wd: isToday ? '今天' : WD[dt.getDay()] || '', inn, out, today: isToday, quiet: inn === 0 && !future }
   })
-  const weekIn = Math.max(0, sunSumSigned(rows.filter(r => weekSet.has(r.date)), r => isSunEarn(r) || isSunRevert(r)))
-  const weekOut = days.reduce((s, d) => s + d.out, 0)
-  const maxAbs = Math.max(1, ...days.map(d => Math.max(d.inn, d.out)))
+  const weekIn = Math.max(0, s.week_in == null ? days.reduce((n, d) => n + d.inn, 0) : Number(s.week_in) || 0)
+  const weekOut = s.week_out == null ? days.reduce((n, d) => n + d.out, 0) : Number(s.week_out) || 0
+
+  const maxAbs = Math.max(1, ...days.map(d => Math.max(d.inn, d.out)), 0)
   const paths = SUN_PATHS.map(p => {
-    const week = sunSum(rows.filter(r => weekSet.has(r.date) && p.reasons.includes(r.reason)), isSunEarn)
-    const prev = sunSum(rows.filter(r => prevSet.has(r.date) && p.reasons.includes(r.reason)), isSunEarn)
+    const week = pathSum(rawDays, p.id)
+    const prev = pathSum(prevDays, p.id)
     let vs = '这周还没有'
     if (week > 0 && prev === 0) vs = '这周刚开始有'
     else if (week > prev) vs = `比上周多 ${week - prev}`

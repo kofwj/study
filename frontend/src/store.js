@@ -186,8 +186,14 @@ export function maybeShowMorning() {
   if (morningPending.value) morningShow.value = true
 }
 
-// ---- 阳光账本：今日约定（阳光页与今日推荐共用）----
+// ---- 阳光账本：周聚合 + 今日约定（阳光页与今日推荐共用）----
+export const ledgerSummary = ref({
+  today: '', week_start: '', offset: 0, days: [], prev_week: [],
+  penalty_today: null, week_in: 0, week_out: 0,
+})
 export const todayPenalty = computed(() => {
+  const s = ledgerSummary.value
+  if (s && Array.isArray(s.days) && s.days.length) return s.penalty_today || null
   const today = data.today
   const rows = recentLedger.value || []
   const cancels = new Set(rows.filter(r => r.reason === 'penalty_cancel').map(r => r.ref_id))
@@ -206,6 +212,7 @@ export const achNew = (a) => achOn(a) && Number(a.seen) === 0
 export const newAchCount = computed(() => achievements.value.filter(achNew).length)
 export const boxes = ref({ avail: 0, opened: 0, earned: 0, streak: 0 })
 export const recentLedger = ref([])
+
 export const reviewDue = ref([])
 export const activeTab = ref('今日推荐')
 

@@ -2147,6 +2147,107 @@ def ledger(limit: int = 20):
         "SELECT * FROM ledger WHERE kid_id=? ORDER BY id DESC LIMIT ?", (kid_id(), limit)).fetchall()]
 
 
+EARN_REASONS = {"task", "daily", "word_daily", "word_perfect", "test", "box", "milestone", "bank_deposit", "bank_interest"}
+REVERT_REASONS = {"cancel", "test_cancel"}
+SPEND_REASONS = {"redeem"}
+PATH_OF = {"task": "task", "word_daily": "word", "word_perfect": "word", "daily": "daily", "test": "test", "box": "box", "milestone": "box"}
+
+
+def _summary_blank_day(d):
+    return {"date": d.isoformat(), "earn": 0, "spend": 0,
+            "by_reason": {"task": 0, "word": 0, "daily": 0, "test": 0, "box": 0, "bank": 0}}
+
+
+def _summary_fill_days(monday, rows):
+    days = [_summary_blank_day(monday + timedelta(days=i)) for i in range(7)]
+    by_date = {d["date"]: d for d in days}
+    for r in rows:
+        day = by_date.get(r["date"])
+        if day is None:
+            continue
+        reason, total = r["reason"], int(r["total"] or 0)
+        acct = (r["account"] if r["account"] is not None else "pocket") if "account" in r.keys() else "pocket"
+
+        if reason == "bank_deposit" and acct == "pocket":
+            amt = abs(total)
+            day["earn"] += amt
+            day["by_reason"]["bank"] += amt
+        elif reason == "bank_interest":
+            amt = abs(total)
+            day["earn"] += amt
+            day["by_reason"]["bank"] += amt
+        elif acct != "pocket":
+            continue
+        elif reason in EARN_REASONS:
+            day["earn"] += total
+            path = PATH_OF.get(reason)
+            if path:
+                day["by_reason"][path] += total
+        elif reason in REVERT_REASONS:
+            day["earn"] += total
+        elif reason in SPEND_REASONS:
+            day["spend"] += abs(total)
+
+
+    for d in days:
+        if d["earn"] < 0:
+            d["earn"] = 0
+    return days
+
+
+def _penalty_today_payload(c, kid, today_s):
+    pens = c.execute(
+        "SELECT reason, ref_id, delta, note FROM ledger "
+        "WHERE kid_id=? AND account='pocket' AND date=? AND reason='penalty'",
+        (kid, today_s)).fetchall()
+    if not pens:
+        return None
+    refs = [r["ref_id"] for r in pens if r["ref_id"]]
+    cancel_refs = set()
+    if refs:
+        q = ",".join("?" * len(refs))
+        cancel_refs = {r["ref_id"] for r in c.execute(
+            f"SELECT ref_id FROM ledger WHERE kid_id=? AND reason='penalty_cancel' AND ref_id IN ({q})",
+            (kid, *refs)).fetchall()}
+    active = [r for r in pens if r["ref_id"] not in cancel_refs]
+    if not active:
+        return None
+    n = sum(abs(int(r["delta"] or 0)) for r in active)
+    reason = ((active[0]["note"] or "").split("：")[0] or "约定").strip()
+    return {"n": n, "count": len(active), "reason": reason}
+
+
+@app.get("/api/ledger/summary")
+def ledger_summary(offset: int = 0):
+    """自然周（周一~周日）阳光聚合。口径：存银行/利息算「攒到」；取款不重复计；兑换算支出；
+    取消/删测试冲正抵扣当日攒到；约定扣分单列不进柱状图。offset=1 为上一周。"""
+    offset = max(0, min(52, offset))
+    c = get_conn()
+    kid = kid_id()
+    today = datetime.strptime(db.today(), "%Y-%m-%d").date()
+    monday = today - timedelta(days=today.weekday()) - timedelta(days=7 * offset)
+    prev_monday = monday - timedelta(days=7)
+    start, end = monday.isoformat(), (monday + timedelta(days=6)).isoformat()
+    range_start = prev_monday.isoformat()
+    rows = c.execute(
+        "SELECT date, reason, account, SUM(delta) AS total FROM ledger "
+        "WHERE kid_id=? AND date BETWEEN ? AND ? "
+        "AND (account='pocket' OR reason='bank_interest') "
+        "GROUP BY date, reason, account",
+        (kid, range_start, end)).fetchall()
+
+
+
+    penalty_today = _penalty_today_payload(c, kid, today.isoformat())
+    c.close()
+    days = _summary_fill_days(monday, rows)
+    prev_week = _summary_fill_days(prev_monday, rows)
+    return {"today": today.isoformat(), "week_start": start, "offset": offset, "days": days,
+            "prev_week": prev_week, "penalty_today": penalty_today,
+            "week_in": sum(d["earn"] for d in days), "week_out": sum(d["spend"] for d in days)}
+
+
+
 # ---------------- 管理端（家长，需 PIN） -------------
 
 

@@ -56,6 +56,8 @@ export const api = {
   morningAck: () => j('/api/sprites/morning-ack', { method: 'POST' }),
   reviewDue: () => j('/api/review-due'),
   ledger: () => j('/api/ledger?limit=60'),
+  ledgerSummary: (offset = 0) => j('/api/ledger/summary?offset=' + encodeURIComponent(offset)),
+
   setKidName: (name) => j('/api/kid-name', { method: 'POST', ...body({ name }) }),
   dailyHistory: (id) => j(`/api/daily/${id}/history`),
   bank: () => j('/api/bank'),
