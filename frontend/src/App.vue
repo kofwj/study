@@ -873,6 +873,11 @@ async function openChart(task) {
 }
 // 每日打卡弹窗（components/DailyDialog.vue）：表单在组件里，业务动作（发阳光/庆祝/刷新）在这里
 const dailyRef = ref(null)
+function dailySunshineHint(task) {
+  if (!task) return ''
+  if (isGoPlay(task)) return `看「赢了几局」：填 1 或更多才给 +${task.sunshine || 5} 阳光。赢 0 局（空着也算 0）不给，输了几局不影响`
+  return `打卡 +${task.sunshine || 5} 阳光`
+}
 async function openDaily(task) {
   if (task.done_today) return
   if (!guardCheckinOpen()) return
