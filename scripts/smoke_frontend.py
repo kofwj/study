@@ -6,6 +6,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 VUE = ROOT / "frontend" / "src" / "App.vue"
+LOGIN = ROOT / "frontend" / "src" / "components" / "LoginScreen.vue"
 DIST = ROOT / "frontend" / "dist"
 
 
@@ -47,8 +48,14 @@ def check_vue():
     html = template_of(VUE)
     if login_inside_desk(html):
         fail("App.vue：.login-screen 套在 .desk 里（会白屏）")
-    if 'class="login-screen"' not in html and "class='login-screen'" not in html:
-        fail("App.vue：没有 login-screen")
+    # 登录 UI 拆到 LoginScreen.vue：登录页必须存在、App 必须以组件引用
+    if not LOGIN.exists():
+        fail("缺 components/LoginScreen.vue")
+    lhtml = template_of(LOGIN)
+    if 'class="login-screen"' not in lhtml:
+        fail("LoginScreen.vue：没有 login-screen")
+    if "LoginScreen" not in html:
+        fail("App.vue：没有引用 <LoginScreen>")
     if "v-else" not in html:
         fail("App.vue：没有 v-else")
 

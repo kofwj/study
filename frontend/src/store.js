@@ -36,6 +36,7 @@ export const me = ref(null)
 export const authed = ref(false)
 export const isAdmin = ref(false)
 export const mustChangePin = ref(false)
+export const pendingRecovery = ref('') // 家长注册/找回后的一次性找回码，传给 Admin 展示
 export const rewards = ref([])
 export const achievements = ref([])
 

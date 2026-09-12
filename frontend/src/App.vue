@@ -17,10 +17,11 @@ import companionBloomImg from './assets/companion-bloom.png'
 import { soundManager, playSound, playCompleteBeep, playCoinBeep, playLevelUpBeep, playEvolveBeep } from './sounds.js'
 import { getEncouragement, getCompanionMessage } from './encouragements.js'
 import { SUBJECT_ORDER, pad2, n1, isTimeMetric, metricToSeconds, secondsToMetric, formatDuration, formatMetricValue } from './format.js'
-import { data, loading, err, me, authed, isAdmin, mustChangePin, rewards, achievements, boxes, recentLedger, reviewDue, activeTab, toast, showToast, newAchCount, achNew } from './store.js'
+import { data, loading, err, me, authed, isAdmin, mustChangePin, pendingRecovery, rewards, achievements, boxes, recentLedger, reviewDue, activeTab, toast, showToast, newAchCount, achNew } from './store.js'
 import TrendChart from './components/TrendChart.vue'
 import AchievementsModal from './components/AchievementsModal.vue'
 import ShopDrawer from './components/ShopDrawer.vue'
+import LoginScreen from './components/LoginScreen.vue'
 import { confettiStyle } from './celebrate.js'
 const topbarEl = ref(null)
 const updateBarEl = ref(null)
@@ -823,60 +824,11 @@ function fitnessBar(d) {
   return { ...g, last, pct, status, lines }
 }
 
-const oldPin = ref('')
-const newPin = ref('')
-const newPin2 = ref('')
-const pinForm = reactive({ who: 'kid', mode: 'login', account: '', val: '', name: '', family: '我家', code: '', recoverCode: '', recoverPin: '', recoverPin2: '' })
-const pendingRecovery = ref('')
-function goKidLogin() {
-  pinForm.who = 'kid'
-  pinForm.mode = 'login'
-  pinForm.account = ''
-  pinForm.val = ''
+function afterKidLogin(r) {
+  // 孩子登录后拉全量数据；家长登录进 Admin，不需要
+  if (r && r.role !== 'parent') refresh()
 }
-function goParentLogin() {
-  pinForm.who = 'parent'
-  pinForm.mode = 'login'
-  pinForm.account = ''
-  pinForm.val = ''
-}
-async function afterLogin(r) {
-  if (r && r.recovery_code) pendingRecovery.value = r.recovery_code
-  me.value = r
-  pinForm.val = ''
-  authed.value = true
-  isAdmin.value = r.role === 'parent'
-  mustChangePin.value = !!(r.force_pin_change && r.role === 'parent')
-  if (!isAdmin.value) await refresh()
-}
-async function doChangePin() {
-  const cur = oldPin.value.trim()
-  const p = newPin.value.trim()
-  if (!cur) { showToast('请输入当前密码'); return }
-  if (p.length < 8) { showToast('家长密码至少 8 位'); return }
-  if (p !== newPin2.value) { showToast('两次新密码不一致'); return }
-  try {
-    await api.admin.changePin(p, cur)
-    mustChangePin.value = false
-    oldPin.value = ''; newPin.value = ''; newPin2.value = ''
-    me.value = await api.me().catch(() => me.value)
-    showToast('密码已更新')
-  } catch (e) { showToast(e.message) }
-}
-async function verifyPin() {
-  try {
-    if (pinForm.who === 'parent' && pinForm.mode === 'register') {
-      await afterLogin(await api.register({ account: pinForm.account, pin: pinForm.val, name: pinForm.name, family_name: pinForm.family }))
-    } else if (pinForm.who === 'parent' && pinForm.mode === 'join') {
-      await afterLogin(await api.join({ account: pinForm.account, pin: pinForm.val, name: pinForm.name, code: pinForm.code }))
-    } else if (pinForm.who === 'parent' && pinForm.mode === 'recover') {
-      if (pinForm.recoverPin !== pinForm.recoverPin2) return showToast('两次新密码不一致')
-      await afterLogin(await api.recover({ account: pinForm.account, code: pinForm.recoverCode, pin: pinForm.recoverPin }))
-    } else {
-      await afterLogin(await api.login(pinForm.account, pinForm.val))
-    }
-  } catch (e) { showToast(e.message) }
-}
+const loginRef = ref(null)
 function exitAdmin() {
   isAdmin.value = false
   refresh()
@@ -889,14 +841,14 @@ async function openParent() {
   await api.logout().catch(() => {})
   me.value = null
   authed.value = false
-  goParentLogin()
+  await nextTick()
+  loginRef.value?.show('parent')
 }
 async function doLogout() {
   await api.logout().catch(() => {})
   me.value = null
   isAdmin.value = false
-  authed.value = false
-  goKidLogin()
+  authed.value = false // 组件重挂载，自动回到孩子登录页
 }
 
 let refreshSeq = 0
@@ -1491,17 +1443,7 @@ function reloadApp() {
 
 <template>
   <Admin v-if="isAdmin && !mustChangePin" :recovery-code="pendingRecovery" @exit="exitAdmin" @switched="refresh" @consumed-recovery="pendingRecovery = ''" />
-  <div v-else-if="isAdmin && mustChangePin" class="login-screen">
-    <div class="login-card">
-      <div class="login-logo"><Lock class="ico" :size="36" /></div>
-      <h1>改家长密码</h1>
-      <input v-model="oldPin" type="password" placeholder="当前密码" autocomplete="current-password" />
-      <input v-model="newPin" type="password" placeholder="新密码（至少 8 位）" autocomplete="new-password" />
-      <input v-model="newPin2" type="password" placeholder="再输一遍确认" autocomplete="new-password" @keyup.enter="doChangePin" />
-      <button class="login-enter" @click="doChangePin">保存新密码</button>
-      <p v-if="toast" class="login-note danger">{{ toast }}</p>
-    </div>
-  </div>
+  <LoginScreen v-else-if="isAdmin && mustChangePin" mode="force-change" />
   <div v-else-if="authed" class="desk" :style="{ '--topbar-height': topbarHeight + 'px', '--update-bar-height': updateBarHeight + 'px' }">
     <button v-if="updateReady" ref="updateBarEl" type="button" class="update-bar" @click="reloadApp"><RefreshCw class="ico" :size="15" /> 有新版本，刷新</button>
     <div v-if="toast" class="toast-note global-toast" role="status">{{ toast }}</div>
@@ -2342,47 +2284,8 @@ function reloadApp() {
     </div>
   </div>
 
-  <div v-else class="login-screen">
-    <div class="login-card">
-      <div class="login-logo"><Sun class="ico" :size="36" /></div>
-      <h1>阳光学习工作台</h1>
-      <p class="login-ver" :title="APP_REVISION">{{ APP_LABEL }}</p>
-
-      <template v-if="pinForm.who === 'kid'">
-        <input v-model="pinForm.account" placeholder="孩子账号" autocomplete="username" />
-        <input v-model="pinForm.val" type="password" placeholder="孩子密码（至少 6 位）" autocomplete="current-password" @keyup.enter="verifyPin" />
-        <button class="login-enter" @click="verifyPin">进入</button>
-        <button type="button" class="login-switch" @click="goParentLogin">我是家长</button>
-      </template>
-
-      <template v-else>
-        <div class="login-tabs">
-          <button type="button" :class="{ on: pinForm.mode==='login' }" @click="pinForm.mode='login'">登录</button>
-          <button type="button" :class="{ on: pinForm.mode==='register' }" @click="pinForm.mode='register'">注册新家</button>
-          <button type="button" :class="{ on: pinForm.mode==='join' }" @click="pinForm.mode='join'">邀请码加入</button>
-        </div>
-        <template v-if="pinForm.mode !== 'recover'">
-          <input v-model="pinForm.account" placeholder="家长账号" autocomplete="username" />
-          <input v-model="pinForm.val" type="password" :placeholder="pinForm.mode==='login' ? '家长密码' : '家长密码至少 8 位'" autocomplete="current-password" @keyup.enter="verifyPin" />
-          <input v-if="pinForm.mode!=='login'" v-model="pinForm.name" placeholder="你的名字" />
-          <input v-if="pinForm.mode==='register'" v-model="pinForm.family" placeholder="家庭名（如：乐乐的家）" />
-          <input v-if="pinForm.mode==='join'" v-model="pinForm.code" placeholder="邀请码" />
-          <button class="login-enter" @click="verifyPin">{{ pinForm.mode==='register' ? '注册并进入' : '进入' }}</button>
-          <button v-if="pinForm.mode==='login'" type="button" class="login-switch" @click="pinForm.mode='recover'">忘记密码</button>
-        </template>
-        <template v-else>
-          <input v-model="pinForm.account" placeholder="家长账号" autocomplete="username" />
-          <input v-model="pinForm.recoverCode" placeholder="10 位找回码" autocomplete="off" />
-          <input v-model="pinForm.recoverPin" type="password" placeholder="新密码（至少 8 位）" autocomplete="new-password" />
-          <input v-model="pinForm.recoverPin2" type="password" placeholder="再输一遍新密码" autocomplete="new-password" @keyup.enter="verifyPin" />
-          <button class="login-enter" @click="verifyPin">重置密码并进入</button>
-          <button type="button" class="login-switch" @click="pinForm.mode='login'">回到登录</button>
-        </template>
-        <button type="button" class="login-switch" @click="goKidLogin">孩子打卡入口</button>
-      </template>
-      <p v-if="toast" class="login-note danger">{{ toast }}</p>
-    </div>
-  </div>
+  <!-- 登录页（components/LoginScreen.vue） -->
+  <LoginScreen v-else ref="loginRef" @ready="afterKidLogin" />
 </template>
 
 <style>
@@ -2952,12 +2855,6 @@ body {
   color: var(--ink-3); font-size: 11px; font-weight: 700; letter-spacing: .02em;
   font-variant-numeric: tabular-nums; white-space: nowrap;
 }
-.login-ver { margin: -8px 0 14px; color: var(--ink-3); font-size: 12px; font-weight: 700; }
-.login-switch {
-  display: block; width: 100%; margin-top: 10px; border: none; background: none;
-  color: var(--ink-3); font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit;
-}
-
 .mask { position: fixed; inset: 0; background: rgba(20,40,60,.35); display: flex; align-items: center; justify-content: center; z-index: 20; padding: 12px; overflow: auto; }
 .shop-modal { background: var(--surface); border-radius: var(--radius-lg); padding: 22px; width: min(92%, 420px); max-height: calc(100vh - 24px); max-height: calc(100dvh - 24px); overflow: auto; }
 .shop-modal h3 { margin: 0 0 14px; }
@@ -3047,17 +2944,6 @@ body {
 .err { color: var(--danger); text-align: center; }
 
 /* 登录页 */
-.login-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; background: var(--bg); }
-.login-card { background: var(--surface); border-radius: var(--radius-lg); padding: 32px 28px; width: 92%; max-width: 380px; box-shadow: var(--shadow-md); text-align: center; }
-.login-logo { width: 72px; height: 72px; margin: 0 auto 14px; border-radius: var(--radius-circle); background: var(--warm); color: var(--accent); display: flex; align-items: center; justify-content: center; }
-.login-card h1 { font-size: 22px; margin: 0 0 4px; }
-.login-tabs { display: flex; gap: 4px; margin-bottom: 16px; background: var(--surface-2); border-radius: var(--radius-pill); padding: 4px; }
-.login-tabs button { flex: 1; border: none; background: none; padding: 8px 4px; border-radius: var(--radius-pill); font-size: 13px; color: var(--ink-2); cursor: pointer; font-weight: 700; }
-.login-tabs button.on { background: var(--surface); color: var(--brand-deep); box-shadow: var(--shadow-sm); }
-.login-card input { width: 100%; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--radius-md); font-size: 15px; margin-bottom: 10px; box-sizing: border-box; font-family: inherit; }
-.login-enter { width: 100%; border: none; background: var(--brand); color: #fff; border-radius: var(--radius-md); padding: 12px; font-weight: 800; font-size: 15px; cursor: pointer; margin-top: 2px; font-family: inherit; }
-.login-note { font-size: 12px; color: var(--ink-3); margin: 12px 0 0; line-height: 1.5; }
-
 /* 升级庆祝 */
 .celebrate { position: fixed; inset: 0; z-index: 40; display: flex; align-items: center; justify-content: center; pointer-events: none; }
 .floater {
