@@ -41,7 +41,8 @@ function stampSW() {
       if (!existsSync(p)) return
       const src = readFileSync(p, 'utf8')
       if (src.includes('__BUILD__')) {
-        writeFileSync(p, src.replace('__BUILD__', String(Date.now())))
+        // 注释和常量里各有一个占位符，必须全部替换
+        writeFileSync(p, src.split('__BUILD__').join(String(Date.now())))
       }
     }
   }

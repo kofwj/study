@@ -7,6 +7,7 @@
 import contextvars
 import json
 import logging
+import calendar
 import random
 import time
 import os
@@ -490,7 +491,7 @@ def streak(c, kid=None):
         "SELECT DISTINCT date FROM completions WHERE status='completed' AND kid_id=?", (kid,)).fetchall()}
     dates |= {r["date"] for r in c.execute(
         "SELECT DISTINCT date FROM redemptions WHERE status IN ('done','delivered') AND kid_id=?", (kid,)).fetchall()}
-    d = datetime.now().date()
+    d = db.local_now().date()
     if d.isoformat() not in dates:
         d -= timedelta(days=1)
     n = 0
@@ -585,14 +586,14 @@ def insight_rules(c):
 
 
 def _monday(d=None):
-    d = d or datetime.now().date()
+    d = d or db.local_now().date()
     return d - timedelta(days=d.weekday())
 
 
 def _insight_weak_unit(c, kid, rules):
     n = int(rules["test_fail_count"])
     bar = int(rules["test_fail_score"])
-    cutoff = (datetime.now().date() - timedelta(days=30)).isoformat()
+    cutoff = (db.local_now().date() - timedelta(days=30)).isoformat()
     units = [r[0] for r in c.execute(
         "SELECT DISTINCT unit_id FROM tests WHERE kid_id=? AND unit_id IS NOT NULL AND unit_id!=''",
         (kid,)).fetchall()]
@@ -622,7 +623,7 @@ def _insight_weak_unit(c, kid, rules):
 
 def _insight_streak_break(c, kid, rules):
     need = int(rules["streak_break"])
-    today = datetime.now().date()
+    today = db.local_now().date()
     monday = _monday(today)
     weekdays_passed = (today - monday).days + 1
     start, end = monday.isoformat(), today.isoformat()
@@ -640,7 +641,7 @@ def _insight_streak_break(c, kid, rules):
 
 def _insight_drop(c, kid, rules):
     ratio = float(rules["drop_ratio"])
-    today = datetime.now().date()
+    today = db.local_now().date()
     monday = _monday(today)
     span = (today - monday).days
     last_from = monday - timedelta(days=7)
@@ -671,7 +672,7 @@ def _insight_fitness(c, kid):
     grade = _kid_grade(u["term_id"])
     if not grade:
         return None
-    cutoff = (datetime.now().date() - timedelta(days=14)).isoformat()
+    cutoff = (db.local_now().date() - timedelta(days=14)).isoformat()
     best = None
     for item, (tid, mid) in FITNESS_METRIC.items():
         std = c.execute(
@@ -873,7 +874,7 @@ def _created_hour(ts):
 def _consecutive_days(dates, today=None):
     """从今天（若今天不在集合里则从昨天）往回数连续天数。"""
     bag = {str(x) for x in dates}
-    d = today or datetime.now().date()
+    d = today or db.local_now().date()
     if d.isoformat() not in bag:
         d -= timedelta(days=1)
     n = 0
@@ -884,7 +885,7 @@ def _consecutive_days(dates, today=None):
 
 
 def _week_monday():
-    d = datetime.now().date()
+    d = db.local_now().date()
     return (d - timedelta(days=d.weekday())).isoformat()
 
 
@@ -1470,7 +1471,7 @@ def sprites_get():
     c = get_conn()
     kid = kid_id()
     fam = _fam.get() or ""
-    yday = (datetime.now().date() - timedelta(days=1)).isoformat()
+    yday = (db.local_now().date() - timedelta(days=1)).isoformat()
     out = spritemod.catalog(
         c, kid, fam,
         review_clear=not _due_queue(c, kid),
@@ -1670,9 +1671,6 @@ def redemptions():
 
 # ---------------- 阳光银行利息 ----------------
 
-from datetime import datetime, timedelta
-import calendar
-
 
 def _bank_interest_config(c, kid):
     """获取银行利息配置"""
@@ -1685,28 +1683,31 @@ def _bank_interest_config(c, kid):
     }
 
 
-def _should_settle_interest(cfg, today):
-    """判断今天是否应该结算利息"""
+def _due_settle_date(cfg, today):
+    """最近一个已到期但还没结算的结息日（含今天）；没有则 None。
+
+    错过结息日不丢息：下次触发时按最近到期日补结算，一次结算覆盖整个未结周期。
+    """
     if not cfg["enabled"]:
-        return False
+        return None
     last = cfg["last_settle"]
-    if last:
-        last_date = datetime.strptime(last, "%Y-%m-%d").date()
-        if last_date >= today:
-            return False
+    last_date = datetime.strptime(last, "%Y-%m-%d").date() if last else None
     cycle = cfg["cycle"]
-    if cycle == "weekly":
-        return today.weekday() == 5  # 周六
-    elif cycle == "biweekly":
-        if today.weekday() != 5:
-            return False
-        if not last:
-            return True
-        return (today - last_date).days >= 14
+    if cycle in ("weekly", "biweekly"):
+        due = today - timedelta(days=(today.weekday() - 5) % 7)  # 最近一个周六
+        if cycle == "biweekly":
+            if last_date and (due - last_date).days < 14:
+                due -= timedelta(days=7)
     elif cycle == "monthly":
-        last_day = calendar.monthrange(today.year, today.month)[1]
-        return today.day == last_day
-    return False
+        due = today.replace(day=calendar.monthrange(today.year, today.month)[1])
+        if due > today:
+            prev = due.replace(day=1) - timedelta(days=1)
+            due = prev.replace(day=calendar.monthrange(prev.year, prev.month)[1])
+    else:
+        return None
+    if last_date and due <= last_date:
+        return None
+    return due
 
 
 def _calc_avg_bank_balance(c, kid, start_date, end_date):
@@ -1749,59 +1750,51 @@ def _calc_avg_bank_balance(c, kid, start_date, end_date):
 
 
 def settle_bank_interest(c, kid, today):
-    """结算银行利息"""
+    """结算银行利息：结息日为周期末日，错过则补结算并覆盖整个未结周期。"""
     cfg = _bank_interest_config(c, kid)
-    if not _should_settle_interest(cfg, today):
+    due = _due_settle_date(cfg, today)
+    if due is None:
         return None
-    
+
     cycle = cfg["cycle"]
     last = cfg["last_settle"]
-    
-    if cycle == "weekly":
-        days = 7
-    elif cycle == "biweekly":
-        days = 14
-    else:  # monthly
-        # 计算从上次结算（或月初）到今天的实际天数
-        if last:
-            last_date = datetime.strptime(last, "%Y-%m-%d").date()
-            days = (today - last_date).days
-        else:
-            # 首次结算：从本月1号开始
-            days = today.day
-    
-    start_date = today - timedelta(days=days - 1)
-    avg_balance = _calc_avg_bank_balance(c, kid, start_date, today)
-    
+    if last:
+        last_date = datetime.strptime(last, "%Y-%m-%d").date()
+        days = (due - last_date).days
+    else:
+        # 首次结算：周/双周周期按 7 天，月周期从本月 1 号开始
+        days = 7 if cycle in ("weekly", "biweekly") else due.day
+
+    start_date = due - timedelta(days=days - 1)
+    avg_balance = _calc_avg_bank_balance(c, kid, start_date, due)
+
     if avg_balance < cfg["threshold"]:
-        db.set_kid_setting(c, kid, "bank_last_settle_date", today.strftime("%Y-%m-%d"))
+        db.set_kid_setting(c, kid, "bank_last_settle_date", due.strftime("%Y-%m-%d"))
         return {"settled": False, "reason": "below_threshold", "avg_balance": int(avg_balance)}
-    
+
     interest = int(avg_balance * cfg["rate"] / 100)
     if interest <= 0:
-        db.set_kid_setting(c, kid, "bank_last_settle_date", today.strftime("%Y-%m-%d"))
+        db.set_kid_setting(c, kid, "bank_last_settle_date", due.strftime("%Y-%m-%d"))
         return {"settled": False, "reason": "zero_interest", "avg_balance": int(avg_balance)}
-    
+
     cycle_label = {"weekly": "本周", "biweekly": "两周", "monthly": "本月"}[cycle]
-    ref_id = f"interest-{kid}-{today.strftime('%Y-%m-%d')}"
-    lid = db.insert_ledger(c, today.strftime("%Y-%m-%d"), interest, "bank_interest", ref_id,
+    ref_id = f"interest-{kid}-{due.strftime('%Y-%m-%d')}"
+    lid = db.insert_ledger(c, due.strftime("%Y-%m-%d"), interest, "bank_interest", ref_id,
                           f"{cycle_label}利息", kid, "bank")
     if lid:
-        db.set_kid_setting(c, kid, "bank_last_settle_date", today.strftime("%Y-%m-%d"))
+        db.set_kid_setting(c, kid, "bank_last_settle_date", due.strftime("%Y-%m-%d"))
         return {"settled": True, "interest": interest, "avg_balance": int(avg_balance), "ledger_id": lid}
     return None
 
 
-def check_and_settle_all_interests(c):
-    """检查所有孩子的利息结算，返回结算记录"""
-    today = datetime.strptime(db.today(), "%Y-%m-%d").date()
-    kids = c.execute("SELECT id FROM users WHERE role='kid'").fetchall()
-    results = []
-    for kr in kids:
-        result = settle_bank_interest(c, kr["id"], today)
-        if result:
-            results.append({"kid_id": kr["id"], **result})
-    return results
+def _auto_settle(c, kid):
+    """打开银行页面时补结算到期利息。须在 _begin_write 写事务内调用，
+    幂等由 bank_last_settle_date + 一次性流水唯一索引双保险。"""
+    try:
+        today = datetime.strptime(db.today(), "%Y-%m-%d").date()
+        settle_bank_interest(c, kid, today)
+    except Exception:
+        logging.exception("auto settle interest failed for kid %s", kid)
 
 
 class BankInterestConfigIn(BaseModel):
@@ -1841,13 +1834,17 @@ def admin_bank_interest_update(b: BankInterestConfigIn):
 
 @app.post("/api/admin/bank/settle-now", dependencies=[Depends(require_parent)])
 def admin_bank_settle_now():
-    """手动触发当前孩子的利息结算（测试用）"""
+    """手动触发当前孩子的利息补结算（有到期未结的周期才会结算）"""
     c = get_conn()
     try:
+        _begin_write(c)
         today = datetime.strptime(db.today(), "%Y-%m-%d").date()
         result = settle_bank_interest(c, kid_id(), today)
         c.commit()
         return result or {"settled": False, "reason": "not_due"}
+    except Exception:
+        _rollback(c)
+        raise
     finally:
         c.close()
 
@@ -1924,6 +1921,8 @@ def _bank_payload(c, kid=None):
 def bank():
     c = get_conn()
     try:
+        _begin_write(c)
+        _auto_settle(c, kid_id())
         out = _bank_payload(c)
         c.commit()
         return out
@@ -2141,6 +2140,8 @@ class LockBody(BaseModel):
 def admin_bank():
     c = get_conn()
     try:
+        _begin_write(c)
+        _auto_settle(c, kid_id())
         out = _bank_payload(c)
         out["requests"] = _bank_requests(c, kid_id(), 50)
         c.commit()
@@ -2235,7 +2236,8 @@ def admin_bank_request_approve(rid: str):
         
         # 并发保护：在检查余额前先加锁
         if db.is_postgres():
-            c.execute("SELECT COALESCE(SUM(delta),0) FROM ledger WHERE kid_id=? AND account='bank' FOR UPDATE", (kid,))
+            # PG 不允许聚合带 FOR UPDATE，先锁行再在子查询里求和
+            c.execute("SELECT COALESCE(SUM(delta),0) FROM (SELECT delta FROM ledger WHERE kid_id=? AND account='bank' FOR UPDATE) t", (kid,))
         
         depmod.promote_matured(c, kid)
         if bank_balance(c, kid) - depmod.locked_now(c, kid) < amount:
@@ -2520,7 +2522,7 @@ def invite_create(request: Request):
     prot = c.execute("SELECT invite_protect FROM families WHERE id=?", (u["family_id"],)).fetchone()
     protect = int(prot["invite_protect"] or 0) if prot else 0
     max_uses = 1 if protect else 0
-    expires_at = (datetime.now() + timedelta(hours=24)).isoformat(timespec="seconds") if protect else None
+    expires_at = (db.local_now() + timedelta(hours=24)).replace(tzinfo=None).isoformat(timespec="seconds") if protect else None
     c.execute("INSERT INTO invites(code,family_id,role,created_at,max_uses,expires_at) VALUES(?,?,?,?,?,?)",
               (code, u["family_id"], "parent", db.now(), max_uses, expires_at))
     c.commit(); c.close()
@@ -2609,7 +2611,8 @@ def penalty_create(b: PenaltyIn):
         
         # 并发保护：PostgreSQL用行锁，SQLite用IMMEDIATE事务
         if db.is_postgres():
-            c.execute("SELECT SUM(delta) FROM ledger WHERE kid_id=? FOR UPDATE", (kid,))
+            # PG 不允许聚合带 FOR UPDATE，先锁行再在子查询里求和
+            c.execute("SELECT COALESCE(SUM(delta),0) FROM (SELECT delta FROM ledger WHERE kid_id=? FOR UPDATE) t", (kid,))
         else:
             # SQLite: 使用IMMEDIATE事务防止并发写入
             c.execute("BEGIN IMMEDIATE")
@@ -2940,7 +2943,8 @@ def redemption_approve(rid: str):
         
         # 并发保护：在检查余额前先加锁
         if db.is_postgres():
-            c.execute("SELECT COALESCE(SUM(delta),0) FROM ledger WHERE kid_id=? FOR UPDATE", (applicant,))
+            # PG 不允许聚合带 FOR UPDATE，先锁行再在子查询里求和
+            c.execute("SELECT COALESCE(SUM(delta),0) FROM (SELECT delta FROM ledger WHERE kid_id=? FOR UPDATE) t", (applicant,))
         
         bal = balance(c, applicant)
         if bal < rd["price"]:
@@ -3455,7 +3459,7 @@ def daily_delete(did: str):
 def weekly():
     c = get_conn()
     kid = kid_id()
-    today = datetime.now().date()
+    today = db.local_now().date()
     monday = today - timedelta(days=today.weekday())
     days = []
     for i in range(7):
@@ -3501,7 +3505,7 @@ def weekly():
         "AND (wp.status='resolved' OR COALESCE(wp.interval_idx,0) >= 4) "
         "ORDER BY kt.name", (kid, w_start, w_end)).fetchall()]
     fam = _fam.get()
-    today_d = datetime.now().date()
+    today_d = db.local_now().date()
     span = (today_d - monday).days
     last_from = (monday - timedelta(days=7)).isoformat()
     last_to = (monday - timedelta(days=7) + timedelta(days=span)).isoformat()

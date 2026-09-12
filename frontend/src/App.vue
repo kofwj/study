@@ -1012,7 +1012,9 @@ async function doLogout() {
   goKidLogin()
 }
 
+let refreshSeq = 0
 async function refresh() {
+  const seq = ++refreshSeq
   try {
     const [t, r, bx, rv, led, ach, wd, bk, sp, cap] = await Promise.all([
       api.tasks(), api.rewards(), api.boxes(),
@@ -1023,6 +1025,7 @@ async function refresh() {
       api.sprites().catch(() => null),
       api.capsule().catch(() => null),
     ])
+    if (seq !== refreshSeq) return // 已有更新的刷新在途，丢弃旧响应避免回滚新状态
     const prevId = data.level && data.level.level_id
     const prevEarned = data.level && (data.level.earned || 0)
     Object.assign(data, t)
@@ -1053,10 +1056,11 @@ async function refresh() {
     if (cap) applyCapsule(cap)
     err.value = ''
   } catch (e) {
+    if (seq !== refreshSeq) return
     if (e.status === 401) { me.value = null; authed.value = false }
     err.value = e.message
   } finally {
-    loading.value = false
+    if (seq === refreshSeq) loading.value = false
   }
 }
 const checkinClosed = computed(() => data.checkin_window && data.checkin_window.open === false)

@@ -119,10 +119,24 @@ const weekPoints = computed(() => {
   }).join(' ')
 })
 
-function showToast(m) { toast.value = m; setTimeout(() => (toast.value = ''), 2200) }
+let toastTimer = null
+function showToast(m) {
+  toast.value = m
+  if (toastTimer) clearTimeout(toastTimer)
+  toastTimer = setTimeout(() => (toast.value = ''), 2200)
+}
 function unitName(id) { return units.value.find(u => u.id === id)?.name || id }
 
 async function load() {
+  try {
+    await loadAll()
+  } catch (e) {
+    // 任一接口失败不能让整个后台白屏：给出提示，已加载的部分照常展示
+    showToast(e && e.message ? `加载失败：${e.message}` : '加载失败，请检查网络后重试')
+  }
+}
+
+async function loadAll() {
   if (section.value === 'weekly') section.value = 'insights'
   // 获取当前家长信息
   const userInfo = await api.me()

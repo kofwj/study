@@ -24,33 +24,37 @@ def test_bank_interest_weekly_settlement():
         kid = r.json()["id"]
         q = "?selected_kid=" + kid
 
-        c = db.connect(admin=True)
-        db.insert_ledger(c, db.today(), 100, "task", "seed-int", "测试初始", kid)
-        c.commit()
-        c.close()
-
-        assert cli.put("/api/admin/bank/enabled" + q, json={"enabled": True}).status_code == 200
-        assert cli.post("/api/bank/deposit" + q, json={"amount": 80}).status_code == 200
-
-        cfg = cli.get("/api/admin/bank/interest" + q).json()
-        assert cfg["enabled"] is False
-        
         r = cli.put("/api/admin/bank/interest" + q, json={"enabled": True, "cycle": "weekly", "rate": 5.0, "threshold": 20})
         assert r.status_code == 200
         assert r.json()["enabled"] is True
 
         today = datetime.strptime(db.today(), "%Y-%m-%d").date()
-        if today.weekday() != 5:
-            r = cli.post("/api/admin/bank/settle-now" + q)
-            assert r.status_code == 200
-            assert r.json()["settled"] is False
+        due = today - timedelta(days=(today.weekday() - 5) % 7)  # 最近一个结息周六
+        seed_date = (due - timedelta(days=2)).strftime("%Y-%m-%d")
 
+        # 在结算周期窗口内直接落账（API 存款会记在今天，可能在窗口外）
         c = db.connect(admin=True)
-        saturday = today + timedelta(days=(5 - today.weekday()) % 7)
-        result = main.settle_bank_interest(c, kid, saturday)
-        if result and result.get("settled"):
-            c.commit()
-            assert result["interest"] > 0
+        db.insert_ledger(c, seed_date, 100, "task", "seed-int", "测试初始", kid)
+        db.insert_ledger(c, seed_date, 80, "bank_deposit", "seed-int-dep", "测试存入", kid, "bank")
+        db.insert_ledger(c, seed_date, -80, "bank_deposit", "seed-int-dep", "测试存入", kid, "pocket")
+        c.commit()
+
+        # 补结算：无论今天星期几，首次触发都结算最近一个未结的周六周期
+        r = cli.post("/api/admin/bank/settle-now" + q)
+        assert r.status_code == 200
+        first = r.json()
+        assert first["settled"] is True
+        assert first["interest"] > 0
+
+        # 同一周期内重复触发不重复发息
+        r = cli.post("/api/admin/bank/settle-now" + q)
+        assert r.status_code == 200
+        assert r.json()["settled"] is False
+
+        n = c.execute(
+            "SELECT COUNT(*) FROM ledger WHERE kid_id=? AND reason='bank_interest'", (kid,)
+        ).fetchone()[0]
+        assert n == 1
         c.close()
 
         bank = cli.get("/api/bank" + q).json()

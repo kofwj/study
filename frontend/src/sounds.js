@@ -2,6 +2,8 @@
 class SoundManager {
   constructor() {
     this.sounds = {}
+    this.broken = new Set() // 加载失败（404 等）的音效，play 返回 false 让调用方降级到 beep
+    this.ctx = null // AudioContext 单例，移动端 Safari 有数量限制
     this.enabled = localStorage.getItem('soundEnabled') !== 'false'
     this.volume = parseFloat(localStorage.getItem('soundVolume') || '0.5')
     this.tested = false
@@ -13,17 +15,21 @@ class SoundManager {
       const audio = new Audio(url)
       audio.preload = 'auto'
       audio.volume = this.volume
+      audio.addEventListener('error', () => {
+        this.broken.add(name)
+        delete this.sounds[name]
+      })
       this.sounds[name] = audio
     }
   }
 
-  // 播放音效
+  // 播放音效；不可用时返回 false，调用方应降级到 beep
   play(name, volume = null) {
     if (!this.enabled) return false
-    
+
     const sound = this.sounds[name]
     if (!sound) {
-      console.warn(`Sound "${name}" not found`)
+      if (!this.broken.has(name)) console.warn(`Sound "${name}" not found`)
       return false
     }
 
@@ -31,7 +37,7 @@ class SoundManager {
       sound.currentTime = 0
       sound.volume = volume !== null ? volume : this.volume
       const playPromise = sound.play()
-      
+
       if (playPromise !== undefined) {
         playPromise.catch(err => {
           // 自动播放被浏览器阻止，静默失败
@@ -45,12 +51,23 @@ class SoundManager {
     }
   }
 
+  _ctx() {
+    if (!this.ctx) {
+      const AC = window.AudioContext || window.webkitAudioContext
+      if (!AC) return null
+      this.ctx = new AC()
+    }
+    if (this.ctx.state === 'suspended') this.ctx.resume().catch(() => {})
+    return this.ctx
+  }
+
   // 使用 Web Audio API 生成简单音效（备用方案，无需外部文件）
   beep(frequency = 800, duration = 150, type = 'sine') {
     if (!this.enabled) return
-    
+
     try {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)()
+      const ctx = this._ctx()
+      if (!ctx) return
       const oscillator = ctx.createOscillator()
       const gain = ctx.createGain()
 
@@ -84,7 +101,7 @@ class SoundManager {
 
 export const soundManager = new SoundManager()
 
-// 预加载所有音效（使用合成音效作为备用）
+// 预加载所有音效（文件缺失时 play 返回 false，自动降级到下面的合成音效）
 soundManager.preload('complete', '/sounds/complete.mp3')
 soundManager.preload('coin', '/sounds/coin.mp3')
 soundManager.preload('levelup', '/sounds/levelup.mp3')
