@@ -4,6 +4,7 @@ import { api, setSelectedKid } from './api.js'
 import { APP_LABEL, APP_REVISION } from './version.js'
 import { rankIcon } from './icons.js'
 import { tagHelp } from './tagHelp.js'
+import { SUBJECT_ORDER, n1, isTimeMetric, formatDuration, formatMetricValue } from './format.js'
 import { Eye, Baby, Users, KeyRound, Lock, Store, Trophy, ClipboardCheck, BookOpen, RefreshCw, MapPinned, FileText, Sun, Star, Check, ArrowLeft, BookMarked, Globe, Landmark, Sparkles } from '@lucide/vue'
 
 const props = defineProps({ recoveryCode: { type: String, default: '' } })
@@ -77,7 +78,6 @@ const bankRequests = ref([])
 const bankGoal = reactive({ name: '', target: 100 })
 const bankInterest = reactive({ enabled: false, cycle: 'weekly', rate: 5.0, threshold: 20, last_settle: '' })
 const bankBusy = ref(false)
-const SUBJECT_ORDER = ['语文', '数学', '英语', '科学', '道法', '体育', '音美', '综合', '围棋']
 const redemptions = ref([])
 const tests = ref([])
 const newTest = reactive({ subject_id: '', unit_id: '', score: '', note: '' })
@@ -756,34 +756,6 @@ const dashAttention = computed(() => {
   if (pendingRedeem.value) return { text: `有 ${pendingRedeem.value} 笔兑换待同意`, go: 'approve', label: '去审批' }
   return { text: '', go: '', label: '' }
 })
-function n1(v) {
-  if (v == null || v === '') return ''
-  const x = Math.round(Number(v) * 10) / 10
-  return x % 1 ? String(x) : String(Math.round(x))
-}
-function isTimeMetric(m) {
-  const u = String((m && m.unit) || '')
-  return u.includes('秒') || u.includes('分钟')
-}
-function formatDuration(sec) {
-  if (sec == null || Number.isNaN(Number(sec))) return '—'
-  const totalCs = Math.max(0, Math.round(Number(sec) * 100))
-  const mm = Math.floor(totalCs / 6000)
-  const ss = Math.floor((totalCs % 6000) / 100)
-  const cs = totalCs % 100
-  const pad = n => String(n).padStart(2, '0')
-  return mm + "'" + pad(ss) + '.' + pad(cs) + '"'
-}
-function formatMetricValue(m, v) {
-  if (v == null || v === '') return '—'
-  if (isTimeMetric(m)) {
-    const n = Number(v)
-    if (Number.isNaN(n)) return '—'
-    const sec = String((m && m.unit) || '').includes('分钟') ? n * 60 : n
-    return formatDuration(sec)
-  }
-  return n1(v)
-}
 function lastMetric(d, mid) {
   if (d.today_metrics && d.today_metrics[mid] != null && d.today_metrics[mid] !== '') return Number(d.today_metrics[mid])
   const hist = dailyHist.value[d.id] || []

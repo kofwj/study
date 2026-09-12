@@ -16,34 +16,8 @@ import companionBloomImg from './assets/companion-bloom.png'
 
 import { soundManager, playSound, playCompleteBeep, playCoinBeep, playLevelUpBeep, playEvolveBeep } from './sounds.js'
 import { getEncouragement, getCompanionMessage } from './encouragements.js'
-const data = reactive({
-  level: { earned: 0, balance: 0, level: '阳光萌新', next: null, next_need: 0, progress: 0 },
-  streak: 0,
-  kid_name: '乐乐',
-  kid_id: '',
-  today: '',
-  active_term: '',
-  cursors: {},
-  today_checkin: false,
-  checkin_window: { open: true, from: '07:00', until: '21:00', hint: '', now: '' },
-  subjects: [],
-  hidden_subjects: [],
-  units: [],
-  tasks: [],
-  daily: [],
-  unit_scores: {},
-  test_fail_score: 80,
-  fitness_goals: {},
-  weak_tags: {},
-  companion: {
-    stage: 'egg', stage_name: '阳光蛋', name: '', earned: 0,
-    next_stage: 'sprout', next_stage_name: '阳光芽', next_need: 50,
-    progress: 0, aura: null, evolve: false,
-  },
-})
-const rewards = ref([])
-const loading = ref(true)
-const err = ref('')
+import { SUBJECT_ORDER, pad2, n1, isTimeMetric, metricToSeconds, secondsToMetric, formatDuration, formatMetricValue } from './format.js'
+import { data, loading, err, me, authed, isAdmin, mustChangePin, rewards, achievements, boxes, recentLedger, reviewDue, activeTab } from './store.js'
 const topbarEl = ref(null)
 const updateBarEl = ref(null)
 const topbarHeight = ref(0)
@@ -82,7 +56,6 @@ const checkingTask = ref(null) // 记录正在打卡的任务 ID
 const actionBusy = ref(false)
 const shopOpen = ref(false)
 const myRedeems = ref([])
-const achievements = ref([])
 const achOpen = ref(false)
 const achModal = ref(null)
 const SERIES_NAME = { milestone: '里程碑', study: '学科', habit: '坚持', wealth: '阳光' }
@@ -449,7 +422,6 @@ async function wordCollect() {
   finally { wordDialog.busy = false }
 }
 
-const boxes = ref({ avail: 0, opened: 0, earned: 0, streak: 0 })
 const boxOpen = ref(false)
 const boxResult = ref(null)
 const boxPhase = ref('sun')
@@ -724,7 +696,6 @@ function closeBoxMask() {
 }
 const rankMapOpen = ref(false)
 const rankMap = ref(null)
-const recentLedger = ref([])
 const bankData = ref({ enabled: false, balance: 0, locked: 0, available: 0, pocket_balance: 0, goal: null, requests: [], ledger: [], interest: null, deposit_terms: [], deposits: [], hours: { open: true, from: '08:00', until: '20:00', hint: '', now: '' } })
 
 const bankAmount = ref(5)
@@ -789,7 +760,6 @@ function bankDepositHint(d) {
   if (d.left_days === 0) return '今天到期'
   return `还要等 ${d.left_days} 天 · 到期 +${d.mature_interest}`
 }
-const reviewDue = ref([])
 const updateReady = ref(false)
 const celebrate = ref(null)
 const companionOpen = ref(false)
@@ -890,40 +860,6 @@ function dueUnit(id) {
 function dueCount(id) {
   return reviewDue.value.filter(x => x.unit_id === id).length
 }
-function n1(v) {
-  if (v == null) return ''
-  const x = Math.round(Number(v) * 10) / 10
-  return x % 1 ? String(x) : String(Math.round(x))
-}
-function isTimeMetric(m) {
-  const u = String((m && m.unit) || '')
-  return u.includes('秒') || u.includes('分钟')
-}
-function metricToSeconds(m, v) {
-  if (v == null || v === '') return null
-  const n = Number(v)
-  if (Number.isNaN(n)) return null
-  return String((m && m.unit) || '').includes('分钟') ? n * 60 : n
-}
-function secondsToMetric(m, sec) {
-  if (sec == null || Number.isNaN(Number(sec))) return null
-  const s = Number(sec)
-  return String((m && m.unit) || '').includes('分钟') ? s / 60 : s
-}
-function pad2(n) { return String(n).padStart(2, '0') }
-function formatDuration(sec) {
-  if (sec == null || Number.isNaN(Number(sec))) return '—'
-  const totalCs = Math.max(0, Math.round(Number(sec) * 100))
-  const mm = Math.floor(totalCs / 6000)
-  const ss = Math.floor((totalCs % 6000) / 100)
-  const cs = totalCs % 100
-  return mm + "'" + pad2(ss) + '.' + pad2(cs) + '"'
-}
-function formatMetricValue(m, v) {
-  if (v == null || v === '') return '—'
-  if (isTimeMetric(m)) return formatDuration(metricToSeconds(m, v))
-  return n1(v)
-}
 function fitnessBar(d) {
   const g = (data.fitness_goals || {})[d.id]
   if (!g) return null
@@ -938,10 +874,6 @@ function fitnessBar(d) {
   return { ...g, last, pct, status, lines }
 }
 
-const isAdmin = ref(false)
-const me = ref(null)
-const authed = ref(false)
-const mustChangePin = ref(false)
 const oldPin = ref('')
 const newPin = ref('')
 const newPin2 = ref('')
@@ -1629,7 +1561,6 @@ const avatarBg = computed(() => {
   for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0
   return AVATAR_PALETTE[h % AVATAR_PALETTE.length]
 })
-const SUBJECT_ORDER = ['语文', '数学', '英语', '科学', '道法', '体育', '音美', '综合', '围棋']
 function subjectRank(id) {
   const i = SUBJECT_ORDER.indexOf(id)
   return i < 0 ? 99 : i
@@ -1645,7 +1576,6 @@ const orderedSubjects = computed(() => {
   list.sort((a, b) => SUBJECT_ORDER.indexOf(a.id) - SUBJECT_ORDER.indexOf(b.id))
   return list
 })
-const activeTab = ref('今日推荐')
 const currentUnits = computed(() => bySubject.value[activeTab.value]?.units || [])
 
 function onSwUpdate() { updateReady.value = true }
