@@ -5,6 +5,7 @@
 「点错取消」= 一条负 delta 流水 + completion 置 cancelled，不删历史；取消后可重新打卡。
 """
 import contextvars
+import ipaddress
 import json
 import logging
 import calendar
@@ -124,10 +125,34 @@ def active_term(c):
     return r["term_id"] or "g5s1"
 
 
+def _is_trusted_proxy(host: str) -> bool:
+    """直连方是回环/内网（Cloudflare Tunnel、nginx 反代）才信任代理头；
+    直接暴露公网时不信任，防止伪造 cf-connecting-ip 绕过限流。TRUST_PROXY 可加网段。"""
+    try:
+        ip = ipaddress.ip_address(host)
+    except ValueError:
+        return False
+    if ip.is_loopback or ip.is_private:
+        return True
+    for n in (os.environ.get("TRUST_PROXY") or "").split(","):
+        n = n.strip()
+        if not n:
+            continue
+        try:
+            if ip in ipaddress.ip_network(n):
+                return True
+        except ValueError:
+            continue
+    return False
+
+
 def _client_ip(request: Request) -> str:
-    return (request.headers.get("cf-connecting-ip")
-            or (request.headers.get("x-forwarded-for") or "").split(",")[0].strip()
-            or (request.client.host if request.client else ""))
+    remote = request.client.host if request.client else ""
+    if _is_trusted_proxy(remote):
+        return (request.headers.get("cf-connecting-ip")
+                or (request.headers.get("x-forwarded-for") or "").split(",")[0].strip()
+                or remote)
+    return remote
 
 
 def _new_recovery_code() -> str:
@@ -1984,6 +2009,10 @@ def capsule_seal(b: CapsuleIn):
     except capmod.CapsuleError as e:
         _rollback(c)
         raise HTTPException(e.status, e.detail)
+    except sqlite3.IntegrityError:
+        # 并发下两只胶囊同时封存撞唯一索引 ux_capsules_active
+        _rollback(c)
+        raise HTTPException(409, "已经有一颗未开封的时间胶囊了")
     except Exception:
         _rollback(c)
         raise
@@ -2059,6 +2088,7 @@ def bank_withdraw(b: BankAmountIn):
     try:
         if not _bank_enabled(c):
             raise HTTPException(403, "阳光银行还没开启")
+        _begin_write(c)
         amount = _sun(b.amount, lo=1)
         kid = kid_id()
         depmod.promote_matured(c, kid)
@@ -2454,12 +2484,17 @@ def auth_join(b: JoinBody, request: Request):
             raise HTTPException(409, "这个账号已经有了")
         uid = "parent-" + uuid.uuid4().hex[:8]
         role = "parent"  # 观察员已下线，旧码也当家长
+        # 原子占用邀请码：并发下 max_uses 也只允许成功一次
+        cur = c.execute(
+            "UPDATE invites SET used_count = used_count + 1, used_by=?, used_at=? "
+            "WHERE code=? AND (COALESCE(max_uses,0)=0 OR used_count < COALESCE(max_uses,0))",
+            ((b.name or "家长").strip()[:12], db.now(), code))
+        if getattr(cur, "rowcount", 0) == 0:
+            raise HTTPException(410, "邀请码已被用掉")
         c.execute(
             "INSERT INTO users(id,family_id,role,name,avatar,pin_hash,term_id,account,created_at,force_pin_change) VALUES(?,?,?,?,?,?,?,?,?,?)",
             (uid, inv["family_id"], role, (b.name or "家长").strip()[:12], "", db.hash_pin(pin), None, account, db.now(), ""))
         c.execute("INSERT INTO profiles(user_id,family_id) VALUES(?,?) ON CONFLICT DO NOTHING", (uid, inv["family_id"]))
-        c.execute("UPDATE invites SET used_count = used_count + 1, used_by=?, used_at=? WHERE code=?",
-                  ((b.name or "家长").strip()[:12], db.now(), code))
         c.commit()
         user = {"id": uid, "family_id": inv["family_id"], "role": role, "term_id": None}
     finally:
@@ -2974,7 +3009,10 @@ def redemption_reject(rid: str):
         c.close(); raise HTTPException(404, "没找到这条兑换")
     if rd["status"] != "pending":
         c.close(); raise HTTPException(409, "这条已处理过")
-    c.execute("DELETE FROM redemptions WHERE id=?", (rid,))
+    # 软删除：拒绝也要留痕，保持「流水只增不删」的审计不变式
+    cur = c.execute("UPDATE redemptions SET status='rejected' WHERE id=? AND status='pending'", (rid,))
+    if getattr(cur, "rowcount", 0) == 0:
+        c.close(); raise HTTPException(409, "这条已处理过")
     c.commit(); c.close()
     return {"ok": True}
 

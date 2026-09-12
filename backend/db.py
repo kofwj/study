@@ -834,7 +834,10 @@ def _migrate_031(conn):
 
 def _migrate_037(conn):
     """银行利息纳入一次性流水幂等：同一结息日并发重复触发只落一笔。"""
-    conn.execute("DROP INDEX IF EXISTS ux_ledger_once")
+    conn.execute("DELETE FROM ledger WHERE id IN ("
+                 "SELECT l.id FROM ledger l JOIN ledger d "
+                 "ON d.kid_id=l.kid_id AND d.reason='bank_interest' AND d.ref_id=l.ref_id AND d.id<l.id "
+                 "WHERE l.reason='bank_interest')")
     conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS ux_ledger_once ON ledger(kid_id, reason, ref_id) WHERE reason IN ('cancel','box','penalty_cancel','redeem','test_cancel','milestone','word_daily','word_perfect','bank_interest')")
 
 

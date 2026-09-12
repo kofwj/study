@@ -69,6 +69,12 @@ onBeforeUnmount(() => {
   topbarObserver?.disconnect()
   if (companionPulseTimer) clearTimeout(companionPulseTimer)
   if (evolveTimer) clearTimeout(evolveTimer)
+  if (wordPeekTimer) clearTimeout(wordPeekTimer)
+  if (wordNextTimer) clearTimeout(wordNextTimer)
+  if (toastTimer) clearTimeout(toastTimer)
+  boxTimers.forEach(clearTimeout)
+  window.removeEventListener('sw-update', onSwUpdate)
+  try { if (typeof speechSynthesis !== 'undefined') speechSynthesis.removeEventListener('voiceschanged', loadWordVoices) } catch {}
   try { if (typeof speechSynthesis !== 'undefined') speechSynthesis.cancel() } catch {}
 })
 const toast = ref('')
@@ -1291,12 +1297,15 @@ async function cancelDaily(task) {
 }
 
 async function redeem(reward) {
+  if (actionBusy.value) return
+  actionBusy.value = true
   try {
     const r = await api.redeem(reward.id)
     showToast(`已提交「${reward.name}」，等家长同意`)
     shopOpen.value = false
     await refresh()
   } catch (e) { showToast(e.message) }
+  finally { actionBusy.value = false }
 }
 async function openShop() {
   shopOpen.value = true
@@ -1337,7 +1346,7 @@ async function bankBreak(d) {
   } catch (e) { showToast(e.message) }
   finally { bankBusy.value = false }
 }
-const STATUS_TXT = { pending: '等家长同意', done: '已兑换', delivered: '已兑现' }
+const STATUS_TXT = { pending: '等家长同意', done: '已兑换', delivered: '已兑现', rejected: '家长没同意' }
 const milestoneTxt = (m) => (m && m.length) ? m.map(([d, b]) => ` · 连续 ${d} 天 +${b} 阳光`).join('') : ''
 async function openAch() {
   achOpen.value = true
@@ -1461,7 +1470,8 @@ const sunshineStats = computed(() => {
     const dayRows = rows.filter(r => r.date === iso)
     const inn = Math.max(0, sunSumSigned(dayRows, r => isSunEarn(r) || isSunRevert(r)))
     const out = sunSum(dayRows, isSunSpend)
-    const d = new Date(iso)
+    const [yy, mm, dd] = iso.split('-').map(Number)
+    const d = new Date(yy, mm - 1, dd) // 本地时区解析，避免 'YYYY-MM-DD' 被当 UTC 导致星期错一天
     return { date: iso, wd: i === 6 ? '今天' : WD[d.getDay()], inn, out, today: i === 6, quiet: inn === 0 }
   })
   const weekIn = Math.max(0, sunSumSigned(rows.filter(r => weekSet.has(r.date)), r => isSunEarn(r) || isSunRevert(r)))
@@ -1638,18 +1648,19 @@ const orderedSubjects = computed(() => {
 const activeTab = ref('今日推荐')
 const currentUnits = computed(() => bySubject.value[activeTab.value]?.units || [])
 
+function onSwUpdate() { updateReady.value = true }
 onMounted(async () => {
-  window.addEventListener('sw-update', () => { updateReady.value = true })
-  if (ttsReady()) {
-    loadWordVoices()
-    try { speechSynthesis.addEventListener('voiceschanged', loadWordVoices) } catch {}
-  // 音效初始化提示（首次需要用户交互才能播放）
+  window.addEventListener('sw-update', onSwUpdate)
+  // 音效初始化提示（首次需要用户交互才能播放），与 TTS 无关
   document.addEventListener('click', () => {
     if (!soundManager.tested) {
       soundManager.beep(440, 50, 'sine')
       soundManager.tested = true
     }
   }, { once: true })
+  if (ttsReady()) {
+    loadWordVoices()
+    try { speechSynthesis.addEventListener('voiceschanged', loadWordVoices) } catch {}
   }
   try {
     me.value = await api.me()

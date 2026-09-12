@@ -402,16 +402,27 @@ async function focusWord(id) {
   } catch (e) { showToast(e.message) }
 }
 
+// 保存类操作统一包装：防重复提交 + 失败提示（避免 unhandled rejection）
+let saveBusy = false
+async function withBusy(fn) {
+  if (saveBusy) return
+  saveBusy = true
+  try { await fn() } catch (e) { showToast(e && e.message ? e.message : '操作失败，请重试') }
+  finally { saveBusy = false }
+}
+
 // —— 商店 ——
 const newReward = reactive({ name: '', price: 30, category: '娱乐' })
 async function addReward() {
   if (!newReward.name || !newReward.price) return showToast('填名称和价格')
-  await api.admin.createReward({ ...newReward })
-  Object.assign(newReward, { name: '', price: 30, category: '娱乐' })
-  showToast('已新增'); await load()
+  await withBusy(async () => {
+    await api.admin.createReward({ ...newReward })
+    Object.assign(newReward, { name: '', price: 30, category: '娱乐' })
+    showToast('已新增'); await load()
+  })
 }
-async function saveReward(r) { await api.admin.updateReward(r.id, r); showToast('已保存') }
-async function delReward(id) { if (!confirm('删除这个奖励？')) return; await api.admin.delReward(id); await load() }
+async function saveReward(r) { await withBusy(async () => { await api.admin.updateReward(r.id, r); showToast('已保存') }) }
+async function delReward(id) { if (!confirm('删除这个奖励？')) return; await withBusy(async () => { await api.admin.delReward(id); await load() }) }
 
 // —— 兑换审批 ——
 async function approveRedeem(id) {
@@ -440,17 +451,19 @@ async function addTest() {
 }
 async function delTest(id) {
   if (!confirm('删除这条测试记录？会冲正扣回阳光。')) return
-  await api.admin.delTest(id); await load()
+  await withBusy(async () => { await api.admin.delTest(id); await load() })
 }
 // —— 等级 ——
 const newRank = reactive({ name: '', min_sunshine: 0 })
 async function addRank() {
   if (!newRank.name) return showToast('填等级名')
-  await api.admin.createRank({ ...newRank })
-  Object.assign(newRank, { name: '', min_sunshine: 0 })
-  showToast('已新增'); await load()
+  await withBusy(async () => {
+    await api.admin.createRank({ ...newRank })
+    Object.assign(newRank, { name: '', min_sunshine: 0 })
+    showToast('已新增'); await load()
+  })
 }
-async function saveRank(r) { await api.admin.updateRank(r.id, r); showToast('已保存') }
+async function saveRank(r) { await withBusy(async () => { await api.admin.updateRank(r.id, r); showToast('已保存') }) }
 async function delRank(id) {
   if (!confirm('删除这个等级？')) return
   try { await api.admin.delRank(id); await load() } catch (e) { showToast(e.message) }
@@ -463,12 +476,14 @@ const testUnitOptions = computed(() => units.value.filter(u => u.subject_id === 
 function pickSubject() { newTask.unit_id = '' }
 async function addTask() {
   if (!newTask.subject_id || !newTask.unit_id || !newTask.title) return showToast('选科目/单元、填标题')
-  await api.admin.createTask({ ...newTask, kid_id: newTask.kid_id || null })
-  Object.assign(newTask, { subject_id: '', unit_id: '', action: '', title: '', sunshine: 5, kid_id: '' })
-  showToast('已新增'); await load()
+  await withBusy(async () => {
+    await api.admin.createTask({ ...newTask, kid_id: newTask.kid_id || null })
+    Object.assign(newTask, { subject_id: '', unit_id: '', action: '', title: '', sunshine: 5, kid_id: '' })
+    showToast('已新增'); await load()
+  })
 }
-async function saveTask(t) { await api.admin.updateTask(t.id, { ...t, kid_id: t.kid_id || null }); showToast('已保存') }
-async function delTask(id) { if (!confirm('删除这个任务？')) return; await api.admin.delTask(id); await load() }
+async function saveTask(t) { await withBusy(async () => { await api.admin.updateTask(t.id, { ...t, kid_id: t.kid_id || null }); showToast('已保存') }) }
+async function delTask(id) { if (!confirm('删除这个任务？')) return; await withBusy(async () => { await api.admin.delTask(id); await load() }) }
 
 const tasksBySubject = computed(() => {
   const m = {}
@@ -518,7 +533,9 @@ function tagOn(uid, tid) { return !!(weakByUnit.value[uid] && weakByUnit.value[u
 function weakTagCount(uid) { return Object.keys(weakByUnit.value[uid] || {}).length }
 function weakPointTiming(x) {
   if (!x.review_due_at) return '等待安排'
-  if (x.review_due_at <= new Date().toISOString().slice(0, 10)) return '今天要复习'
+  const now = new Date()
+  const todayLocal = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+  if (x.review_due_at <= todayLocal) return '今天要复习' // 后端 db.today() 是上海时区，这里不能用 UTC 的 toISOString
   const [, month, day] = x.review_due_at.split('-')
   return `下次：${Number(month)}月${Number(day)}日`
 }
@@ -548,15 +565,19 @@ function addMetric(arr) { arr.push({ id: 'm' + Date.now(), label: '', unit: '', 
 const cleanMetrics = (ms) => (ms || []).map(({ id, label, unit, direction, note }) => ({ id, label, unit, direction, note }))
 async function addDaily() {
   if (!newDaily.name) return showToast('填任务名')
-  await api.admin.createDaily({ ...newDaily, metrics: cleanMetrics(newDaily.metrics) })
-  Object.assign(newDaily, { subject_id: '体育', name: '', sunshine: 5, bonus_per_metric: 3, note: '', metrics: [] })
-  showToast('已新增'); await load()
+  await withBusy(async () => {
+    await api.admin.createDaily({ ...newDaily, metrics: cleanMetrics(newDaily.metrics) })
+    Object.assign(newDaily, { subject_id: '体育', name: '', sunshine: 5, bonus_per_metric: 3, note: '', metrics: [] })
+    showToast('已新增'); await load()
+  })
 }
 async function saveDaily(d) {
-  await api.admin.updateDaily(d.id, { subject_id: d.subject_id, name: d.name, sunshine: d.sunshine, bonus_per_metric: d.bonus_per_metric, note: d.note, metrics: cleanMetrics(d.metrics) })
-  showToast('已保存')
+  await withBusy(async () => {
+    await api.admin.updateDaily(d.id, { subject_id: d.subject_id, name: d.name, sunshine: d.sunshine, bonus_per_metric: d.bonus_per_metric, note: d.note, metrics: cleanMetrics(d.metrics) })
+    showToast('已保存')
+  })
 }
-async function delDaily(id) { if (!confirm('删除这个每日任务？')) return; await api.admin.delDaily(id); await load() }
+async function delDaily(id) { if (!confirm('删除这个每日任务？')) return; await withBusy(async () => { await api.admin.delDaily(id); await load() }) }
 
 // —— 密码 / 游标 ——
 const pinForm = reactive({ cur: '', next: '', confirm: '' })
@@ -1376,6 +1397,7 @@ onMounted(load)
             <span class="st done">已扣阳光</span>
             <button class="ok ghost-o" @click="deliverRedeem(rd.id)">标记已兑现</button>
           </template>
+          <span v-else-if="rd.status === 'rejected'" class="st pending">已拒绝</span>
           <span v-else class="st delivered">已兑现 <Check class="ico" :size="12" /></span>
         </div>
       </div>
