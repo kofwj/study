@@ -180,7 +180,8 @@ async function saveGoal() {
   goalBusy.value = true
   try {
     const r = await api.setWeeklyGoal(n)
-    ledgerSummary.value = { ...ledgerSummary.value, weekly_goal: r.weekly_goal }
+    const goal = Number(r && r.weekly_goal)
+    ledgerSummary.value.weekly_goal = Number.isFinite(goal) ? goal : n
     editingGoal.value = false
   } catch { /* 保留编辑态 */ }
   finally { goalBusy.value = false }
@@ -242,14 +243,15 @@ function fmtDelta(n) {
         <strong>{{ weekGoalBar.text }}</strong>
         <button v-if="!editingGoal" type="button" class="sun-goal-edit" @click="openGoalEdit">改目标</button>
       </div>
-      <div class="goal-bar sun-week-goal-bar"><i class="goal-fill" :style="{ width: weekGoalBar.pct + '%' }"></i></div>
       <div v-if="editingGoal" class="sun-goal-form">
         <input v-model.number="goalDraft" type="number" min="0" max="10000" />
         <button type="button" class="sun-goal-edit" :disabled="goalBusy" @click="saveGoal">保存</button>
         <button type="button" class="sun-goal-edit ghost" :disabled="goalBusy" @click="editingGoal = false">取消</button>
         <span class="sun-goal-hint">0 表示关掉</span>
       </div>
+      <div class="goal-bar sun-week-goal-bar"><i class="goal-fill" :style="{ width: weekGoalBar.pct + '%' }"></i></div>
     </div>
+
     <div v-else class="sun-week-goal off">
       <button type="button" class="sun-goal-edit" @click="openGoalEdit">设本周攒阳光目标</button>
     </div>
@@ -396,10 +398,12 @@ function fmtDelta(n) {
 .sun-week-goal-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
 .sun-week-goal-row strong { font-size: 14px; }
 .sun-week-goal-bar { height: 12px; background: var(--surface-2); }
+.sun-week-goal-bar .goal-fill { display: block; height: 100%; transition: width 180ms ease; }
 .sun-week-goal.done .goal-fill { background: linear-gradient(90deg, #8ee0ad, var(--ok)); }
 .sun-goal-edit { border: 0; background: var(--warm); color: var(--accent-ink); font: inherit; font-size: 12px; font-weight: 800; padding: 4px 10px; border-radius: var(--radius-pill); cursor: pointer; }
 .sun-goal-edit.ghost { background: var(--surface-2); color: var(--ink-2); }
-.sun-goal-form { display: flex; align-items: center; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+.sun-goal-form { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; flex-wrap: wrap; }
+
 .sun-goal-form input { width: 88px; font: inherit; font-weight: 800; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line); }
 .sun-goal-hint { font-size: 12px; font-weight: 700; color: var(--ink-3); }
 .sun-path-list { display: flex; flex-direction: column; gap: 8px; }
@@ -417,8 +421,9 @@ function fmtDelta(n) {
 .src-bar { margin-top: 8px; height: 6px; }
 .src-bar .goal-fill { display: block; height: 100%; }
 @media (prefers-reduced-motion: reduce) {
-  .sun-track.dual i { transition: none; }
+  .sun-track.dual i, .sun-week-goal-bar .goal-fill { transition: none; }
 }
+
 @media (max-width: 1100px) {
   .sun-page { max-width: none; }
   .sun-week { height: 120px; gap: 4px; }
