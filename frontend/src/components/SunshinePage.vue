@@ -5,7 +5,9 @@
 import { computed, ref, watch } from 'vue'
 import { TrendingUp, Target, BookOpen, Globe, CalendarDays, FileText, Gift, ChevronLeft, ChevronRight } from '@lucide/vue'
 import { api } from '../api.js'
+import { useCountUp } from '../countUp.js'
 import { ledgerSummary, weekOffset, data, wordDueCard, wordNewCard, reviewDue, todayPenalty } from '../store.js'
+
 
 const props = defineProps({
   dailyTodo: { type: Array, default: () => [] },
@@ -92,23 +94,43 @@ watch(() => ledgerSummary.value && ledgerSummary.value.week_start, () => {
   dayRows.value = []
 })
 
+function barH(n, maxAbs) {
+  const v = Math.max(0, Number(n) || 0)
+  if (!v) return 0
+  return Math.max(8, Math.round(v / maxAbs * 68))
+}
 const sunshineStats = computed(() => {
   const s = ledgerSummary.value || {}
   const today = s.today || data.today
   const rawDays = s.days || []
   const prevDays = s.prev_week || []
-  const days = rawDays.map(d => {
+  const maxAbs = Math.max(1, ...rawDays.map((d, i) => {
+    const prev = prevDays[i] || {}
+    return Math.max(
+      Math.max(0, Number(d.earn) || 0), Math.max(0, Number(d.spend) || 0),
+      Math.max(0, Number(prev.earn) || 0), Math.max(0, Number(prev.spend) || 0),
+    )
+  }), 0)
+  const days = rawDays.map((d, i) => {
     const [yy, mm, dd] = String(d.date || '').split('-').map(Number)
     const dt = new Date(yy, mm - 1, dd)
     const isToday = d.date === today
     const inn = Math.max(0, Number(d.earn) || 0)
     const out = Math.max(0, Number(d.spend) || 0)
+    const prev = prevDays[i] || {}
+    const prevInn = Math.max(0, Number(prev.earn) || 0)
+    const prevOut = Math.max(0, Number(prev.spend) || 0)
     const future = today && d.date > today
-    return { date: d.date, wd: isToday ? '今天' : WD[dt.getDay()] || '', inn, out, today: isToday, quiet: inn === 0 && !future }
+    const wd = isToday ? '今天' : WD[dt.getDay()] || ''
+    return {
+      date: d.date, wd, inn, out, prevInn, prevOut, today: isToday, quiet: inn === 0 && !future,
+      innH: barH(inn, maxAbs), outH: barH(out, maxAbs),
+      prevInnH: barH(prevInn, maxAbs), prevOutH: barH(prevOut, maxAbs),
+      aria: `${wd} 攒 ${inn} 兑 ${out}`,
+    }
   })
   const weekIn = Math.max(0, s.week_in == null ? days.reduce((n, d) => n + d.inn, 0) : Number(s.week_in) || 0)
   const weekOut = s.week_out == null ? days.reduce((n, d) => n + d.out, 0) : Number(s.week_out) || 0
-  const maxAbs = Math.max(1, ...days.map(d => Math.max(d.inn, d.out)), 0)
   const paths = SUN_PATHS.map(p => {
     const week = pathSum(rawDays, p.id)
     const prev = pathSum(prevDays, p.id)
@@ -123,8 +145,9 @@ const sunshineStats = computed(() => {
   const top = [...paths].sort((a, b) => b.week - a.week)[0]
   const start = s.week_start || (days[0] && days[0].date) || ''
   const end = days[6] && days[6].date || ''
+  const emptyWeek = days.length === 7 && !weekIn && !weekOut
   return {
-    days, weekIn, weekOut, maxAbs, paths, maxPath,
+    days, weekIn, weekOut, maxAbs, paths, maxPath, emptyWeek,
     quiet: days.filter(d => d.quiet && !d.today),
     topName: top && top.week ? top.name : '',
     rangeLabel: start && end ? `${md(start)}–${md(end)}` : '',
@@ -133,6 +156,10 @@ const sunshineStats = computed(() => {
     weeklyGoal: Math.max(0, Number(s.weekly_goal) || 0),
   }
 })
+const weekInShown = useCountUp(() => sunshineStats.value.weekIn)
+const weekOutShown = useCountUp(() => sunshineStats.value.weekOut)
+
+
 const weekGoalBar = computed(() => {
   const st = sunshineStats.value
   const goal = st.weeklyGoal
@@ -238,6 +265,9 @@ function fmtDelta(n) {
         <em v-if="g.go || g.lane">去看看</em>
       </button>
     </div>
+    <div v-else-if="sunshineStats.emptyWeek && !sunshineStats.offset" class="sun-gaps ok">
+      <p>完成第一个任务，这里就会亮起来</p>
+    </div>
     <div v-else-if="!sunshineStats.offset" class="sun-gaps ok">
       <p>这周该做的都有阳光进账，继续保持。</p>
     </div>
@@ -245,7 +275,7 @@ function fmtDelta(n) {
     <div class="bank-operations">
       <div class="op-header">
         <h3>这周趋势</h3>
-        <span class="sun-week-sum">攒 {{ sunshineStats.weekIn }} · 兑换 {{ sunshineStats.weekOut }}</span>
+        <span class="sun-week-sum">攒 {{ weekInShown }} · 兑换 {{ weekOutShown }}</span>
       </div>
       <div class="sun-week-nav">
         <button type="button" class="sun-week-btn" :disabled="sunshineStats.offset >= 52 || loadingWeek" @click="shiftWeek(1)" aria-label="上一周">
@@ -257,16 +287,23 @@ function fmtDelta(n) {
         </button>
       </div>
       <div class="sun-week">
-        <button v-for="d in sunshineStats.days" :key="d.date" type="button" class="sun-col" :class="{ quiet: d.quiet && !d.today, open: openDate === d.date }" @click="toggleDay(d.date)">
+        <button v-for="d in sunshineStats.days" :key="d.date" type="button" class="sun-col" :class="{ quiet: d.quiet && !d.today, open: openDate === d.date }" :aria-label="d.aria" @click="toggleDay(d.date)">
           <span class="sun-col-n" :class="{ zero: !d.inn }">{{ d.inn ? '+' + d.inn : '0' }}</span>
           <div class="sun-track dual">
-            <i class="in" :style="{ height: Math.max(d.inn ? 8 : 0, Math.round(d.inn / sunshineStats.maxAbs * 68)) + 'px' }"></i>
-            <i class="out" :style="{ height: Math.max(d.out ? 8 : 0, Math.round(d.out / sunshineStats.maxAbs * 68)) + 'px' }"></i>
+            <span class="sun-pair">
+              <i class="ghost in" :style="{ height: d.prevInnH + 'px' }"></i>
+              <i class="in" :style="{ height: d.innH + 'px' }"></i>
+            </span>
+            <span class="sun-pair">
+              <i class="ghost out" :style="{ height: d.prevOutH + 'px' }"></i>
+              <i class="out" :style="{ height: d.outH + 'px' }"></i>
+            </span>
           </div>
           <span :class="{ today: d.today }">{{ d.wd }}</span>
         </button>
       </div>
-      <p class="sun-week-legend"><i class="in"></i> 攒到的 <i class="out"></i> 商店兑换 · 点一天看明细</p>
+      <p class="sun-week-legend"><i class="in"></i> 攒到的 <i class="out"></i> 商店兑换 · 浅色是上周 · 点一天看明细</p>
+
       <div v-if="openDate" class="sun-day-panel">
         <p v-if="dayLoading" class="sun-day-empty">在看 {{ md(openDate) }} 的流水…</p>
         <p v-else-if="!dayRows.length" class="sun-day-empty">这一天还没有口袋流水</p>
