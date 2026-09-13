@@ -4,7 +4,9 @@
 // 全部拆完后 refresh() 才迁进来——先迁状态不迁中枢，保证每步行为零变化。
 import { reactive, ref, computed } from 'vue'
 import { api } from './api.js'
+import { SUBJECT_ORDER } from './format.js'
 import { playSound, playLevelUpBeep, playEvolveBeep } from './sounds.js'
+
 import companionEggImg from './assets/companion-egg.png'
 import companionSproutImg from './assets/companion-sprout.png'
 import companionLeafImg from './assets/companion-leaf.png'
@@ -273,6 +275,40 @@ export function closeCompanionEvolve() {
   }
 }
 
+
+export const dailyTodo = computed(() => {
+  return (data.daily || [])
+    .map((d, i) => ({ d, i }))
+    .filter(x => !x.d.done_today && !(data.hidden_subjects || []).includes(x.d.subject_id))
+    .sort((a, b) => {
+      const ra = SUBJECT_ORDER.indexOf(a.d.subject_id)
+      const rb = SUBJECT_ORDER.indexOf(b.d.subject_id)
+      return (ra < 0 ? 99 : ra) - (rb < 0 ? 99 : rb) || a.i - b.i
+    })
+    .map(x => x.d)
+})
+export const studyNext = computed(() => {
+  const hidden = new Set(data.hidden_subjects || [])
+  const skip = new Set(['体育', '围棋'])
+  const by = {}
+  for (const t of data.tasks || []) {
+    if (hidden.has(t.subject_id) || skip.has(t.subject_id)) continue
+    if (!by[t.subject_id]) by[t.subject_id] = []
+    by[t.subject_id].push(t)
+  }
+  const out = []
+  const ids = Object.keys(by).sort((a, b) => {
+    const ra = SUBJECT_ORDER.indexOf(a), rb = SUBJECT_ORDER.indexOf(b)
+    return (ra < 0 ? 99 : ra) - (rb < 0 ? 99 : rb)
+  })
+  for (const sid of ids) {
+    const task = by[sid].find(t => !t.done && !t.past && !t.locked)
+    if (task) out.push(task)
+  }
+  return out
+})
+
+
 // refresh 检测到伙伴可进化时触发；两秒半后自动收起
 export function triggerCompanionEvolve(info) {
   if (!info || companionEvolve.value) return
@@ -280,3 +316,4 @@ export function triggerCompanionEvolve(info) {
   if (evolveTimer) clearTimeout(evolveTimer)
   evolveTimer = setTimeout(closeCompanionEvolve, 2800)
 }
+

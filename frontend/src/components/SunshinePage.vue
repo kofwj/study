@@ -1,19 +1,15 @@
 <script setup>
 // 阳光统计页：周趋势、五条途径、还没做好清单。
 // 周合计读 /api/ledger/summary（自然周）；点柱拉当日 pocket 明细；
-// dailyTodo/studyNext 是父级计算属性，props 传入；点跳转 emit('navigate', gap)。
+// dailyTodo/studyNext 从 store 读；点跳转 emit('navigate', gap)。
 import { computed, ref, watch } from 'vue'
 import { TrendingUp, Target, BookOpen, Globe, CalendarDays, FileText, Gift, ChevronLeft, ChevronRight } from '@lucide/vue'
 import { api } from '../api.js'
 import { useCountUp } from '../countUp.js'
-import { ledgerSummary, weekOffset, data, wordDueCard, wordNewCard, reviewDue, todayPenalty } from '../store.js'
+import { ledgerSummary, weekOffset, data, wordDueCard, wordNewCard, reviewDue, todayPenalty, dailyTodo, studyNext } from '../store.js'
 
-
-const props = defineProps({
-  dailyTodo: { type: Array, default: () => [] },
-  studyNext: { type: Array, default: () => [] },
-})
 const emit = defineEmits(['navigate'])
+
 
 const SUN_EARN = new Set(['task', 'daily', 'word_daily', 'word_perfect', 'test', 'box', 'milestone', 'bank_deposit', 'bank_interest'])
 const SUN_REVERT = new Set(['cancel', 'test_cancel'])
@@ -193,11 +189,12 @@ const sunshineGaps = computed(() => {
   const g = []
   const st = sunshineStats.value
   if (st.offset) return []
-  if (props.dailyTodo.length) g.push({ id: 'daily', text: `今天还有 ${props.dailyTodo.length} 项打卡没做`, go: '今日推荐' })
+  if (dailyTodo.value.length) g.push({ id: 'daily', text: `今天还有 ${dailyTodo.value.length} 项打卡没做`, go: '今日推荐' })
   if (wordDueCard.value && !wordDueCard.value.finished) g.push({ id: 'word-due', text: `单词复习还剩 ${wordDueCard.value.left} 个`, lane: 'due' })
   if (wordNewCard.value && !wordNewCard.value.finished) g.push({ id: 'word-new', text: `新词还剩 ${wordNewCard.value.left} 个`, lane: 'new' })
   if (reviewDue.value.length) g.push({ id: 'review', text: `有 ${reviewDue.value.length} 项复习到期了`, go: '今日推荐' })
-  if (props.studyNext.length) g.push({ id: 'study', text: `课文还没往前：${props.studyNext[0].subject_id}`, go: props.studyNext[0].subject_id })
+  if (studyNext.value.length) g.push({ id: 'study', text: `课文还没往前：${studyNext.value[0].subject_id}`, go: studyNext.value[0].subject_id })
+
   if (st.quiet.length) g.push({ id: 'quiet', text: `这周有 ${st.quiet.length} 天没有攒到阳光` })
   const emptyPath = st.paths.find(p => p.week === 0 && (p.id === 'task' || p.id === 'daily' || p.id === 'word'))
   if (emptyPath) g.push({ id: 'path-' + emptyPath.id, text: `这周还没有「${emptyPath.name}」的阳光`, go: emptyPath.tab || '今日推荐' })
@@ -341,3 +338,98 @@ function fmtDelta(n) {
     </div>
   </div>
 </template>
+
+<style scoped>
+.sun-page { max-width: 720px; padding-bottom: 24px; }
+.sun-gaps { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+.sun-gaps.ok { background: var(--ok-bg); border-radius: var(--radius-xl); padding: 14px 16px; }
+.sun-gaps.ok p { margin: 0; font-weight: 700; color: var(--ok); }
+.sun-gap { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 12px 14px; font-family: inherit; cursor: pointer; }
+.sun-gap:disabled { cursor: default; }
+.sun-gap span { font-size: 14px; font-weight: 800; color: var(--ink); }
+.sun-gap em { font-style: normal; font-size: 12px; font-weight: 800; color: var(--accent-ink); background: var(--warm); padding: 4px 10px; border-radius: var(--radius-pill); }
+.sun-week-sum { font-size: 12px; font-weight: 800; color: var(--ink-2); }
+.sun-ico {
+  width: 36px; height: 36px; border-radius: var(--radius-circle);
+  display: inline-flex; align-items: center; justify-content: center;
+  margin-bottom: 8px; color: #fff;
+}
+.sun-ico.daily { background: #2e9e63; }
+.sun-ico.box { background: #d2514f; }
+.sun-week { display: flex; align-items: flex-end; gap: 8px; height: 140px; padding-top: 8px; }
+.sun-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100%; border: 0; background: transparent; padding: 0; font-family: inherit; cursor: pointer; }
+.sun-col-n { font-size: 12px; font-weight: 800; color: var(--accent-ink); min-height: 16px; }
+.sun-col-n.down, .sun-col-n.zero { color: var(--ink-3); }
+.sun-track { flex: 1; width: 100%; max-width: 28px; display: flex; align-items: flex-end; justify-content: center; }
+.sun-track i { display: block; width: 100%; background: var(--accent); border-radius: 6px 6px 0 0; min-height: 6px; }
+.sun-track i.down { background: var(--ink-3); }
+.sun-col span:last-child { font-size: 12px; color: var(--ink-2); font-weight: 700; }
+.sun-col span.today { color: var(--accent-ink); }
+.sun-track.dual { display: flex; align-items: flex-end; justify-content: center; gap: 3px; }
+.sun-track.dual i { width: 10px; min-height: 0; border-radius: 5px 5px 0 0; transition: height 120ms ease; }
+.sun-pair { position: relative; display: flex; align-items: flex-end; width: 10px; height: 68px; }
+.sun-pair i { position: absolute; left: 0; bottom: 0; width: 10px; }
+.sun-pair i.ghost { opacity: .28; z-index: 0; }
+.sun-pair i.in, .sun-pair i.out { z-index: 1; }
+.sun-track.dual i.in, .sun-week-legend i.in { background: var(--accent); }
+.sun-track.dual i.out, .sun-week-legend i.out { background: var(--ink-3); }
+.sun-col.quiet .sun-col-n { color: var(--danger); }
+.sun-week-legend { display: flex; align-items: center; gap: 6px; margin: 10px 0 0; font-size: 12px; font-weight: 700; color: var(--ink-3); }
+.sun-week-legend i { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
+.sun-week-nav { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 4px 0 2px; }
+.sun-week-btn { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 1px solid var(--line); background: var(--surface); border-radius: var(--radius-circle); color: var(--ink); cursor: pointer; }
+.sun-week-btn:disabled { opacity: .35; cursor: default; }
+.sun-week-range { font-size: 13px; font-weight: 800; color: var(--ink-2); min-width: 88px; text-align: center; }
+.sun-col.open { background: var(--warm); border-radius: 10px 10px 0 0; }
+.sun-day-panel { margin-top: 10px; background: var(--surface-2); border-radius: var(--radius-lg); padding: 10px 12px; }
+.sun-day-empty { margin: 0; font-size: 13px; font-weight: 700; color: var(--ink-3); }
+.sun-day-list, .sun-redeem ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.sun-day-list li, .sun-redeem li { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 13px; font-weight: 700; }
+.sun-day-list b { font-variant-numeric: tabular-nums; color: var(--accent-ink); }
+.sun-day-list li.down b, .sun-redeem b { color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.sun-redeem { margin-top: 12px; }
+.sun-redeem h4 { margin: 0 0 8px; font-size: 13px; font-weight: 800; color: var(--ink-2); }
+.sun-week-goal { margin: 0 0 16px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-xl); padding: 12px 14px; }
+.sun-week-goal.done { background: var(--ok-bg); border-color: transparent; }
+.sun-week-goal.done strong { color: var(--ok); }
+.sun-week-goal.off { background: transparent; border: 0; padding: 0 0 12px; }
+.sun-week-goal-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+.sun-week-goal-row strong { font-size: 14px; }
+.sun-week-goal-bar { height: 12px; background: var(--surface-2); }
+.sun-week-goal.done .goal-fill { background: linear-gradient(90deg, #8ee0ad, var(--ok)); }
+.sun-goal-edit { border: 0; background: var(--warm); color: var(--accent-ink); font: inherit; font-size: 12px; font-weight: 800; padding: 4px 10px; border-radius: var(--radius-pill); cursor: pointer; }
+.sun-goal-edit.ghost { background: var(--surface-2); color: var(--ink-2); }
+.sun-goal-form { display: flex; align-items: center; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+.sun-goal-form input { width: 88px; font: inherit; font-weight: 800; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line); }
+.sun-goal-hint { font-size: 12px; font-weight: 700; color: var(--ink-3); }
+.sun-path-list { display: flex; flex-direction: column; gap: 8px; }
+.sun-path { display: grid; grid-template-columns: 36px 1fr auto; grid-template-areas: "ico name amt" "bar bar bar"; gap: 2px 10px; align-items: center; background: var(--surface-2); border-radius: var(--radius-lg); padding: 12px; }
+.sun-path.miss { opacity: .72; }
+.sun-path .sun-ico { grid-area: ico; margin: 0; width: 32px; height: 32px; }
+.sun-path div:not(.goal-bar) { grid-area: name; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.sun-path strong { font-size: 14px; }
+.sun-path small { font-size: 12px; color: var(--ink-2); font-weight: 700; }
+.sun-path b { grid-area: amt; font-variant-numeric: tabular-nums; }
+.sun-path .src-bar { grid-area: bar; margin-top: 6px; }
+.sun-ico.task { background: var(--brand); }
+.sun-ico.word { background: #7c6cf0; }
+.sun-ico.test { background: #2e9e63; }
+.src-bar { margin-top: 8px; height: 6px; }
+.src-bar .goal-fill { display: block; height: 100%; }
+@media (prefers-reduced-motion: reduce) {
+  .sun-track.dual i { transition: none; }
+}
+@media (max-width: 1100px) {
+  .sun-page { max-width: none; }
+  .sun-week { height: 120px; gap: 4px; }
+  .sun-col-n { font-size: 11px; }
+  .sun-gap { padding: 12px; }
+  .sun-gap span { font-size: 14px; line-height: 1.35; }
+}
+@media (max-width: 700px) {
+  .sun-week { height: 108px; gap: 2px; }
+  .sun-col-n { font-size: 10px; }
+  .sun-track.dual i, .sun-pair, .sun-pair i { width: 7px; }
+}
+</style>
+
