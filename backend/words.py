@@ -11,6 +11,7 @@ import db
 
 WORD_INTERVALS = [1, 3, 7, 14, 30]
 SESSION_CAP = 10
+NON_PRACTICE_ENTRY_TYPES = frozenset({"专名", "节日名", "课程名", "社团名", "菜名"})
 WORDS_SEED = db.BASE.parent / "data" / "words.seed.multi.json"
 
 
@@ -53,6 +54,11 @@ def _seed_book_meta():
         meta[bid] = {
             "source_ver": ver,
             "source_unit": src.get("unit") or b.get("name") or "",
+            "source_edition": src.get("edition") or "",
+            "source_catalog": src.get("catalog") or "",
+            "source_aligned_tasks": src.get("aligned_tasks") or [],
+            "source_needs_spot_check": bool(src.get("needs_spot_check")),
+            "source_note": src.get("note") or "",
         }
     _SEED_BOOK_META = meta
     return meta
@@ -208,6 +214,11 @@ def list_books(c, kid, fam):
         sm = _seed_book_meta().get(bid) or {}
         d["source_ver"] = sm.get("source_ver") or "" if d["is_system"] else ""
         d["source_unit"] = sm.get("source_unit") or (d.get("name") or "" if d["is_system"] else "")
+        d["source_edition"] = sm.get("source_edition") or "" if d["is_system"] else ""
+        d["source_catalog"] = sm.get("source_catalog") or "" if d["is_system"] else ""
+        d["source_aligned_tasks"] = sm.get("source_aligned_tasks") or [] if d["is_system"] else []
+        d["source_needs_spot_check"] = bool(sm.get("source_needs_spot_check")) if d["is_system"] else False
+        d["source_note"] = sm.get("source_note") or "" if d["is_system"] else ""
         out.append(d)
     return out
 
@@ -218,7 +229,7 @@ def list_words(c, fam, book_id):
         return None, []
     rows = c.execute(
         "SELECT w.id, w.book_id, w.word, w.word_norm, w.cn, w.ipa, w.example_en, w.example_cn, "
-        "w.accept_json, w.sort, w.active FROM words w JOIN word_books b ON b.id=w.book_id "
+        "w.accept_json, w.sort, w.active, w.page, w.entry_type, w.core FROM words w JOIN word_books b ON b.id=w.book_id "
         "WHERE w.book_id=? AND (b.is_system=1 OR b.family_id=?) ORDER BY w.sort, w.id",
         (book_id, fam or ""),
     ).fetchall()
@@ -297,6 +308,9 @@ def seed_system_books(conn):
         seen_norm = set()
         for i, w in enumerate(b.get("words") or [], 1):
             word = (w.get("word") or "").strip()
+            entry_type = (w.get("entry_type") or "词").strip() or "词"
+            core = 1 if w.get("core", True) else 0
+            active = 0 if entry_type in NON_PRACTICE_ENTRY_TYPES else 1
             cn = (w.get("cn") or "").strip()
             if not word or not cn:
                 continue
@@ -305,13 +319,15 @@ def seed_system_books(conn):
                 continue
             seen_norm.add(norm)
             conn.execute(
-                "INSERT INTO words(book_id,word,word_norm,cn,ipa,example_en,example_cn,accept_json,sort,active,created_at,updated_at) "
-                "VALUES(?,?,?,?,?,?,?,?,?,1,?,?) "
+                "INSERT INTO words(book_id,word,word_norm,cn,ipa,example_en,example_cn,accept_json,sort,active,page,entry_type,core,created_at,updated_at) "
+                "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) "
                 "ON CONFLICT(book_id, word_norm) DO UPDATE SET word=excluded.word, cn=excluded.cn, "
                 "ipa=excluded.ipa, example_en=excluded.example_en, example_cn=excluded.example_cn, "
-                "accept_json=excluded.accept_json, sort=excluded.sort, active=1, updated_at=excluded.updated_at",
+                "accept_json=excluded.accept_json, sort=excluded.sort, active=excluded.active, page=excluded.page, "
+                "entry_type=excluded.entry_type, core=excluded.core, updated_at=excluded.updated_at",
                 (bid, word, norm, cn, w.get("ipa") or "", w.get("example_en") or "",
-                 w.get("example_cn") or "", accept_json_of(w), int(w.get("sort") or i), now, now),
+                 w.get("example_cn") or "", accept_json_of(w), int(w.get("sort") or i), active,
+                 w.get("page"), entry_type, core, now, now),
             )
         if seen_norm:
             placeholders = ",".join("?" * len(seen_norm))
@@ -377,6 +393,7 @@ def _pick_new(c, kid, fam, book_id, limit):
         "SELECT w.id AS word_id FROM words w "
         "LEFT JOIN word_progress wp ON wp.word_id=w.id AND wp.kid_id=? "
         "WHERE w.book_id=? AND w.active=1 "
+        "AND COALESCE(w.entry_type, '词') NOT IN ('专名','节日名','课程名','社团名','菜名','项目词汇') "
         "AND (wp.kid_id IS NULL OR wp.first_seen_at IS NULL OR wp.first_seen_at='') "
         "ORDER BY w.sort, w.id LIMIT ?",
         (kid, book_id, limit),
@@ -431,7 +448,7 @@ def _ensure_items(c, row, kid, fam):
 def _session_items(c, kid, fam, sid):
     rows = c.execute(
         "SELECT i.word_id, i.source, i.item_order, i.state, i.first_result, i.retry_used, "
-        "w.word, w.cn, w.ipa, w.example_en "
+        "w.word, w.cn, w.ipa, w.example_en, w.page, w.entry_type, w.core "
         "FROM word_session_items i "
         "JOIN words w ON w.id=i.word_id "
         "JOIN word_books b ON b.id=w.book_id "
@@ -447,12 +464,17 @@ def _session_items(c, kid, fam, sid):
             "cn": r["cn"],
             "ipa": r["ipa"] or "",
             "example_en": r["example_en"] or "",
+            "page": r["page"],
+            "entry_type": r["entry_type"] or "词",
+            "core": bool(r["core"]),
             "source": r["source"],
             "state": r["state"],
             "first_result": r["first_result"],
             "retry_used": int(r["retry_used"] or 0),
         })
     return out
+
+
 
 
 def _counts(items):

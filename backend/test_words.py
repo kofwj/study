@@ -29,19 +29,33 @@ def test_unit1_seed_and_system_readonly():
         kid = _parent(cli, "w1", "wordpass", "词家")
         books = cli.get("/api/admin/words/books").json()
         sys_ids = {b["id"] for b in books if b["is_system"]}
-        assert sys_ids == {f"g5s1-en-{i}" for i in range(1, 11)}
+        expected_ids = {
+            f"{term}-en-{unit}"
+            for term in ("g3s1", "g3x2", "g4s1", "g4x2", "g5s1")
+            for unit in range(1, 11 if term == "g5s1" else 9)
+        }
+        assert sys_ids == expected_ids
         u1 = next(b for b in books if b["id"] == "g5s1-en-1")
         assert u1["is_system"] == 1
-        assert 20 <= u1["word_count"] <= 30
-        assert u1["name"] == "Unit 1 Good habits"
+        assert u1["word_count"] == 20
         u8 = next(b for b in books if b["id"] == "g5s1-en-8")
-        assert u8["name"] == "Unit 8 We love festivals" and 20 <= u8["word_count"] <= 30
-        p1 = next(b for b in books if b["id"] == "g5s1-en-9")
-        assert "Project 1" in p1["name"] and 10 <= p1["word_count"] <= 22
+        assert u8["name"] == "Unit 8 We love festivals" and u8["word_count"] == 18
+        detail = cli.get("/api/admin/words/books/g5s1-en-8").json()
+        by_word = {w["word"]: w for w in detail["words"]}
+        assert {"page", "entry_type", "core"} <= set(by_word["May"])
+        assert by_word["May"]["entry_type"] == "专名" and by_word["May"]["active"] == 0
+        assert by_word["Spring Festival"]["entry_type"] == "节日名" and by_word["Spring Festival"]["active"] == 0
+        assert by_word["China"]["entry_type"] == "专名" and by_word["China"]["active"] == 0
+        project = cli.get("/api/admin/words/books/g5s1-en-9").json()["words"]
+        assert len(project) == 16 and all(w["page"] is None and w["entry_type"] == "项目词汇" for w in project)
+        family = cli.get("/api/admin/words/books/g3s1-en-5").json()["words"]
+        mum = next(w for w in family if w["word"] == "mum")
+        assert "mom" in mum["accept_json"] and mum["word"] == "mum"
+        assert all("（" not in w["word"] for w in family)
         detail = cli.get("/api/admin/words/books/g5s1-en-1").json()
         words = [w["word"] for w in detail["words"] if w["active"]]
         assert words[0] == "habit"
-        assert "blackboard" in words and "always" not in words
+        assert "carefully" in words and "do exercise" in words and "always" not in words
         u5 = cli.get("/api/admin/words/books/g5s1-en-5").json()
         assert "always" in {w["word"] for w in u5["words"] if w["active"]}
         assert cli.put("/api/admin/words/books/g5s1-en-1", json={"name": "改"}).status_code == 403
@@ -51,8 +65,24 @@ def test_unit1_seed_and_system_readonly():
         assert today["enabled"] is False and today["session"] is None
         c = db.connect()
         migs = {r[0] for r in c.execute("SELECT id FROM schema_migrations").fetchall()}
-        c.close()
+        assert "039_word_metadata" in migs
         assert "029_words" in migs
+
+
+def test_metadata_filter_keeps_noncore_extensions():
+    db.init_db()
+    with TestClient(main.app) as cli:
+        _parent(cli, "wmeta", "wordpass", "元数据家")
+        assert cli.post("/api/admin/cursor", json={"subject_id": "英语", "task_id": "g5s1-en-8-1"}).status_code == 200
+        r = cli.put("/api/admin/words/config", json={
+            "enabled": True, "current_book": "g5s1-en-8", "new_per_day": 10, "max_due": 10,
+        })
+        assert r.status_code == 200, r.text
+        sess = cli.post("/api/words/session/start").json()["session"]
+        assert sess and sess["items"]
+        assert all(x["entry_type"] not in {"专名", "节日名", "课程名", "社团名", "菜名"} for x in sess["items"])
+        assert any(not x["core"] for x in sess["items"])
+        assert {"page", "entry_type", "core"} <= set(sess["items"][0])
 
 
 def test_family_book_import_and_isolation():
@@ -319,7 +349,7 @@ def test_admin_stats_tts_and_problem_words():
         cfg = cli.get("/api/admin/words/config").json()
         assert cfg["tts"] is False and cfg["tts_autoplay"] is True and cfg["tts_lang"] == "en-US"
         u1 = next(b for b in cfg["books"] if b["id"] == "g5s1-en-1")
-        assert u1["source_ver"] == "words-g5s1-en-v4"
+        assert u1["source_ver"] == "words-g3-g5-en-v1"
         assert u1["source_unit"] == "Unit 1 Good habits"
         _enable(cli, new_per_day=2)
         sess = cli.post("/api/words/session/start").json()["session"]

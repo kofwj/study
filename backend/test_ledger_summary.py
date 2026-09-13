@@ -8,7 +8,6 @@ os.environ.pop("DATABASE_URL", None)
 os.environ.pop("DATABASE_APP_URL", None)
 os.environ["SUNSHINE_DB"] = str(Path(tempfile.mkdtemp()) / f"{Path(__file__).stem}.db")
 os.environ["SECRET_KEY"] = "test-secret"
-os.environ["SUNSHINE_NOW"] = "2026-09-09 12:00:00"  # 周三
 
 import db  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
@@ -19,7 +18,8 @@ def seed(c, kid, date, delta, reason, ref, account="pocket", note="测试"):
     db.insert_ledger(c, date, delta, reason, ref, note, kid, account)
 
 
-def test_ledger_summary():
+def test_ledger_summary(monkeypatch):
+    monkeypatch.setenv("SUNSHINE_NOW", "2026-09-09 12:00:00")
     db.init_db()
     with TestClient(main.app) as cli:
         assert cli.post("/api/auth/register", json={"account": "sumparent", "pin": "parent123", "family_name": "聚合家"}).status_code == 200

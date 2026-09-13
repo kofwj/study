@@ -1,6 +1,5651 @@
 {
-  "curriculum_ver": "words-g5s1-en-v4",
+  "curriculum_ver": "words-g3-g5-en-v1",
   "books": [
+    {
+      "id": "g3s1-en-1",
+      "term_id": "g3s1",
+      "unit_id": "g3s1-en-1",
+      "name": "Module 1 Getting to know each other",
+      "sort": 1,
+      "source": {
+        "edition": "yilin-eng-3a-2024",
+        "unit": "Module 1 Getting to know each other",
+        "unit_id": "g3s1-en-1",
+        "catalog": "/books/yilin/yingyu/3a_2024/",
+        "aligned_tasks": [
+          "g3s1-en-1-1",
+          "g3s1-en-1-2",
+          "g3s1-en-1-3",
+          "g3s1-en-1-4",
+          "g3s1-en-1-5"
+        ]
+      },
+      "words": [
+        {
+          "word": "hello",
+          "cn": "你好",
+          "ipa": "",
+          "sort": 1,
+          "page": 8,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "hi",
+          "cn": "嗨；你好",
+          "ipa": "",
+          "sort": 2,
+          "page": 8,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "Good morning.",
+          "cn": "早上好。",
+          "ipa": "",
+          "sort": 3,
+          "page": 10,
+          "entry_type": "句型",
+          "core": true
+        },
+        {
+          "word": "I",
+          "cn": "我",
+          "ipa": "",
+          "sort": 4,
+          "page": 10,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "am",
+          "cn": "是",
+          "ipa": "",
+          "sort": 5,
+          "page": 10,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "ah",
+          "cn": "啊",
+          "ipa": "",
+          "sort": 6,
+          "page": 10,
+          "entry_type": "词",
+          "core": false
+        },
+        {
+          "word": "a",
+          "cn": "一（个）",
+          "ipa": "",
+          "sort": 7,
+          "page": 10,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "cat",
+          "cn": "猫",
+          "ipa": "",
+          "sort": 8,
+          "page": 10,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "Miss",
+          "cn": "小姐；女士",
+          "ipa": "",
+          "sort": 9,
+          "page": 12,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "Good afternoon.",
+          "cn": "下午好。",
+          "ipa": "",
+          "sort": 10,
+          "page": 13,
+          "entry_type": "句型",
+          "core": true
+        },
+        {
+          "word": "class",
+          "cn": "同学们",
+          "ipa": "",
+          "sort": 11,
+          "page": 13,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "goodbye",
+          "cn": "再见；再会",
+          "ipa": "",
+          "sort": 12,
+          "page": 13,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "bye",
+          "cn": "再见；再会",
+          "ipa": "",
+          "sort": 13,
+          "page": 13,
+          "entry_type": "词",
+          "core": true
+        }
+      ]
+    },
+    {
+      "id": "g3s1-en-2",
+      "term_id": "g3s1",
+      "unit_id": "g3s1-en-2",
+      "name": "Unit 2 What's your name?",
+      "sort": 2,
+      "source": {
+        "edition": "yilin-eng-3a-2024",
+        "unit": "Unit 2 What's your name?",
+        "unit_id": "g3s1-en-2",
+        "catalog": "/books/yilin/yingyu/3a_2024/",
+        "aligned_tasks": [
+          "g3s1-en-2-1",
+          "g3s1-en-2-2",
+          "g3s1-en-2-3",
+          "g3s1-en-2-4",
+          "g3s1-en-2-5"
+        ]
+      },
+      "words": [
+        {
+          "word": "what",
+          "cn": "什么",
+          "ipa": "",
+          "sort": 1,
+          "page": 16,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "is",
+          "cn": "是",
+          "ipa": "",
+          "sort": 2,
+          "page": 16,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "your",
+          "cn": "你的；你们的",
+          "ipa": "",
+          "sort": 3,
+          "page": 16,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "name",
+          "cn": "名字",
+          "ipa": "",
+          "sort": 4,
+          "page": 16,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "my",
+          "cn": "我的",
+          "ipa": "",
+          "sort": 5,
+          "page": 16,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "Nice to meet you!",
+          "cn": "很高兴认识你！",
+          "ipa": "",
+          "sort": 6,
+          "page": 18,
+          "entry_type": "句型",
+          "core": true
+        },
+        {
+          "word": "too",
+          "cn": "也",
+          "ipa": "",
+          "sort": 7,
+          "page": 18,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "boy",
+          "cn": "男孩",
+          "ipa": "",
+          "sort": 8,
+          "page": 21,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "and",
+          "cn": "和；与",
+          "ipa": "",
+          "sort": 9,
+          "page": 21,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "girl",
+          "cn": "女孩",
+          "ipa": "",
+          "sort": 10,
+          "page": 21,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "Mr",
+          "cn": "先生",
+          "ipa": "",
+          "sort": 11,
+          "page": 21,
+          "entry_type": "词",
+          "core": true
+        }
+      ]
+    },
+    {
+      "id": "g3s1-en-3",
+      "term_id": "g3s1",
+      "unit_id": "g3s1-en-3",
+      "name": "Unit 3 Are you Su Hai?",
+      "sort": 3,
+      "source": {
+        "edition": "yilin-eng-3a-2024",
+        "unit": "Unit 3 Are you Su Hai?",
+        "unit_id": "g3s1-en-3",
+        "catalog": "/books/yilin/yingyu/3a_2024/",
+        "aligned_tasks": [
+          "g3s1-en-3-1",
+          "g3s1-en-3-2",
+          "g3s1-en-3-3",
+          "g3s1-en-3-4",
+          "g3s1-en-3-5"
+        ]
+      },
+      "words": [
+        {
+          "word": "are",
+          "cn": "是",
+          "ipa": "",
+          "sort": 1,
+          "page": 24,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "you",
+          "cn": "你；你们",
+          "ipa": "",
+          "sort": 2,
+          "page": 24,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "no",
+          "cn": "不；不是",
+          "ipa": "",
+          "sort": 3,
+          "page": 24,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "not",
+          "cn": "不；没有",
+          "ipa": "",
+          "sort": 4,
+          "page": 24,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "yes",
+          "cn": "是；对",
+          "ipa": "",
+          "sort": 5,
+          "page": 26,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "ha",
+          "cn": "哈",
+          "ipa": "",
+          "sort": 6,
+          "page": 26,
+          "entry_type": "词",
+          "core": false
+        },
+        {
+          "word": "Here I am!",
+          "cn": "我在这里！",
+          "ipa": "",
+          "sort": 7,
+          "page": 26,
+          "entry_type": "句型",
+          "core": true
+        },
+        {
+          "word": "but",
+          "cn": "但是",
+          "ipa": "",
+          "sort": 8,
+          "page": 28,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "oh",
+          "cn": "啊；哦",
+          "ipa": "",
+          "sort": 9,
+          "page": 28,
+          "entry_type": "词",
+          "core": false
+        },
+        {
+          "word": "sorry",
+          "cn": "对不起",
+          "ipa": "",
+          "sort": 10,
+          "page": 28,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "twin",
+          "cn": "双胞胎之一",
+          "ipa": "",
+          "sort": 11,
+          "page": 28,
+          "entry_type": "词",
+          "core": false
+        },
+        {
+          "word": "we",
+          "cn": "我们",
+          "ipa": "",
+          "sort": 12,
+          "page": 28,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "excuse me",
+          "cn": "对不起；打扰一下",
+          "ipa": "",
+          "sort": 13,
+          "page": 29,
+          "entry_type": "句型",
+          "core": false
+        },
+        {
+          "word": "class",
+          "cn": "班级",
+          "ipa": "",
+          "sort": 14,
+          "page": 29,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "in",
+          "cn": "在……内；在……中",
+          "ipa": "",
+          "sort": 15,
+          "page": 29,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "with",
+          "cn": "和；同",
+          "ipa": "",
+          "sort": 16,
+          "page": 29,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "right",
+          "cn": "正确的",
+          "ipa": "",
+          "sort": 17,
+          "page": 29,
+          "entry_type": "词",
+          "core": true
+        }
+      ]
+    },
+    {
+      "id": "g3s1-en-4",
+      "term_id": "g3s1",
+      "unit_id": "g3s1-en-4",
+      "name": "Unit 4 This is my friend",
+      "sort": 4,
+      "source": {
+        "edition": "yilin-eng-3a-2024",
+        "unit": "Unit 4 This is my friend",
+        "unit_id": "g3s1-en-4",
+        "catalog": "/books/yilin/yingyu/3a_2024/",
+        "aligned_tasks": [
+          "g3s1-en-4-1",
+          "g3s1-en-4-2",
+          "g3s1-en-4-3",
+          "g3s1-en-4-4",
+          "g3s1-en-4-5",
+          "g3s1-en-4-6"
+        ]
+      },
+      "words": [
+        {
+          "word": "this",
+          "cn": "这；这个",
+          "ipa": "",
+          "sort": 1,
+          "page": 32,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "friend",
+          "cn": "朋友",
+          "ipa": "",
+          "sort": 2,
+          "page": 32,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "she",
+          "cn": "她",
+          "ipa": "",
+          "sort": 3,
+          "page": 32,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "he",
+          "cn": "他",
+          "ipa": "",
+          "sort": 4,
+          "page": 34,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "it",
+          "cn": "它",
+          "ipa": "",
+          "sort": 5,
+          "page": 37,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "good",
+          "cn": "好的",
+          "ipa": "",
+          "sort": 6,
+          "page": 37,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "Thank you.",
+          "cn": "谢谢你。",
+          "ipa": "",
+          "sort": 7,
+          "page": 37,
+          "entry_type": "句型",
+          "core": true
+        },
+        {
+          "word": "have",
+          "cn": "有；持有",
+          "ipa": "",
+          "sort": 8,
+          "page": 37,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "many",
+          "cn": "许多",
+          "ipa": "",
+          "sort": 9,
+          "page": 37,
+          "entry_type": "词",
+          "core": true
+        }
+      ]
+    },
+    {
+      "id": "g3s1-en-5",
+      "term_id": "g3s1",
+      "unit_id": "g3s1-en-5",
+      "name": "Module 2 My family and me",
+      "sort": 5,
+      "source": {
+        "edition": "yilin-eng-3a-2024",
+        "unit": "Module 2 My family and me",
+        "unit_id": "g3s1-en-5",
+        "catalog": "/books/yilin/yingyu/3a_2024/",
+        "aligned_tasks": [
+          "g3s1-en-5-1",
+          "g3s1-en-5-2",
+          "g3s1-en-5-3",
+          "g3s1-en-5-4",
+          "g3s1-en-5-5"
+        ]
+      },
+      "words": [
+        {
+          "word": "mother",
+          "cn": "母亲；妈妈",
+          "ipa": "",
+          "sort": 1,
+          "page": 42,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "father",
+          "cn": "父亲",
+          "ipa": "",
+          "sort": 2,
+          "page": 42,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "dad",
+          "cn": "爸爸",
+          "ipa": "",
+          "sort": 3,
+          "page": 42,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "mum",
+          "accept": ["mom"],
+          "cn": "妈妈",
+          "ipa": "",
+          "sort": 4,
+          "page": 42,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "brother",
+          "cn": "哥哥；弟弟",
+          "ipa": "",
+          "sort": 5,
+          "page": 42,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "baby",
+          "cn": "婴儿",
+          "ipa": "",
+          "sort": 6,
+          "page": 42,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "sister",
+          "cn": "姐姐；妹妹",
+          "ipa": "",
+          "sort": 7,
+          "page": 42,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "Good evening.",
+          "cn": "晚上好。",
+          "ipa": "",
+          "sort": 8,
+          "page": 44,
+          "entry_type": "句型",
+          "core": true
+        },
+        {
+          "word": "quick",
+          "cn": "快；快点",
+          "ipa": "",
+          "sort": 9,
+          "page": 44,
+          "entry_type": "词",
+          "core": false
+        },
+        {
+          "word": "look",
+          "cn": "看",
+          "ipa": "",
+          "sort": 10,
+          "page": 44,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "the",
+          "cn": "这个；这些；那个；那些",
+          "ipa": "",
+          "sort": 11,
+          "page": 44,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "pond",
+          "cn": "池塘；水池",
+          "ipa": "",
+          "sort": 12,
+          "page": 44,
+          "entry_type": "词",
+          "core": false
+        },
+        {
+          "word": "who",
+          "cn": "谁；什么人",
+          "ipa": "",
+          "sort": 13,
+          "page": 44,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "great",
+          "cn": "极好的；好棒的",
+          "ipa": "",
+          "sort": 14,
+          "page": 44,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "come",
+          "cn": "来",
+          "ipa": "",
+          "sort": 15,
+          "page": 46,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "meet",
+          "cn": "相识；结识；被引见",
+          "ipa": "",
+          "sort": 16,
+          "page": 46,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "family",
+          "cn": "家；家庭",
+          "ipa": "",
+          "sort": 17,
+          "page": 46,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "say",
+          "cn": "说",
+          "ipa": "",
+          "sort": 18,
+          "page": 47,
+          "entry_type": "词",
+          "core": true
+        }
+      ]
+    },
+    {
+      "id": "g3s1-en-6",
+      "term_id": "g3s1",
+      "unit_id": "g3s1-en-6",
+      "name": "Unit 6 Is he your grandpa?",
+      "sort": 6,
+      "source": {
+        "edition": "yilin-eng-3a-2024",
+        "unit": "Unit 6 Is he your grandpa?",
+        "unit_id": "g3s1-en-6",
+        "catalog": "/books/yilin/yingyu/3a_2024/",
+        "aligned_tasks": [
+          "g3s1-en-6-1",
+          "g3s1-en-6-2",
+          "g3s1-en-6-3",
+          "g3s1-en-6-4",
+          "g3s1-en-6-5"
+        ]
+      },
+      "words": [
+        {
+          "word": "grandfather",
+          "accept": ["grandpa"],
+          "cn": "祖父；外祖父",
+          "ipa": "",
+          "sort": 1,
+          "page": 50,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "uncle",
+          "cn": "叔父；伯父；姑父；姨父",
+          "ipa": "",
+          "sort": 2,
+          "page": 50,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "aunt",
+          "cn": "姑母；姨母；伯母；婶母",
+          "ipa": "",
+          "sort": 3,
+          "page": 50,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "grandmother",
+          "accept": ["grandma"],
+          "cn": "祖母；外祖母",
+          "ipa": "",
+          "sort": 4,
+          "page": 50,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "cousin",
+          "cn": "堂/表兄弟姐妹",
+          "ipa": "",
+          "sort": 5,
+          "page": 50,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "cool",
+          "cn": "妙极的；酷的",
+          "ipa": "",
+          "sort": 6,
+          "page": 52,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "me",
+          "cn": "我",
+          "ipa": "",
+          "sort": 7,
+          "page": 52,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "wow",
+          "cn": "哇",
+          "ipa": "",
+          "sort": 8,
+          "page": 54,
+          "entry_type": "词",
+          "core": false
+        },
+        {
+          "word": "big",
+          "cn": "大的",
+          "ipa": "",
+          "sort": 9,
+          "page": 54,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "it",
+          "cn": "它；指婴儿，尤指性别不详者",
+          "ipa": "",
+          "sort": 10,
+          "page": 55,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "happy",
+          "cn": "幸福的",
+          "ipa": "",
+          "sort": 11,
+          "page": 55,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "love",
+          "cn": "爱；热爱",
+          "ipa": "",
+          "sort": 12,
+          "page": 55,
+          "entry_type": "词",
+          "core": true
+        }
+      ]
+    },
+    {
+      "id": "g3s1-en-7",
+      "term_id": "g3s1",
+      "unit_id": "g3s1-en-7",
+      "name": "Unit 7 Happy Birthday!",
+      "sort": 7,
+      "source": {
+        "edition": "yilin-eng-3a-2024",
+        "unit": "Unit 7 Happy Birthday!",
+        "unit_id": "g3s1-en-7",
+        "catalog": "/books/yilin/yingyu/3a_2024/",
+        "aligned_tasks": [
+          "g3s1-en-7-1",
+          "g3s1-en-7-2",
+          "g3s1-en-7-3",
+          "g3s1-en-7-4",
+          "g3s1-en-7-5"
+        ]
+      },
+      "words": [
+        {
+          "word": "Happy Birthday!",
+          "cn": "生日快乐！",
+          "ipa": "",
+          "sort": 1,
+          "page": 58,
+          "entry_type": "句型",
+          "core": true
+        },
+        {
+          "word": "one",
+          "cn": "一",
+          "ipa": "",
+          "sort": 2,
+          "page": 58,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "two",
+          "cn": "二",
+          "ipa": "",
+          "sort": 3,
+          "page": 58,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "three",
+          "cn": "三",
+          "ipa": "",
+          "sort": 4,
+          "page": 58,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "four",
+          "cn": "四",
+          "ipa": "",
+          "sort": 5,
+          "page": 58,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "five",
+          "cn": "五",
+          "ipa": "",
+          "sort": 6,
+          "page": 58,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "six",
+          "cn": "六",
+          "ipa": "",
+          "sort": 7,
+          "page": 58,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "seven",
+          "cn": "七",
+          "ipa": "",
+          "sort": 8,
+          "page": 59,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "eight",
+          "cn": "八",
+          "ipa": "",
+          "sort": 9,
+          "page": 59,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "nine",
+          "cn": "九",
+          "ipa": "",
+          "sort": 10,
+          "page": 59,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "ten",
+          "cn": "十",
+          "ipa": "",
+          "sort": 11,
+          "page": 59,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "now",
+          "cn": "现在；此刻",
+          "ipa": "",
+          "sort": 12,
+          "page": 60,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "want",
+          "cn": "要；想要",
+          "ipa": "",
+          "sort": 13,
+          "page": 60,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "car",
+          "cn": "小汽车；轿车",
+          "ipa": "",
+          "sort": 14,
+          "page": 60,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "book",
+          "cn": "书",
+          "ipa": "",
+          "sort": 15,
+          "page": 60,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "ball",
+          "cn": "球",
+          "ipa": "",
+          "sort": 16,
+          "page": 60,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "cake",
+          "cn": "蛋糕；糕饼",
+          "ipa": "",
+          "sort": 17,
+          "page": 60,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "How lovely!",
+          "cn": "真可爱！",
+          "ipa": "",
+          "sort": 18,
+          "page": 62,
+          "entry_type": "句型",
+          "core": true
+        },
+        {
+          "word": "Can I help you?",
+          "cn": "要帮忙吗？",
+          "ipa": "",
+          "sort": 19,
+          "page": 62,
+          "entry_type": "句型",
+          "core": true
+        },
+        {
+          "word": "Yes, please.",
+          "cn": "好的，谢谢。",
+          "ipa": "",
+          "sort": 20,
+          "page": 62,
+          "entry_type": "句型",
+          "core": true
+        },
+        {
+          "word": "some",
+          "cn": "一些",
+          "ipa": "",
+          "sort": 21,
+          "page": 62,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "toy",
+          "cn": "玩具",
+          "ipa": "",
+          "sort": 22,
+          "page": 62,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "for",
+          "cn": "给；对；供",
+          "ipa": "",
+          "sort": 23,
+          "page": 62,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "OK",
+          "cn": "对；好；行",
+          "ipa": "",
+          "sort": 24,
+          "page": 62,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "How old are you?",
+          "cn": "你多大了？",
+          "ipa": "",
+          "sort": 25,
+          "page": 62,
+          "entry_type": "句型",
+          "core": true
+        },
+        {
+          "word": "please",
+          "cn": "请",
+          "ipa": "",
+          "sort": 26,
+          "page": 62,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "here",
+          "cn": "到这里；在这里",
+          "ipa": "",
+          "sort": 27,
+          "page": 62,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "love",
+          "cn": "喜爱",
+          "ipa": "",
+          "sort": 28,
+          "page": 62,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "Here you are.",
+          "cn": "给你。",
+          "ipa": "",
+          "sort": 29,
+          "page": 63,
+          "entry_type": "句型",
+          "core": true
+        },
+        {
+          "word": "You're welcome.",
+          "cn": "别客气；不用谢。",
+          "ipa": "",
+          "sort": 30,
+          "page": 63,
+          "entry_type": "句型",
+          "core": true
+        },
+        {
+          "word": "thanks",
+          "cn": "谢谢",
+          "ipa": "",
+          "sort": 31,
+          "page": 63,
+          "entry_type": "词",
+          "core": true
+        }
+      ]
+    },
+    {
+      "id": "g3s1-en-8",
+      "term_id": "g3s1",
+      "unit_id": "g3s1-en-8",
+      "name": "Unit 8 I can do this for you",
+      "sort": 8,
+      "source": {
+        "edition": "yilin-eng-3a-2024",
+        "unit": "Unit 8 I can do this for you",
+        "unit_id": "g3s1-en-8",
+        "catalog": "/books/yilin/yingyu/3a_2024/",
+        "aligned_tasks": [
+          "g3s1-en-8-1",
+          "g3s1-en-8-2",
+          "g3s1-en-8-3",
+          "g3s1-en-8-4",
+          "g3s1-en-8-5",
+          "g3s1-en-8-6",
+          "g3s1-en-8-7",
+          "g3s1-en-8-8",
+          "g3s1-en-8-9",
+          "g3s1-en-8-10"
+        ]
+      },
+      "words": [
+        {
+          "word": "can",
+          "cn": "能；会",
+          "ipa": "",
+          "sort": 1,
+          "page": 66,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "do",
+          "cn": "做；干；办（某事）",
+          "ipa": "",
+          "sort": 2,
+          "page": 66,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "for",
+          "cn": "为了",
+          "ipa": "",
+          "sort": 3,
+          "page": 66,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "clean",
+          "cn": "使……干净；打扫",
+          "ipa": "",
+          "sort": 4,
+          "page": 66,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "table",
+          "cn": "桌子",
+          "ipa": "",
+          "sort": 5,
+          "page": 66,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "draw",
+          "cn": "画；描画",
+          "ipa": "",
+          "sort": 6,
+          "page": 66,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "sing",
+          "cn": "唱（歌）；演唱",
+          "ipa": "",
+          "sort": 7,
+          "page": 67,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "take pictures",
+          "cn": "拍照",
+          "ipa": "",
+          "sort": 8,
+          "page": 67,
+          "entry_type": "短语",
+          "core": true
+        },
+        {
+          "word": "dance",
+          "cn": "跳舞",
+          "ipa": "",
+          "sort": 9,
+          "page": 67,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "Are you OK?",
+          "cn": "你没事吧？",
+          "ipa": "",
+          "sort": 10,
+          "page": 68,
+          "entry_type": "句型",
+          "core": true
+        },
+        {
+          "word": "dizzy",
+          "cn": "头晕目眩的",
+          "ipa": "",
+          "sort": 11,
+          "page": 68,
+          "entry_type": "词",
+          "core": false
+        },
+        {
+          "word": "picture",
+          "cn": "图画；绘画；照片",
+          "ipa": "",
+          "sort": 12,
+          "page": 68,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "er",
+          "cn": "呃",
+          "ipa": "",
+          "sort": 13,
+          "page": 68,
+          "entry_type": "词",
+          "core": false
+        },
+        {
+          "word": "fox",
+          "cn": "狐狸",
+          "ipa": "",
+          "sort": 14,
+          "page": 68,
+          "entry_type": "词",
+          "core": false
+        },
+        {
+          "word": "get together",
+          "cn": "聚在一起；相聚",
+          "ipa": "",
+          "sort": 15,
+          "page": 70,
+          "entry_type": "短语",
+          "core": false
+        },
+        {
+          "word": "on",
+          "cn": "在（某一天）",
+          "ipa": "",
+          "sort": 16,
+          "page": 70,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "child",
+          "accept": ["children"],
+          "cn": "儿童；小孩",
+          "ipa": "",
+          "sort": 17,
+          "page": 70,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "thing",
+          "cn": "事情",
+          "ipa": "",
+          "sort": 18,
+          "page": 70,
+          "entry_type": "词",
+          "core": false
+        }
+      ]
+    },
+    {
+      "id": "g3x2-en-1",
+      "term_id": "g3x2",
+      "unit_id": "g3x2-en-1",
+      "name": "Unit 1 School things",
+      "sort": 1,
+      "source": {
+        "edition": "yilin-eng-3b-2025",
+        "unit": "Unit 1 School things",
+        "unit_id": "g3x2-en-1",
+        "catalog": "/books/yilin/yingyu/3b_2025/",
+        "aligned_tasks": [
+          "g3x2-en-1-1",
+          "g3x2-en-1-2",
+          "g3x2-en-1-3"
+        ]
+      },
+      "words": [
+        {
+          "word": "school",
+          "cn": "学校",
+          "ipa": "",
+          "sort": 1,
+          "page": 8,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "thing",
+          "cn": "用品；用具",
+          "ipa": "",
+          "sort": 2,
+          "page": 8,
+          "entry_type": "词",
+          "core": false
+        },
+        {
+          "word": "pen",
+          "cn": "笔；钢笔",
+          "ipa": "",
+          "sort": 3,
+          "page": 8,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "pencil",
+          "cn": "铅笔",
+          "ipa": "",
+          "sort": 4,
+          "page": 8,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "ruler",
+          "cn": "尺；尺子",
+          "ipa": "",
+          "sort": 5,
+          "page": 8,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "rubber",
+          "cn": "橡皮",
+          "ipa": "",
+          "sort": 6,
+          "page": 8,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "schoolbag",
+          "cn": "书包",
+          "ipa": "",
+          "sort": 7,
+          "page": 8,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "pencil case",
+          "cn": "铅笔盒；铅笔袋",
+          "ipa": "",
+          "sort": 8,
+          "page": 9,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "that",
+          "cn": "那；那个",
+          "ipa": "",
+          "sort": 9,
+          "page": 10,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "put",
+          "cn": "放；安置",
+          "ipa": "",
+          "sort": 10,
+          "page": 10,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "guess",
+          "cn": "猜测；估计",
+          "ipa": "",
+          "sort": 11,
+          "page": 13,
+          "entry_type": "词",
+          "core": false
+        },
+        {
+          "word": "again",
+          "cn": "再一次；又一次",
+          "ipa": "",
+          "sort": 12,
+          "page": 13,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "long",
+          "cn": "长的",
+          "ipa": "",
+          "sort": 13,
+          "page": 13,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "Good idea!",
+          "cn": "好主意！",
+          "ipa": "",
+          "sort": 14,
+          "page": 13,
+          "entry_type": "句型",
+          "core": true
+        }
+      ]
+    },
+    {
+      "id": "g3x2-en-2",
+      "term_id": "g3x2",
+      "unit_id": "g3x2-en-2",
+      "name": "Unit 2 Clean our classroom",
+      "sort": 2,
+      "source": {
+        "edition": "yilin-eng-3b-2025",
+        "unit": "Unit 2 Clean our classroom",
+        "unit_id": "g3x2-en-2",
+        "catalog": "/books/yilin/yingyu/3b_2025/",
+        "aligned_tasks": [
+          "g3x2-en-2-1",
+          "g3x2-en-2-2",
+          "g3x2-en-2-3"
+        ]
+      },
+      "words": [
+        {
+          "word": "our",
+          "cn": "我们的",
+          "ipa": "",
+          "sort": 1,
+          "page": 16,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "classroom",
+          "cn": "教室；课堂",
+          "ipa": "",
+          "sort": 2,
+          "page": 16,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "put away",
+          "cn": "将……收起；把……放回原处",
+          "ipa": "",
+          "sort": 3,
+          "page": 16,
+          "entry_type": "短语",
+          "core": false
+        },
+        {
+          "word": "close",
+          "cn": "关；关闭",
+          "ipa": "",
+          "sort": 4,
+          "page": 16,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "window",
+          "cn": "窗；窗户",
+          "ipa": "",
+          "sort": 5,
+          "page": 16,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "blackboard",
+          "cn": "黑板",
+          "ipa": "",
+          "sort": 6,
+          "page": 16,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "chair",
+          "cn": "椅子",
+          "ipa": "",
+          "sort": 7,
+          "page": 16,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "sweep",
+          "cn": "打扫；清扫",
+          "ipa": "",
+          "sort": 8,
+          "page": 17,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "floor",
+          "cn": "地板；地面",
+          "ipa": "",
+          "sort": 9,
+          "page": 17,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "let",
+          "cn": "让",
+          "ipa": "",
+          "sort": 10,
+          "page": 18,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "us",
+          "cn": "我们",
+          "ipa": "",
+          "sort": 11,
+          "page": 18,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "desk",
+          "cn": "课桌；书桌",
+          "ipa": "",
+          "sort": 12,
+          "page": 18,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "dirty",
+          "cn": "脏的",
+          "ipa": "",
+          "sort": 13,
+          "page": 18,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "Me too!",
+          "cn": "我也是！",
+          "ipa": "",
+          "sort": 14,
+          "page": 20,
+          "entry_type": "句型",
+          "core": true
+        },
+        {
+          "word": "All right.",
+          "cn": "好的；行",
+          "ipa": "",
+          "sort": 15,
+          "page": 21,
+          "entry_type": "句型",
+          "core": true
+        },
+        {
+          "word": "clean",
+          "cn": "洁净的；干净的",
+          "ipa": "",
+          "sort": 16,
+          "page": 21,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "keep",
+          "cn": "（使）保持；处于",
+          "ipa": "",
+          "sort": 17,
+          "page": 21,
+          "entry_type": "词",
+          "core": true
+        }
+      ]
+    },
+    {
+      "id": "g3x2-en-3",
+      "term_id": "g3x2",
+      "unit_id": "g3x2-en-3",
+      "name": "Unit 3 School rules",
+      "sort": 3,
+      "source": {
+        "edition": "yilin-eng-3b-2025",
+        "unit": "Unit 3 School rules",
+        "unit_id": "g3x2-en-3",
+        "catalog": "/books/yilin/yingyu/3b_2025/",
+        "aligned_tasks": [
+          "g3x2-en-3-1",
+          "g3x2-en-3-2",
+          "g3x2-en-3-3"
+        ]
+      },
+      "words": [
+        {
+          "word": "rule",
+          "cn": "规则；规章",
+          "ipa": "",
+          "sort": 1,
+          "page": 24,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "library",
+          "cn": "图书馆",
+          "ipa": "",
+          "sort": 2,
+          "page": 24,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "shout",
+          "cn": "大声说；叫喊",
+          "ipa": "",
+          "sort": 3,
+          "page": 24,
+          "entry_type": "词",
+          "core": false
+        },
+        {
+          "word": "talk",
+          "cn": "说话；讲话",
+          "ipa": "",
+          "sort": 4,
+          "page": 24,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "eat",
+          "cn": "吃",
+          "ipa": "",
+          "sort": 5,
+          "page": 24,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "run",
+          "cn": "跑；奔跑",
+          "ipa": "",
+          "sort": 6,
+          "page": 24,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "Mrs",
+          "cn": "太太",
+          "ipa": "",
+          "sort": 7,
+          "page": 26,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "sit down",
+          "cn": "坐下",
+          "ipa": "",
+          "sort": 8,
+          "page": 26,
+          "entry_type": "短语",
+          "core": true
+        },
+        {
+          "word": "late",
+          "cn": "迟到的；晚的",
+          "ipa": "",
+          "sort": 9,
+          "page": 26,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "look out of",
+          "cn": "朝……外看",
+          "ipa": "",
+          "sort": 10,
+          "page": 26,
+          "entry_type": "短语",
+          "core": true
+        },
+        {
+          "word": "on",
+          "cn": "在……上面",
+          "ipa": "",
+          "sort": 11,
+          "page": 26,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "shh",
+          "cn": "嘘",
+          "ipa": "",
+          "sort": 12,
+          "page": 28,
+          "entry_type": "词",
+          "core": false
+        },
+        {
+          "word": "fun",
+          "cn": "有趣的；乐趣",
+          "ipa": "",
+          "sort": 13,
+          "page": 28,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "quiet",
+          "cn": "安静的",
+          "ipa": "",
+          "sort": 14,
+          "page": 28,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "follow",
+          "cn": "遵循；听从",
+          "ipa": "",
+          "sort": 15,
+          "page": 28,
+          "entry_type": "词",
+          "core": false
+        },
+        {
+          "word": "Would you like ...?",
+          "cn": "你想要……吗？",
+          "ipa": "",
+          "sort": 16,
+          "page": 29,
+          "entry_type": "句型",
+          "core": true
+        },
+        {
+          "word": "sweet",
+          "cn": "糖果",
+          "ipa": "",
+          "sort": 17,
+          "page": 29,
+          "entry_type": "词",
+          "core": false
+        },
+        {
+          "word": "look at",
+          "cn": "看",
+          "ipa": "",
+          "sort": 18,
+          "page": 29,
+          "entry_type": "短语",
+          "core": true
+        },
+        {
+          "word": "That's all right.",
+          "cn": "不要紧。",
+          "ipa": "",
+          "sort": 19,
+          "page": 29,
+          "entry_type": "句型",
+          "core": true
+        }
+      ]
+    },
+    {
+      "id": "g3x2-en-4",
+      "term_id": "g3x2",
+      "unit_id": "g3x2-en-4",
+      "name": "Unit 4 Have fun after class",
+      "sort": 4,
+      "source": {
+        "edition": "yilin-eng-3b-2025",
+        "unit": "Unit 4 Have fun after class",
+        "unit_id": "g3x2-en-4",
+        "catalog": "/books/yilin/yingyu/3b_2025/",
+        "aligned_tasks": [
+          "g3x2-en-4-1",
+          "g3x2-en-4-2",
+          "g3x2-en-4-3",
+          "g3x2-en-4-4"
+        ]
+      },
+      "words": [
+        {
+          "word": "have fun",
+          "cn": "玩得高兴",
+          "ipa": "",
+          "sort": 1,
+          "page": 32,
+          "entry_type": "短语",
+          "core": true
+        },
+        {
+          "word": "after class",
+          "cn": "课后",
+          "ipa": "",
+          "sort": 2,
+          "page": 32,
+          "entry_type": "短语",
+          "core": true
+        },
+        {
+          "word": "behind",
+          "cn": "在……的后面",
+          "ipa": "",
+          "sort": 3,
+          "page": 32,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "tree",
+          "cn": "树",
+          "ipa": "",
+          "sort": 4,
+          "page": 32,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "by",
+          "cn": "在……旁边",
+          "ipa": "",
+          "sort": 5,
+          "page": 32,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "flower",
+          "cn": "花",
+          "ipa": "",
+          "sort": 6,
+          "page": 33,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "break time",
+          "cn": "课间休息",
+          "ipa": "",
+          "sort": 7,
+          "page": 34,
+          "entry_type": "短语",
+          "core": false
+        },
+        {
+          "word": "play",
+          "cn": "玩",
+          "ipa": "",
+          "sort": 8,
+          "page": 34,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "outside",
+          "cn": "在外面",
+          "ipa": "",
+          "sort": 9,
+          "page": 34,
+          "entry_type": "词",
+          "core": false
+        },
+        {
+          "word": "ready",
+          "cn": "准备好",
+          "ipa": "",
+          "sort": 10,
+          "page": 34,
+          "entry_type": "词",
+          "core": false
+        },
+        {
+          "word": "go",
+          "cn": "开始；移动",
+          "ipa": "",
+          "sort": 11,
+          "page": 34,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "plane",
+          "cn": "飞机",
+          "ipa": "",
+          "sort": 12,
+          "page": 34,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "very",
+          "cn": "很；非常",
+          "ipa": "",
+          "sort": 13,
+          "page": 34,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "far",
+          "cn": "远",
+          "ipa": "",
+          "sort": 14,
+          "page": 34,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "where",
+          "cn": "在哪里；到哪里",
+          "ipa": "",
+          "sort": 15,
+          "page": 34,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "find",
+          "cn": "找到",
+          "ipa": "",
+          "sort": 16,
+          "page": 34,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "over",
+          "cn": "结束",
+          "ipa": "",
+          "sort": 17,
+          "page": 36,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "student",
+          "cn": "学生",
+          "ipa": "",
+          "sort": 18,
+          "page": 36,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "from",
+          "cn": "来自",
+          "ipa": "",
+          "sort": 19,
+          "page": 36,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "nice",
+          "cn": "美好的",
+          "ipa": "",
+          "sort": 20,
+          "page": 36,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "of",
+          "cn": "关于",
+          "ipa": "",
+          "sort": 21,
+          "page": 36,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "garden",
+          "cn": "花园",
+          "ipa": "",
+          "sort": 22,
+          "page": 36,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "butterfly",
+          "cn": "蝴蝶",
+          "ipa": "",
+          "sort": 23,
+          "page": 36,
+          "entry_type": "词",
+          "core": false
+        },
+        {
+          "word": "beautiful",
+          "cn": "美丽的；美好的",
+          "ipa": "",
+          "sort": 24,
+          "page": 36,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "duck",
+          "cn": "鸭子",
+          "ipa": "",
+          "sort": 25,
+          "page": 37,
+          "entry_type": "词",
+          "core": true
+        }
+      ]
+    },
+    {
+      "id": "g3x2-en-5",
+      "term_id": "g3x2",
+      "unit_id": "g3x2-en-5",
+      "name": "Unit 5 Fruit",
+      "sort": 5,
+      "source": {
+        "edition": "yilin-eng-3b-2025",
+        "unit": "Unit 5 Fruit",
+        "unit_id": "g3x2-en-5",
+        "catalog": "/books/yilin/yingyu/3b_2025/",
+        "aligned_tasks": [
+          "g3x2-en-5-1",
+          "g3x2-en-5-2",
+          "g3x2-en-5-3"
+        ]
+      },
+      "words": [
+        {
+          "word": "fruit",
+          "cn": "水果",
+          "ipa": "",
+          "sort": 1,
+          "page": 42,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "orange",
+          "cn": "橙子；柑橘",
+          "ipa": "",
+          "sort": 2,
+          "page": 42,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "grape",
+          "cn": "葡萄",
+          "ipa": "",
+          "sort": 3,
+          "page": 42,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "banana",
+          "cn": "香蕉",
+          "ipa": "",
+          "sort": 4,
+          "page": 42,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "apple",
+          "cn": "苹果",
+          "ipa": "",
+          "sort": 5,
+          "page": 43,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "mango",
+          "cn": "芒果",
+          "ipa": "",
+          "sort": 6,
+          "page": 43,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "share",
+          "cn": "分享；共享",
+          "ipa": "",
+          "sort": 7,
+          "page": 44,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "like",
+          "cn": "喜欢",
+          "ipa": "",
+          "sort": 8,
+          "page": 44,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "they",
+          "cn": "它们；他们；她们",
+          "ipa": "",
+          "sort": 9,
+          "page": 44,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "sweet",
+          "cn": "甜的",
+          "ipa": "",
+          "sort": 10,
+          "page": 44,
+          "entry_type": "词",
+          "core": false
+        },
+        {
+          "word": "make",
+          "cn": "做；制造",
+          "ipa": "",
+          "sort": 11,
+          "page": 46,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "salad",
+          "cn": "色拉；沙拉",
+          "ipa": "",
+          "sort": 12,
+          "page": 46,
+          "entry_type": "词",
+          "core": false
+        },
+        {
+          "word": "together",
+          "cn": "在一起；共同",
+          "ipa": "",
+          "sort": 13,
+          "page": 46,
+          "entry_type": "词",
+          "core": false
+        },
+        {
+          "word": "an",
+          "cn": "一（个）",
+          "ipa": "",
+          "sort": 14,
+          "page": 46,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "What about you?",
+          "cn": "你呢？",
+          "ipa": "",
+          "sort": 15,
+          "page": 46,
+          "entry_type": "句型",
+          "core": true
+        },
+        {
+          "word": "good",
+          "cn": "有用；有好处",
+          "ipa": "",
+          "sort": 16,
+          "page": 47,
+          "entry_type": "词",
+          "core": true
+        }
+      ]
+    },
+    {
+      "id": "g3x2-en-6",
+      "term_id": "g3x2",
+      "unit_id": "g3x2-en-6",
+      "name": "Unit 6 On the farm",
+      "sort": 6,
+      "source": {
+        "edition": "yilin-eng-3b-2025",
+        "unit": "Unit 6 On the farm",
+        "unit_id": "g3x2-en-6",
+        "catalog": "/books/yilin/yingyu/3b_2025/",
+        "aligned_tasks": [
+          "g3x2-en-6-1",
+          "g3x2-en-6-2",
+          "g3x2-en-6-3"
+        ]
+      },
+      "words": [
+        {
+          "word": "farm",
+          "cn": "农场",
+          "ipa": "",
+          "sort": 1,
+          "page": 50,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "cow",
+          "cn": "奶牛",
+          "ipa": "",
+          "sort": 2,
+          "page": 50,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "sheep",
+          "cn": "绵羊",
+          "ipa": "",
+          "sort": 3,
+          "page": 50,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "rabbit",
+          "cn": "兔子",
+          "ipa": "",
+          "sort": 4,
+          "page": 50,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "chicken",
+          "cn": "鸡",
+          "ipa": "",
+          "sort": 5,
+          "page": 50,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "carrot",
+          "cn": "胡萝卜",
+          "ipa": "",
+          "sort": 6,
+          "page": 51,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "pig",
+          "cn": "猪",
+          "ipa": "",
+          "sort": 7,
+          "page": 51,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "Welcome to ...",
+          "cn": "欢迎来到……",
+          "ipa": "",
+          "sort": 8,
+          "page": 52,
+          "entry_type": "句型",
+          "core": true
+        },
+        {
+          "word": "home",
+          "cn": "家；住所",
+          "ipa": "",
+          "sort": 9,
+          "page": 52,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "these",
+          "cn": "这些",
+          "ipa": "",
+          "sort": 10,
+          "page": 52,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "those",
+          "cn": "那些",
+          "ipa": "",
+          "sort": 11,
+          "page": 52,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "help",
+          "cn": "帮助；协助",
+          "ipa": "",
+          "sort": 12,
+          "page": 52,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "cute",
+          "cn": "可爱的",
+          "ipa": "",
+          "sort": 13,
+          "page": 55,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "move",
+          "cn": "移动",
+          "ipa": "",
+          "sort": 14,
+          "page": 55,
+          "entry_type": "词",
+          "core": true
+        }
+      ]
+    },
+    {
+      "id": "g3x2-en-7",
+      "term_id": "g3x2",
+      "unit_id": "g3x2-en-7",
+      "name": "Unit 7 Animals",
+      "sort": 7,
+      "source": {
+        "edition": "yilin-eng-3b-2025",
+        "unit": "Unit 7 Animals",
+        "unit_id": "g3x2-en-7",
+        "catalog": "/books/yilin/yingyu/3b_2025/",
+        "aligned_tasks": [
+          "g3x2-en-7-1",
+          "g3x2-en-7-2",
+          "g3x2-en-7-3"
+        ]
+      },
+      "words": [
+        {
+          "word": "animal",
+          "cn": "动物",
+          "ipa": "",
+          "sort": 1,
+          "page": 58,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "monkey",
+          "cn": "猴子",
+          "ipa": "",
+          "sort": 2,
+          "page": 58,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "lion",
+          "cn": "狮子",
+          "ipa": "",
+          "sort": 3,
+          "page": 58,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "bear",
+          "cn": "熊",
+          "ipa": "",
+          "sort": 4,
+          "page": 58,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "tiger",
+          "cn": "老虎",
+          "ipa": "",
+          "sort": 5,
+          "page": 58,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "panda",
+          "cn": "大熊猫",
+          "ipa": "",
+          "sort": 6,
+          "page": 59,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "elephant",
+          "cn": "大象",
+          "ipa": "",
+          "sort": 7,
+          "page": 59,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "lunchtime",
+          "cn": "午餐时间",
+          "ipa": "",
+          "sort": 8,
+          "page": 60,
+          "entry_type": "词",
+          "core": false
+        },
+        {
+          "word": "fish",
+          "cn": "鱼；鱼肉",
+          "ipa": "",
+          "sort": 9,
+          "page": 60,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "high five",
+          "cn": "相互举掌击掌",
+          "ipa": "",
+          "sort": 10,
+          "page": 60,
+          "entry_type": "短语",
+          "core": false
+        },
+        {
+          "word": "feed",
+          "cn": "给食物；喂养",
+          "ipa": "",
+          "sort": 11,
+          "page": 63,
+          "entry_type": "词",
+          "core": false
+        },
+        {
+          "word": "zoo",
+          "cn": "动物园",
+          "ipa": "",
+          "sort": 12,
+          "page": 63,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "go",
+          "cn": "去；走",
+          "ipa": "",
+          "sort": 13,
+          "page": 63,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "see",
+          "cn": "看；见",
+          "ipa": "",
+          "sort": 14,
+          "page": 63,
+          "entry_type": "词",
+          "core": true
+        }
+      ]
+    },
+    {
+      "id": "g3x2-en-8",
+      "term_id": "g3x2",
+      "unit_id": "g3x2-en-8",
+      "name": "Unit 8 Colours",
+      "sort": 8,
+      "source": {
+        "edition": "yilin-eng-3b-2025",
+        "unit": "Unit 8 Colours",
+        "unit_id": "g3x2-en-8",
+        "catalog": "/books/yilin/yingyu/3b_2025/",
+        "aligned_tasks": [
+          "g3x2-en-8-1",
+          "g3x2-en-8-2",
+          "g3x2-en-8-3",
+          "g3x2-en-8-4"
+        ]
+      },
+      "words": [
+        {
+          "word": "colour",
+          "accept": ["color"],
+          "cn": "颜色；色彩",
+          "ipa": "",
+          "sort": 1,
+          "page": 66,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "yellow",
+          "cn": "黄色的",
+          "ipa": "",
+          "sort": 2,
+          "page": 66,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "blue",
+          "cn": "蓝色的",
+          "ipa": "",
+          "sort": 3,
+          "page": 66,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "red",
+          "cn": "红色的",
+          "ipa": "",
+          "sort": 4,
+          "page": 66,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "orange",
+          "cn": "橙色的",
+          "ipa": "",
+          "sort": 5,
+          "page": 66,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "pink",
+          "cn": "粉红色的",
+          "ipa": "",
+          "sort": 6,
+          "page": 66,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "green",
+          "cn": "绿色的",
+          "ipa": "",
+          "sort": 7,
+          "page": 67,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "brown",
+          "cn": "棕色的",
+          "ipa": "",
+          "sort": 8,
+          "page": 67,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "black",
+          "cn": "黑色的",
+          "ipa": "",
+          "sort": 9,
+          "page": 67,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "white",
+          "cn": "白色的",
+          "ipa": "",
+          "sort": 10,
+          "page": 67,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "buy",
+          "cn": "买",
+          "ipa": "",
+          "sort": 11,
+          "page": 68,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "balloon",
+          "cn": "气球",
+          "ipa": "",
+          "sort": 12,
+          "page": 68,
+          "entry_type": "词",
+          "core": false
+        },
+        {
+          "word": "sure",
+          "cn": "（表示同意）当然",
+          "ipa": "",
+          "sort": 13,
+          "page": 68,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "chameleon",
+          "cn": "变色龙",
+          "ipa": "",
+          "sort": 14,
+          "page": 70,
+          "entry_type": "词",
+          "core": false
+        },
+        {
+          "word": "little",
+          "cn": "小的",
+          "ipa": "",
+          "sort": 15,
+          "page": 70,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "What colour is ...?",
+          "cn": "……是什么颜色的？",
+          "ipa": "",
+          "sort": 16,
+          "page": 70,
+          "entry_type": "句型",
+          "core": true
+        },
+        {
+          "word": "How come?",
+          "cn": "怎么回事？",
+          "ipa": "",
+          "sort": 17,
+          "page": 71,
+          "entry_type": "句型",
+          "core": true
+        }
+      ]
+    },
+    {
+      "id": "g4s1-en-1",
+      "term_id": "g4s1",
+      "unit_id": "g4s1-en-1",
+      "name": "Unit 1 Our school subjects",
+      "sort": 1,
+      "source": {
+        "edition": "yilin-eng-4a-2025",
+        "unit": "Unit 1 Our school subjects",
+        "unit_id": "g4s1-en-1",
+        "catalog": "/books/yilin/yingyu/4a_2025/",
+        "aligned_tasks": [
+          "g4s1-en-1-1",
+          "g4s1-en-1-2",
+          "g4s1-en-1-3"
+        ]
+      },
+      "words": [
+        {
+          "word": "subject",
+          "cn": "学科；科目",
+          "ipa": "",
+          "sort": 1,
+          "page": 8,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "Chinese",
+          "cn": "语文课；中国的",
+          "ipa": "",
+          "sort": 2,
+          "page": 8,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "English",
+          "cn": "英语课；英语的",
+          "ipa": "",
+          "sort": 3,
+          "page": 8,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "Maths",
+          "accept": ["Math"],
+          "cn": "数学课",
+          "ipa": "",
+          "sort": 4,
+          "page": 8,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "PE",
+          "cn": "体育课",
+          "ipa": "",
+          "sort": 5,
+          "page": 8,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "Art",
+          "cn": "美术课",
+          "ipa": "",
+          "sort": 6,
+          "page": 8,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "Science",
+          "cn": "科学课",
+          "ipa": "",
+          "sort": 7,
+          "page": 8,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "IT",
+          "cn": "信息科技课",
+          "ipa": "",
+          "sort": 8,
+          "page": 9,
+          "entry_type": "词",
+          "core": false
+        },
+        {
+          "word": "Music",
+          "cn": "音乐课",
+          "ipa": "",
+          "sort": 9,
+          "page": 9,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "Labour",
+          "cn": "劳动课",
+          "ipa": "",
+          "sort": 10,
+          "page": 9,
+          "entry_type": "词",
+          "core": false
+        },
+        {
+          "word": "best",
+          "cn": "最；最高程度地",
+          "ipa": "",
+          "sort": 11,
+          "page": 10,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "also",
+          "cn": "也",
+          "ipa": "",
+          "sort": 12,
+          "page": 10,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "It's time for ...",
+          "cn": "是……的时候了",
+          "ipa": "",
+          "sort": 13,
+          "page": 10,
+          "entry_type": "句型",
+          "core": true
+        },
+        {
+          "word": "mouse",
+          "accept": ["mice"],
+          "cn": "鼠标；老鼠",
+          "ipa": "",
+          "sort": 14,
+          "page": 10,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "Welcome back to ...",
+          "cn": "欢迎回到……",
+          "ipa": "",
+          "sort": 15,
+          "page": 12,
+          "entry_type": "句型",
+          "core": true
+        },
+        {
+          "word": "be good at",
+          "cn": "擅长",
+          "ipa": "",
+          "sort": 16,
+          "page": 13,
+          "entry_type": "短语",
+          "core": true
+        },
+        {
+          "word": "interesting",
+          "cn": "有趣的；有吸引力的",
+          "ipa": "",
+          "sort": 17,
+          "page": 13,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "learn about",
+          "cn": "学习；了解",
+          "ipa": "",
+          "sort": 18,
+          "page": 13,
+          "entry_type": "短语",
+          "core": true
+        },
+        {
+          "word": "culture",
+          "cn": "文化；文明",
+          "ipa": "",
+          "sort": 19,
+          "page": 13,
+          "entry_type": "词",
+          "core": false
+        },
+        {
+          "word": "read",
+          "cn": "阅读",
+          "ipa": "",
+          "sort": 20,
+          "page": 13,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "story",
+          "cn": "故事",
+          "ipa": "",
+          "sort": 21,
+          "page": 13,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "all",
+          "cn": "全部；都",
+          "ipa": "",
+          "sort": 22,
+          "page": 13,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "sports ground",
+          "cn": "操场；运动场",
+          "ipa": "",
+          "sort": 23,
+          "page": 13,
+          "entry_type": "短语",
+          "core": false
+        }
+      ]
+    },
+    {
+      "id": "g4s1-en-2",
+      "term_id": "g4s1",
+      "unit_id": "g4s1-en-2",
+      "name": "Unit 2 My day",
+      "sort": 2,
+      "source": {
+        "edition": "yilin-eng-4a-2025",
+        "unit": "Unit 2 My day",
+        "unit_id": "g4s1-en-2",
+        "catalog": "/books/yilin/yingyu/4a_2025/",
+        "aligned_tasks": [
+          "g4s1-en-2-1",
+          "g4s1-en-2-2",
+          "g4s1-en-2-3"
+        ]
+      },
+      "words": [
+        {
+          "word": "get up",
+          "cn": "起床",
+          "ipa": "",
+          "sort": 1,
+          "page": 16,
+          "entry_type": "短语",
+          "core": true
+        },
+        {
+          "word": "wash",
+          "cn": "洗",
+          "ipa": "",
+          "sort": 2,
+          "page": 16,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "face",
+          "cn": "脸；面孔",
+          "ipa": "",
+          "sort": 3,
+          "page": 16,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "have lessons",
+          "cn": "上课",
+          "ipa": "",
+          "sort": 4,
+          "page": 16,
+          "entry_type": "短语",
+          "core": true
+        },
+        {
+          "word": "have",
+          "cn": "吃；喝",
+          "ipa": "",
+          "sort": 5,
+          "page": 16,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "dinner",
+          "cn": "正餐，常指晚餐",
+          "ipa": "",
+          "sort": 6,
+          "page": 16,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "breakfast",
+          "cn": "早餐；早饭",
+          "ipa": "",
+          "sort": 7,
+          "page": 17,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "lunch",
+          "cn": "午餐；午饭",
+          "ipa": "",
+          "sort": 8,
+          "page": 17,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "go to bed",
+          "cn": "上床睡觉",
+          "ipa": "",
+          "sort": 9,
+          "page": 17,
+          "entry_type": "短语",
+          "core": true
+        },
+        {
+          "word": "o'clock",
+          "cn": "（表示整点）……点钟",
+          "ipa": "",
+          "sort": 10,
+          "page": 18,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "early",
+          "cn": "早的",
+          "ipa": "",
+          "sort": 11,
+          "page": 18,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "first",
+          "cn": "首先；第一",
+          "ipa": "",
+          "sort": 12,
+          "page": 18,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "hurry up",
+          "cn": "快点",
+          "ipa": "",
+          "sort": 13,
+          "page": 18,
+          "entry_type": "短语",
+          "core": true
+        },
+        {
+          "word": "What time is it?",
+          "cn": "几点了？",
+          "ipa": "",
+          "sort": 14,
+          "page": 18,
+          "entry_type": "句型",
+          "core": true
+        },
+        {
+          "word": "I'm coming!",
+          "cn": "我来了！",
+          "ipa": "",
+          "sort": 15,
+          "page": 18,
+          "entry_type": "句型",
+          "core": true
+        },
+        {
+          "word": "twenty",
+          "cn": "二十",
+          "ipa": "",
+          "sort": 16,
+          "page": 20,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "Come on!",
+          "cn": "赶快！加把劲！",
+          "ipa": "",
+          "sort": 17,
+          "page": 20,
+          "entry_type": "句型",
+          "core": true
+        },
+        {
+          "word": "class",
+          "cn": "课；上课",
+          "ipa": "",
+          "sort": 18,
+          "page": 20,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "eleven",
+          "cn": "十一",
+          "ipa": "",
+          "sort": 19,
+          "page": 20,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "sport",
+          "cn": "体育运动",
+          "ipa": "",
+          "sort": 20,
+          "page": 21,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "fifteen",
+          "cn": "十五",
+          "ipa": "",
+          "sort": 21,
+          "page": 21,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "It's time to ...",
+          "cn": "到了……的时间了",
+          "ipa": "",
+          "sort": 22,
+          "page": 21,
+          "entry_type": "句型",
+          "core": true
+        },
+        {
+          "word": "bed",
+          "cn": "床",
+          "ipa": "",
+          "sort": 23,
+          "page": 21,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "Good night!",
+          "cn": "晚安！",
+          "ipa": "",
+          "sort": 24,
+          "page": 21,
+          "entry_type": "句型",
+          "core": true
+        }
+      ]
+    },
+    {
+      "id": "g4s1-en-3",
+      "term_id": "g4s1",
+      "unit_id": "g4s1-en-3",
+      "name": "Unit 3 My week",
+      "sort": 3,
+      "source": {
+        "edition": "yilin-eng-4a-2025",
+        "unit": "Unit 3 My week",
+        "unit_id": "g4s1-en-3",
+        "catalog": "/books/yilin/yingyu/4a_2025/",
+        "aligned_tasks": [
+          "g4s1-en-3-1",
+          "g4s1-en-3-2",
+          "g4s1-en-3-3"
+        ]
+      },
+      "words": [
+        {
+          "word": "week",
+          "cn": "周；星期",
+          "ipa": "",
+          "sort": 1,
+          "page": 24,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "Monday",
+          "cn": "星期一",
+          "ipa": "",
+          "sort": 2,
+          "page": 24,
+          "entry_type": "专名",
+          "core": true
+        },
+        {
+          "word": "Tuesday",
+          "cn": "星期二",
+          "ipa": "",
+          "sort": 3,
+          "page": 24,
+          "entry_type": "专名",
+          "core": true
+        },
+        {
+          "word": "Wednesday",
+          "cn": "星期三",
+          "ipa": "",
+          "sort": 4,
+          "page": 24,
+          "entry_type": "专名",
+          "core": true
+        },
+        {
+          "word": "Thursday",
+          "cn": "星期四",
+          "ipa": "",
+          "sort": 5,
+          "page": 24,
+          "entry_type": "专名",
+          "core": true
+        },
+        {
+          "word": "Friday",
+          "cn": "星期五",
+          "ipa": "",
+          "sort": 6,
+          "page": 24,
+          "entry_type": "专名",
+          "core": true
+        },
+        {
+          "word": "Saturday",
+          "cn": "星期六",
+          "ipa": "",
+          "sort": 7,
+          "page": 24,
+          "entry_type": "专名",
+          "core": true
+        },
+        {
+          "word": "Sunday",
+          "cn": "星期天",
+          "ipa": "",
+          "sort": 8,
+          "page": 24,
+          "entry_type": "专名",
+          "core": true
+        },
+        {
+          "word": "when",
+          "cn": "什么时候",
+          "ipa": "",
+          "sort": 9,
+          "page": 26,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "every",
+          "cn": "每一个；每个",
+          "ipa": "",
+          "sort": 10,
+          "page": 26,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "at",
+          "cn": "在（某时间）",
+          "ipa": "",
+          "sort": 11,
+          "page": 26,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "up",
+          "cn": "起床",
+          "ipa": "",
+          "sort": 12,
+          "page": 26,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "early",
+          "cn": "提早；提前",
+          "ipa": "",
+          "sort": 13,
+          "page": 26,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "today",
+          "cn": "在今天",
+          "ipa": "",
+          "sort": 14,
+          "page": 26,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "What day is it today?",
+          "cn": "今天星期几？",
+          "ipa": "",
+          "sort": 15,
+          "page": 26,
+          "entry_type": "句型",
+          "core": true
+        },
+        {
+          "word": "cinema",
+          "cn": "电影院",
+          "ipa": "",
+          "sort": 16,
+          "page": 28,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "after school",
+          "cn": "放学后",
+          "ipa": "",
+          "sort": 17,
+          "page": 28,
+          "entry_type": "短语",
+          "core": true
+        },
+        {
+          "word": "dancing",
+          "cn": "跳舞；舞蹈",
+          "ipa": "",
+          "sort": 18,
+          "page": 28,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "lesson",
+          "cn": "一节课；一课时",
+          "ipa": "",
+          "sort": 19,
+          "page": 28,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "walk",
+          "cn": "牵着（动物）走",
+          "ipa": "",
+          "sort": 20,
+          "page": 29,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "dog",
+          "cn": "狗",
+          "ipa": "",
+          "sort": 21,
+          "page": 29,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "tomorrow",
+          "cn": "明天；在明天",
+          "ipa": "",
+          "sort": 22,
+          "page": 29,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "free",
+          "cn": "空闲的",
+          "ipa": "",
+          "sort": 23,
+          "page": 29,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "See you tomorrow!",
+          "cn": "明天见！",
+          "ipa": "",
+          "sort": 24,
+          "page": 29,
+          "entry_type": "句型",
+          "core": true
+        }
+      ]
+    },
+    {
+      "id": "g4s1-en-4",
+      "term_id": "g4s1",
+      "unit_id": "g4s1-en-4",
+      "name": "Unit 4 I like sport",
+      "sort": 4,
+      "source": {
+        "edition": "yilin-eng-4a-2025",
+        "unit": "Unit 4 I like sport",
+        "unit_id": "g4s1-en-4",
+        "catalog": "/books/yilin/yingyu/4a_2025/",
+        "aligned_tasks": [
+          "g4s1-en-4-1",
+          "g4s1-en-4-2",
+          "g4s1-en-4-3",
+          "g4s1-en-4-4"
+        ]
+      },
+      "words": [
+        {
+          "word": "play",
+          "cn": "打（球）",
+          "ipa": "",
+          "sort": 1,
+          "page": 32,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "football",
+          "cn": "足球运动；足球",
+          "ipa": "",
+          "sort": 2,
+          "page": 32,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "ping-pong",
+          "cn": "乒乓球运动",
+          "ipa": "",
+          "sort": 3,
+          "page": 32,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "basketball",
+          "cn": "篮球运动；篮球",
+          "ipa": "",
+          "sort": 4,
+          "page": 33,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "great",
+          "cn": "非常的",
+          "ipa": "",
+          "sort": 5,
+          "page": 34,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "swimming",
+          "cn": "游泳；游泳运动",
+          "ipa": "",
+          "sort": 6,
+          "page": 36,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "so",
+          "cn": "（表示程度）这么；那么",
+          "ipa": "",
+          "sort": 7,
+          "page": 36,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "well",
+          "cn": "好",
+          "ipa": "",
+          "sort": 8,
+          "page": 36,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "Have a go!",
+          "cn": "试一试！",
+          "ipa": "",
+          "sort": 9,
+          "page": 37,
+          "entry_type": "句型",
+          "core": true
+        },
+        {
+          "word": "hard",
+          "cn": "难做的；不易的",
+          "ipa": "",
+          "sort": 10,
+          "page": 37,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "It's OK.",
+          "cn": "没关系。",
+          "ipa": "",
+          "sort": 11,
+          "page": 37,
+          "entry_type": "句型",
+          "core": true
+        },
+        {
+          "word": "try",
+          "cn": "试",
+          "ipa": "",
+          "sort": 12,
+          "page": 37,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "Well played!",
+          "cn": "好球！",
+          "ipa": "",
+          "sort": 13,
+          "page": 37,
+          "entry_type": "句型",
+          "core": true
+        }
+      ]
+    },
+    {
+      "id": "g4s1-en-5",
+      "term_id": "g4s1",
+      "unit_id": "g4s1-en-5",
+      "name": "Unit 5 Different toys, same fun",
+      "sort": 5,
+      "source": {
+        "edition": "yilin-eng-4a-2025",
+        "unit": "Unit 5 Different toys, same fun",
+        "unit_id": "g4s1-en-5",
+        "catalog": "/books/yilin/yingyu/4a_2025/",
+        "aligned_tasks": [
+          "g4s1-en-5-1",
+          "g4s1-en-5-2",
+          "g4s1-en-5-3"
+        ]
+      },
+      "words": [
+        {
+          "word": "different",
+          "cn": "不同的；有区别的",
+          "ipa": "",
+          "sort": 1,
+          "page": 42,
+          "entry_type": "词",
+          "core": false
+        },
+        {
+          "word": "same",
+          "cn": "相同的；同一的",
+          "ipa": "",
+          "sort": 2,
+          "page": 42,
+          "entry_type": "词",
+          "core": false
+        },
+        {
+          "word": "hair",
+          "cn": "头发",
+          "ipa": "",
+          "sort": 3,
+          "page": 42,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "eye",
+          "cn": "眼睛",
+          "ipa": "",
+          "sort": 4,
+          "page": 42,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "ear",
+          "cn": "耳朵",
+          "ipa": "",
+          "sort": 5,
+          "page": 42,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "nose",
+          "cn": "鼻子",
+          "ipa": "",
+          "sort": 6,
+          "page": 42,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "mouth",
+          "cn": "嘴",
+          "ipa": "",
+          "sort": 7,
+          "page": 42,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "arm",
+          "cn": "手臂",
+          "ipa": "",
+          "sort": 8,
+          "page": 42,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "leg",
+          "cn": "腿",
+          "ipa": "",
+          "sort": 9,
+          "page": 42,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "robot",
+          "cn": "机器人",
+          "ipa": "",
+          "sort": 10,
+          "page": 44,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "his",
+          "cn": "他的",
+          "ipa": "",
+          "sort": 11,
+          "page": 44,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "tall",
+          "cn": "高的",
+          "ipa": "",
+          "sort": 12,
+          "page": 44,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "short",
+          "cn": "短的",
+          "ipa": "",
+          "sort": 13,
+          "page": 44,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "doll",
+          "cn": "玩具娃娃",
+          "ipa": "",
+          "sort": 14,
+          "page": 46,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "her",
+          "cn": "她的",
+          "ipa": "",
+          "sort": 15,
+          "page": 46,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "small",
+          "cn": "小的",
+          "ipa": "",
+          "sort": 16,
+          "page": 46,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "show",
+          "cn": "表演；演出",
+          "ipa": "",
+          "sort": 17,
+          "page": 47,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "lots of",
+          "cn": "大量；许多",
+          "ipa": "",
+          "sort": 18,
+          "page": 47,
+          "entry_type": "短语",
+          "core": true
+        },
+        {
+          "word": "have",
+          "cn": "组织；举办",
+          "ipa": "",
+          "sort": 19,
+          "page": 47,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "bring",
+          "cn": "带来",
+          "ipa": "",
+          "sort": 20,
+          "page": 47,
+          "entry_type": "词",
+          "core": true
+        }
+      ]
+    },
+    {
+      "id": "g4s1-en-6",
+      "term_id": "g4s1",
+      "unit_id": "g4s1-en-6",
+      "name": "Unit 6 Weather",
+      "sort": 6,
+      "source": {
+        "edition": "yilin-eng-4a-2025",
+        "unit": "Unit 6 Weather",
+        "unit_id": "g4s1-en-6",
+        "catalog": "/books/yilin/yingyu/4a_2025/",
+        "aligned_tasks": [
+          "g4s1-en-6-1",
+          "g4s1-en-6-2",
+          "g4s1-en-6-3"
+        ]
+      },
+      "words": [
+        {
+          "word": "weather",
+          "cn": "天气；气象",
+          "ipa": "",
+          "sort": 1,
+          "page": 50,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "cloudy",
+          "cn": "多云的；阴天的",
+          "ipa": "",
+          "sort": 2,
+          "page": 50,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "sunny",
+          "cn": "晴朗的",
+          "ipa": "",
+          "sort": 3,
+          "page": 50,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "cool",
+          "cn": "凉的；凉爽的",
+          "ipa": "",
+          "sort": 4,
+          "page": 50,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "rainy",
+          "cn": "阴雨的；多雨的",
+          "ipa": "",
+          "sort": 5,
+          "page": 50,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "hot",
+          "cn": "温度高的；热的",
+          "ipa": "",
+          "sort": 6,
+          "page": 50,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "windy",
+          "cn": "多风的；风大的",
+          "ipa": "",
+          "sort": 7,
+          "page": 50,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "warm",
+          "cn": "温暖的；暖和的",
+          "ipa": "",
+          "sort": 8,
+          "page": 50,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "save ... for a rainy day",
+          "cn": "未雨绸缪",
+          "ipa": "",
+          "sort": 9,
+          "page": 52,
+          "entry_type": "短语",
+          "core": false
+        },
+        {
+          "word": "money",
+          "cn": "钱",
+          "ipa": "",
+          "sort": 10,
+          "page": 52,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "What's the weather like today?",
+          "cn": "今天天气怎么样？",
+          "ipa": "",
+          "sort": 11,
+          "page": 52,
+          "entry_type": "句型",
+          "core": true
+        },
+        {
+          "word": "park",
+          "cn": "公园",
+          "ipa": "",
+          "sort": 12,
+          "page": 54,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "meet",
+          "cn": "会面；集合",
+          "ipa": "",
+          "sort": 13,
+          "page": 54,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "fly a kite",
+          "cn": "放风筝",
+          "ipa": "",
+          "sort": 14,
+          "page": 54,
+          "entry_type": "短语",
+          "core": true
+        },
+        {
+          "word": "It's raining.",
+          "cn": "下雨了。",
+          "ipa": "",
+          "sort": 15,
+          "page": 55,
+          "entry_type": "句型",
+          "core": true
+        },
+        {
+          "word": "worry",
+          "cn": "担心；担忧",
+          "ipa": "",
+          "sort": 16,
+          "page": 55,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "umbrella",
+          "cn": "雨伞",
+          "ipa": "",
+          "sort": 17,
+          "page": 55,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "there",
+          "cn": "到那里；在那里",
+          "ipa": "",
+          "sort": 18,
+          "page": 55,
+          "entry_type": "词",
+          "core": true
+        }
+      ]
+    },
+    {
+      "id": "g4s1-en-7",
+      "term_id": "g4s1",
+      "unit_id": "g4s1-en-7",
+      "name": "Unit 7 Seasons",
+      "sort": 7,
+      "source": {
+        "edition": "yilin-eng-4a-2025",
+        "unit": "Unit 7 Seasons",
+        "unit_id": "g4s1-en-7",
+        "catalog": "/books/yilin/yingyu/4a_2025/",
+        "aligned_tasks": [
+          "g4s1-en-7-1",
+          "g4s1-en-7-2",
+          "g4s1-en-7-3"
+        ]
+      },
+      "words": [
+        {
+          "word": "season",
+          "cn": "季节",
+          "ipa": "",
+          "sort": 1,
+          "page": 58,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "spring",
+          "cn": "春天；春季",
+          "ipa": "",
+          "sort": 2,
+          "page": 58,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "go boating",
+          "cn": "去划船",
+          "ipa": "",
+          "sort": 3,
+          "page": 58,
+          "entry_type": "短语",
+          "core": true
+        },
+        {
+          "word": "winter",
+          "cn": "冬天；冬季",
+          "ipa": "",
+          "sort": 4,
+          "page": 58,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "go skating",
+          "cn": "去溜冰；去滑冰",
+          "ipa": "",
+          "sort": 5,
+          "page": 58,
+          "entry_type": "短语",
+          "core": false
+        },
+        {
+          "word": "summer",
+          "cn": "夏天；夏季",
+          "ipa": "",
+          "sort": 6,
+          "page": 59,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "ice cream",
+          "cn": "冰激凌",
+          "ipa": "",
+          "sort": 7,
+          "page": 59,
+          "entry_type": "短语",
+          "core": true
+        },
+        {
+          "word": "go swimming",
+          "cn": "去游泳",
+          "ipa": "",
+          "sort": 8,
+          "page": 59,
+          "entry_type": "短语",
+          "core": true
+        },
+        {
+          "word": "autumn",
+          "cn": "秋天；秋季",
+          "ipa": "",
+          "sort": 9,
+          "page": 59,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "go climbing",
+          "cn": "去爬山",
+          "ipa": "",
+          "sort": 10,
+          "page": 59,
+          "entry_type": "短语",
+          "core": false
+        },
+        {
+          "word": "new",
+          "cn": "新的",
+          "ipa": "",
+          "sort": 11,
+          "page": 60,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "cold",
+          "cn": "寒冷的；冷的",
+          "ipa": "",
+          "sort": 12,
+          "page": 60,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "bird",
+          "cn": "鸟",
+          "ipa": "",
+          "sort": 13,
+          "page": 60,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "back",
+          "cn": "回原处",
+          "ipa": "",
+          "sort": 14,
+          "page": 60,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "in",
+          "cn": "在（某段时间）内",
+          "ipa": "",
+          "sort": 15,
+          "page": 62,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "year",
+          "cn": "年",
+          "ipa": "",
+          "sort": 16,
+          "page": 62,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "plant",
+          "cn": "栽种；种植",
+          "ipa": "",
+          "sort": 17,
+          "page": 62,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "pick",
+          "cn": "采；摘",
+          "ipa": "",
+          "sort": 18,
+          "page": 63,
+          "entry_type": "词",
+          "core": false
+        },
+        {
+          "word": "snow",
+          "cn": "雪；积雪",
+          "ipa": "",
+          "sort": 19,
+          "page": 63,
+          "entry_type": "词",
+          "core": true
+        }
+      ]
+    },
+    {
+      "id": "g4s1-en-8",
+      "term_id": "g4s1",
+      "unit_id": "g4s1-en-8",
+      "name": "Unit 8 What we wear",
+      "sort": 8,
+      "source": {
+        "edition": "yilin-eng-4a-2025",
+        "unit": "Unit 8 What we wear",
+        "unit_id": "g4s1-en-8",
+        "catalog": "/books/yilin/yingyu/4a_2025/",
+        "aligned_tasks": [
+          "g4s1-en-8-1",
+          "g4s1-en-8-2",
+          "g4s1-en-8-3",
+          "g4s1-en-8-4"
+        ]
+      },
+      "words": [
+        {
+          "word": "wear",
+          "cn": "穿",
+          "ipa": "",
+          "sort": 1,
+          "page": 66,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "cap",
+          "cn": "（尤指有帽舌的）便帽",
+          "ipa": "",
+          "sort": 2,
+          "page": 66,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "coat",
+          "cn": "外套；外衣",
+          "ipa": "",
+          "sort": 3,
+          "page": 66,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "skirt",
+          "cn": "半身裙",
+          "ipa": "",
+          "sort": 4,
+          "page": 66,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "trousers",
+          "cn": "裤子",
+          "ipa": "",
+          "sort": 5,
+          "page": 66,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "dress",
+          "cn": "连衣裙",
+          "ipa": "",
+          "sort": 6,
+          "page": 66,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "shirt",
+          "cn": "（男式）衬衫",
+          "ipa": "",
+          "sort": 7,
+          "page": 66,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "whose",
+          "cn": "谁的",
+          "ipa": "",
+          "sort": 8,
+          "page": 68,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "shorts",
+          "cn": "短裤",
+          "ipa": "",
+          "sort": 9,
+          "page": 68,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "look",
+          "cn": "看来好像；显得",
+          "ipa": "",
+          "sort": 10,
+          "page": 68,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "in",
+          "cn": "穿着；戴着",
+          "ipa": "",
+          "sort": 11,
+          "page": 68,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "sunglasses",
+          "cn": "太阳镜；墨镜",
+          "ipa": "",
+          "sort": 12,
+          "page": 68,
+          "entry_type": "词",
+          "core": false
+        },
+        {
+          "word": "why",
+          "cn": "为什么",
+          "ipa": "",
+          "sort": 13,
+          "page": 68,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "because",
+          "cn": "因为",
+          "ipa": "",
+          "sort": 14,
+          "page": 68,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "bright",
+          "cn": "聪明的；明亮的",
+          "ipa": "",
+          "sort": 15,
+          "page": 68,
+          "entry_type": "词",
+          "core": false
+        },
+        {
+          "word": "clothes",
+          "cn": "衣服",
+          "ipa": "",
+          "sort": 16,
+          "page": 70,
+          "entry_type": "词",
+          "core": true
+        }
+      ]
+    },
+    {
+      "id": "g4x2-en-1",
+      "term_id": "g4x2",
+      "unit_id": "g4x2-en-1",
+      "name": "Unit 1 We're friends",
+      "sort": 1,
+      "source": {
+        "edition": "yilin-eng-4b-2026",
+        "unit": "Unit 1 We're friends",
+        "unit_id": "g4x2-en-1",
+        "catalog": "/books/yilin/yingyu/4b_2026/",
+        "aligned_tasks": [
+          "g4x2-en-1-1"
+        ]
+      },
+      "words": [
+        {
+          "word": "weak",
+          "cn": "虚弱的；无力的",
+          "ipa": "",
+          "sort": 1,
+          "page": 9,
+          "entry_type": "词",
+          "core": false
+        },
+        {
+          "word": "strong",
+          "cn": "强壮的",
+          "ipa": "",
+          "sort": 2,
+          "page": 9,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "there are",
+          "cn": "有",
+          "ipa": "",
+          "sort": 3,
+          "page": 10,
+          "entry_type": "句型",
+          "core": true
+        },
+        {
+          "word": "them",
+          "cn": "它们；他们；她们",
+          "ipa": "",
+          "sort": 4,
+          "page": 10,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "from",
+          "cn": "来自",
+          "ipa": "",
+          "sort": 5,
+          "page": 10,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "party",
+          "cn": "聚会；联欢会",
+          "ipa": "",
+          "sort": 6,
+          "page": 10,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "like",
+          "cn": "像",
+          "ipa": "",
+          "sort": 7,
+          "page": 10,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "friendship",
+          "cn": "友谊",
+          "ipa": "",
+          "sort": 8,
+          "page": 10,
+          "entry_type": "词",
+          "core": false
+        },
+        {
+          "word": "forest",
+          "cn": "森林",
+          "ipa": "",
+          "sort": 9,
+          "page": 12,
+          "entry_type": "词",
+          "core": false
+        },
+        {
+          "word": "thin",
+          "cn": "瘦的",
+          "ipa": "",
+          "sort": 10,
+          "page": 12,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "back",
+          "cn": "背部",
+          "ipa": "",
+          "sort": 11,
+          "page": 12,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "angry",
+          "cn": "发怒的；生气的",
+          "ipa": "",
+          "sort": 12,
+          "page": 12,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "one day",
+          "cn": "有朝一日",
+          "ipa": "",
+          "sort": 13,
+          "page": 12,
+          "entry_type": "短语",
+          "core": true
+        },
+        {
+          "word": "how",
+          "cn": "怎样；如何",
+          "ipa": "",
+          "sort": 14,
+          "page": 12,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "Please!",
+          "cn": "求求你！",
+          "ipa": "",
+          "sort": 15,
+          "page": 12,
+          "entry_type": "句型",
+          "core": true
+        },
+        {
+          "word": "Go away!",
+          "cn": "走开！",
+          "ipa": "",
+          "sort": 16,
+          "page": 12,
+          "entry_type": "句型",
+          "core": false
+        },
+        {
+          "word": "net",
+          "cn": "网",
+          "ipa": "",
+          "sort": 17,
+          "page": 13,
+          "entry_type": "词",
+          "core": false
+        },
+        {
+          "word": "sad",
+          "cn": "悲哀的；难过的",
+          "ipa": "",
+          "sort": 18,
+          "page": 13,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "Help!",
+          "cn": "救命啊！",
+          "ipa": "",
+          "sort": 19,
+          "page": 13,
+          "entry_type": "句型",
+          "core": true
+        },
+        {
+          "word": "there is",
+          "cn": "有",
+          "ipa": "",
+          "sort": 20,
+          "page": 13,
+          "entry_type": "句型",
+          "core": true
+        },
+        {
+          "word": "hole",
+          "cn": "洞",
+          "ipa": "",
+          "sort": 21,
+          "page": 13,
+          "entry_type": "词",
+          "core": false
+        },
+        {
+          "word": "kind",
+          "cn": "友好的；体贴的",
+          "ipa": "",
+          "sort": 22,
+          "page": 13,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "become",
+          "cn": "变成；成为",
+          "ipa": "",
+          "sort": 23,
+          "page": 13,
+          "entry_type": "词",
+          "core": false
+        }
+      ]
+    },
+    {
+      "id": "g4x2-en-2",
+      "term_id": "g4x2",
+      "unit_id": "g4x2-en-2",
+      "name": "Unit 2 Helping others at school",
+      "sort": 2,
+      "source": {
+        "edition": "yilin-eng-4b-2026",
+        "unit": "Unit 2 Helping others at school",
+        "unit_id": "g4x2-en-2",
+        "catalog": "/books/yilin/yingyu/4b_2026/",
+        "aligned_tasks": [
+          "g4x2-en-2-1"
+        ]
+      },
+      "words": [
+        {
+          "word": "other",
+          "cn": "另外的；其他的",
+          "ipa": "",
+          "sort": 1,
+          "page": 16,
+          "entry_type": "词",
+          "core": false
+        },
+        {
+          "word": "room",
+          "cn": "房间",
+          "ipa": "",
+          "sort": 2,
+          "page": 16,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "computer",
+          "cn": "计算机；电脑",
+          "ipa": "",
+          "sort": 3,
+          "page": 17,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "swing",
+          "cn": "秋千",
+          "ipa": "",
+          "sort": 4,
+          "page": 18,
+          "entry_type": "词",
+          "core": false
+        },
+        {
+          "word": "playground",
+          "cn": "游戏场",
+          "ipa": "",
+          "sort": 5,
+          "page": 18,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "have a look",
+          "cn": "看一看",
+          "ipa": "",
+          "sort": 6,
+          "page": 18,
+          "entry_type": "短语",
+          "core": true
+        },
+        {
+          "word": "careful",
+          "cn": "小心；谨慎",
+          "ipa": "",
+          "sort": 7,
+          "page": 18,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "feel",
+          "cn": "觉得；感到",
+          "ipa": "",
+          "sort": 8,
+          "page": 18,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "take",
+          "cn": "带；拿",
+          "ipa": "",
+          "sort": 9,
+          "page": 20,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "first",
+          "cn": "第一",
+          "ipa": "",
+          "sort": 10,
+          "page": 20,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "floor",
+          "cn": "楼层",
+          "ipa": "",
+          "sort": 11,
+          "page": 20,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "show ... around",
+          "cn": "带……参观",
+          "ipa": "",
+          "sort": 12,
+          "page": 20,
+          "entry_type": "短语",
+          "core": false
+        },
+        {
+          "word": "any",
+          "cn": "任何的；任一的",
+          "ipa": "",
+          "sort": 13,
+          "page": 21,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "third",
+          "cn": "第三",
+          "ipa": "",
+          "sort": 14,
+          "page": 21,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "later",
+          "cn": "以后；后来",
+          "ipa": "",
+          "sort": 15,
+          "page": 21,
+          "entry_type": "词",
+          "core": false
+        },
+        {
+          "word": "piano",
+          "cn": "钢琴",
+          "ipa": "",
+          "sort": 16,
+          "page": 21,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "second",
+          "cn": "第二",
+          "ipa": "",
+          "sort": 17,
+          "page": 21,
+          "entry_type": "词",
+          "core": true
+        }
+      ]
+    },
+    {
+      "id": "g4x2-en-3",
+      "term_id": "g4x2",
+      "unit_id": "g4x2-en-3",
+      "name": "Unit 3 Road safety",
+      "sort": 3,
+      "source": {
+        "edition": "yilin-eng-4b-2026",
+        "unit": "Unit 3 Road safety",
+        "unit_id": "g4x2-en-3",
+        "catalog": "/books/yilin/yingyu/4b_2026/",
+        "aligned_tasks": [
+          "g4x2-en-3-1"
+        ]
+      },
+      "words": [
+        {
+          "word": "road",
+          "cn": "道路；公路",
+          "ipa": "",
+          "sort": 1,
+          "page": 24,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "safety",
+          "cn": "安全；平安",
+          "ipa": "",
+          "sort": 2,
+          "page": 24,
+          "entry_type": "词",
+          "core": false
+        },
+        {
+          "word": "bus",
+          "cn": "公共汽车；巴士",
+          "ipa": "",
+          "sort": 3,
+          "page": 25,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "traffic light",
+          "cn": "交通信号灯",
+          "ipa": "",
+          "sort": 4,
+          "page": 25,
+          "entry_type": "短语",
+          "core": false
+        },
+        {
+          "word": "take",
+          "cn": "乘坐；搭乘",
+          "ipa": "",
+          "sort": 5,
+          "page": 26,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "busy",
+          "cn": "人来车往的",
+          "ipa": "",
+          "sort": 6,
+          "page": 26,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "stay",
+          "cn": "保持",
+          "ipa": "",
+          "sort": 7,
+          "page": 26,
+          "entry_type": "词",
+          "core": false
+        },
+        {
+          "word": "close",
+          "cn": "接近；靠近",
+          "ipa": "",
+          "sort": 8,
+          "page": 26,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "cross",
+          "cn": "穿越；横过",
+          "ipa": "",
+          "sort": 9,
+          "page": 28,
+          "entry_type": "词",
+          "core": false
+        },
+        {
+          "word": "stop",
+          "cn": "停止；停下",
+          "ipa": "",
+          "sort": 10,
+          "page": 28,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "wait",
+          "cn": "等候；等待",
+          "ipa": "",
+          "sort": 11,
+          "page": 28,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "left",
+          "cn": "向左边",
+          "ipa": "",
+          "sort": 12,
+          "page": 29,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "right",
+          "cn": "向右边",
+          "ipa": "",
+          "sort": 13,
+          "page": 29,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "safe",
+          "cn": "安全的",
+          "ipa": "",
+          "sort": 14,
+          "page": 29,
+          "entry_type": "词",
+          "core": true
+        }
+      ]
+    },
+    {
+      "id": "g4x2-en-4",
+      "term_id": "g4x2",
+      "unit_id": "g4x2-en-4",
+      "name": "Unit 4 Caring about others",
+      "sort": 4,
+      "source": {
+        "edition": "yilin-eng-4b-2026",
+        "unit": "Unit 4 Caring about others",
+        "unit_id": "g4x2-en-4",
+        "catalog": "/books/yilin/yingyu/4b_2026/",
+        "aligned_tasks": [
+          "g4x2-en-4-1"
+        ]
+      },
+      "words": [
+        {
+          "word": "care about",
+          "cn": "关心；关怀",
+          "ipa": "",
+          "sort": 1,
+          "page": 32,
+          "entry_type": "短语",
+          "core": false
+        },
+        {
+          "word": "hungry",
+          "cn": "感到饿的",
+          "ipa": "",
+          "sort": 2,
+          "page": 32,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "thirsty",
+          "cn": "口渴的",
+          "ipa": "",
+          "sort": 3,
+          "page": 32,
+          "entry_type": "词",
+          "core": false
+        },
+        {
+          "word": "ill",
+          "cn": "不舒服的；有病的",
+          "ipa": "",
+          "sort": 4,
+          "page": 33,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "tired",
+          "cn": "疲倦的；疲劳的",
+          "ipa": "",
+          "sort": 5,
+          "page": 33,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "hot",
+          "cn": "感到闷热的",
+          "ipa": "",
+          "sort": 6,
+          "page": 34,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "water",
+          "cn": "水",
+          "ipa": "",
+          "sort": 7,
+          "page": 34,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "have a rest",
+          "cn": "休息一下",
+          "ipa": "",
+          "sort": 8,
+          "page": 34,
+          "entry_type": "短语",
+          "core": false
+        },
+        {
+          "word": "What's the matter?",
+          "cn": "怎么了？",
+          "ipa": "",
+          "sort": 9,
+          "page": 34,
+          "entry_type": "句型",
+          "core": true
+        },
+        {
+          "word": "home",
+          "cn": "到家；在家",
+          "ipa": "",
+          "sort": 10,
+          "page": 36,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "bag",
+          "cn": "包；袋",
+          "ipa": "",
+          "sort": 11,
+          "page": 36,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "bread",
+          "cn": "面包",
+          "ipa": "",
+          "sort": 12,
+          "page": 36,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "dear",
+          "cn": "亲爱的",
+          "ipa": "",
+          "sort": 13,
+          "page": 37,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "set the table",
+          "cn": "摆放餐具",
+          "ipa": "",
+          "sort": 14,
+          "page": 37,
+          "entry_type": "短语",
+          "core": false
+        }
+      ]
+    },
+    {
+      "id": "g4x2-en-5",
+      "term_id": "g4x2",
+      "unit_id": "g4x2-en-5",
+      "name": "Unit 5 Eating out",
+      "sort": 5,
+      "source": {
+        "edition": "yilin-eng-4b-2026",
+        "unit": "Unit 5 Eating out",
+        "unit_id": "g4x2-en-5",
+        "catalog": "/books/yilin/yingyu/4b_2026/",
+        "aligned_tasks": [
+          "g4x2-en-5-1"
+        ]
+      },
+      "words": [
+        {
+          "word": "eat out",
+          "cn": "去饭店吃饭",
+          "ipa": "",
+          "sort": 1,
+          "page": 42,
+          "entry_type": "短语",
+          "core": true
+        },
+        {
+          "word": "fried rice",
+          "cn": "炒饭",
+          "ipa": "",
+          "sort": 2,
+          "page": 42,
+          "entry_type": "词",
+          "core": false
+        },
+        {
+          "word": "spring roll",
+          "cn": "春卷",
+          "ipa": "",
+          "sort": 3,
+          "page": 42,
+          "entry_type": "词",
+          "core": false
+        },
+        {
+          "word": "noodle",
+          "cn": "面条",
+          "ipa": "",
+          "sort": 4,
+          "page": 42,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "tea",
+          "cn": "茶",
+          "ipa": "",
+          "sort": 5,
+          "page": 42,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "juice",
+          "cn": "果汁",
+          "ipa": "",
+          "sort": 6,
+          "page": 42,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "menu",
+          "cn": "菜单",
+          "ipa": "",
+          "sort": 7,
+          "page": 44,
+          "entry_type": "词",
+          "core": false
+        },
+        {
+          "word": "What would you like?",
+          "cn": "你想要什么？",
+          "ipa": "",
+          "sort": 8,
+          "page": 44,
+          "entry_type": "句型",
+          "core": true
+        },
+        {
+          "word": "fish and chips",
+          "cn": "炸鱼薯条",
+          "ipa": "",
+          "sort": 9,
+          "page": 44,
+          "entry_type": "短语",
+          "core": false
+        },
+        {
+          "word": "sandwich",
+          "cn": "三明治",
+          "ipa": "",
+          "sort": 10,
+          "page": 44,
+          "entry_type": "词",
+          "core": false
+        },
+        {
+          "word": "hot dog",
+          "cn": "热狗（香肠面包）",
+          "ipa": "",
+          "sort": 11,
+          "page": 44,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "delicious",
+          "cn": "美味的；可口的",
+          "ipa": "",
+          "sort": 12,
+          "page": 44,
+          "entry_type": "词",
+          "core": false
+        },
+        {
+          "word": "Anything else?",
+          "cn": "还要其他东西吗？",
+          "ipa": "",
+          "sort": 13,
+          "page": 47,
+          "entry_type": "句型",
+          "core": false
+        },
+        {
+          "word": "a glass of",
+          "cn": "一杯",
+          "ipa": "",
+          "sort": 14,
+          "page": 47,
+          "entry_type": "短语",
+          "core": true
+        },
+        {
+          "word": "a cup of",
+          "cn": "一杯",
+          "ipa": "",
+          "sort": 15,
+          "page": 47,
+          "entry_type": "短语",
+          "core": true
+        },
+        {
+          "word": "food",
+          "cn": "食物；食品",
+          "ipa": "",
+          "sort": 16,
+          "page": 47,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "next time",
+          "cn": "下次",
+          "ipa": "",
+          "sort": 17,
+          "page": 47,
+          "entry_type": "短语",
+          "core": true
+        },
+        {
+          "word": "hot pot",
+          "cn": "火锅",
+          "ipa": "",
+          "sort": 18,
+          "page": 47,
+          "entry_type": "短语",
+          "core": true
+        },
+        {
+          "word": "takeaway box",
+          "cn": "打包盒",
+          "ipa": "",
+          "sort": 19,
+          "page": 47,
+          "entry_type": "词",
+          "core": false
+        }
+      ]
+    },
+    {
+      "id": "g4x2-en-6",
+      "term_id": "g4x2",
+      "unit_id": "g4x2-en-6",
+      "name": "Unit 6 Jobs",
+      "sort": 6,
+      "source": {
+        "edition": "yilin-eng-4b-2026",
+        "unit": "Unit 6 Jobs",
+        "unit_id": "g4x2-en-6",
+        "catalog": "/books/yilin/yingyu/4b_2026/",
+        "aligned_tasks": [
+          "g4x2-en-6-1"
+        ]
+      },
+      "words": [
+        {
+          "word": "job",
+          "cn": "工作；职业",
+          "ipa": "",
+          "sort": 1,
+          "page": 50,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "driver",
+          "cn": "驾驶员；司机",
+          "ipa": "",
+          "sort": 2,
+          "page": 50,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "nurse",
+          "cn": "护士",
+          "ipa": "",
+          "sort": 3,
+          "page": 50,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "worker",
+          "cn": "工人",
+          "ipa": "",
+          "sort": 4,
+          "page": 50,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "teacher",
+          "cn": "教师",
+          "ipa": "",
+          "sort": 5,
+          "page": 50,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "doctor",
+          "cn": "医生",
+          "ipa": "",
+          "sort": 6,
+          "page": 50,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "farmer",
+          "cn": "农民",
+          "ipa": "",
+          "sort": 7,
+          "page": 50,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "cook",
+          "cn": "厨师",
+          "ipa": "",
+          "sort": 8,
+          "page": 51,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "police officer",
+          "cn": "警察",
+          "ipa": "",
+          "sort": 9,
+          "page": 51,
+          "entry_type": "词",
+          "core": false
+        },
+        {
+          "word": "hospital",
+          "cn": "医院",
+          "ipa": "",
+          "sort": 10,
+          "page": 52,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "parent",
+          "cn": "父亲；母亲",
+          "ipa": "",
+          "sort": 11,
+          "page": 52,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "work",
+          "cn": "工作",
+          "ipa": "",
+          "sort": 12,
+          "page": 52,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "sick",
+          "cn": "生病的；有病的",
+          "ipa": "",
+          "sort": 13,
+          "page": 52,
+          "entry_type": "词",
+          "core": false
+        },
+        {
+          "word": "people",
+          "cn": "人；人们",
+          "ipa": "",
+          "sort": 14,
+          "page": 52,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "busy",
+          "cn": "忙碌的",
+          "ipa": "",
+          "sort": 15,
+          "page": 52,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "taxi",
+          "cn": "出租汽车；的士",
+          "ipa": "",
+          "sort": 16,
+          "page": 52,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "train",
+          "cn": "火车",
+          "ipa": "",
+          "sort": 17,
+          "page": 52,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "place",
+          "cn": "地方",
+          "ipa": "",
+          "sort": 18,
+          "page": 54,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "way",
+          "cn": "方法；方式",
+          "ipa": "",
+          "sort": 19,
+          "page": 55,
+          "entry_type": "词",
+          "core": true
+        }
+      ]
+    },
+    {
+      "id": "g4x2-en-7",
+      "term_id": "g4x2",
+      "unit_id": "g4x2-en-7",
+      "name": "Unit 7 Doing chores at home",
+      "sort": 7,
+      "source": {
+        "edition": "yilin-eng-4b-2026",
+        "unit": "Unit 7 Doing chores at home",
+        "unit_id": "g4x2-en-7",
+        "catalog": "/books/yilin/yingyu/4b_2026/",
+        "aligned_tasks": [
+          "g4x2-en-7-1"
+        ]
+      },
+      "words": [
+        {
+          "word": "chore",
+          "cn": "日常事务",
+          "ipa": "",
+          "sort": 1,
+          "page": 58,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "dish",
+          "cn": "碗；盘",
+          "ipa": "",
+          "sort": 2,
+          "page": 58,
+          "entry_type": "词",
+          "core": false
+        },
+        {
+          "word": "water",
+          "cn": "给……浇水",
+          "ipa": "",
+          "sort": 3,
+          "page": 58,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "make the bed",
+          "cn": "铺床",
+          "ipa": "",
+          "sort": 4,
+          "page": 59,
+          "entry_type": "短语",
+          "core": true
+        },
+        {
+          "word": "what",
+          "cn": "多么；真；太",
+          "ipa": "",
+          "sort": 5,
+          "page": 60,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "house",
+          "cn": "房屋；房子",
+          "ipa": "",
+          "sort": 6,
+          "page": 60,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "Good job!",
+          "cn": "干得漂亮！",
+          "ipa": "",
+          "sort": 7,
+          "page": 60,
+          "entry_type": "句型",
+          "core": true
+        },
+        {
+          "word": "part of",
+          "cn": "……的一部分",
+          "ipa": "",
+          "sort": 8,
+          "page": 62,
+          "entry_type": "短语",
+          "core": false
+        },
+        {
+          "word": "so",
+          "cn": "所以",
+          "ipa": "",
+          "sort": 9,
+          "page": 62,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "half",
+          "cn": "一半",
+          "ipa": "",
+          "sort": 10,
+          "page": 63,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "past",
+          "cn": "晚于；在……之后",
+          "ipa": "",
+          "sort": 11,
+          "page": 63,
+          "entry_type": "词",
+          "core": false
+        },
+        {
+          "word": "weekend",
+          "cn": "周末",
+          "ipa": "",
+          "sort": 12,
+          "page": 63,
+          "entry_type": "词",
+          "core": false
+        }
+      ]
+    },
+    {
+      "id": "g4x2-en-8",
+      "term_id": "g4x2",
+      "unit_id": "g4x2-en-8",
+      "name": "Unit 8 In the kitchen",
+      "sort": 8,
+      "source": {
+        "edition": "yilin-eng-4b-2026",
+        "unit": "Unit 8 In the kitchen",
+        "unit_id": "g4x2-en-8",
+        "catalog": "/books/yilin/yingyu/4b_2026/",
+        "aligned_tasks": [
+          "g4x2-en-8-1",
+          "g4x2-en-8-2",
+          "g4x2-en-8-3"
+        ]
+      },
+      "words": [
+        {
+          "word": "kitchen",
+          "cn": "厨房",
+          "ipa": "",
+          "sort": 1,
+          "page": 66,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "milk",
+          "cn": "牛奶",
+          "ipa": "",
+          "sort": 2,
+          "page": 66,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "tomato",
+          "cn": "番茄；西红柿",
+          "ipa": "",
+          "sort": 3,
+          "page": 66,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "potato",
+          "cn": "马铃薯；土豆",
+          "ipa": "",
+          "sort": 4,
+          "page": 66,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "chicken",
+          "cn": "鸡肉",
+          "ipa": "",
+          "sort": 5,
+          "page": 67,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "egg",
+          "cn": "鸡蛋",
+          "ipa": "",
+          "sort": 6,
+          "page": 67,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "birthday",
+          "cn": "生日",
+          "ipa": "",
+          "sort": 7,
+          "page": 68,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "soup",
+          "cn": "汤",
+          "ipa": "",
+          "sort": 8,
+          "page": 68,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "him",
+          "cn": "他",
+          "ipa": "",
+          "sort": 9,
+          "page": 68,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "really",
+          "cn": "十分；非常",
+          "ipa": "",
+          "sort": 10,
+          "page": 68,
+          "entry_type": "词",
+          "core": false
+        },
+        {
+          "word": "get",
+          "cn": "去取；得到",
+          "ipa": "",
+          "sort": 11,
+          "page": 70,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "cut",
+          "cn": "切；割",
+          "ipa": "",
+          "sort": 12,
+          "page": 70,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "meat",
+          "cn": "肉",
+          "ipa": "",
+          "sort": 13,
+          "page": 70,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "I can't wait!",
+          "cn": "我等不及了！",
+          "ipa": "",
+          "sort": 14,
+          "page": 70,
+          "entry_type": "句型",
+          "core": true
+        }
+      ]
+    },
     {
       "id": "g5s1-en-1",
       "term_id": "g5s1",
@@ -15,11 +5660,10 @@
         "aligned_tasks": [
           "g5s1-en-1-1",
           "g5s1-en-1-2",
+          "g5s1-en-1-3",
           "g5s1-en-1-4",
           "g5s1-en-1-5"
-        ],
-        "note": "核心词，对齐本仓库五上英语 Unit 1 任务（Word list / bl / 三单 does / Talk about habits）。频率副词 always/usually/often/sometimes/never 放在 Unit 5。页码待对照 2026 秋译林 5A Word lists 后补。",
-        "needs_spot_check": true
+        ]
       },
       "words": [
         {
@@ -27,152 +5671,180 @@
           "cn": "习惯",
           "ipa": "/ˈhæbɪt/",
           "sort": 1,
-          "group": "topic"
+          "page": 8,
+          "entry_type": "词",
+          "core": false
         },
         {
-          "word": "get up",
-          "cn": "起床",
+          "word": "do exercise",
+          "cn": "锻炼",
           "ipa": "",
           "sort": 2,
-          "group": "routine"
+          "page": 8,
+          "entry_type": "短语",
+          "core": true
         },
         {
-          "word": "go to bed",
-          "cn": "上床睡觉",
+          "word": "listen",
+          "cn": "听",
           "ipa": "",
           "sort": 3,
-          "group": "routine"
+          "page": 8,
+          "entry_type": "词",
+          "core": true
         },
         {
-          "word": "have breakfast",
-          "cn": "吃早餐",
+          "word": "carefully",
+          "cn": "仔细地；小心翼翼地",
           "ipa": "",
           "sort": 4,
-          "group": "routine"
+          "page": 8,
+          "entry_type": "词",
+          "core": true
         },
         {
-          "word": "brush my teeth",
-          "cn": "刷牙",
+          "word": "put ... in order",
+          "cn": "把……整理好",
           "ipa": "",
           "sort": 5,
-          "group": "routine",
-          "accept": [
-            "brush teeth"
-          ]
+          "page": 8,
+          "entry_type": "短语",
+          "core": false
         },
         {
-          "word": "wash my face",
-          "cn": "洗脸",
+          "word": "take notes",
+          "cn": "记笔记",
           "ipa": "",
           "sort": 6,
-          "group": "routine",
-          "accept": [
-            "wash face"
-          ]
+          "page": 9,
+          "entry_type": "短语",
+          "core": false
         },
         {
-          "word": "go to school",
-          "cn": "去上学",
+          "word": "tidy",
+          "cn": "整洁的；井然有序的",
           "ipa": "",
           "sort": 7,
-          "group": "routine"
+          "page": 9,
+          "entry_type": "词",
+          "core": true
         },
         {
-          "word": "do homework",
-          "cn": "做作业",
+          "word": "wait a minute",
+          "cn": "等一会儿；稍等一下",
           "ipa": "",
           "sort": 8,
-          "group": "routine",
-          "accept": [
-            "do my homework"
-          ]
+          "page": 11,
+          "entry_type": "句型",
+          "core": true
         },
         {
-          "word": "watch TV",
-          "cn": "看电视",
-          "ipa": "",
+          "word": "never",
+          "cn": "从不；绝不",
+          "ipa": "/ˈnevə/",
           "sort": 9,
-          "group": "routine"
+          "page": 11,
+          "entry_type": "词",
+          "core": true
         },
         {
-          "word": "early",
-          "cn": "早的",
-          "ipa": "/ˈɜːli/",
+          "word": "do well",
+          "cn": "成功",
+          "ipa": "",
           "sort": 10,
-          "group": "adj"
+          "page": 13,
+          "entry_type": "短语",
+          "core": true
+        },
+        {
+          "word": "very much",
+          "cn": "非常",
+          "ipa": "",
+          "sort": 11,
+          "page": 13,
+          "entry_type": "短语",
+          "core": true
+        },
+        {
+          "word": "a lot of",
+          "cn": "许多",
+          "ipa": "",
+          "sort": 12,
+          "page": 13,
+          "entry_type": "短语",
+          "core": true
+        },
+        {
+          "word": "often",
+          "cn": "时常；常常",
+          "ipa": "/ˈɒfn/",
+          "sort": 13,
+          "page": 13,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "in bed",
+          "cn": "在床上",
+          "ipa": "",
+          "sort": 14,
+          "page": 13,
+          "entry_type": "短语",
+          "core": true
+        },
+        {
+          "word": "bad",
+          "cn": "坏的",
+          "ipa": "",
+          "sort": 15,
+          "page": 13,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "healthy",
+          "cn": "健康的；健壮的",
+          "ipa": "/ˈhelθi/",
+          "sort": 16,
+          "page": 14,
+          "entry_type": "词",
+          "core": true
         },
         {
           "word": "late",
           "cn": "晚的",
           "ipa": "/leɪt/",
-          "sort": 11,
-          "group": "adj"
-        },
-        {
-          "word": "healthy",
-          "cn": "健康的",
-          "ipa": "/ˈhelθi/",
-          "sort": 12,
-          "group": "adj"
-        },
-        {
-          "word": "before",
-          "cn": "在……之前",
-          "ipa": "/bɪˈfɔː/",
-          "sort": 13,
-          "group": "time"
-        },
-        {
-          "word": "after",
-          "cn": "在……之后",
-          "ipa": "/ˈɑːftə/",
-          "sort": 14,
-          "group": "time"
-        },
-        {
-          "word": "on time",
-          "cn": "准时",
-          "ipa": "",
-          "sort": 15,
-          "group": "time"
-        },
-        {
-          "word": "blackboard",
-          "cn": "黑板",
-          "ipa": "/ˈblækbɔːd/",
-          "sort": 16,
-          "group": "sounds-bl"
-        },
-        {
-          "word": "does",
-          "cn": "（他/她）做",
-          "ipa": "/dʌz/",
           "sort": 17,
-          "group": "grammar-3sg"
+          "page": 14,
+          "entry_type": "词",
+          "core": true
         },
         {
-          "word": "doesn't",
-          "cn": "（他/她）不做",
-          "ipa": "/ˈdʌznt/",
+          "word": "health",
+          "cn": "健康",
+          "ipa": "",
           "sort": 18,
-          "group": "grammar-3sg",
-          "accept": [
-            "does not"
-          ]
+          "page": 14,
+          "entry_type": "词",
+          "core": true
         },
         {
-          "word": "breakfast",
-          "cn": "早餐",
-          "ipa": "/ˈbrekfəst/",
+          "word": "card",
+          "cn": "卡片",
+          "ipa": "/kɑːd/",
           "sort": 19,
-          "group": "noun"
+          "page": 17,
+          "entry_type": "词",
+          "core": true
         },
         {
-          "word": "have dinner",
-          "cn": "吃晚饭",
+          "word": "It's your turn.",
+          "cn": "轮到你了。",
           "ipa": "",
           "sort": 20,
-          "group": "routine"
+          "page": 17,
+          "entry_type": "句型",
+          "core": true
         }
       ]
     },
@@ -190,166 +5862,236 @@
         "aligned_tasks": [
           "g5s1-en-2-1",
           "g5s1-en-2-2",
+          "g5s1-en-2-3",
           "g5s1-en-2-4",
           "g5s1-en-2-5"
-        ],
-        "note": "核心词，对齐 Unit 2（感受 / cl climbing / Does he/she like / Give advice）。class/clean 仅作拼读填充，已去掉。页码待对照课本 Word lists。",
-        "needs_spot_check": true
+        ]
       },
       "words": [
         {
-          "word": "feel",
-          "cn": "感觉",
-          "ipa": "/fiːl/",
+          "word": "feel good",
+          "cn": "感到愉快（或有信心等）",
+          "ipa": "",
           "sort": 1,
-          "group": "topic"
-        },
-        {
-          "word": "happy",
-          "cn": "高兴的",
-          "ipa": "/ˈhæpi/",
-          "sort": 2,
-          "group": "feel"
-        },
-        {
-          "word": "sad",
-          "cn": "难过的",
-          "ipa": "/sæd/",
-          "sort": 3,
-          "group": "feel"
-        },
-        {
-          "word": "tired",
-          "cn": "累的",
-          "ipa": "/ˈtaɪəd/",
-          "sort": 4,
-          "group": "feel"
-        },
-        {
-          "word": "angry",
-          "cn": "生气的",
-          "ipa": "/ˈæŋɡri/",
-          "sort": 5,
-          "group": "feel"
-        },
-        {
-          "word": "bored",
-          "cn": "无聊的",
-          "ipa": "/bɔːd/",
-          "sort": 6,
-          "group": "feel"
-        },
-        {
-          "word": "hungry",
-          "cn": "饿的",
-          "ipa": "/ˈhʌŋɡri/",
-          "sort": 7,
-          "group": "feel"
-        },
-        {
-          "word": "thirsty",
-          "cn": "渴的",
-          "ipa": "/ˈθɜːsti/",
-          "sort": 8,
-          "group": "feel"
+          "page": 20,
+          "entry_type": "短语",
+          "core": true
         },
         {
           "word": "worried",
-          "cn": "担心的",
+          "cn": "担心的；担忧的",
           "ipa": "/ˈwʌrid/",
-          "sort": 9,
-          "group": "feel"
+          "sort": 2,
+          "page": 20,
+          "entry_type": "词",
+          "core": false
         },
         {
-          "word": "ill",
-          "cn": "生病的",
-          "ipa": "/ɪl/",
-          "sort": 10,
-          "group": "feel"
+          "word": "excited",
+          "cn": "激动的；兴奋的",
+          "ipa": "",
+          "sort": 3,
+          "page": 20,
+          "entry_type": "词",
+          "core": true
         },
         {
-          "word": "better",
-          "cn": "更好的",
-          "ipa": "/ˈbetə/",
-          "sort": 11,
-          "group": "feel"
+          "word": "the high jump",
+          "cn": "跳高（运动）",
+          "ipa": "",
+          "sort": 4,
+          "page": 22,
+          "entry_type": "短语",
+          "core": false
         },
         {
-          "word": "well",
-          "cn": "健康的",
-          "ipa": "/wel/",
-          "sort": 12,
-          "group": "feel"
+          "word": "hard",
+          "cn": "努力地",
+          "ipa": "",
+          "sort": 5,
+          "page": 22,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "ouch",
+          "cn": "哎哟",
+          "ipa": "",
+          "sort": 6,
+          "page": 22,
+          "entry_type": "词",
+          "core": false
         },
         {
           "word": "like",
-          "cn": "喜欢",
+          "cn": "例如；譬如",
           "ipa": "/laɪk/",
+          "sort": 7,
+          "page": 22,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "Well done!",
+          "cn": "干得好！",
+          "ipa": "",
+          "sort": 8,
+          "page": 23,
+          "entry_type": "句型",
+          "core": true
+        },
+        {
+          "word": "yeah",
+          "cn": "是的；对的",
+          "ipa": "",
+          "sort": 9,
+          "page": 23,
+          "entry_type": "词",
+          "core": false
+        },
+        {
+          "word": "or",
+          "cn": "也不",
+          "ipa": "",
+          "sort": 10,
+          "page": 25,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "hear",
+          "cn": "听见；听到",
+          "ipa": "",
+          "sort": 11,
+          "page": 25,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "sometimes",
+          "cn": "有时；间或",
+          "ipa": "/ˈsʌmtaɪmz/",
+          "sort": 12,
+          "page": 25,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "then",
+          "cn": "然后；后来",
+          "ipa": "",
           "sort": 13,
-          "group": "verb"
+          "page": 25,
+          "entry_type": "词",
+          "core": true
         },
         {
-          "word": "sport",
-          "cn": "运动",
-          "ipa": "/spɔːt/",
+          "word": "teach",
+          "cn": "教授；教",
+          "ipa": "",
           "sort": 14,
-          "group": "noun"
+          "page": 25,
+          "entry_type": "词",
+          "core": true
         },
         {
-          "word": "football",
-          "cn": "足球",
-          "ipa": "/ˈfʊtbɔːl/",
+          "word": "write",
+          "cn": "书写；写字",
+          "ipa": "",
           "sort": 15,
-          "group": "noun"
+          "page": 25,
+          "entry_type": "词",
+          "core": true
         },
         {
-          "word": "swimming",
-          "cn": "游泳",
-          "ipa": "/ˈswɪmɪŋ/",
+          "word": "word",
+          "cn": "单词；字",
+          "ipa": "",
           "sort": 16,
-          "group": "noun"
+          "page": 25,
+          "entry_type": "词",
+          "core": true
         },
         {
-          "word": "climbing",
-          "cn": "攀爬",
-          "ipa": "/ˈklaɪmɪŋ/",
+          "word": "hand",
+          "cn": "手",
+          "ipa": "",
           "sort": 17,
-          "group": "sounds-cl"
+          "page": 25,
+          "entry_type": "词",
+          "core": true
         },
         {
-          "word": "run",
-          "cn": "跑",
-          "ipa": "/rʌn/",
+          "word": "understand",
+          "cn": "懂；理解",
+          "ipa": "",
           "sort": 18,
-          "group": "verb"
+          "page": 25,
+          "entry_type": "词",
+          "core": false
         },
         {
-          "word": "jump",
-          "cn": "跳",
-          "ipa": "/dʒʌmp/",
+          "word": "give up",
+          "cn": "放弃",
+          "ipa": "",
           "sort": 19,
-          "group": "verb"
+          "page": 26,
+          "entry_type": "短语",
+          "core": true
         },
         {
-          "word": "rest",
-          "cn": "休息",
-          "ipa": "/rest/",
+          "word": "other",
+          "cn": "那个；另一个",
+          "ipa": "",
           "sort": 20,
-          "group": "verb"
+          "page": 26,
+          "entry_type": "词",
+          "core": false
         },
         {
-          "word": "clothes",
-          "cn": "衣服",
-          "ipa": "/kləʊðz/",
+          "word": "fast",
+          "cn": "快；快速；迅速",
+          "ipa": "",
           "sort": 21,
-          "group": "sounds-cl"
+          "page": 26,
+          "entry_type": "词",
+          "core": true
         },
         {
-          "word": "advice",
-          "cn": "建议",
-          "ipa": "/ədˈvaɪs/",
+          "word": "speak",
+          "cn": "说话",
+          "ipa": "",
           "sort": 22,
-          "group": "topic"
+          "page": 26,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "study",
+          "cn": "学习",
+          "ipa": "",
+          "sort": 23,
+          "page": 28,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "know",
+          "cn": "知道；了解",
+          "ipa": "",
+          "sort": 24,
+          "page": 28,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "when",
+          "cn": "当……时",
+          "ipa": "",
+          "sort": 25,
+          "page": 29,
+          "entry_type": "词",
+          "core": true
         }
       ]
     },
@@ -367,162 +6109,119 @@
         "aligned_tasks": [
           "g5s1-en-3-1",
           "g5s1-en-3-2",
+          "g5s1-en-3-3",
           "g5s1-en-3-4",
           "g5s1-en-3-5"
-        ],
-        "note": "核心词，对齐 Unit 3（爱好 / br brother / What does he/she like doing）。不把句型 like doing 当单词。页码待对照课本 Word lists。",
-        "needs_spot_check": true
+        ]
       },
       "words": [
         {
           "word": "hobby",
-          "cn": "爱好",
+          "cn": "业余爱好",
           "ipa": "/ˈhɒbi/",
           "sort": 1,
-          "group": "topic"
+          "page": 32,
+          "entry_type": "词",
+          "core": false
         },
         {
-          "word": "hobbies",
-          "cn": "爱好（复数）",
-          "ipa": "/ˈhɒbiz/",
+          "word": "dance",
+          "cn": "舞蹈",
+          "ipa": "",
           "sort": 2,
-          "group": "topic"
+          "page": 32,
+          "entry_type": "词",
+          "core": true
         },
         {
-          "word": "reading",
-          "cn": "阅读",
-          "ipa": "/ˈriːdɪŋ/",
+          "word": "paper-cutting",
+          "cn": "剪纸",
+          "ipa": "",
           "sort": 3,
-          "group": "hobby"
+          "page": 32,
+          "entry_type": "词",
+          "core": true
         },
         {
-          "word": "drawing",
-          "cn": "画画",
-          "ipa": "/ˈdrɔːɪŋ/",
+          "word": "gift",
+          "cn": "礼物",
+          "ipa": "/ɡɪft/",
           "sort": 4,
-          "group": "hobby"
+          "page": 34,
+          "entry_type": "词",
+          "core": true
         },
         {
-          "word": "singing",
-          "cn": "唱歌",
-          "ipa": "/ˈsɪŋɪŋ/",
+          "word": "her",
+          "cn": "她",
+          "ipa": "",
           "sort": 5,
-          "group": "hobby"
+          "page": 34,
+          "entry_type": "词",
+          "core": true
         },
         {
-          "word": "dancing",
-          "cn": "跳舞",
-          "ipa": "/ˈdɑːnsɪŋ/",
+          "word": "skip",
+          "cn": "跳绳",
+          "ipa": "",
           "sort": 6,
-          "group": "hobby"
+          "page": 35,
+          "entry_type": "词",
+          "core": true
         },
         {
-          "word": "collecting",
-          "cn": "收集",
-          "ipa": "/kəˈlektɪŋ/",
+          "word": "I don't think so.",
+          "cn": "我不这么认为。",
+          "ipa": "",
           "sort": 7,
-          "group": "hobby"
+          "page": 35,
+          "entry_type": "句型",
+          "core": true
         },
         {
-          "word": "stamps",
-          "cn": "邮票",
-          "ipa": "/stæmps/",
+          "word": "make",
+          "cn": "使变得；使成为",
+          "ipa": "",
           "sort": 8,
-          "group": "hobby"
+          "page": 35,
+          "entry_type": "词",
+          "core": true
         },
         {
-          "word": "piano",
-          "cn": "钢琴",
-          "ipa": "/piˈænəʊ/",
+          "word": "join",
+          "cn": "成为……的一员；参加",
+          "ipa": "/dʒɔɪn/",
           "sort": 9,
-          "group": "hobby"
+          "page": 37,
+          "entry_type": "词",
+          "core": true
         },
         {
-          "word": "guitar",
-          "cn": "吉他",
-          "ipa": "/ɡɪˈtɑː/",
+          "word": "over there",
+          "cn": "在那里",
+          "ipa": "",
           "sort": 10,
-          "group": "hobby"
+          "page": 38,
+          "entry_type": "短语",
+          "core": true
         },
         {
-          "word": "fishing",
-          "cn": "钓鱼",
-          "ipa": "/ˈfɪʃɪŋ/",
+          "word": "a lot",
+          "cn": "大量",
+          "ipa": "",
           "sort": 11,
-          "group": "hobby"
+          "page": 38,
+          "entry_type": "短语",
+          "core": true
         },
         {
-          "word": "take photos",
-          "cn": "拍照",
+          "word": "paint",
+          "cn": "用颜料画",
           "ipa": "",
           "sort": 12,
-          "group": "hobby"
-        },
-        {
-          "word": "basketball",
-          "cn": "篮球",
-          "ipa": "/ˈbɑːskɪtbɔːl/",
-          "sort": 13,
-          "group": "hobby"
-        },
-        {
-          "word": "brother",
-          "cn": "哥哥；弟弟",
-          "ipa": "/ˈbrʌðə/",
-          "sort": 14,
-          "group": "sounds-br"
-        },
-        {
-          "word": "sister",
-          "cn": "姐姐；妹妹",
-          "ipa": "/ˈsɪstə/",
-          "sort": 15,
-          "group": "noun"
-        },
-        {
-          "word": "brown",
-          "cn": "棕色的",
-          "ipa": "/braʊn/",
-          "sort": 16,
-          "group": "sounds-br"
-        },
-        {
-          "word": "bread",
-          "cn": "面包",
-          "ipa": "/bred/",
-          "sort": 17,
-          "group": "sounds-br"
-        },
-        {
-          "word": "brush",
-          "cn": "刷子；刷",
-          "ipa": "/brʌʃ/",
-          "sort": 18,
-          "group": "sounds-br"
-        },
-        {
-          "word": "bright",
-          "cn": "明亮的",
-          "ipa": "/braɪt/",
-          "sort": 19,
-          "group": "sounds-br"
-        },
-        {
-          "word": "interesting",
-          "cn": "有趣的",
-          "ipa": "/ˈɪntrəstɪŋ/",
-          "sort": 20,
-          "group": "adj"
-        },
-        {
-          "word": "favourite",
-          "cn": "最喜欢的",
-          "ipa": "/ˈfeɪvərɪt/",
-          "sort": 21,
-          "group": "adj",
-          "accept": [
-            "favorite"
-          ]
+          "page": 40,
+          "entry_type": "词",
+          "core": true
         }
       ]
     },
@@ -540,155 +6239,173 @@
         "aligned_tasks": [
           "g5s1-en-4-1",
           "g5s1-en-4-2",
+          "g5s1-en-4-3",
           "g5s1-en-4-4",
           "g5s1-en-4-5"
-        ],
-        "note": "核心词，对齐 Unit 4（安全 / gr great / should shouldn't）。green/grass/grandpa/grow 仅作拼读填充，已去掉。页码待对照课本 Word lists。",
-        "needs_spot_check": true
+        ]
       },
       "words": [
         {
-          "word": "safety",
-          "cn": "安全",
-          "ipa": "/ˈseɪfti/",
-          "sort": 1,
-          "group": "topic"
-        },
-        {
-          "word": "safe",
-          "cn": "安全的",
-          "ipa": "/seɪf/",
-          "sort": 2,
-          "group": "adj"
-        },
-        {
-          "word": "dangerous",
-          "cn": "危险的",
-          "ipa": "/ˈdeɪndʒərəs/",
-          "sort": 3,
-          "group": "adj"
-        },
-        {
-          "word": "traffic",
-          "cn": "交通",
-          "ipa": "/ˈtræfɪk/",
-          "sort": 4,
-          "group": "noun"
-        },
-        {
-          "word": "light",
-          "cn": "灯",
-          "ipa": "/laɪt/",
-          "sort": 5,
-          "group": "noun"
-        },
-        {
-          "word": "cross",
-          "cn": "穿过",
-          "ipa": "/krɒs/",
-          "sort": 6,
-          "group": "verb"
-        },
-        {
-          "word": "road",
-          "cn": "路",
-          "ipa": "/rəʊd/",
-          "sort": 7,
-          "group": "noun"
-        },
-        {
-          "word": "street",
-          "cn": "街道",
-          "ipa": "/striːt/",
-          "sort": 8,
-          "group": "noun"
-        },
-        {
-          "word": "zebra crossing",
-          "cn": "斑马线",
+          "word": "pull",
+          "cn": "拉；拖",
           "ipa": "",
-          "sort": 9,
-          "group": "noun"
+          "sort": 1,
+          "page": 44,
+          "entry_type": "词",
+          "core": false
         },
         {
-          "word": "helmet",
-          "cn": "头盔",
-          "ipa": "/ˈhelmət/",
-          "sort": 10,
-          "group": "noun"
+          "word": "push",
+          "cn": "推",
+          "ipa": "",
+          "sort": 2,
+          "page": 44,
+          "entry_type": "词",
+          "core": false
         },
         {
-          "word": "fire",
-          "cn": "火",
-          "ipa": "/ˈfaɪə/",
-          "sort": 11,
-          "group": "noun"
+          "word": "warm up",
+          "cn": "做准备活动；热身",
+          "ipa": "",
+          "sort": 3,
+          "page": 44,
+          "entry_type": "短语",
+          "core": true
         },
         {
-          "word": "smoke",
-          "cn": "烟",
-          "ipa": "/sməʊk/",
-          "sort": 12,
-          "group": "noun"
+          "word": "jump",
+          "cn": "跳；跳跃",
+          "ipa": "/dʒʌmp/",
+          "sort": 4,
+          "page": 44,
+          "entry_type": "词",
+          "core": true
         },
         {
-          "word": "stranger",
-          "cn": "陌生人",
-          "ipa": "/ˈstreɪndʒə/",
-          "sort": 13,
-          "group": "noun"
-        },
-        {
-          "word": "help",
-          "cn": "帮助",
-          "ipa": "/help/",
-          "sort": 14,
-          "group": "verb"
-        },
-        {
-          "word": "policeman",
-          "cn": "警察",
-          "ipa": "/pəˈliːsmən/",
-          "sort": 15,
-          "group": "noun"
-        },
-        {
-          "word": "careful",
-          "cn": "小心的",
-          "ipa": "/ˈkeəfl/",
-          "sort": 16,
-          "group": "adj"
+          "word": "climb",
+          "cn": "爬",
+          "ipa": "",
+          "sort": 5,
+          "page": 45,
+          "entry_type": "词",
+          "core": false
         },
         {
           "word": "should",
-          "cn": "应该",
+          "cn": "应该；应当",
           "ipa": "/ʃʊd/",
+          "sort": 6,
+          "page": 46,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "swim",
+          "cn": "游泳",
+          "ipa": "",
+          "sort": 7,
+          "page": 46,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "swimming pool",
+          "cn": "游泳池；游泳馆",
+          "ipa": "",
+          "sort": 8,
+          "page": 46,
+          "entry_type": "短语",
+          "core": false
+        },
+        {
+          "word": "hurt",
+          "cn": "感到疼痛；（使）疼痛、受伤",
+          "ipa": "",
+          "sort": 9,
+          "page": 46,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "listen",
+          "cn": "听从",
+          "ipa": "",
+          "sort": 10,
+          "page": 47,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "stairs",
+          "cn": "楼梯",
+          "ipa": "",
+          "sort": 11,
+          "page": 49,
+          "entry_type": "词",
+          "core": false
+        },
+        {
+          "word": "keep to the right",
+          "cn": "靠右边走",
+          "ipa": "",
+          "sort": 12,
+          "page": 49,
+          "entry_type": "短语",
+          "core": true
+        },
+        {
+          "word": "from",
+          "cn": "从",
+          "ipa": "/frɒm/",
+          "sort": 13,
+          "page": 49,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "may",
+          "cn": "也许；可能",
+          "ipa": "",
+          "sort": 14,
+          "page": 50,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "out of the way",
+          "cn": "不再挡路；不再碍事",
+          "ipa": "",
+          "sort": 15,
+          "page": 50,
+          "entry_type": "短语",
+          "core": true
+        },
+        {
+          "word": "right now",
+          "cn": "立即；马上",
+          "ipa": "",
+          "sort": 16,
+          "page": 50,
+          "entry_type": "短语",
+          "core": true
+        },
+        {
+          "word": "walk",
+          "cn": "走；行走",
+          "ipa": "",
           "sort": 17,
-          "group": "grammar"
+          "page": 50,
+          "entry_type": "词",
+          "core": true
         },
         {
-          "word": "shouldn't",
-          "cn": "不应该",
-          "ipa": "/ˈʃʊdnt/",
+          "word": "slowly",
+          "cn": "慢速地；缓慢地",
+          "ipa": "",
           "sort": 18,
-          "group": "grammar",
-          "accept": [
-            "should not"
-          ]
-        },
-        {
-          "word": "first",
-          "cn": "第一；首先",
-          "ipa": "/fɜːst/",
-          "sort": 19,
-          "group": "topic"
-        },
-        {
-          "word": "great",
-          "cn": "很好的",
-          "ipa": "/ɡreɪt/",
-          "sort": 20,
-          "group": "sounds-gr"
+          "page": 50,
+          "entry_type": "词",
+          "core": true
         }
       ]
     },
@@ -706,197 +6423,155 @@
         "aligned_tasks": [
           "g5s1-en-5-1",
           "g5s1-en-5-2",
+          "g5s1-en-5-3",
           "g5s1-en-5-4",
           "g5s1-en-5-5"
-        ],
-        "note": "核心词，对齐 Unit 5（周末 / tr travel / 频率副词）。tree/truck/try 仅作拼读填充，已去掉。页码待对照课本 Word lists。",
-        "needs_spot_check": true
+        ]
       },
       "words": [
         {
-          "word": "weekend",
-          "cn": "周末",
-          "ipa": "/ˌwiːkˈend/",
+          "word": "watch",
+          "cn": "观看",
+          "ipa": "",
           "sort": 1,
-          "group": "topic"
+          "page": 58,
+          "entry_type": "词",
+          "core": true
         },
         {
-          "word": "at weekends",
-          "cn": "在周末",
+          "word": "TV",
+          "cn": "电视；电视机",
           "ipa": "",
           "sort": 2,
-          "group": "topic"
+          "page": 58,
+          "entry_type": "词",
+          "core": true
         },
         {
           "word": "visit",
-          "cn": "拜访",
+          "cn": "拜访；看望",
           "ipa": "/ˈvɪzɪt/",
           "sort": 3,
-          "group": "verb"
+          "page": 58,
+          "entry_type": "词",
+          "core": true
         },
         {
-          "word": "grandparents",
-          "cn": "祖父母",
-          "ipa": "/ˈɡrænpeərənts/",
+          "word": "grandparent",
+          "cn": "祖父；（外）祖母",
+          "ipa": "",
           "sort": 4,
-          "group": "noun"
+          "page": 58,
+          "entry_type": "词",
+          "core": false
         },
         {
-          "word": "park",
-          "cn": "公园",
-          "ipa": "/pɑːk/",
+          "word": "play Chinese chess",
+          "cn": "下象棋",
+          "ipa": "",
           "sort": 5,
-          "group": "noun"
+          "page": 58,
+          "entry_type": "短语",
+          "core": false
         },
         {
-          "word": "cinema",
-          "cn": "电影院",
-          "ipa": "/ˈsɪnəmə/",
+          "word": "play the piano",
+          "cn": "弹钢琴",
+          "ipa": "",
           "sort": 6,
-          "group": "noun"
+          "page": 59,
+          "entry_type": "短语",
+          "core": true
         },
         {
-          "word": "museum",
-          "cn": "博物馆",
-          "ipa": "/mjuˈziːəm/",
+          "word": "chat",
+          "cn": "闲聊；聊天",
+          "ipa": "",
           "sort": 7,
-          "group": "noun"
+          "page": 59,
+          "entry_type": "词",
+          "core": false
         },
         {
-          "word": "supermarket",
-          "cn": "超市",
-          "ipa": "/ˈsuːpəmɑːkɪt/",
+          "word": "internet",
+          "cn": "互联网",
+          "ipa": "",
           "sort": 8,
-          "group": "noun"
-        },
-        {
-          "word": "stay at home",
-          "cn": "待在家里",
-          "ipa": "",
-          "sort": 9,
-          "group": "routine"
-        },
-        {
-          "word": "go shopping",
-          "cn": "去购物",
-          "ipa": "",
-          "sort": 10,
-          "group": "routine"
-        },
-        {
-          "word": "go swimming",
-          "cn": "去游泳",
-          "ipa": "",
-          "sort": 11,
-          "group": "routine"
-        },
-        {
-          "word": "play football",
-          "cn": "踢足球",
-          "ipa": "",
-          "sort": 12,
-          "group": "routine"
-        },
-        {
-          "word": "go for a walk",
-          "cn": "去散步",
-          "ipa": "",
-          "sort": 13,
-          "group": "routine"
-        },
-        {
-          "word": "see a film",
-          "cn": "看电影",
-          "ipa": "",
-          "sort": 14,
-          "group": "routine",
-          "accept": [
-            "see a movie"
-          ]
-        },
-        {
-          "word": "picnic",
-          "cn": "野餐",
-          "ipa": "/ˈpɪknɪk/",
-          "sort": 15,
-          "group": "noun"
-        },
-        {
-          "word": "housework",
-          "cn": "家务",
-          "ipa": "/ˈhaʊswɜːk/",
-          "sort": 16,
-          "group": "noun"
-        },
-        {
-          "word": "cousin",
-          "cn": "堂/表兄弟姐妹",
-          "ipa": "/ˈkʌzn/",
-          "sort": 17,
-          "group": "noun"
-        },
-        {
-          "word": "together",
-          "cn": "一起",
-          "ipa": "/təˈɡeðə/",
-          "sort": 18,
-          "group": "adv"
-        },
-        {
-          "word": "travel",
-          "cn": "旅行",
-          "ipa": "/ˈtrævl/",
-          "sort": 19,
-          "group": "sounds-tr"
-        },
-        {
-          "word": "trip",
-          "cn": "短途旅行",
-          "ipa": "/trɪp/",
-          "sort": 20,
-          "group": "sounds-tr"
-        },
-        {
-          "word": "train",
-          "cn": "火车",
-          "ipa": "/treɪn/",
-          "sort": 21,
-          "group": "sounds-tr"
+          "page": 59,
+          "entry_type": "词",
+          "core": true
         },
         {
           "word": "always",
-          "cn": "总是",
+          "cn": "总是；每次都是",
           "ipa": "/ˈɔːlweɪz/",
-          "sort": 22,
-          "group": "frequency"
+          "sort": 9,
+          "page": 60,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "have a picnic",
+          "cn": "野餐",
+          "ipa": "",
+          "sort": 10,
+          "page": 61,
+          "entry_type": "短语",
+          "core": false
+        },
+        {
+          "word": "get out",
+          "cn": "出去",
+          "ipa": "",
+          "sort": 11,
+          "page": 61,
+          "entry_type": "短语",
+          "core": true
         },
         {
           "word": "usually",
-          "cn": "通常",
+          "cn": "通常地",
           "ipa": "/ˈjuːʒuəli/",
-          "sort": 23,
-          "group": "frequency"
+          "sort": 12,
+          "page": 63,
+          "entry_type": "词",
+          "core": false
         },
         {
-          "word": "often",
-          "cn": "经常",
-          "ipa": "/ˈɒfn/",
-          "sort": 24,
-          "group": "frequency"
+          "word": "plant",
+          "cn": "植物；花草",
+          "ipa": "",
+          "sort": 13,
+          "page": 63,
+          "entry_type": "词",
+          "core": true
         },
         {
-          "word": "sometimes",
-          "cn": "有时",
-          "ipa": "/ˈsʌmtaɪmz/",
-          "sort": 25,
-          "group": "frequency"
+          "word": "spend",
+          "cn": "花（时间）；度过",
+          "ipa": "/spend/",
+          "sort": 14,
+          "page": 63,
+          "entry_type": "词",
+          "core": false
         },
         {
-          "word": "never",
-          "cn": "从不",
-          "ipa": "/ˈnevə/",
-          "sort": 26,
-          "group": "frequency"
+          "word": "live",
+          "cn": "住；居住",
+          "ipa": "",
+          "sort": 15,
+          "page": 63,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "wonderful",
+          "cn": "精彩的；绝妙的",
+          "ipa": "",
+          "sort": 16,
+          "page": 64,
+          "entry_type": "词",
+          "core": true
         }
       ]
     },
@@ -914,162 +6589,237 @@
         "aligned_tasks": [
           "g5s1-en-6-1",
           "g5s1-en-6-2",
+          "g5s1-en-6-3",
           "g5s1-en-6-4",
           "g5s1-en-6-5"
-        ],
-        "note": "核心词，对齐 Unit 6（相处 / dr / Why don't）。不把 Why don't we 整句当单词。页码待对照课本 Word lists。",
-        "needs_spot_check": true
+        ]
       },
       "words": [
         {
-          "word": "get along",
-          "cn": "相处",
+          "word": "get along with",
+          "cn": "与……和睦相处",
           "ipa": "",
           "sort": 1,
-          "group": "topic"
+          "page": 70,
+          "entry_type": "短语",
+          "core": false
         },
         {
-          "word": "others",
-          "cn": "别人",
-          "ipa": "/ˈʌðəz/",
+          "word": "between",
+          "cn": "在……中间；介于……之间",
+          "ipa": "",
           "sort": 2,
-          "group": "topic"
+          "page": 70,
+          "entry_type": "词",
+          "core": true
         },
         {
-          "word": "friend",
-          "cn": "朋友",
-          "ipa": "/frend/",
+          "word": "wall",
+          "cn": "围墙",
+          "ipa": "",
           "sort": 3,
-          "group": "noun"
+          "page": 70,
+          "entry_type": "词",
+          "core": true
         },
         {
-          "word": "share",
-          "cn": "分享",
-          "ipa": "/ʃeə/",
+          "word": "neighbour",
+          "cn": "邻居；邻人",
+          "ipa": "",
           "sort": 4,
-          "group": "verb"
+          "page": 70,
+          "entry_type": "词",
+          "core": false
         },
         {
-          "word": "polite",
-          "cn": "有礼貌的",
-          "ipa": "/pəˈlaɪt/",
+          "word": "heavy",
+          "cn": "重的；沉的",
+          "ipa": "",
           "sort": 5,
-          "group": "adj"
-        },
-        {
-          "word": "kind",
-          "cn": "善良的",
-          "ipa": "/kaɪnd/",
-          "sort": 6,
-          "group": "adj"
-        },
-        {
-          "word": "sorry",
-          "cn": "对不起",
-          "ipa": "/ˈsɒri/",
-          "sort": 7,
-          "group": "expr"
-        },
-        {
-          "word": "excuse me",
-          "cn": "打扰一下",
-          "ipa": "",
-          "sort": 8,
-          "group": "expr"
-        },
-        {
-          "word": "wait",
-          "cn": "等待",
-          "ipa": "/weɪt/",
-          "sort": 9,
-          "group": "verb"
-        },
-        {
-          "word": "turn",
-          "cn": "轮次；转动",
-          "ipa": "/tɜːn/",
-          "sort": 10,
-          "group": "noun"
-        },
-        {
-          "word": "children",
-          "cn": "孩子们",
-          "ipa": "/ˈtʃɪldrən/",
-          "sort": 11,
-          "group": "noun"
-        },
-        {
-          "word": "classmate",
-          "cn": "同学",
-          "ipa": "/ˈklɑːsmeɪt/",
-          "sort": 12,
-          "group": "noun"
-        },
-        {
-          "word": "why",
-          "cn": "为什么",
-          "ipa": "/waɪ/",
-          "sort": 13,
-          "group": "grammar"
-        },
-        {
-          "word": "don't",
-          "cn": "不要；不",
-          "ipa": "/dəʊnt/",
-          "sort": 14,
-          "group": "grammar",
-          "accept": [
-            "do not"
-          ]
-        },
-        {
-          "word": "idea",
-          "cn": "主意",
-          "ipa": "/aɪˈdɪə/",
-          "sort": 15,
-          "group": "noun"
-        },
-        {
-          "word": "join",
-          "cn": "加入",
-          "ipa": "/dʒɔɪn/",
-          "sort": 16,
-          "group": "verb"
-        },
-        {
-          "word": "play with",
-          "cn": "和……玩",
-          "ipa": "",
-          "sort": 17,
-          "group": "verb"
-        },
-        {
-          "word": "help each other",
-          "cn": "互相帮助",
-          "ipa": "",
-          "sort": 18,
-          "group": "expr"
-        },
-        {
-          "word": "draw",
-          "cn": "画",
-          "ipa": "/drɔː/",
-          "sort": 19,
-          "group": "sounds-dr"
+          "page": 72,
+          "entry_type": "词",
+          "core": true
         },
         {
           "word": "drink",
-          "cn": "喝",
+          "cn": "喝；饮",
           "ipa": "/drɪŋk/",
-          "sort": 20,
-          "group": "sounds-dr"
+          "sort": 6,
+          "page": 72,
+          "entry_type": "词",
+          "core": true
         },
         {
-          "word": "drive",
-          "cn": "开车",
-          "ipa": "/draɪv/",
+          "word": "some",
+          "cn": "有些事物；有些人",
+          "ipa": "",
+          "sort": 7,
+          "page": 73,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "on one's way back",
+          "cn": "在某人回去的路上",
+          "ipa": "",
+          "sort": 8,
+          "page": 73,
+          "entry_type": "短语",
+          "core": true
+        },
+        {
+          "word": "their",
+          "cn": "他们的；她们的；它们的",
+          "ipa": "",
+          "sort": 9,
+          "page": 73,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "next to",
+          "cn": "紧邻；在……近旁",
+          "ipa": "",
+          "sort": 10,
+          "page": 75,
+          "entry_type": "短语",
+          "core": true
+        },
+        {
+          "word": "space",
+          "cn": "空地；空间",
+          "ipa": "",
+          "sort": 11,
+          "page": 75,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "too",
+          "cn": "太；过于",
+          "ipa": "",
+          "sort": 12,
+          "page": 75,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "close to",
+          "cn": "接近",
+          "ipa": "",
+          "sort": 13,
+          "page": 75,
+          "entry_type": "短语",
+          "core": true
+        },
+        {
+          "word": "use",
+          "cn": "使用；利用",
+          "ipa": "",
+          "sort": 14,
+          "page": 75,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "letter",
+          "cn": "信；函",
+          "ipa": "",
+          "sort": 15,
+          "page": 75,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "give",
+          "cn": "给",
+          "ipa": "",
+          "sort": 16,
+          "page": 75,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "advice",
+          "cn": "建议",
+          "ipa": "/ədˈvaɪs/",
+          "sort": 17,
+          "page": 75,
+          "entry_type": "词",
+          "core": false
+        },
+        {
+          "word": "important",
+          "cn": "重要的",
+          "ipa": "",
+          "sort": 18,
+          "page": 76,
+          "entry_type": "词",
+          "core": false
+        },
+        {
+          "word": "friendly",
+          "cn": "友好的；友爱的",
+          "ipa": "",
+          "sort": 19,
+          "page": 76,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "then",
+          "cn": "到那时；当时",
+          "ipa": "",
+          "sort": 20,
+          "page": 78,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "time",
+          "cn": "时候；时间",
+          "ipa": "/taɪm/",
           "sort": 21,
-          "group": "sounds-dr"
+          "page": 79,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "do your homework",
+          "cn": "做家庭作业",
+          "ipa": "",
+          "sort": 22,
+          "page": 79,
+          "entry_type": "短语",
+          "core": true
+        },
+        {
+          "word": "classmate",
+          "cn": "同班同学",
+          "ipa": "/ˈklɑːsmeɪt/",
+          "sort": 23,
+          "page": 79,
+          "entry_type": "词",
+          "core": false
+        },
+        {
+          "word": "favourite",
+          "accept": ["favorite"],
+          "cn": "特别喜爱的",
+          "ipa": "",
+          "sort": 24,
+          "page": 79,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "problem",
+          "cn": "问题；困难",
+          "ipa": "",
+          "sort": 25,
+          "page": 79,
+          "entry_type": "词",
+          "core": true
         }
       ]
     },
@@ -1087,159 +6837,209 @@
         "aligned_tasks": [
           "g5s1-en-7-1",
           "g5s1-en-7-2",
+          "g5s1-en-7-3",
           "g5s1-en-7-4",
           "g5s1-en-7-5"
-        ],
-        "note": "核心词，对齐 Unit 7（购物 / st sk sp / How much）。不把 how much 和 stop/study/sky/speak/spell 当本课词表。页码待对照课本 Word lists。",
-        "needs_spot_check": true
+        ]
       },
       "words": [
         {
           "word": "shop",
-          "cn": "商店",
+          "cn": "在商店购物",
           "ipa": "/ʃɒp/",
           "sort": 1,
-          "group": "topic"
+          "page": 82,
+          "entry_type": "词",
+          "core": true
         },
         {
-          "word": "shopping",
-          "cn": "购物",
-          "ipa": "/ˈʃɒpɪŋ/",
+          "word": "smart",
+          "cn": "明智且高效的",
+          "ipa": "/smɑːt/",
           "sort": 2,
-          "group": "topic"
+          "page": 82,
+          "entry_type": "词",
+          "core": false
         },
         {
-          "word": "buy",
-          "cn": "买",
-          "ipa": "/baɪ/",
+          "word": "shoe",
+          "cn": "鞋",
+          "ipa": "",
           "sort": 3,
-          "group": "verb"
+          "page": 82,
+          "entry_type": "词",
+          "core": true
         },
         {
-          "word": "cheap",
-          "cn": "便宜的",
-          "ipa": "/tʃiːp/",
+          "word": "sweater",
+          "cn": "毛衣",
+          "ipa": "",
           "sort": 4,
-          "group": "adj"
+          "page": 82,
+          "entry_type": "词",
+          "core": true
         },
         {
-          "word": "expensive",
-          "cn": "贵的",
-          "ipa": "/ɪkˈspensɪv/",
+          "word": "sock",
+          "cn": "短袜",
+          "ipa": "",
           "sort": 5,
-          "group": "adj"
+          "page": 83,
+          "entry_type": "词",
+          "core": true
         },
         {
-          "word": "price",
-          "cn": "价格",
-          "ipa": "/praɪs/",
+          "word": "bow",
+          "cn": "蝴蝶结",
+          "ipa": "",
           "sort": 6,
-          "group": "noun"
+          "page": 84,
+          "entry_type": "词",
+          "core": false
+        },
+        {
+          "word": "need",
+          "cn": "需要；必需",
+          "ipa": "",
+          "sort": 7,
+          "page": 84,
+          "entry_type": "词",
+          "core": false
+        },
+        {
+          "word": "Ms",
+          "cn": "女士（不指明婚否）",
+          "ipa": "",
+          "sort": 8,
+          "page": 84,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "twenty-eight",
+          "cn": "二十八",
+          "ipa": "",
+          "sort": 9,
+          "page": 84,
+          "entry_type": "词",
+          "core": true
         },
         {
           "word": "yuan",
-          "cn": "元",
+          "cn": "元（中国货币单位）",
           "ipa": "/juˈɑːn/",
-          "sort": 7,
-          "group": "noun"
+          "sort": 10,
+          "page": 84,
+          "entry_type": "词",
+          "core": false
         },
         {
-          "word": "size",
-          "cn": "尺码",
-          "ipa": "/saɪz/",
-          "sort": 8,
-          "group": "noun"
+          "word": "How about ...?",
+          "cn": "……怎么样？",
+          "ipa": "",
+          "sort": 11,
+          "page": 85,
+          "entry_type": "句型",
+          "core": true
         },
         {
-          "word": "colour",
-          "cn": "颜色",
-          "ipa": "/ˈkʌlə/",
-          "sort": 9,
-          "group": "noun",
-          "accept": [
-            "color"
-          ]
+          "word": "show",
+          "cn": "给……看；展示",
+          "ipa": "",
+          "sort": 12,
+          "page": 85,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "tail",
+          "cn": "尾巴",
+          "ipa": "",
+          "sort": 13,
+          "page": 85,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "list",
+          "cn": "清单",
+          "ipa": "",
+          "sort": 14,
+          "page": 87,
+          "entry_type": "词",
+          "core": false
+        },
+        {
+          "word": "pocket money",
+          "cn": "零花钱",
+          "ipa": "",
+          "sort": 15,
+          "page": 87,
+          "entry_type": "短语",
+          "core": false
+        },
+        {
+          "word": "one",
+          "cn": "一（批东西中的）一个",
+          "ipa": "",
+          "sort": 16,
+          "page": 87,
+          "entry_type": "词",
+          "core": true
         },
         {
           "word": "try on",
           "cn": "试穿",
           "ipa": "",
-          "sort": 10,
-          "group": "verb"
-        },
-        {
-          "word": "bag",
-          "cn": "包",
-          "ipa": "/bæɡ/",
-          "sort": 11,
-          "group": "noun"
-        },
-        {
-          "word": "fruit",
-          "cn": "水果",
-          "ipa": "/fruːt/",
-          "sort": 12,
-          "group": "noun"
-        },
-        {
-          "word": "vegetable",
-          "cn": "蔬菜",
-          "ipa": "/ˈvedʒtəbl/",
-          "sort": 13,
-          "group": "noun"
-        },
-        {
-          "word": "shoes",
-          "cn": "鞋",
-          "ipa": "/ʃuːz/",
-          "sort": 14,
-          "group": "noun"
-        },
-        {
-          "word": "socks",
-          "cn": "袜子",
-          "ipa": "/sɒks/",
-          "sort": 15,
-          "group": "noun"
-        },
-        {
-          "word": "skirt",
-          "cn": "裙子",
-          "ipa": "/skɜːt/",
-          "sort": 16,
-          "group": "noun"
-        },
-        {
-          "word": "T-shirt",
-          "cn": "T恤",
-          "ipa": "/ˈtiː ʃɜːt/",
           "sort": 17,
-          "group": "noun",
-          "accept": [
-            "t-shirt",
-            "T shirt"
-          ]
+          "page": 87,
+          "entry_type": "短语",
+          "core": true
         },
         {
-          "word": "smart",
-          "cn": "精明的",
-          "ipa": "/smɑːt/",
+          "word": "sixty-eight",
+          "cn": "六十八",
+          "ipa": "",
           "sort": 18,
-          "group": "topic"
+          "page": 87,
+          "entry_type": "词",
+          "core": true
         },
         {
-          "word": "spend",
-          "cn": "花（钱）",
-          "ipa": "/spend/",
+          "word": "take",
+          "cn": "选中；买下",
+          "ipa": "",
           "sort": 19,
-          "group": "verb"
+          "page": 87,
+          "entry_type": "词",
+          "core": true
         },
         {
-          "word": "save",
-          "cn": "节省",
-          "ipa": "/seɪv/",
+          "word": "pair",
+          "cn": "一双；一对",
+          "ipa": "",
           "sort": 20,
-          "group": "verb"
+          "page": 88,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "forty",
+          "cn": "四十",
+          "ipa": "",
+          "sort": 21,
+          "page": 88,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "twenty-four",
+          "cn": "二十四",
+          "ipa": "",
+          "sort": 22,
+          "page": 88,
+          "entry_type": "词",
+          "core": true
         }
       ]
     },
@@ -1257,11 +7057,10 @@
         "aligned_tasks": [
           "g5s1-en-8-1",
           "g5s1-en-8-2",
+          "g5s1-en-8-3",
           "g5s1-en-8-4",
           "g5s1-en-8-5"
-        ],
-        "note": "核心词，对齐 Unit 8（节日 / ing morning / in on at）。in October/on Monday/at night 是语法例句，已从词表拿掉。页码待对照课本 Word lists。",
-        "needs_spot_check": true
+        ]
       },
       "words": [
         {
@@ -1269,154 +7068,261 @@
           "cn": "节日",
           "ipa": "/ˈfestɪvl/",
           "sort": 1,
-          "group": "topic"
+          "page": 94,
+          "entry_type": "词",
+          "core": false
         },
         {
-          "word": "Spring Festival",
-          "cn": "春节",
+          "word": "sky",
+          "cn": "天空",
           "ipa": "",
           "sort": 2,
-          "group": "festival"
+          "page": 96,
+          "entry_type": "词",
+          "core": false
         },
         {
-          "word": "Christmas",
-          "cn": "圣诞节",
-          "ipa": "/ˈkrɪsməs/",
+          "word": "about",
+          "cn": "关于；对于",
+          "ipa": "",
           "sort": 3,
-          "group": "festival"
+          "page": 96,
+          "entry_type": "词",
+          "core": true
         },
         {
-          "word": "birthday",
-          "cn": "生日",
-          "ipa": "/ˈbɜːθdeɪ/",
+          "word": "May",
+          "cn": "五月",
+          "ipa": "",
           "sort": 4,
-          "group": "festival"
+          "page": 96,
+          "entry_type": "专名",
+          "core": true
         },
         {
-          "word": "National Day",
-          "cn": "国庆节",
+          "word": "or",
+          "cn": "或者",
           "ipa": "",
           "sort": 5,
-          "group": "festival"
+          "page": 96,
+          "entry_type": "词",
+          "core": true
         },
         {
-          "word": "Mid-Autumn Festival",
-          "cn": "中秋节",
+          "word": "June",
+          "cn": "六月",
           "ipa": "",
           "sort": 6,
-          "group": "festival"
+          "page": 96,
+          "entry_type": "专名",
+          "core": true
         },
         {
-          "word": "dumpling",
-          "cn": "饺子",
-          "ipa": "/ˈdʌmplɪŋ/",
+          "word": "dragon boat race",
+          "cn": "龙舟比赛",
+          "ipa": "",
           "sort": 7,
-          "group": "noun"
-        },
-        {
-          "word": "mooncake",
-          "cn": "月饼",
-          "ipa": "/ˈmuːnkeɪk/",
-          "sort": 8,
-          "group": "noun"
-        },
-        {
-          "word": "lantern",
-          "cn": "灯笼",
-          "ipa": "/ˈlæntən/",
-          "sort": 9,
-          "group": "noun"
-        },
-        {
-          "word": "gift",
-          "cn": "礼物",
-          "ipa": "/ɡɪft/",
-          "sort": 10,
-          "group": "noun"
-        },
-        {
-          "word": "present",
-          "cn": "礼物",
-          "ipa": "/ˈpreznt/",
-          "sort": 11,
-          "group": "noun"
-        },
-        {
-          "word": "party",
-          "cn": "聚会",
-          "ipa": "/ˈpɑːti/",
-          "sort": 12,
-          "group": "noun"
-        },
-        {
-          "word": "celebrate",
-          "cn": "庆祝",
-          "ipa": "/ˈselɪbreɪt/",
-          "sort": 13,
-          "group": "verb"
-        },
-        {
-          "word": "morning",
-          "cn": "早晨",
-          "ipa": "/ˈmɔːnɪŋ/",
-          "sort": 14,
-          "group": "sounds-ing"
-        },
-        {
-          "word": "evening",
-          "cn": "晚上",
-          "ipa": "/ˈiːvnɪŋ/",
-          "sort": 15,
-          "group": "sounds-ing"
-        },
-        {
-          "word": "night",
-          "cn": "夜晚",
-          "ipa": "/naɪt/",
-          "sort": 16,
-          "group": "time"
+          "page": 96,
+          "entry_type": "短语",
+          "core": false
         },
         {
           "word": "January",
           "cn": "一月",
           "ipa": "/ˈdʒænjuəri/",
+          "sort": 8,
+          "page": 99,
+          "entry_type": "专名",
+          "core": true
+        },
+        {
+          "word": "February",
+          "cn": "二月",
+          "ipa": "",
+          "sort": 9,
+          "page": 99,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "before",
+          "cn": "在……以前",
+          "ipa": "/bɪˈfɔː/",
+          "sort": 10,
+          "page": 99,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "door",
+          "cn": "门",
+          "ipa": "",
+          "sort": 11,
+          "page": 99,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "red packet",
+          "cn": "红包",
+          "ipa": "",
+          "sort": 12,
+          "page": 99,
+          "entry_type": "词",
+          "core": false
+        },
+        {
+          "word": "lion dance",
+          "cn": "舞狮",
+          "ipa": "",
+          "sort": 13,
+          "page": 99,
+          "entry_type": "短语",
+          "core": true
+        },
+        {
+          "word": "have a good time",
+          "cn": "过得愉快",
+          "ipa": "",
+          "sort": 14,
+          "page": 99,
+          "entry_type": "短语",
+          "core": true
+        },
+        {
+          "word": "December",
+          "cn": "十二月",
+          "ipa": "",
+          "sort": 15,
+          "page": 100,
+          "entry_type": "专名",
+          "core": true
+        },
+        {
+          "word": "hang",
+          "cn": "挂",
+          "ipa": "",
+          "sort": 16,
+          "page": 100,
+          "entry_type": "词",
+          "core": false
+        },
+        {
+          "word": "stocking",
+          "cn": "圣诞袜",
+          "ipa": "",
           "sort": 17,
-          "group": "time"
+          "page": 100,
+          "entry_type": "词",
+          "core": false
+        },
+        {
+          "word": "open",
+          "cn": "打开",
+          "ipa": "",
+          "sort": 18,
+          "page": 100,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "turkey",
+          "cn": "火鸡肉；火鸡",
+          "ipa": "",
+          "sort": 19,
+          "page": 100,
+          "entry_type": "词",
+          "core": false
         },
         {
           "word": "October",
           "cn": "十月",
           "ipa": "/ɒkˈtəʊbə/",
-          "sort": 18,
-          "group": "time"
-        },
-        {
-          "word": "Monday",
-          "cn": "星期一",
-          "ipa": "/ˈmʌndeɪ/",
-          "sort": 19,
-          "group": "time"
-        },
-        {
-          "word": "decorate",
-          "cn": "装饰",
-          "ipa": "/ˈdekəreɪt/",
           "sort": 20,
-          "group": "verb"
+          "page": 102,
+          "entry_type": "专名",
+          "core": true
         },
         {
-          "word": "firework",
-          "cn": "烟花",
-          "ipa": "/ˈfaɪəwɜːk/",
+          "word": "September",
+          "cn": "九月",
+          "ipa": "",
           "sort": 21,
-          "group": "noun"
+          "page": 103,
+          "entry_type": "专名",
+          "core": true
         },
         {
-          "word": "exciting",
-          "cn": "令人兴奋的",
-          "ipa": "/ɪkˈsaɪtɪŋ/",
+          "word": "mooncake",
+          "cn": "月饼",
+          "ipa": "/ˈmuːnkeɪk/",
           "sort": 22,
-          "group": "sounds-ing"
+          "page": 103,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "activity",
+          "cn": "活动",
+          "ipa": "",
+          "sort": 23,
+          "page": 103,
+          "entry_type": "词",
+          "core": false
+        },
+        {
+          "word": "moon",
+          "cn": "月亮",
+          "ipa": "",
+          "sort": 24,
+          "page": 103,
+          "entry_type": "词",
+          "core": true
+        },
+        {
+          "word": "China",
+          "cn": "中国",
+          "ipa": "",
+          "sort": 25,
+          "page": 103,
+          "entry_type": "专名",
+          "core": true
+        },
+        {
+          "word": "Spring Festival",
+          "cn": "春节",
+          "ipa": "",
+          "sort": 26,
+          "page": 96,
+          "entry_type": "节日名",
+          "core": true
+        },
+        {
+          "word": "Christmas",
+          "cn": "圣诞节",
+          "ipa": "",
+          "sort": 27,
+          "page": 100,
+          "entry_type": "节日名",
+          "core": true
+        },
+        {
+          "word": "National Day",
+          "cn": "国庆节",
+          "ipa": "",
+          "sort": 28,
+          "page": 102,
+          "entry_type": "节日名",
+          "core": true
+        },
+        {
+          "word": "Mid-Autumn Festival",
+          "cn": "中秋节",
+          "ipa": "",
+          "sort": 29,
+          "page": 103,
+          "entry_type": "节日名",
+          "core": true
         }
       ]
     },
@@ -1431,125 +7337,27 @@
         "unit": "Project 1 A happy life poster",
         "unit_id": "g5s1-en-9",
         "catalog": "/books/yilin/yingyu/5a_2026/",
-        "aligned_tasks": [
-          "g5s1-en-9-1"
-        ],
+        "aligned_tasks": ["g5s1-en-9-1"],
         "note": "项目回顾词，对齐 Project 1 A happy life poster，不机械复制前四单元全书。页码待对照 2026 秋译林 5A 后补。",
         "needs_spot_check": true
       },
       "words": [
-        {
-          "word": "poster",
-          "cn": "海报",
-          "ipa": "/ˈpəʊstə/",
-          "sort": 1,
-          "group": "topic"
-        },
-        {
-          "word": "happy life",
-          "cn": "快乐生活",
-          "ipa": "",
-          "sort": 2,
-          "group": "topic"
-        },
-        {
-          "word": "title",
-          "cn": "标题",
-          "ipa": "/ˈtaɪtl/",
-          "sort": 3,
-          "group": "noun"
-        },
-        {
-          "word": "keep fit",
-          "cn": "保持健康",
-          "ipa": "",
-          "sort": 4,
-          "group": "expr"
-        },
-        {
-          "word": "do sports",
-          "cn": "做运动",
-          "ipa": "",
-          "sort": 5,
-          "group": "expr"
-        },
-        {
-          "word": "healthy food",
-          "cn": "健康食物",
-          "ipa": "",
-          "sort": 6,
-          "group": "expr"
-        },
-        {
-          "word": "eat fruit",
-          "cn": "吃水果",
-          "ipa": "",
-          "sort": 7,
-          "group": "expr"
-        },
-        {
-          "word": "drink water",
-          "cn": "喝水",
-          "ipa": "",
-          "sort": 8,
-          "group": "expr"
-        },
-        {
-          "word": "get up early",
-          "cn": "早起",
-          "ipa": "",
-          "sort": 9,
-          "group": "expr"
-        },
-        {
-          "word": "go to bed early",
-          "cn": "早睡",
-          "ipa": "",
-          "sort": 10,
-          "group": "expr"
-        },
-        {
-          "word": "be happy",
-          "cn": "保持开心",
-          "ipa": "",
-          "sort": 11,
-          "group": "expr"
-        },
-        {
-          "word": "be careful",
-          "cn": "小心",
-          "ipa": "",
-          "sort": 12,
-          "group": "expr"
-        },
-        {
-          "word": "help others",
-          "cn": "帮助别人",
-          "ipa": "",
-          "sort": 13,
-          "group": "expr"
-        },
-        {
-          "word": "good habit",
-          "cn": "好习惯",
-          "ipa": "",
-          "sort": 14,
-          "group": "expr"
-        },
-        {
-          "word": "smile",
-          "cn": "微笑",
-          "ipa": "/smaɪl/",
-          "sort": 15,
-          "group": "verb"
-        },
-        {
-          "word": "picture",
-          "cn": "图画",
-          "ipa": "/ˈpɪktʃə/",
-          "sort": 16,
-          "group": "noun"
-        }
+        {"word": "poster", "cn": "海报", "ipa": "/ˈpəʊstə/", "sort": 1, "group": "topic", "page": null, "entry_type": "项目词汇", "core": true},
+        {"word": "happy life", "cn": "快乐生活", "ipa": "", "sort": 2, "group": "topic", "page": null, "entry_type": "项目词汇", "core": true},
+        {"word": "title", "cn": "标题", "ipa": "/ˈtaɪtl/", "sort": 3, "group": "noun", "page": null, "entry_type": "项目词汇", "core": true},
+        {"word": "keep fit", "cn": "保持健康", "ipa": "", "sort": 4, "group": "expr", "page": null, "entry_type": "项目词汇", "core": true},
+        {"word": "do sports", "cn": "做运动", "ipa": "", "sort": 5, "group": "expr", "page": null, "entry_type": "项目词汇", "core": true},
+        {"word": "healthy food", "cn": "健康食物", "ipa": "", "sort": 6, "group": "expr", "page": null, "entry_type": "项目词汇", "core": true},
+        {"word": "eat fruit", "cn": "吃水果", "ipa": "", "sort": 7, "group": "expr", "page": null, "entry_type": "项目词汇", "core": true},
+        {"word": "drink water", "cn": "喝水", "ipa": "", "sort": 8, "group": "expr", "page": null, "entry_type": "项目词汇", "core": true},
+        {"word": "get up early", "cn": "早起", "ipa": "", "sort": 9, "group": "expr", "page": null, "entry_type": "项目词汇", "core": true},
+        {"word": "go to bed early", "cn": "早睡", "ipa": "", "sort": 10, "group": "expr", "page": null, "entry_type": "项目词汇", "core": true},
+        {"word": "be happy", "cn": "保持开心", "ipa": "", "sort": 11, "group": "expr", "page": null, "entry_type": "项目词汇", "core": true},
+        {"word": "be careful", "cn": "小心", "ipa": "", "sort": 12, "group": "expr", "page": null, "entry_type": "项目词汇", "core": true},
+        {"word": "help others", "cn": "帮助别人", "ipa": "", "sort": 13, "group": "expr", "page": null, "entry_type": "项目词汇", "core": true},
+        {"word": "good habit", "cn": "好习惯", "ipa": "", "sort": 14, "group": "expr", "page": null, "entry_type": "项目词汇", "core": true},
+        {"word": "smile", "cn": "微笑", "ipa": "/smaɪl/", "sort": 15, "group": "verb", "page": null, "entry_type": "项目词汇", "core": true},
+        {"word": "picture", "cn": "图画", "ipa": "/ˈpɪktʃə/", "sort": 16, "group": "noun", "page": null, "entry_type": "项目词汇", "core": true}
       ]
     },
     {
@@ -1563,128 +7371,27 @@
         "unit": "Project 2 An invitation card",
         "unit_id": "g5s1-en-10",
         "catalog": "/books/yilin/yingyu/5a_2026/",
-        "aligned_tasks": [
-          "g5s1-en-10-1"
-        ],
+        "aligned_tasks": ["g5s1-en-10-1"],
         "note": "项目回顾词，对齐 Project 2 An invitation card，只收邀请卡常用表达。页码待对照 2026 秋译林 5A 后补。",
         "needs_spot_check": true
       },
       "words": [
-        {
-          "word": "invitation",
-          "cn": "邀请",
-          "ipa": "/ˌɪnvɪˈteɪʃn/",
-          "sort": 1,
-          "group": "topic"
-        },
-        {
-          "word": "invite",
-          "cn": "邀请",
-          "ipa": "/ɪnˈvaɪt/",
-          "sort": 2,
-          "group": "verb"
-        },
-        {
-          "word": "card",
-          "cn": "卡片",
-          "ipa": "/kɑːd/",
-          "sort": 3,
-          "group": "noun"
-        },
-        {
-          "word": "come",
-          "cn": "来",
-          "ipa": "/kʌm/",
-          "sort": 4,
-          "group": "verb"
-        },
-        {
-          "word": "date",
-          "cn": "日期",
-          "ipa": "/deɪt/",
-          "sort": 5,
-          "group": "noun"
-        },
-        {
-          "word": "time",
-          "cn": "时间",
-          "ipa": "/taɪm/",
-          "sort": 6,
-          "group": "noun"
-        },
-        {
-          "word": "place",
-          "cn": "地点",
-          "ipa": "/pleɪs/",
-          "sort": 7,
-          "group": "noun"
-        },
-        {
-          "word": "please",
-          "cn": "请",
-          "ipa": "/pliːz/",
-          "sort": 8,
-          "group": "expr"
-        },
-        {
-          "word": "join us",
-          "cn": "加入我们",
-          "ipa": "",
-          "sort": 9,
-          "group": "expr"
-        },
-        {
-          "word": "Would you like",
-          "cn": "你愿意……吗",
-          "ipa": "",
-          "sort": 10,
-          "group": "grammar",
-          "accept": [
-            "would you like"
-          ]
-        },
-        {
-          "word": "birthday party",
-          "cn": "生日聚会",
-          "ipa": "",
-          "sort": 11,
-          "group": "noun"
-        },
-        {
-          "word": "address",
-          "cn": "地址",
-          "ipa": "/əˈdres/",
-          "sort": 12,
-          "group": "noun"
-        },
-        {
-          "word": "from",
-          "cn": "来自",
-          "ipa": "/frɒm/",
-          "sort": 13,
-          "group": "prep"
-        },
-        {
-          "word": "welcome",
-          "cn": "欢迎",
-          "ipa": "/ˈwelkəm/",
-          "sort": 14,
-          "group": "expr"
-        },
-        {
-          "word": "bring",
-          "cn": "带来",
-          "ipa": "/brɪŋ/",
-          "sort": 15,
-          "group": "verb"
-        },
-        {
-          "word": "see you",
-          "cn": "再见；到时见",
-          "ipa": "",
-          "sort": 16,
-          "group": "expr"
-        }
+        {"word": "invitation", "cn": "邀请", "ipa": "/ˌɪnvɪˈteɪʃn/", "sort": 1, "group": "topic", "page": null, "entry_type": "项目词汇", "core": true},
+        {"word": "invite", "cn": "邀请", "ipa": "/ɪnˈvaɪt/", "sort": 2, "group": "verb", "page": null, "entry_type": "项目词汇", "core": true},
+        {"word": "card", "cn": "卡片", "ipa": "/kɑːd/", "sort": 3, "group": "noun", "page": null, "entry_type": "项目词汇", "core": true},
+        {"word": "come", "cn": "来", "ipa": "/kʌm/", "sort": 4, "group": "verb", "page": null, "entry_type": "项目词汇", "core": true},
+        {"word": "date", "cn": "日期", "ipa": "/deɪt/", "sort": 5, "group": "noun", "page": null, "entry_type": "项目词汇", "core": true},
+        {"word": "time", "cn": "时间", "ipa": "/taɪm/", "sort": 6, "group": "noun", "page": null, "entry_type": "项目词汇", "core": true},
+        {"word": "place", "cn": "地点", "ipa": "/pleɪs/", "sort": 7, "group": "noun", "page": null, "entry_type": "项目词汇", "core": true},
+        {"word": "please", "cn": "请", "ipa": "/pliːz/", "sort": 8, "group": "expr", "page": null, "entry_type": "项目词汇", "core": true},
+        {"word": "join us", "cn": "加入我们", "ipa": "", "sort": 9, "group": "expr", "page": null, "entry_type": "项目词汇", "core": true},
+        {"word": "Would you like", "cn": "你愿意……吗", "ipa": "", "sort": 10, "group": "grammar", "accept": ["would you like"], "page": null, "entry_type": "项目词汇", "core": true},
+        {"word": "birthday party", "cn": "生日聚会", "ipa": "", "sort": 11, "group": "noun", "page": null, "entry_type": "项目词汇", "core": true},
+        {"word": "address", "cn": "地址", "ipa": "/əˈdres/", "sort": 12, "group": "noun", "page": null, "entry_type": "项目词汇", "core": true},
+        {"word": "from", "cn": "来自", "ipa": "/frɒm/", "sort": 13, "group": "prep", "page": null, "entry_type": "项目词汇", "core": true},
+        {"word": "welcome", "cn": "欢迎", "ipa": "/ˈwelkəm/", "sort": 14, "group": "expr", "page": null, "entry_type": "项目词汇", "core": true},
+        {"word": "bring", "cn": "带来", "ipa": "/brɪŋ/", "sort": 15, "group": "verb", "page": null, "entry_type": "项目词汇", "core": true},
+        {"word": "see you", "cn": "再见；到时见", "ipa": "", "sort": 16, "group": "expr", "page": null, "entry_type": "项目词汇", "core": true}
       ]
     }
   ]
