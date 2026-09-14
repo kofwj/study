@@ -4001,10 +4001,11 @@ class WordConfigIn(BaseModel):
     perfect_sunshine: Optional[int] = None
     unlock_by_cursor: Optional[bool] = None
     current_book: Optional[str] = None
+    review_mode: Optional[str] = None
+    review_books: Optional[list[str]] = None
     tts: Optional[bool] = None
     tts_autoplay: Optional[bool] = None
     tts_lang: Optional[str] = None
-
 
 class WordBookIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -4096,10 +4097,10 @@ def admin_words_config():
     kid = _need_kid()
     fam = _fam.get()
     cfg = wordmod.kid_config(c, kid)
+    cfg["review_books"] = wordmod.sanitize_review_books(c, fam, cfg.get("review_books") or [])
     books = wordmod.list_books(c, kid, fam)
     c.close()
     return {**cfg, "books": books}
-
 
 @app.put("/api/admin/words/config", dependencies=[Depends(require_parent)])
 def admin_words_config_put(b: WordConfigIn):
@@ -4107,23 +4108,39 @@ def admin_words_config_put(b: WordConfigIn):
     kid = _need_kid()
     fam = _fam.get()
     fields = b.model_dump(exclude_unset=True)
+    cfg = wordmod.kid_config(c, kid)
+    proposed = dict(cfg)
+    if "review_mode" in fields:
+        if fields["review_mode"] not in ("current", "scope"):
+            c.close()
+            raise HTTPException(400, "复习范围模式只能是 current 或 scope")
+        proposed["review_mode"] = fields["review_mode"]
+    if "review_books" in fields:
+        fields["review_books"] = wordmod.sanitize_review_books(c, fam, fields.get("review_books") or [])
+        proposed["review_books"] = fields["review_books"]
     if "current_book" in fields:
         bid = (fields.get("current_book") or "").strip()
-        if bid:
-            book = wordmod.get_book(c, fam, bid)
-            if not book or int(book["enabled"] or 0) != 1:
-                c.close()
-                raise HTTPException(404, "没找到这本词书")
-            probe = dict(fields)
-            cfg = wordmod.kid_config(c, kid)
-            cfg.update({k: v for k, v in probe.items() if k != "current_book" and v is not None})
-            if not wordmod.book_selectable(c, kid, fam, book, cfg):
-                c.close()
-                raise HTTPException(400, "先在已学到里设置英语进度，或关掉词书游标锁")
         fields["current_book"] = bid
+        proposed["current_book"] = bid
+    bid = (proposed.get("current_book") or "").strip()
+    if bid:
+        book = wordmod.get_book(c, fam, bid)
+        if not book or int(book["enabled"] or 0) != 1:
+            c.close()
+            raise HTTPException(404, "没找到这本词书")
+        if proposed.get("review_mode") == "scope" and int(book["is_system"] or 0):
+            selected = wordmod.sanitize_review_books(c, fam, proposed.get("review_books") or [])
+            if bid not in selected:
+                c.close()
+                raise HTTPException(400, "scope 模式下当前新词词书必须在复习范围内")
+            # Scope mode deliberately bypasses the English cursor lock.
+        elif not wordmod.book_selectable(c, kid, fam, book, proposed):
+            c.close()
+            raise HTTPException(400, "先在已学到里设置英语进度，或关掉词书游标锁")
     wordmod.set_kid_config(c, kid, **fields)
     c.commit()
     cfg = wordmod.kid_config(c, kid)
+    cfg["review_books"] = wordmod.sanitize_review_books(c, fam, cfg.get("review_books") or [])
     books = wordmod.list_books(c, kid, fam)
     c.close()
     return {**cfg, "books": books}

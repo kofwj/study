@@ -1318,7 +1318,20 @@ def set_kid_setting(conn, kid, key, value):
         "INSERT INTO kid_settings(kid_id,key,value) VALUES(?,?,?) "
         "ON CONFLICT(kid_id, key) DO UPDATE SET value=excluded.value",
         (kid, key, str(value)))
+def get_kid_setting_json(conn, kid, key, default=None):
+    """Read a JSON-valued kid setting; malformed legacy values use default."""
+    raw = get_kid_setting(conn, kid, key, None)
+    if raw is None:
+        return default
+    try:
+        return json.loads(raw)
+    except (TypeError, ValueError):
+        return default
 
+
+def set_kid_setting_json(conn, kid, key, value):
+    """Store a JSON-valued kid setting in the existing kid_settings table."""
+    set_kid_setting(conn, kid, key, json.dumps(value, ensure_ascii=False))
 
 def insert_ledger(conn, date, delta, reason, ref_id, note, kid_id, account="pocket"):
     """写入流水。一次性 reason 撞唯一索引时返回 None，不抛。"""

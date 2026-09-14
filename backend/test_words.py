@@ -383,3 +383,63 @@ def test_admin_words_need_kid():
         assert r.status_code == 400
         r = cli.get("/api/admin/words/config")
         assert r.status_code == 400
+
+def test_scope_review_books_filters_and_preserves_current_behavior():
+    db.init_db()
+    with TestClient(main.app) as cli:
+        kid = _parent(cli, "scopew", "wordpass", "范围家")
+        family = cli.post("/api/admin/words/books", json={"name": "家庭词"}).json()["id"]
+        assert cli.post("/api/admin/cursor", json={
+            "subject_id": "英语", "task_id": "g5s1-en-1-1"
+        }).status_code == 200
+        cfg = cli.put("/api/admin/words/config", json={
+            "enabled": True, "review_mode": "scope",
+            "review_books": ["g3s1-en-2", "not-a-book", family, "g3s1-en-1", "g3s1-en-2"],
+            "current_book": "g3s1-en-1", "new_per_day": 10, "max_due": 10,
+        })
+        assert cfg.status_code == 200, cfg.text
+        body = cfg.json()
+        assert body["review_mode"] == "scope"
+        assert body["review_books"] == ["g3s1-en-2", "g3s1-en-1"]
+
+        c = db.connect()
+        chosen = c.execute("SELECT id FROM words WHERE book_id='g3s1-en-1' AND active=1 LIMIT 1").fetchone()[0]
+        outside = c.execute("SELECT id FROM words WHERE book_id='g5s1-en-1' AND active=1 LIMIT 1").fetchone()[0]
+        now, today = db.now(), db.today()
+        for wid in (chosen, outside):
+            c.execute(
+                "INSERT INTO word_progress(kid_id,word_id,interval_idx,due_at,first_seen_at,last_seen_at,"
+                "last_result,streak_right,correct_count,wrong_count) VALUES(?,?,0,?,?,?, 'right',1,1,0)",
+                (kid, wid, today, now, now),
+            )
+        c.commit()
+        c.close()
+
+        sess = cli.post("/api/words/session/start").json()["session"]
+        assert sess and sess["counts"]["due"] == 1
+        c = db.connect()
+        books = {r["book_id"] for r in c.execute(
+            "SELECT DISTINCT w.book_id FROM word_session_items i JOIN words w ON w.id=i.word_id "
+            "WHERE i.session_id=?", (sess["id"],)
+        ).fetchall()}
+        c.close()
+        assert books <= {"g3s1-en-1", "g3s1-en-2"}
+        assert all(x["entry_type"] not in wordmod.NON_PRACTICE_ENTRY_TYPES for x in sess["items"])
+        yday = (__import__("datetime").date.today() - __import__("datetime").timedelta(days=1)).isoformat()
+        c = db.connect()
+        c.execute("UPDATE word_sessions SET study_date=?, state='abandoned' WHERE id=?", (yday, sess["id"]))
+        c.commit()
+        c.close()
+        r = cli.put("/api/admin/words/config", json={
+            "review_mode": "current", "current_book": "g5s1-en-1"
+        })
+        assert r.status_code == 200, r.text
+        assert r.json()["review_mode"] == "current"
+        old = cli.post("/api/words/session/start").json()["session"]
+        c = db.connect()
+        old_books = {r["book_id"] for r in c.execute(
+            "SELECT DISTINCT w.book_id FROM word_session_items i JOIN words w ON w.id=i.word_id "
+            "WHERE i.session_id=?", (old["id"],)
+        ).fetchall()}
+        c.close()
+        assert "g5s1-en-1" in old_books

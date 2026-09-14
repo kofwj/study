@@ -28,6 +28,8 @@ CFG_BASE = "words_base_sunshine"
 CFG_PERFECT = "words_perfect_sunshine"
 CFG_CURSOR = "words_unlock_by_cursor"
 CFG_BOOK = "words_current_book"
+CFG_REVIEW_MODE = "words_review_mode"
+CFG_REVIEW_BOOKS = "words_review_books"
 CFG_TTS = "words_tts"
 CFG_TTS_AUTO = "words_tts_autoplay"
 CFG_TTS_LANG = "words_tts_lang"
@@ -88,9 +90,29 @@ def _clamp_int(raw, default, lo, hi):
     return max(lo, min(hi, v))
 
 
+def _parse_review_books(raw):
+    try:
+        value = json.loads(raw or "[]")
+    except (TypeError, ValueError):
+        value = []
+    if not isinstance(value, list):
+        return []
+    out = []
+    seen = set()
+    for item in value:
+        bid = str(item or "").strip()
+        if bid and bid not in seen:
+            seen.add(bid)
+            out.append(bid)
+    return out
+
+
 def kid_config(c, kid):
     enabled = db.get_kid_setting(c, kid, CFG_ENABLED, "0") == "1"
     unlock = db.get_kid_setting(c, kid, CFG_CURSOR, "1") != "0"
+    mode = db.get_kid_setting(c, kid, CFG_REVIEW_MODE, "current")
+    if mode not in ("current", "scope"):
+        mode = "current"
     return {
         "enabled": enabled,
         "new_per_day": _clamp_int(db.get_kid_setting(c, kid, CFG_NEW, "5"), 5, 1, 10),
@@ -99,6 +121,8 @@ def kid_config(c, kid):
         "perfect_sunshine": _clamp_int(db.get_kid_setting(c, kid, CFG_PERFECT, "2"), 2, 0, 5),
         "unlock_by_cursor": unlock,
         "current_book": db.get_kid_setting(c, kid, CFG_BOOK, "") or "",
+        "review_mode": mode,
+        "review_books": _parse_review_books(db.get_kid_setting(c, kid, CFG_REVIEW_BOOKS, "[]")),
         "tts": db.get_kid_setting(c, kid, CFG_TTS, "1") != "0",
         "tts_autoplay": db.get_kid_setting(c, kid, CFG_TTS_AUTO, "0") == "1",
         "tts_lang": "en-US" if db.get_kid_setting(c, kid, CFG_TTS_LANG, "en-GB") == "en-US" else "en-GB",
@@ -114,6 +138,8 @@ def set_kid_config(c, kid, **fields):
         "perfect_sunshine": (CFG_PERFECT, lambda v: str(_clamp_int(v, 2, 0, 5))),
         "unlock_by_cursor": (CFG_CURSOR, lambda v: "1" if v else "0"),
         "current_book": (CFG_BOOK, lambda v: (v or "").strip()),
+        "review_mode": (CFG_REVIEW_MODE, lambda v: "scope" if v == "scope" else "current"),
+        "review_books": (CFG_REVIEW_BOOKS, lambda v: json.dumps(_parse_review_books(json.dumps(v)), ensure_ascii=False)),
         "tts": (CFG_TTS, lambda v: "1" if v else "0"),
         "tts_autoplay": (CFG_TTS_AUTO, lambda v: "1" if v else "0"),
         "tts_lang": (CFG_TTS_LANG, lambda v: "en-US" if v == "en-US" else "en-GB"),
@@ -123,7 +149,6 @@ def set_kid_config(c, kid, **fields):
             continue
         key, conv = mapping[k]
         db.set_kid_setting(c, kid, key, conv(v))
-
 
 def visible_book(c, fam, book_id):
     return c.execute(
@@ -152,13 +177,14 @@ def english_cursor_unit_seq(c, kid):
         return None
     return int(row["seq"])
 
-
 def book_selectable(c, kid, fam, book, cfg=None):
     if not book:
         return False
     if not book["is_system"]:
         return book["family_id"] == fam and int(book["enabled"] or 0) == 1
     cfg = cfg or kid_config(c, kid)
+    if cfg.get("review_mode") == "scope":
+        return int(book["enabled"] or 0) == 1
     if not cfg["unlock_by_cursor"]:
         return int(book["enabled"] or 0) == 1
     seq = english_cursor_unit_seq(c, kid)
@@ -171,6 +197,43 @@ def book_selectable(c, kid, fam, book, cfg=None):
     if not u or u["seq"] is None:
         return False
     return int(u["seq"]) <= seq
+
+
+def sanitize_review_books(c, fam, raw):
+    """Filter a requested scope to visible, enabled system books, preserving input order."""
+    requested = _parse_review_books(json.dumps(raw if isinstance(raw, list) else []))
+    out = []
+    for bid in requested:
+        row = c.execute(
+            "SELECT id FROM word_books WHERE id=? AND enabled=1 AND is_system=1",
+            (bid,),
+        ).fetchone()
+        if row and bid not in out:
+            out.append(bid)
+    return out
+
+
+def _review_book_ids(c, kid, fam, cfg):
+    """Return enabled, visible system books in deterministic sort/id order for scope mode."""
+    if (cfg or {}).get("review_mode") != "scope":
+        return None
+    requested = sanitize_review_books(c, fam, (cfg or {}).get("review_books") or [])
+    if not requested:
+        return []
+    marks = ",".join("?" for _ in requested)
+    rows = c.execute(
+        f"SELECT id FROM word_books WHERE enabled=1 AND is_system=1 AND id IN ({marks}) ORDER BY sort, id",
+        tuple(requested),
+    ).fetchall()
+    return [r["id"] for r in rows]
+
+
+def _scope_book_order(c, kid, fam, cfg):
+    ids = _review_book_ids(c, kid, fam, cfg) or []
+    current = (cfg.get("current_book") or "").strip()
+    if current in ids:
+        return ids[ids.index(current):]
+    return ids
 
 
 def list_books(c, kid, fam):
@@ -358,36 +421,58 @@ def _session_owned(c, kid, sid):
     ).fetchone()
 
 
-def _due_count(c, kid, fam, today):
+def _book_filter(book_ids):
+    if book_ids is None:
+        return "", []
+    if not book_ids:
+        return " AND 1=0", []
+    return " AND w.book_id IN (" + ",".join("?" for _ in book_ids) + ")", list(book_ids)
+
+
+def _due_count(c, kid, fam, today, book_ids=None):
+    extra, ids = _book_filter(book_ids)
     return c.execute(
         "SELECT COUNT(*) FROM word_progress wp "
         "JOIN words w ON w.id=wp.word_id JOIN word_books b ON b.id=w.book_id "
         "WHERE wp.kid_id=? AND w.active=1 AND b.enabled=1 AND (b.is_system=1 OR b.family_id=?) "
-        "AND wp.due_at IS NOT NULL AND wp.due_at!='' AND wp.due_at<=?",
-        (kid, fam or "", today),
+        "AND wp.due_at IS NOT NULL AND wp.due_at!='' AND wp.due_at<=?" + extra,
+        (kid, fam or "", today, *ids),
     ).fetchone()[0]
 
 
-def _pick_due(c, kid, fam, today, limit):
+def _pick_due(c, kid, fam, today, limit, book_ids=None):
     if limit <= 0:
         return []
+    extra, ids = _book_filter(book_ids)
     return [dict(r) for r in c.execute(
         "SELECT w.id AS word_id FROM word_progress wp "
         "JOIN words w ON w.id=wp.word_id JOIN word_books b ON b.id=w.book_id "
         "WHERE wp.kid_id=? AND w.active=1 AND b.enabled=1 AND (b.is_system=1 OR b.family_id=?) "
-        "AND wp.due_at IS NOT NULL AND wp.due_at!='' AND wp.due_at<=? "
+        "AND wp.due_at IS NOT NULL AND wp.due_at!='' AND wp.due_at<=?" + extra + " "
         "ORDER BY wp.due_at ASC, wp.interval_idx ASC, w.id ASC LIMIT ?",
-        (kid, fam or "", today, limit),
+        (kid, fam or "", today, *ids, limit),
     ).fetchall()]
 
 
-def _pick_new(c, kid, fam, book_id, limit):
+def _pick_new_scope(c, kid, fam, cfg, limit):
+    if limit <= 0:
+        return []
+    out = []
+    for book_id in _scope_book_order(c, kid, fam, cfg):
+        remaining = limit - len(out)
+        if remaining <= 0:
+            break
+        out.extend(_pick_new(c, kid, fam, book_id, remaining, cfg=cfg))
+    return out
+
+
+def _pick_new(c, kid, fam, book_id, limit, cfg=None):
     if limit <= 0 or not book_id:
         return []
     book = get_book(c, fam, book_id)
     if not book or int(book["enabled"] or 0) != 1:
         return []
-    if int(book["is_system"] or 0) and not book_selectable(c, kid, fam, book):
+    if int(book["is_system"] or 0) and not book_selectable(c, kid, fam, book, cfg):
         return []
     return [dict(r) for r in c.execute(
         "SELECT w.id AS word_id FROM words w "
@@ -402,14 +487,18 @@ def _pick_new(c, kid, fam, book_id, limit):
 
 def _pick_items(c, kid, fam, cfg):
     today = db.today()
+    scope_ids = _review_book_ids(c, kid, fam, cfg)
     due_limit = min(int(cfg["max_due"]), SESSION_CAP)
-    due = _pick_due(c, kid, fam, today, due_limit)
+    due = _pick_due(c, kid, fam, today, due_limit, scope_ids)
     remain = max(0, SESSION_CAP - len(due))
     new_n = min(remain, int(cfg["new_per_day"]))
     seen = {int(r["word_id"]) for r in due}
     new = []
     if new_n > 0:
-        for r in _pick_new(c, kid, fam, cfg.get("current_book") or "", new_n + 5):
+        candidates = (_pick_new_scope(c, kid, fam, cfg, new_n + 5)
+                      if scope_ids is not None else
+                      _pick_new(c, kid, fam, cfg.get("current_book") or "", new_n + 5, cfg=cfg))
+        for r in candidates:
             wid = int(r["word_id"])
             if wid in seen:
                 continue
@@ -420,6 +509,8 @@ def _pick_items(c, kid, fam, cfg):
     picked = [{"word_id": int(r["word_id"]), "source": "due"} for r in due]
     picked += [{"word_id": int(r["word_id"]), "source": "new"} for r in new]
     return picked
+
+
 
 
 def _ensure_items(c, row, kid, fam):
@@ -522,9 +613,10 @@ def _session_public(c, kid, fam, row):
     return body
 
 
-def _backlog(c, kid, fam, items):
+def _backlog(c, kid, fam, items, cfg=None):
     today = db.today()
-    total = _due_count(c, kid, fam, today)
+    book_ids = _review_book_ids(c, kid, fam, cfg or kid_config(c, kid))
+    total = _due_count(c, kid, fam, today, book_ids)
     in_session = sum(1 for x in items if x["source"] == "due")
     return max(0, total - in_session)
 
@@ -541,7 +633,7 @@ def today_payload(c, kid, fam, create=False):
         return {
             "enabled": True,
             "finished": finished,
-            "backlog_due": _backlog(c, kid, fam, sess["items"]),
+            "backlog_due": _backlog(c, kid, fam, sess["items"], cfg),
             "config": cfg,
             "session": sess,
         }
@@ -552,7 +644,7 @@ def today_payload(c, kid, fam, create=False):
         return {
             "enabled": True,
             "finished": False,
-            "backlog_due": _due_count(c, kid, fam, db.today()),
+            "backlog_due": _due_count(c, kid, fam, db.today(), _review_book_ids(c, kid, fam, cfg)),
             "config": cfg,
             "session": None,
         }
@@ -567,7 +659,7 @@ def _create_session(c, kid, fam, cfg, picked):
         return {
             "enabled": True,
             "finished": existing["state"] == "completed",
-            "backlog_due": _backlog(c, kid, fam, sess["items"]),
+            "backlog_due": _backlog(c, kid, fam, sess["items"], cfg),
             "config": cfg,
             "session": sess,
         }

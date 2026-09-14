@@ -133,7 +133,7 @@ export const api = {
     judgeWeak: (id, action) => j(`/api/admin/weak-points/${id}/judge`, { method: 'POST', ...body({ action }) }),
     wordConfig: () => j('/api/admin/words/config'),
     wordStats: () => j('/api/admin/words/stats'),
-    setWordConfig: (o) => j('/api/admin/words/config', { method: 'PUT', ...body(o) }),
+    setWordConfig: (o = {}) => j('/api/admin/words/config', { method: 'PUT', ...body(o) }),
     spritesConfig: () => j('/api/admin/sprites-config'),
     setSpritesConfig: (o) => j('/api/admin/sprites-config', { method: 'PUT', ...body(o) }),
     wordBooks: () => j('/api/admin/words/books'),

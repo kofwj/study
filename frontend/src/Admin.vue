@@ -279,9 +279,40 @@ async function saveSpritesCfg(patch) {
 
 const wordCfg = reactive({
   enabled: false, new_per_day: 5, max_due: 10, base_sunshine: 3, perfect_sunshine: 2,
-  unlock_by_cursor: true, current_book: '', tts: true, tts_autoplay: false, tts_lang: 'en-GB',
+  unlock_by_cursor: true, current_book: '', review_mode: 'current', review_books: [],
+  tts: true, tts_autoplay: false, tts_lang: 'en-GB',
 })
 const wordBooks = ref([])
+const wordBookGroups = computed(() => {
+  const groups = {}
+  for (const b of wordBooks.value.filter(x => x.is_system)) {
+    const key = b.term_id || 'other'
+    if (!groups[key]) groups[key] = { id: key, label: terms.value.find(t => t.id === key)?.label || key, books: [] }
+    groups[key].books.push(b)
+  }
+  return Object.values(groups)
+})
+const selectedReviewBookCount = computed(() => (wordCfg.review_books || []).length)
+function isReviewBook(id) { return (wordCfg.review_books || []).includes(id) }
+async function saveWordReviewMode(mode) {
+  let selected = [...(wordCfg.review_books || [])]
+  if (mode === 'scope' && wordCfg.current_book) {
+    const current = wordBooks.value.find(b => b.id === wordCfg.current_book)
+    if (current?.is_system && !selected.includes(current.id)) selected.push(current.id)
+  }
+  await saveWordNow({ review_mode: mode, review_books: selected })
+}
+async function toggleReviewBook(book) {
+  const selected = new Set(wordCfg.review_books || [])
+  if (selected.has(book.id)) {
+    selected.delete(book.id)
+    if (wordCfg.current_book === book.id) {
+      await saveWordNow({ review_books: [...selected], current_book: '' })
+      return
+    }
+  } else selected.add(book.id)
+  await saveWordNow({ review_books: [...selected] })
+}
 const wordToday = ref({ enabled: false, finished: true, backlog_due: 0, session: null })
 const wordProblems = ref([])
 const wordStats = ref({ days: [], completed_sessions: 0, first_try_rate: null })
@@ -321,6 +352,8 @@ async function loadWords() {
       perfect_sunshine: cfg.perfect_sunshine,
       unlock_by_cursor: cfg.unlock_by_cursor !== false,
       current_book: cfg.current_book || '',
+      review_mode: cfg.review_mode === 'scope' ? 'scope' : 'current',
+      review_books: Array.isArray(cfg.review_books) ? cfg.review_books : [],
       tts: cfg.tts !== false,
       tts_autoplay: !!cfg.tts_autoplay,
       tts_lang: cfg.tts_lang === 'en-US' ? 'en-US' : 'en-GB',
@@ -337,6 +370,8 @@ async function saveWordNow(patch) {
     Object.assign(wordCfg, {
       enabled: !!cfg.enabled,
       current_book: cfg.current_book || '',
+      review_mode: cfg.review_mode === 'scope' ? 'scope' : 'current',
+      review_books: Array.isArray(cfg.review_books) ? cfg.review_books : [],
       tts: cfg.tts !== false,
       tts_autoplay: !!cfg.tts_autoplay,
       tts_lang: cfg.tts_lang === 'en-US' ? 'en-US' : 'en-GB',
@@ -1602,15 +1637,44 @@ onMounted(load)
         <button type="button" :class="['toggle', { on: wordCfg.enabled }]" @click="saveWordNow({ enabled: !wordCfg.enabled })">{{ wordCfg.enabled ? '开' : '关' }}</button>
       </div>
       <div class="frm-row mt14">
-        <label class="fld grow"><span>当前新词词书</span>
-          <select :value="wordCfg.current_book" @change="saveWordNow({ current_book: $event.target.value })">
-            <option value="">还没选</option>
-            <option v-for="b in wordBooks" :key="b.id" :value="b.id" :disabled="b.is_system && !b.selectable">
-              {{ b.name }}{{ b.is_system ? ' · 系统' : ' · 家庭' }}{{ b.is_system && !b.selectable ? '（先设英语已学到）' : '' }}
-            </option>
+        <label class="fld grow"><span>复习范围</span>
+          <select :value="wordCfg.review_mode" @change="saveWordReviewMode($event.target.value)">
+            <option value="current">跟随当前词书</option>
+            <option value="scope">自定义范围（补基础）</option>
           </select>
         </label>
+        <span class="dim review-scope-count">{{ wordCfg.review_mode === 'scope' ? `已选 ${selectedReviewBookCount} 本系统词书` : '当前模式只练当前词书；到期复习保持旧行为' }}</span>
       </div>
+      <template v-if="wordCfg.review_mode === 'current'">
+        <div class="frm-row">
+          <label class="fld grow"><span>当前新词词书</span>
+            <select :value="wordCfg.current_book" @change="saveWordNow({ current_book: $event.target.value })">
+              <option value="">还没选</option>
+              <option v-for="b in wordBooks" :key="b.id" :value="b.id" :disabled="b.is_system && !b.selectable">
+                {{ b.name }}{{ b.is_system ? ' · 系统' : ' · 家庭' }}{{ b.is_system && !b.selectable ? '（先设英语已学到）' : '' }}
+              </option>
+            </select>
+          </label>
+        </div>
+      </template>
+      <template v-else>
+        <div class="scope-books">
+          <div v-for="group in wordBookGroups" :key="group.id" class="scope-group">
+            <strong>{{ group.label }}</strong>
+            <label v-for="b in group.books" :key="b.id" class="scope-book-check">
+              <input type="checkbox" :checked="isReviewBook(b.id)" @change="toggleReviewBook(b)" />
+              <span>{{ b.name }}</span>
+            </label>
+          </div>
+        </div>
+        <label class="fld grow mt8"><span>新词起始/当前书（可选）</span>
+          <select :value="wordCfg.current_book" @change="saveWordNow({ current_book: $event.target.value })">
+            <option value="">从范围首本开始</option>
+            <option v-for="b in wordBooks.filter(x => isReviewBook(x.id))" :key="b.id" :value="b.id">{{ b.name }}</option>
+          </select>
+        </label>
+        <p class="dim">自定义范围不受英语「已学到」游标限制；新词会从当前书及之后依次进入，已学过的词自动跳过。</p>
+      </template>
       <div class="frm-row">
         <label class="fld w64"><span>每天新词</span><input v-model.number="wordCfg.new_per_day" type="number" min="1" max="10" /></label>
         <label class="fld w64"><span>到期上限</span><input v-model.number="wordCfg.max_due" type="number" min="5" max="15" /></label>
@@ -1618,7 +1682,7 @@ onMounted(load)
         <label class="fld w64"><span>全对阳光</span><input v-model.number="wordCfg.perfect_sunshine" type="number" min="0" max="5" /></label>
         <button class="ok" @click="saveWordRhythm">保存节奏</button>
       </div>
-      <div class="lock-row mt14">
+      <div v-if="wordCfg.review_mode === 'current'" class="lock-row mt14">
         <span class="badge">词书锁</span>
         <span class="grow">系统词书跟着英语「已学到」</span>
         <button type="button" :class="['toggle', { on: wordCfg.unlock_by_cursor }]" @click="saveWordNow({ unlock_by_cursor: !wordCfg.unlock_by_cursor })">{{ wordCfg.unlock_by_cursor ? '开' : '关' }}</button>
@@ -2098,6 +2162,11 @@ button.fam-card { cursor: pointer; }
   .test-band-head { display: none; }
   .band-edit { grid-template-columns: minmax(100px, 1fr) 88px 18px 76px 18px; }
   .tag-guide-row { grid-template-columns: 1fr; }
+.review-scope-count { align-self: flex-end; padding-bottom: 10px; }
+.scope-books { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin: 4px 0 8px; }
+.scope-group { border: 1px solid var(--line); border-radius: var(--radius-md); padding: 10px 12px; background: var(--surface-2); }
+.scope-group > strong { display: block; margin-bottom: 7px; color: var(--brand-deep); font-size: 13px; }
+.scope-book-check { display: flex; align-items: center; gap: 6px; padding: 4px 0; color: var(--ink-2); font-size: 12px; }
 }
 
 /* —— 单元任务 / 每日任务 表单重排 —— */
