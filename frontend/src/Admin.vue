@@ -98,6 +98,8 @@ const rulesOpen = ref(false)
 const dashWeekOpen = ref(false)
 const redeemFilter = ref('pending')
 const bankHistoryOpen = ref(false)
+const taskAddOpen = ref(false)
+const textbookOpen = reactive({})
 const RULE_DEFAULTS = { test_fail_count: 2, test_fail_score: 80, drop_ratio: 0.3, streak_break: 2 }
 const toast = ref('')
 
@@ -549,11 +551,15 @@ const newTask = reactive({ subject_id: '', unit_id: '', action: '', title: '', s
 const unitOptions = computed(() => units.value.filter(u => u.subject_id === newTask.subject_id && u.term_id === activeTerm.value))
 const testUnitOptions = computed(() => units.value.filter(u => u.subject_id === newTest.subject_id && u.term_id === activeTerm.value))
 function pickSubject() { newTask.unit_id = '' }
+function unitTasks(sid, uid) { return (tasksBySubject.value[sid] || []).filter(x => x.unit_id === uid) }
+function customUnitTasks(sid, uid) { return unitTasks(sid, uid).filter(x => x.custom) }
+function textbookUnitTasks(sid, uid) { return unitTasks(sid, uid).filter(x => !x.custom) }
 async function addTask() {
   if (!newTask.subject_id || !newTask.unit_id || !newTask.title) return showToast('选科目/单元、填标题')
   await withBusy(async () => {
     await api.admin.createTask({ ...newTask, kid_id: newTask.kid_id || null })
     Object.assign(newTask, { subject_id: '', unit_id: '', action: '', title: '', sunshine: 5, kid_id: '' })
+    taskAddOpen.value = false
     showToast('已新增'); await load()
   })
 }
@@ -1495,7 +1501,8 @@ onMounted(load)
     <!-- 任务 -->
     <section v-if="section === 'unit-task'" class="a-card enter">
       <h3>任务与考点</h3>
-      <div class="add-box task-add-box">
+      <button type="button" class="ghost-s rules-toggle" @click="taskAddOpen = !taskAddOpen">{{ taskAddOpen ? '收起新增' : '＋给这一科加任务' }}</button>
+      <div v-if="taskAddOpen" class="add-box task-add-box">
         <div class="add-title">新增家长任务</div>
         <div class="frm-row">
           <label class="fld grow"><span>哪一科</span>
@@ -1524,15 +1531,14 @@ onMounted(load)
         </div>
         <button class="ok wide" @click="addTask">＋新增任务</button>
       </div>
-
-      <label class="fld review-date"><span>改成哪天开始复习</span>
-        <input type="date" v-model="firstReview" />
-      </label>
       <div class="subj-tabs">
         <button v-for="(arr, sid) in unitsBySubject" :key="sid" type="button"
           :class="['subj-tab', { on: activeSubject === sid }]"
           @click="activeSubject = sid">{{ subjectName(sid) }}</button>
       </div>
+      <label class="fld review-date"><span>新加入的考点从这天开始</span>
+        <input type="date" v-model="firstReview" />
+      </label>
       <div v-for="(arr, sid) in unitsBySubject" :key="sid" class="subj" v-show="activeSubject === sid">
         <div v-for="u in arr" :key="u.id" class="unit-block">
           <div class="unit-h">{{ u.name }} <span v-if="weakTagCount(u.id)" class="unit-wp-count">已记录 {{ weakTagCount(u.id) }} 项</span></div>
@@ -1547,27 +1553,26 @@ onMounted(load)
             </button>
             <span v-if="!tagsFor(u.id).length" class="dim">无考点</span>
           </div>
-          <div class="task-row" v-for="t in (tasksBySubject[sid] || []).filter(x => x.unit_id === u.id)" :key="t.id">
-            <template v-if="t.custom">
-              <label class="fld grow"><span>家长任务名称</span><input v-model="t.title" /></label>
-              <label class="fld w84"><span>怎么做</span><input v-model="t.action" /></label>
-              <label class="fld w64"><span>阳光</span><input v-model.number="t.sunshine" type="number" min="0" /></label>
-              <label class="fld w104"><span>谁能看到</span>
-                <select v-model="t.kid_id">
-                  <option value="">全家</option>
-                  <option v-for="k in kids" :key="k.id" :value="k.id">{{ k.name }}</option>
-                </select>
-              </label>
-              <div class="ops">
-                <button class="ok" @click="saveTask(t)">保存</button>
-                <button class="del" @click="delTask(t.id)">删</button>
-              </div>
-            </template>
-            <template v-else>
-              <span class="task-readonly-title">{{ t.title }}</span>
-              <span class="badge">{{ t.action }}</span>
-              <span class="dim">+{{ t.sunshine }} 阳光 · 教材任务</span>
-            </template>
+          <div class="task-row" v-for="t in customUnitTasks(sid, u.id)" :key="t.id">
+            <label class="fld grow"><span>家长任务名称</span><input v-model="t.title" /></label>
+            <label class="fld w84"><span>怎么做</span><input v-model="t.action" /></label>
+            <label class="fld w64"><span>阳光</span><input v-model.number="t.sunshine" type="number" min="0" /></label>
+            <label class="fld w104"><span>谁能看到</span>
+              <select v-model="t.kid_id">
+                <option value="">全家</option>
+                <option v-for="k in kids" :key="k.id" :value="k.id">{{ k.name }}</option>
+              </select>
+            </label>
+            <div class="ops">
+              <button class="ok" @click="saveTask(t)">保存</button>
+              <button class="del" @click="delTask(t.id)">删</button>
+            </div>
+          </div>
+          <button v-if="textbookUnitTasks(sid, u.id).length" type="button" class="ghost-s" @click="textbookOpen[u.id] = !textbookOpen[u.id]">{{ textbookOpen[u.id] ? '收起教材任务' : '教材任务 ' + textbookUnitTasks(sid, u.id).length + ' 项' }}</button>
+          <div v-if="textbookOpen[u.id]" class="task-row" v-for="t in textbookUnitTasks(sid, u.id)" :key="t.id">
+            <span class="task-readonly-title">{{ t.title }}</span>
+            <span class="badge">{{ t.action }}</span>
+            <span class="dim">+{{ t.sunshine }} 阳光 · 教材任务</span>
           </div>
         </div>
       </div>
