@@ -95,6 +95,7 @@ const weekly = ref({ days: [], weeks: [], by_subject: [], kids: [], total_earned
 const insights = ref({ rules: { test_fail_count: 2, test_fail_score: 80, drop_ratio: 0.3, streak_break: 2 }, kids: [] })
 const familyToday = ref({ today: '', kids: [] })
 const rulesOpen = ref(false)
+const dashWeekOpen = ref(false)
 const RULE_DEFAULTS = { test_fail_count: 2, test_fail_score: 80, drop_ratio: 0.3, streak_break: 2 }
 const toast = ref('')
 
@@ -1170,26 +1171,7 @@ onMounted(load)
           <div v-for="d in dashDailies" :key="d.id" class="dash-daily" :class="{ on: d.done }">
             <span class="apv-name">{{ d.name }}</span>
             <em class="fam-st" :class="d.done ? 'green' : 'gray'">{{ d.done ? '已打卡' : '还没做' }}</em>
-            <span class="dim">{{ d.subject }}</span>
-          </div>
-        </div>
-      </template>
-      <template v-if="peCards.length">
-        <h4 class="w-h">体测数值</h4>
-        <div class="pe-grid">
-          <div v-for="c in peCards" :key="c.key" class="pe-card">
-            <span class="dim">{{ c.name }}</span>
-            <strong>{{ c.label }}</strong>
-            <b>{{ formatMetricValue({ unit: c.unit }, c.last) }}<small v-if="!isTimeMetric({ unit: c.unit })">{{ c.unit }}</small></b>
-            <em class="fam-st" :class="c.cls">{{ c.gap || c.status }}{{ c.today ? ' · 今天记的' : '' }}</em>
-            <div v-if="c.goal" class="w-subj-row pe-std">
-              <div class="w-subj-track"><i :style="{ width: c.pct + '%' }"></i></div>
-              <span class="w-subj-num">达标 {{ n1(c.goal.pass) }}{{ c.unit }}</span>
-            </div>
-            <span class="dim">个人最好 {{ formatMetricValue({ unit: c.unit }, c.pb) }}{{ c.series.length ? ' · ' + c.series.length + ' 次' : '' }}</span>
-            <svg v-if="c.pts" viewBox="0 0 288 56" class="pe-svg" preserveAspectRatio="none">
-              <polyline :points="c.pts" fill="none" stroke="var(--brand)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
+            <span class="dim">{{ subjectName(d.subject) }}</span>
           </div>
         </div>
       </template>
@@ -1198,10 +1180,7 @@ onMounted(load)
       <div class="w-summary">
         <div class="w-box"><span>本周赚</span><b>+{{ weekly.total_earned }}</b></div>
         <div class="w-box"><span>兑换花</span><b>-{{ weekly.total_spent }}</b></div>
-        <div v-if="weekly.penalty_net" class="w-box"><span>本周约定</span><b>{{ weekly.penalty_net }}</b></div>
-        <div class="w-box"><span>净增</span><b>{{ weekly.net }}</b></div>
         <div class="w-box"><span>当前余额</span><b>{{ weekly.balance }}</b></div>
-        <div class="w-box"><span>本周签到</span><b>{{ weekly.checkins }} 天</b></div>
       </div>
       <div v-if="masteredLine" class="w-mastered">本周已掌握：<b>{{ masteredLine }}</b></div>
       <div v-if="isMultiKid && (weekly.kids || []).length" class="w-kids">
@@ -1209,40 +1188,6 @@ onMounted(load)
           <span>{{ k.name }}</span><b>+{{ k.earned }}</b>
           <i class="dim">完成 {{ k.completed || 0 }} 张 · {{ completedDelta(k) }}</i>
           <i class="dim">花 {{ k.spent }} · 连击 {{ k.streak }}</i>
-        </div>
-      </div>
-      <div class="dash-charts">
-        <div class="dash-chart">
-          <h4 class="w-h">近 4 周净增</h4>
-          <div class="w-trend">
-            <svg viewBox="0 0 288 80" class="w-trend-svg" preserveAspectRatio="none">
-              <polyline :points="weekPoints" fill="none" stroke="var(--brand)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
-            <div class="w-trend-labels">
-              <span v-for="w in weekly.weeks" :key="w.week_start">{{ w.label }}<i>{{ weekNet(w) > 0 ? '+' : '' }}{{ weekNet(w) }}</i></span>
-            </div>
-          </div>
-        </div>
-        <div class="dash-chart">
-          <h4 class="w-h">本周每天净增</h4>
-          <div class="w-chart dash-bars">
-            <div v-for="d in weekly.days" :key="d.date" class="w-bar-col">
-              <div class="w-bar" :class="{ down: dayNet(d) < 0 }" :style="{ height: (Math.abs(dayNet(d)) / maxDayEarn * 100) + '%' }">
-                <i v-if="dayNet(d)">{{ dayNet(d) > 0 ? '+' : '' }}{{ dayNet(d) }}</i>
-              </div>
-              <span>周{{ d.weekday }}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div v-if="weekly.by_subject && weekly.by_subject.length" class="dash-chart">
-        <h4 class="w-h">本周各科</h4>
-        <div class="w-subj">
-          <div v-for="s in subjectRows" :key="s.name" class="w-subj-row">
-            <span class="w-subj-name">{{ s.name }}</span>
-            <div class="w-subj-track"><i :style="{ width: ((s.sun || 0) / maxSubj * 100) + '%' }"></i></div>
-            <span class="w-subj-num">+{{ s.sun }}</span>
-          </div>
         </div>
       </div>
       <template v-if="isMultiKid && kidCount">
@@ -1268,28 +1213,66 @@ onMounted(load)
           <button v-if="row.insight && row.insight.action" class="ok" @click="goInsight(row)">去解决</button>
         </div>
       </template>
-      <button type="button" class="ghost-s rules-toggle" @click="rulesOpen = !rulesOpen">{{ rulesOpen ? '收起诊断阈值' : '诊断阈值' }}</button>
-      <template v-if="rulesOpen">
-      <div class="a-item">
-        <span class="dim">连续低分次数</span>
-        <input class="w-num" type="number" :value="insights.rules.test_fail_count" @change="saveRule('test_fail_count', +$event.target.value)" />
-        <button class="ghost" @click="resetRule('test_fail_count')">默认</button>
-      </div>
-      <div class="a-item">
-        <span class="dim">低于多少分算低</span>
-        <input class="w-num" type="number" :value="insights.rules.test_fail_score" @change="saveRule('test_fail_score', +$event.target.value)" />
-        <button class="ghost" @click="resetRule('test_fail_score')">默认</button>
-      </div>
-      <div class="a-item">
-        <span class="dim">完成量少几成算下滑</span>
-        <input class="w-num" type="number" step="0.1" :value="insights.rules.drop_ratio" @change="saveRule('drop_ratio', +$event.target.value)" />
-        <button class="ghost" @click="resetRule('drop_ratio')">默认</button>
-      </div>
-      <div class="a-item">
-        <span class="dim">连击断几天再提</span>
-        <input class="w-num" type="number" :value="insights.rules.streak_break" @change="saveRule('streak_break', +$event.target.value)" />
-        <button class="ghost" @click="resetRule('streak_break')">默认</button>
-      </div>
+      <button type="button" class="ghost-s rules-toggle" @click="dashWeekOpen = !dashWeekOpen">{{ dashWeekOpen ? '收起本周详情' : '本周详情' }}</button>
+      <template v-if="dashWeekOpen">
+        <div class="w-summary">
+          <div v-if="weekly.penalty_net" class="w-box"><span>本周约定</span><b>{{ weekly.penalty_net }}</b></div>
+          <div class="w-box"><span>净增</span><b>{{ weekly.net }}</b></div>
+          <div class="w-box"><span>本周签到</span><b>{{ weekly.checkins }} 天</b></div>
+        </div>
+        <template v-if="peCards.length">
+          <h4 class="w-h">体测数值</h4>
+          <div class="pe-grid">
+            <div v-for="c in peCards" :key="c.key" class="pe-card">
+              <span class="dim">{{ c.name }}</span>
+              <strong>{{ c.label }}</strong>
+              <b>{{ formatMetricValue({ unit: c.unit }, c.last) }}<small v-if="!isTimeMetric({ unit: c.unit })">{{ c.unit }}</small></b>
+              <em class="fam-st" :class="c.cls">{{ c.gap || c.status }}{{ c.today ? ' · 今天记的' : '' }}</em>
+              <div v-if="c.goal" class="w-subj-row pe-std">
+                <div class="w-subj-track"><i :style="{ width: c.pct + '%' }"></i></div>
+                <span class="w-subj-num">达标 {{ n1(c.goal.pass) }}{{ c.unit }}</span>
+              </div>
+              <span class="dim">个人最好 {{ formatMetricValue({ unit: c.unit }, c.pb) }}{{ c.series.length ? ' · ' + c.series.length + ' 次' : '' }}</span>
+              <svg v-if="c.pts" viewBox="0 0 288 56" class="pe-svg" preserveAspectRatio="none">
+                <polyline :points="c.pts" fill="none" stroke="var(--brand)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </div>
+          </div>
+        </template>
+        <div class="dash-charts">
+          <div class="dash-chart">
+            <h4 class="w-h">近 4 周净增</h4>
+            <div class="w-trend">
+              <svg viewBox="0 0 288 80" class="w-trend-svg" preserveAspectRatio="none">
+                <polyline :points="weekPoints" fill="none" stroke="var(--brand)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+              <div class="w-trend-labels">
+                <span v-for="w in weekly.weeks" :key="w.week_start">{{ w.label }}<i>{{ weekNet(w) > 0 ? '+' : '' }}{{ weekNet(w) }}</i></span>
+              </div>
+            </div>
+          </div>
+          <div class="dash-chart">
+            <h4 class="w-h">本周每天净增</h4>
+            <div class="w-chart dash-bars">
+              <div v-for="d in weekly.days" :key="d.date" class="w-bar-col">
+                <div class="w-bar" :class="{ down: dayNet(d) < 0 }" :style="{ height: (Math.abs(dayNet(d)) / maxDayEarn * 100) + '%' }">
+                  <i v-if="dayNet(d)">{{ dayNet(d) > 0 ? '+' : '' }}{{ dayNet(d) }}</i>
+                </div>
+                <span>周{{ d.weekday }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div v-if="weekly.by_subject && weekly.by_subject.length" class="dash-chart">
+          <h4 class="w-h">本周各科</h4>
+          <div class="w-subj">
+            <div v-for="s in subjectRows" :key="s.name" class="w-subj-row">
+              <span class="w-subj-name">{{ s.name }}</span>
+              <div class="w-subj-track"><i :style="{ width: ((s.sun || 0) / maxSubj * 100) + '%' }"></i></div>
+              <span class="w-subj-num">+{{ s.sun }}</span>
+            </div>
+          </div>
+        </div>
       </template>
     </section>
 
