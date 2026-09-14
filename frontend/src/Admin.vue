@@ -1,5 +1,5 @@
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { api, setSelectedKid } from './api.js'
 import { APP_LABEL, APP_REVISION } from './version.js'
 import { rankIcon } from './icons.js'
@@ -59,6 +59,25 @@ const SECTIONS = [
     { id: 'pin', icon: Lock, label: '家长密码' },
   ] },
 ]
+const SECTION_IDS = new Set(SECTIONS.flatMap(g => g.items.map(it => it.id)))
+const SECTION_KEY = 'adminSection'
+function persistSection(id) {
+  try { localStorage.setItem(SECTION_KEY, id) } catch {}
+}
+function rememberedSection() {
+  try {
+    const saved = localStorage.getItem(SECTION_KEY)
+    if (saved === 'weekly' || (saved && !SECTION_IDS.has(saved))) {
+      persistSection('insights')
+      return 'insights'
+    }
+    if (saved && SECTION_IDS.has(saved)) return saved
+  } catch {}
+  return 'insights'
+}
+section.value = rememberedSection()
+watch(section, (id) => { if (SECTION_IDS.has(id)) persistSection(id) })
+
 const rewards = ref([])
 const ranks = ref([])
 const subjects = ref([])
@@ -100,6 +119,11 @@ const redeemFilter = ref('pending')
 const bankHistoryOpen = ref(false)
 const taskAddOpen = ref(false)
 const textbookOpen = reactive({})
+const editRewardId = ref('')
+const editRankId = ref('')
+const editDailyId = ref('')
+const dailyAddOpen = ref(false)
+
 const RULE_DEFAULTS = { test_fail_count: 2, test_fail_score: 80, drop_ratio: 0.3, streak_break: 2 }
 const toast = ref('')
 
@@ -145,7 +169,6 @@ async function load() {
 }
 
 async function loadAll() {
-  if (section.value === 'weekly') section.value = 'insights'
   // 获取当前家长信息
   const userInfo = await api.me()
   me.value = userInfo
@@ -649,6 +672,7 @@ async function addDaily() {
   await withBusy(async () => {
     await api.admin.createDaily({ ...newDaily, metrics: cleanMetrics(newDaily.metrics) })
     Object.assign(newDaily, { subject_id: '体育', name: '', sunshine: 5, bonus_per_metric: 3, note: '', metrics: [] })
+    dailyAddOpen.value = false
     showToast('已新增'); await load()
   })
 }
@@ -1007,12 +1031,14 @@ async function copyCode(code) {
 async function delInvite(code) {
   try { await api.admin.delInvite(code); await refreshInvites(); showToast('已删除') } catch (e) { showToast(e.message) }
 }
-async function toggleProtect(e) {
+async function toggleProtect() {
+  if (!isOwner.value) return showToast('只有创建者能开关')
   try {
-    await api.admin.setInviteProtect(e.target.checked)
-    inviteProtect.value = e.target.checked
-    showToast(e.target.checked ? '邀请码保护已开（一次性 + 24h）' : '邀请码保护已关（常驻复用）')
-  } catch (err) { showToast(err.message); e.target.checked = inviteProtect.value }
+    const next = !inviteProtect.value
+    await api.admin.setInviteProtect(next)
+    inviteProtect.value = next
+    showToast(next ? '邀请码保护已开（一次性 + 24h）' : '邀请码保护已关（常驻复用）')
+  } catch (err) { showToast(err.message) }
 }
 async function togglePenalty() {
   if (!isOwner.value) return showToast('只有创建者能开关')
@@ -1308,13 +1334,24 @@ onMounted(load)
     <section v-if="section === 'shop'" class="a-card enter">
       <h3>兑换商店</h3>
       <div class="task-row" v-for="r in rewards" :key="r.id">
-        <label class="fld grow"><span>奖励名</span><input v-model="r.name" /></label>
-        <label class="fld w64"><span>阳光</span><input v-model.number="r.price" type="number" /></label>
-        <label class="fld w84"><span>分类</span><input v-model="r.category" /></label>
-        <div class="ops">
-          <button class="ok" @click="saveReward(r)">保存</button>
-          <button class="del" @click="delReward(r.id)">删</button>
-        </div>
+        <template v-if="editRewardId === r.id">
+          <label class="fld grow"><span>奖励名</span><input v-model="r.name" /></label>
+          <label class="fld w64"><span>阳光</span><input v-model.number="r.price" type="number" /></label>
+          <label class="fld w84"><span>分类</span><input v-model="r.category" /></label>
+          <div class="ops">
+            <button class="ok" @click="saveReward(r); editRewardId = ''">保存</button>
+            <button class="ghost-s" @click="editRewardId = ''">取消</button>
+          </div>
+        </template>
+        <template v-else>
+          <span class="task-readonly-title">{{ r.name }}</span>
+          <span class="badge daily">{{ r.price }} 阳光</span>
+          <span class="dim">{{ r.category }}</span>
+          <div class="ops">
+            <button class="ghost-s" @click="editRewardId = r.id">改</button>
+            <button class="del" @click="delReward(r.id)">删</button>
+          </div>
+        </template>
       </div>
       <div class="add-box">
         <div class="add-title">新增奖励</div>
@@ -1485,12 +1522,22 @@ onMounted(load)
       <h3>成长等级</h3>
       <div class="task-row" v-for="r in ranks" :key="r.id">
         <span class="rank-icon"><component :is="rankIcon(r.icon)" class="ico" :size="18" /></span>
-        <label class="fld grow"><span>等级名</span><input v-model="r.name" /></label>
-        <label class="fld w84"><span>累计阳光 ≥</span><input v-model.number="r.min_sunshine" type="number" /></label>
-        <div class="ops">
-          <button class="ok" @click="saveRank(r)">保存</button>
-          <button class="del" @click="delRank(r.id)">删</button>
-        </div>
+        <template v-if="editRankId === r.id">
+          <label class="fld grow"><span>等级名</span><input v-model="r.name" /></label>
+          <label class="fld w84"><span>累计阳光 ≥</span><input v-model.number="r.min_sunshine" type="number" /></label>
+          <div class="ops">
+            <button class="ok" @click="saveRank(r); editRankId = ''">保存</button>
+            <button class="ghost-s" @click="editRankId = ''">取消</button>
+          </div>
+        </template>
+        <template v-else>
+          <span class="task-readonly-title">{{ r.name }}</span>
+          <span class="dim">累计阳光 ≥ {{ r.min_sunshine }}</span>
+          <div class="ops">
+            <button class="ghost-s" @click="editRankId = r.id">改</button>
+            <button class="del" @click="delRank(r.id)">删</button>
+          </div>
+        </template>
       </div>
       <div class="add-box">
         <div class="add-title">新增等级</div>
@@ -1586,7 +1633,8 @@ onMounted(load)
     <!-- 每日任务 -->
     <section v-if="section === 'daily'" class="a-card enter">
       <h3>每日任务</h3>
-      <div class="add-box task-add-box">
+      <button type="button" class="ghost-s rules-toggle" @click="dailyAddOpen = !dailyAddOpen">{{ dailyAddOpen ? '收起新增' : '＋新增每日任务' }}</button>
+      <div v-if="dailyAddOpen" class="add-box task-add-box">
         <div class="add-title">新增每日任务</div>
         <div class="frm-row">
           <label class="fld grow"><span>哪一科</span>
@@ -1621,37 +1669,55 @@ onMounted(load)
           <div v-if="d.note" class="daily-note">怎么做：{{ d.note }}</div>
         </div>
         <template v-else>
-          <div class="dc-head">
-            <span class="badge daily">每天</span>
-            <label class="fld grow"><span>名称</span><input v-model="d.name" /></label>
-            <label class="fld grow"><span>哪一科</span>
-              <select v-model="d.subject_id">
-                <option v-for="s in subjects" :key="s.id" :value="s.id">{{ s.name }}</option>
-              </select>
-            </label>
-            <label class="fld w64"><span>基础阳光</span><input v-model.number="d.sunshine" type="number" /></label>
-            <label class="fld w84"><span>破纪录 +</span><input v-model.number="d.bonus_per_metric" type="number" /></label>
-            <label class="fld grow"><span>怎么做</span><input v-model="d.note" placeholder="如：完成后让家长检查" /></label>
-            <div class="ops">
-              <button class="ok" @click="saveDaily(d)">保存</button>
-              <button class="del" @click="delDaily(d.id)">删</button>
-            </div>
-          </div>
-          <div class="dc-metrics" v-if="d.metrics.length">
-            <div class="dc-m-head">破纪录指标</div>
-            <div class="m-row" v-for="(m, i) in d.metrics" :key="m.id">
-              <label class="fld grow"><span>名称</span><input v-model="m.label" placeholder="如：跳绳个数" /></label>
-              <label class="fld w84"><span>单位</span><input v-model="m.unit" placeholder="个" /></label>
-              <label class="fld w104"><span>方向</span>
-                <select v-model="m.direction">
-                  <option v-for="[v, n] in DIRS" :key="v" :value="v">{{ n }}</option>
+          <template v-if="editDailyId === d.id">
+            <div class="dc-head">
+              <span class="badge daily">每天</span>
+              <label class="fld grow"><span>名称</span><input v-model="d.name" /></label>
+              <label class="fld grow"><span>哪一科</span>
+                <select v-model="d.subject_id">
+                  <option v-for="s in subjects" :key="s.id" :value="s.id">{{ s.name }}</option>
                 </select>
               </label>
-              <label class="fld grow"><span>记录说明</span><input v-model="m.note" placeholder="如：只记完整正确的次数" /></label>
-              <button class="del" @click="d.metrics.splice(i, 1)">×</button>
+              <label class="fld w64"><span>基础阳光</span><input v-model.number="d.sunshine" type="number" /></label>
+              <label class="fld w84"><span>破纪录 +</span><input v-model.number="d.bonus_per_metric" type="number" /></label>
+              <label class="fld grow"><span>怎么做</span><input v-model="d.note" placeholder="如：完成后让家长检查" /></label>
+              <div class="ops">
+                <button class="ok" @click="saveDaily(d); editDailyId = ''">保存</button>
+                <button class="ghost-s" @click="editDailyId = ''">取消</button>
+              </div>
             </div>
-          </div>
-          <button class="ghost-s" @click="addMetric(d.metrics)">＋加破纪录指标</button>
+            <div class="dc-metrics" v-if="d.metrics.length">
+              <div class="dc-m-head">破纪录指标</div>
+              <div class="m-row" v-for="(m, i) in d.metrics" :key="m.id">
+                <label class="fld grow"><span>名称</span><input v-model="m.label" placeholder="如：跳绳个数" /></label>
+                <label class="fld w84"><span>单位</span><input v-model="m.unit" placeholder="个" /></label>
+                <label class="fld w104"><span>方向</span>
+                  <select v-model="m.direction">
+                    <option v-for="[v, n] in DIRS" :key="v" :value="v">{{ n }}</option>
+                  </select>
+                </label>
+                <label class="fld grow"><span>记录说明</span><input v-model="m.note" placeholder="如：只记完整正确的次数" /></label>
+                <button class="del" @click="d.metrics.splice(i, 1)">×</button>
+              </div>
+            </div>
+            <button class="ghost-s" @click="addMetric(d.metrics)">＋加破纪录指标</button>
+          </template>
+          <template v-else>
+            <div class="sys-row">
+              <span class="badge daily">每天</span>
+              <span class="sys-name">{{ d.name }}</span>
+              <span class="dim">{{ subjectName(d.subject_id) }} · +{{ d.sunshine }} 阳光<template v-if="d.bonus_per_metric"> · 破纪录 +{{ d.bonus_per_metric }}</template></span>
+              <div class="ops">
+                <button class="ghost-s" @click="editDailyId = d.id">改</button>
+                <button class="del" @click="delDaily(d.id)">删</button>
+              </div>
+              <div v-if="d.note" class="daily-note">怎么做：{{ d.note }}</div>
+            </div>
+            <div class="dc-metrics" v-if="d.metrics && d.metrics.length">
+              <div class="dc-m-head">破纪录指标</div>
+              <div class="dim" v-for="m in d.metrics" :key="m.id">{{ m.label }}<template v-if="m.unit"> · {{ m.unit }}</template> · {{ (DIRS.find(x => x[0] === m.direction) || [])[1] || m.direction }}<template v-if="m.note"> · {{ m.note }}</template></div>
+            </div>
+          </template>
         </template>
       </div>
     </section>
@@ -2005,10 +2071,11 @@ get up	起床</pre>
     <!-- 邀请码 -->
     <section v-if="section === 'invites'" class="a-card enter">
       <h3>邀请码</h3>
-      <label class="invite-protect">
-        <input type="checkbox" :checked="inviteProtect" @change="toggleProtect" :disabled="!isOwner" />
-        <span>邀请码保护（一次性 + 24 小时）</span>
-      </label>
+      <div class="lock-row">
+        <span class="badge">邀请码保护</span>
+        <span class="grow">开着时邀请码一次性 + 24 小时；关掉则常驻复用</span>
+        <button v-if="isOwner" type="button" :class="['toggle', { on: inviteProtect }]" @click="toggleProtect">{{ inviteProtect ? '开' : '关' }}</button>
+      </div>
       <p v-if="!isOwner" class="dim">只有创建者能开关保护和生成邀请码。</p>
       <div class="frm-row mt8">
         <button v-if="isOwner" class="ok" @click="makeInvite()">生成邀请码</button>
@@ -2070,7 +2137,6 @@ get up	起床</pre>
 .kid-switch button.on { background: #fff; color: var(--brand-deep); }
 .kid-one { font-weight: 700; font-size: 14px; opacity: .95; }
 .review-date { max-width: 220px; margin-bottom: 10px; }
-.invite-protect { display: flex; gap: 8px; align-items: center; margin: 10px 0 4px; font-size: 13px; cursor: pointer; }
 .invite-code { font-family: ui-monospace, monospace; font-weight: 700; font-size: 14px; }
 .a-term { display: block; margin-top: 8px; font-size: 12px; }
 .a-term select { margin-left: 6px; padding: 4px 8px; border-radius: var(--radius-sm); border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
