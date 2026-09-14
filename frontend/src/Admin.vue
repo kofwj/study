@@ -96,6 +96,8 @@ const insights = ref({ rules: { test_fail_count: 2, test_fail_score: 80, drop_ra
 const familyToday = ref({ today: '', kids: [] })
 const rulesOpen = ref(false)
 const dashWeekOpen = ref(false)
+const redeemFilter = ref('pending')
+const bankHistoryOpen = ref(false)
 const RULE_DEFAULTS = { test_fail_count: 2, test_fail_score: 80, drop_ratio: 0.3, streak_break: 2 }
 const toast = ref('')
 
@@ -820,6 +822,19 @@ const greet = computed(() => {
   return '晚上好'
 })
 const pendingRedeem = computed(() => (redemptions.value || []).filter(r => r.status === 'pending').length)
+const filteredRedemptions = computed(() => {
+  const rows = redemptions.value || []
+  if (redeemFilter.value === 'pending') return rows.filter(r => r.status === 'pending')
+  if (redeemFilter.value === 'done') return rows.filter(r => r.status === 'done')
+  return rows.filter(r => r.status !== 'pending' && r.status !== 'done')
+})
+const redeemEmptyText = computed(() => {
+  if (redeemFilter.value === 'pending') return '没有待同意的申请'
+  if (redeemFilter.value === 'done') return '没有待兑现的'
+  return '还没有结束的记录'
+})
+const pendingBankRequests = computed(() => (bankRequests.value || []).filter(r => r.status === 'pending'))
+const historyBankRequests = computed(() => (bankRequests.value || []).filter(r => r.status !== 'pending'))
 const reviewCount = computed(() => (reviewDue.value || []).length)
 const checkinCount = computed(() => (familyToday.value.kids || []).filter(k => k.checkin).length)
 const kidCount = computed(() => (familyToday.value.kids || []).length)
@@ -1324,10 +1339,15 @@ onMounted(load)
         <button v-if="bankData.goal?.reached" class="ok mt8" @click="bankGoalDeliver">标记已兑现</button>
       </div>
       <h4 class="w-h">取出申请</h4>
-      <div v-if="!bankRequests.length" class="dim">还没有取出申请。</div>
-      <div v-for="r in bankRequests" :key="r.id" class="apv-row">
+      <div v-if="!pendingBankRequests.length" class="dim">还没有取出申请。</div>
+      <div v-for="r in pendingBankRequests" :key="r.id" class="apv-row">
         <div class="apv-info"><span class="apv-name">{{ r.kid_name }}申请取出 {{ r.amount }} 颗</span><span class="dim">{{ r.created_at }}</span></div>
-        <div class="apv-right"><span v-if="r.status !== 'pending'" class="st delivered">{{ r.status === 'approved' ? '已批准' : '已拒绝' }}</span><template v-else><button class="ok" @click="handleBankRequest(r.id, 'approve')">批准</button><button class="del" @click="handleBankRequest(r.id, 'reject')">拒绝</button></template></div>
+        <div class="apv-right"><button class="ok" @click="handleBankRequest(r.id, 'approve')">批准</button><button class="del" @click="handleBankRequest(r.id, 'reject')">拒绝</button></div>
+      </div>
+      <button v-if="historyBankRequests.length" type="button" class="ghost-s rules-toggle" @click="bankHistoryOpen = !bankHistoryOpen">{{ bankHistoryOpen ? '收起已处理' : '看已处理' }}</button>
+      <div v-if="bankHistoryOpen" v-for="r in historyBankRequests" :key="'h-' + r.id" class="apv-row">
+        <div class="apv-info"><span class="apv-name">{{ r.kid_name }}申请取出 {{ r.amount }} 颗</span><span class="dim">{{ r.created_at }}</span></div>
+        <div class="apv-right"><span class="st delivered">{{ r.status === 'approved' ? '已批准' : '已拒绝' }}</span></div>
       </div>
       <p class="dim mt14">银行里的阳光不能用于兑换商店；取出必须由家长批准。</p>
       
@@ -1363,7 +1383,7 @@ onMounted(load)
         <p>这里的利率只管<strong>活期</strong>。孩子还能自己开定存单：7 天 2%、10 天 3%、15 天 5%、30 天 8%、60 天 12%。到期一次结息；提前支取按已过天数打五折，当天存当天取没有利息。</p>
         <p>利率不宜过高，否则孩子可能失去做任务的动力。建议低年级 3%–5%、高年级 5%–8%。</p>
         <p v-if="bankInterest.last_settle">上次结算：{{ bankInterest.last_settle }}</p>
-        <button class="ghost-s mt8" @click="settleInterestNow">立即结算（测试）</button>
+        <button v-if="isOwner" class="ghost-s mt8" @click="settleInterestNow">补结算上一期利息</button>
       </div>
     </section>
 
@@ -1422,8 +1442,13 @@ onMounted(load)
     <!-- 审批 -->
     <section v-if="section === 'approve'" class="a-card enter">
       <h3>兑换审批与兑现</h3>
-      <div v-if="!redemptions.length" class="dim">还没有任何兑换记录。</div>
-      <div class="apv-row" v-for="rd in redemptions" :key="rd.id">
+      <div class="subj-tabs review-filter">
+        <button type="button" :class="['subj-tab', { on: redeemFilter === 'pending' }]" @click="redeemFilter = 'pending'">待同意</button>
+        <button type="button" :class="['subj-tab', { on: redeemFilter === 'done' }]" @click="redeemFilter = 'done'">待兑现</button>
+        <button type="button" :class="['subj-tab', { on: redeemFilter === 'ended' }]" @click="redeemFilter = 'ended'">已结束</button>
+      </div>
+      <div v-if="!filteredRedemptions.length" class="dim">{{ redeemEmptyText }}</div>
+      <div class="apv-row" v-for="rd in filteredRedemptions" :key="rd.id">
         <div class="apv-info">
           <span class="apv-name">{{ rd.name }}</span>
           <span class="dim">{{ rd.date }} · -{{ rd.price }} <Sun class="ico sun" :size="12" /></span>
