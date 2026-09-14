@@ -1205,6 +1205,11 @@ onMounted(load)
         <div class="w-box"><span>兑换花</span><b>-{{ weekly.total_spent }}</b></div>
         <div class="w-box"><span>当前余额</span><b>{{ weekly.balance }}</b></div>
       </div>
+      <div class="w-subj-row goal-row">
+        <span class="dim">本周目标</span>
+        <input v-model.number="weeklyGoal" type="number" min="0" max="10000" class="w-num" />
+        <button class="ok" @click="saveWeeklyGoal" :disabled="weeklyGoalBusy">保存目标</button>
+      </div>
       <div v-if="masteredLine" class="w-mastered">本周已掌握：<b>{{ masteredLine }}</b></div>
       <div v-if="isMultiKid && (weekly.kids || []).length" class="w-kids">
         <div v-for="k in weekly.kids" :key="k.id" class="w-box" :class="{ on: k.current }" @click="pickKid(k.id)">
@@ -1653,17 +1658,8 @@ onMounted(load)
 
     <section v-if="section === 'sprites'" class="a-card enter">
       <h3>阳光图鉴</h3>
-      <p class="dim">给 {{ currentKidName || '当前孩子' }} 用。关掉图鉴后，连击宝箱只给阳光；秘密基地仍在，孩子端显示「建设中」。</p>
-      <div class="lock-row mt14">
-        <span class="badge">阳光图鉴</span>
-        <span class="grow">连击宝箱会孵出阳光精灵，进图鉴。关掉则宝箱只给阳光。</span>
-        <button type="button" :class="['toggle', { on: spriteCfg.enabled }]" @click="saveSpritesCfg({ enabled: !spriteCfg.enabled })">{{ spriteCfg.enabled ? '开' : '关' }}</button>
-      </div>
-      <div class="lock-row">
-        <span class="badge">秘密基地</span>
-        <span class="grow">精灵住进天台/树屋/云上，星尘可以买小玩具。关掉则图鉴只显示格子。</span>
-        <button type="button" :class="['toggle', { on: spriteCfg.base_enabled }]" @click="saveSpritesCfg({ base_enabled: !spriteCfg.base_enabled })">{{ spriteCfg.base_enabled ? '开' : '关' }}</button>
-      </div>
+      <p class="dim">图鉴与基地开关已移到「已学到」页。</p>
+      <button class="ok" @click="section = 'cursor'">去已学到设置</button>
     </section>
 
     <section v-if="section === 'words'" class="a-card enter">
@@ -1853,9 +1849,19 @@ get up	起床</pre>
         <span class="grow">只让打「当前单元」</span>
         <button :class="['toggle', { on: progressLock }]" @click="toggleLock">{{ progressLock ? '开' : '关' }}</button>
       </div>
-
+      <h4 class="w-h">图鉴与基地</h4>
+      <p class="dim">给 {{ currentKidName || '当前孩子' }} 用。关掉图鉴后，连击宝箱只给阳光；秘密基地仍在，孩子端显示「建设中」。</p>
+      <div class="lock-row">
+        <span class="badge">阳光图鉴</span>
+        <span class="grow">连击宝箱会孵出阳光精灵，进图鉴。关掉则宝箱只给阳光。</span>
+        <button type="button" :class="['toggle', { on: spriteCfg.enabled }]" @click="saveSpritesCfg({ enabled: !spriteCfg.enabled })">{{ spriteCfg.enabled ? '开' : '关' }}</button>
+      </div>
+      <div class="lock-row">
+        <span class="badge">秘密基地</span>
+        <span class="grow">精灵住进天台/树屋/云上，星尘可以买小玩具。关掉则图鉴只显示格子。</span>
+        <button type="button" :class="['toggle', { on: spriteCfg.base_enabled }]" @click="saveSpritesCfg({ base_enabled: !spriteCfg.base_enabled })">{{ spriteCfg.base_enabled ? '开' : '关' }}</button>
+      </div>
     </section>
-
     <!-- 单元测试成绩 -->
     <section v-if="section === 'test'" class="a-card enter">
       <h3>单元测试</h3>
@@ -1930,14 +1936,6 @@ get up	起床</pre>
 
     <section v-if="section === 'kids'" class="a-card">
       <h3>孩子账号</h3>
-      <div v-if="currentKidName" class="add-box">
-        <div class="add-title">{{ currentKidName }}的本周攒阳光目标</div>
-        <p class="dim">默认 50；填 0 就关掉进度条。孩子端也能改。</p>
-        <div class="frm-row">
-          <label class="fld w84"><span>目标阳光</span><input v-model.number="weeklyGoal" type="number" min="0" max="10000" /></label>
-          <button class="ok" @click="saveWeeklyGoal" :disabled="weeklyGoalBusy">保存目标</button>
-        </div>
-      </div>
       <p v-if="!terms.length" class="dim">学期列表还没载入，退出再进一次家长端。</p>
 
       <div class="kid-card" v-for="k in kids" :key="k.id">
@@ -2263,7 +2261,8 @@ button.fam-card { cursor: pointer; }
 .w-next strong { font-size: 13px; }
 .w-next span { flex: 1; min-width: 160px; color: var(--ink-2); font-size: 13px; }
 .test-preview { margin: 0 0 10px; color: var(--accent-ink); font-size: 13px; font-weight: 700; }
-.review-filter { margin: 8px 0 12px; }
+.goal-row { margin: 10px 0 4px; gap: 8px; }
+.goal-row .w-num { width: 84px; }
 
 .subj-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
 .subj-tab { border: 1px solid var(--line); border-radius: var(--radius-pill); padding: 6px 14px; font-size: 13px; font-weight: 700; color: var(--ink); background: var(--surface); cursor: pointer; }
