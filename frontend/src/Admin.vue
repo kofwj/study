@@ -5,7 +5,7 @@ import { APP_LABEL, APP_REVISION } from './version.js'
 import { rankIcon } from './icons.js'
 import { tagHelp } from './tagHelp.js'
 import { SUBJECT_ORDER, n1, isTimeMetric, formatDuration, formatMetricValue } from './format.js'
-import { Eye, Baby, Users, KeyRound, Lock, Store, Trophy, ClipboardCheck, BookOpen, RefreshCw, MapPinned, FileText, Sun, Star, Check, ArrowLeft, BookMarked, Globe, Landmark, Sparkles } from '@lucide/vue'
+import { Eye, Baby, Users, KeyRound, Lock, Store, Trophy, ClipboardCheck, ClipboardList, BookOpen, RefreshCw, MapPinned, MinusCircle, Sun, Star, Check, ArrowLeft, BookMarked, Globe, Landmark, Sparkles } from '@lucide/vue'
 
 const props = defineProps({ recoveryCode: { type: String, default: '' } })
 const emit = defineEmits(['exit', 'switched', 'consumed-recovery'])
@@ -44,13 +44,13 @@ const SECTIONS = [
     { id: 'words', icon: Globe, label: '英语单词' },
     { id: 'sprites', icon: Sparkles, label: '阳光图鉴' },
     { id: 'cursor', icon: MapPinned, label: '已学到' },
-    { id: 'test', icon: FileText, label: '单元测试' },
+    { id: 'test', icon: ClipboardList, label: '单元测试' },
   ] },
   { group: '阳光', items: [
     { id: 'shop', icon: Store, label: '兑换商店' },
     { id: 'bank', icon: Landmark, label: '阳光银行' },
     { id: 'rank', icon: Trophy, label: '成长等级' },
-    { id: 'penalty', icon: FileText, label: '扣分' },
+    { id: 'penalty', icon: MinusCircle, label: '扣分' },
   ] },
   { group: '家庭', items: [
     { id: 'kids', icon: Baby, label: '孩子账号' },
@@ -939,7 +939,7 @@ async function toggleSubjectVisible(id) {
   try {
     const r = await api.admin.setSubjectVisible(id, on)
     hiddenSubjects.value = r.hidden_subjects || []
-    showToast(on ? `孩子端显示${id}` : `孩子端已隐藏${id}`)
+    showToast(on ? `孩子端显示${subjectName(id)}` : `孩子端已隐藏${subjectName(id)}`)
   } catch (e) { showToast(e.message) }
 }
 
@@ -1121,7 +1121,7 @@ onMounted(load)
       <div v-for="x in filteredReviewDue" :key="x.id" class="review-item">
         <div class="review-item-info">
           <span class="review-item-title">{{ x.tag_name }}</span>
-          <span class="dim">{{ x.subject_id }} · {{ x.unit_name }} · 第 {{ (x.interval_idx || 0) + 1 }} 次复习</span>
+          <span class="dim">{{ subjectName(x.subject_id) }} · {{ x.unit_name }} · 第 {{ (x.interval_idx || 0) + 1 }} 次复习</span>
         </div>
         <div class="review-actions">
           <button class="ok" @click="judge(x.id, 'pass')">会了</button>
@@ -1135,7 +1135,7 @@ onMounted(load)
         <div v-for="x in weakPoints" :key="x.id" class="review-recorded-row">
           <div>
             <strong>{{ x.tag_name }}</strong>
-            <span>{{ x.subject_id }} · {{ x.unit_name }}</span>
+            <span>{{ subjectName(x.subject_id) }} · {{ x.unit_name }}</span>
           </div>
           <em :class="{ due: reviewDue.some(r => r.id === x.id) }">{{ weakPointTiming(x) }}</em>
         </div>
@@ -1421,8 +1421,8 @@ onMounted(load)
         <div v-if="!penalties.length" class="dim mt8">还没有扣分记录。</div>
         <div class="apv-row" v-for="p in penalties" :key="p.id">
           <div class="apv-info">
-            <span class="apv-name">{{ p.note || '扣分' }}</span>
-            <span class="dim">{{ p.date }}</span>
+            <span class="apv-name">{{ p.reason || p.note || '扣分' }}</span>
+            <span class="dim">{{ p.note && p.note !== p.reason ? p.note + ' · ' : '' }}{{ p.date }}</span>
           </div>
           <div class="apv-right">
             <span class="pen-amt">{{ p.delta }}</span>
@@ -1880,7 +1880,7 @@ get up	起床</pre>
       </div>
       <div v-if="!tests.length" class="dim">还没录过测试成绩。</div>
       <div class="test-row" v-for="t in tests" :key="t.id">
-        <span class="badge">{{ t.subject_id }}</span>
+        <span class="badge">{{ subjectName(t.subject_id) }}</span>
         <span class="badge daily">{{ t.score }} 分</span>
         <span class="dim">{{ t.note || '—' }} · {{ t.date }}</span>
         <span class="st delivered">+{{ t.sunshine }} <Sun class="ico sun" :size="12" /></span>
