@@ -348,6 +348,8 @@ const wordToday = ref({ enabled: false, finished: true, backlog_due: 0, session:
 const wordProblems = ref([])
 const wordStats = ref({ days: [], completed_sessions: 0, first_try_rate: null })
 const wordNewBook = ref('')
+const wordImportOpen = ref(false)
+const wordWeekOpen = ref(false)
 const wordImport = reactive({ book_id: '', text: '', result: null })
 const wordOpenBook = ref(null)
 const wordBusy = ref(false)
@@ -1637,6 +1639,7 @@ onMounted(load)
     <section v-if="section === 'words'" class="a-card enter">
       <h3>英语单词</h3>
       <p class="dim">给 {{ currentKidName || '当前孩子' }} 用。朗读马上生效；每天几个词、给多少阳光，明天新的一组才按这个来。</p>
+      <h4 class="w-h">今天</h4>
       <div class="w-summary word-ov">
         <div class="w-box"><span>新词</span><b>{{ wordOverview.newn }}</b></div>
         <div class="w-box"><span>复习</span><b>{{ wordOverview.due }}</b></div>
@@ -1644,6 +1647,27 @@ onMounted(load)
         <div class="w-box"><span>还没写完</span><b>{{ wordOverview.left }}</b></div>
         <div class="w-box"><span>积压到期</span><b>{{ wordOverview.backlog }}</b></div>
       </div>
+      <h4 class="w-h">高频错词</h4>
+      <p v-if="!wordProblems.length" class="dim">还没有错两次以上的词。</p>
+      <div v-for="w in wordProblems" :key="w.word_id" class="word-row">
+        <div>
+          <b>{{ w.word }}</b>
+          <span>{{ w.cn }} · 错 {{ w.wrong_count }} 次 · {{ w.book_name }}<template v-if="w.unit_id"> · {{ w.unit_id }}</template></span>
+          <em>{{ [w.last_seen_at ? ('最近 ' + String(w.last_seen_at).slice(0, 10)) : '', w.due_at ? ('下次 ' + w.due_at) : ''].filter(Boolean).join(' · ') }}</em>
+        </div>
+        <button class="ok" @click="focusWord(w.word_id)">明天重点练</button>
+      </div>
+      <button type="button" class="ghost-s rules-toggle" @click="wordWeekOpen = !wordWeekOpen">{{ wordWeekOpen ? '收起近 7 日' : '近 7 日' }}</button>
+      <template v-if="wordWeekOpen">
+        <p class="dim">完成 {{ wordStats.completed_sessions || 0 }} 次<template v-if="wordStats.first_try_rate != null"> · 首轮正确率 {{ wordStats.first_try_rate }}%</template></p>
+        <div class="w-chart word-week">
+          <div v-for="d in wordStats.days || []" :key="d.date" class="w-bar-col">
+            <div class="w-bar" :class="{ down: !d.completed }" :style="{ height: (d.completed ? Math.max(18, d.rate == null ? 40 : d.rate) : 6) + '%' }"><i v-if="d.rate != null">{{ d.rate }}%</i></div>
+            <span>{{ d.label }}</span>
+          </div>
+        </div>
+      </template>
+      <h4 class="w-h">怎么练</h4>
       <div class="lock-row mt14">
         <span class="badge">单词练习</span>
         <span class="grow">孩子端显示今日单词</span>
@@ -1746,7 +1770,8 @@ onMounted(load)
         <label class="fld grow"><span>新建家庭词书</span><input v-model="wordNewBook" placeholder="如：课外词" maxlength="30" /></label>
         <button class="ok" @click="addWordBook">＋新建</button>
       </div>
-      <div class="add-box mt14">
+      <button type="button" class="ghost-s rules-toggle" @click="wordImportOpen = !wordImportOpen">{{ wordImportOpen ? '收起导入' : '导入单词' }}</button>
+      <div v-if="wordImportOpen" class="add-box mt14">
         <div class="add-title">导入家庭词书</div>
         <p class="dim">一列英文、一列中文，音标可空。制表符或逗号都行，一次最多 500 行。</p>
         <pre class="word-sample">always	总是	/ˈɔːlweɪz/
@@ -1773,26 +1798,6 @@ get up	起床</pre>
           <em>{{ w.ipa }}</em>
         </div>
         <button class="ghost-s" @click="wordOpenBook = null">收起</button>
-      </div>
-
-      <h4 class="w-h">高频错词</h4>
-      <p v-if="!wordProblems.length" class="dim">还没有错两次以上的词。</p>
-      <div v-for="w in wordProblems" :key="w.word_id" class="word-row">
-        <div>
-          <b>{{ w.word }}</b>
-          <span>{{ w.cn }} · 错 {{ w.wrong_count }} 次 · {{ w.book_name }}<template v-if="w.unit_id"> · {{ w.unit_id }}</template></span>
-          <em>{{ [w.last_seen_at ? ('最近 ' + String(w.last_seen_at).slice(0, 10)) : '', w.due_at ? ('下次 ' + w.due_at) : ''].filter(Boolean).join(' · ') }}</em>
-        </div>
-        <button class="ok" @click="focusWord(w.word_id)">明天重点练</button>
-      </div>
-
-      <h4 class="w-h">近 7 日</h4>
-      <p class="dim">完成 {{ wordStats.completed_sessions || 0 }} 次<template v-if="wordStats.first_try_rate != null"> · 首轮正确率 {{ wordStats.first_try_rate }}%</template></p>
-      <div class="w-chart word-week">
-        <div v-for="d in wordStats.days || []" :key="d.date" class="w-bar-col">
-          <div class="w-bar" :class="{ down: !d.completed }" :style="{ height: (d.completed ? Math.max(18, d.rate == null ? 40 : d.rate) : 6) + '%' }"><i v-if="d.rate != null">{{ d.rate }}%</i></div>
-          <span>{{ d.label }}</span>
-        </div>
       </div>
     </section>
 
