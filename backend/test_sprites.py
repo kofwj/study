@@ -224,7 +224,8 @@ def test_base_buy_duty_morning():
         assert r.json()["dust"] == 20
         assert a.post("/api/sprites/base/sun-telescope/buy").status_code == 409
         assert _ledger_n(ka) == n0
-        assert a.post("/api/sprites/sp-moon/duty").status_code == 404
+        missing = next(d["id"] for d in spritemod.SPRITE_DEFS if d["id"] not in {sid, sid2})
+        assert a.post(f"/api/sprites/{missing}/duty").status_code == 404
         r = a.post(f"/api/sprites/{sid}/duty")
         assert r.json()["on_duty"] == sid
         r = a.post(f"/api/sprites/{sid2}/duty")

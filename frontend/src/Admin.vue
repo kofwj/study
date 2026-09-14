@@ -76,7 +76,11 @@ function rememberedSection() {
   return 'insights'
 }
 section.value = rememberedSection()
-watch(section, (id) => { if (SECTION_IDS.has(id)) persistSection(id) })
+watch(section, (id) => {
+  if (SECTION_IDS.has(id)) persistSection(id)
+  if (!selectedKid.value || selectedKid.value !== loadedKid) return
+  ensureSection(id).catch((e) => showToast(e && e.message ? `加载失败：${e.message}` : '加载失败，请检查网络后重试'))
+})
 
 const rewards = ref([])
 const ranks = ref([])
@@ -159,71 +163,80 @@ function showToast(m) {
 }
 function unitName(id) { return units.value.find(u => u.id === id)?.name || id }
 
-async function load() {
-  try {
-    await loadAll()
-  } catch (e) {
-    // 任一接口失败不能让整个后台白屏：给出提示，已加载的部分照常展示
-    showToast(e && e.message ? `加载失败：${e.message}` : '加载失败，请检查网络后重试')
+const loaded = new Set()
+const inflight = new Map()
+const KID_PACKS = new Set(['tasks', 'hist', 'weekly', 'insights', 'familyToday', 'redemptions', 'reviewDue', 'weak', 'tests', 'words', 'bank', 'sprites', 'penalties'])
+const SECTION_PACKS = {
+  insights: ['tasks', 'hist', 'weekly', 'insights', 'familyToday', 'redemptions', 'reviewDue'],
+  review: ['tasks', 'reviewDue', 'weak'],
+  approve: ['redemptions'],
+  'unit-task': ['tasks', 'catalog', 'weak'],
+  daily: ['tasks'],
+  words: ['tasks', 'words'],
+  sprites: ['sprites'],
+  cursor: ['tasks', 'sprites'],
+  test: ['tasks', 'tests', 'insights'],
+  shop: ['rewards'],
+  bank: ['bank'],
+  rank: ['ranks'],
+  penalty: ['penalties'],
+  kids: ['tasks'],
+  members: [],
+  invites: [],
+  pin: [],
+}
+let loadedKid = ''
+let loadGen = 0
+
+function dropKidPacks() {
+  loadGen += 1
+  inflight.clear()
+  for (const name of [...loaded]) {
+    if (KID_PACKS.has(name)) loaded.delete(name)
   }
 }
-
-async function loadAll() {
-  // 获取当前家长信息
-  const userInfo = await api.me()
-  me.value = userInfo
-  
-  const [ks, ms, fam, inv] = await Promise.all([api.admin.kids(), api.admin.members(), api.admin.family(), api.admin.invites()])
-  kids.value = ks
-  members.value = ms
-  inviteProtect.value = !!fam.invite_protect
-  penaltyEnabled.value = !!fam.penalty_enabled
-  invites.value = inv
-  if (!ks.length) {
-    terms.value = [{ id: 'g5s1', label: '五年级上册' }]
-    return
+function invalidateSection(id) {
+  loadGen += 1
+  for (const name of SECTION_PACKS[id] || []) {
+    loaded.delete(name)
+    inflight.delete(name)
   }
-  if (!selectedKid.value && ks.length) {
-    selectedKid.value = ks[0].id
-    setSelectedKid(ks[0].id)
-  }
-  const [r, rk, t, rd, wk, ts, ig, cat, wps, rv, ft, pn, sun] = await Promise.all([api.rewards(), api.admin.ranks(), api.tasks(), api.admin.redemptions(), api.admin.weekly(), api.admin.tests(), api.admin.insights(), api.admin.unitTags(), api.admin.weakPoints(''), api.admin.reviewDue(), api.admin.familyToday(), api.admin.penalties().catch(() => ({ items: [], summary: null })), api.ledgerSummary(0).catch(() => null)])
+}
+function staleKid(kid) {
+  return !!kid && selectedKid.value !== kid
+}
+function staleNow(kid, gen) {
+  return gen !== loadGen || staleKid(kid)
+}
 
-  rewards.value = r
-  ranks.value = rk
+async function loadPack(name, fn) {
+  if (loaded.has(name)) return
+  if (inflight.has(name)) return inflight.get(name)
+  const gen = loadGen
+  const kid = selectedKid.value
+  const p = (async () => {
+    await fn()
+    if (staleNow(kid, gen)) return
+    loaded.add(name)
+  })().finally(() => { if (inflight.get(name) === p) inflight.delete(name) })
+  inflight.set(name, p)
+  return p
+}
+
+function applyTasks(t) {
   subjects.value = t.subjects
   units.value = t.units
   tasks.value = (t.tasks || []).map(x => ({ ...x, kid_id: x.kid_id || '' }))
   daily.value = t.daily
   fitnessGoals.value = t.fitness_goals || {}
-  const withM = (t.daily || []).filter(d => (d.metrics || []).length)
-  const histPairs = await Promise.all(withM.map(async d => {
-    try { return [d.id, await api.dailyHistory(d.id)] }
-    catch { return [d.id, []] }
-  }))
-  dailyHist.value = Object.fromEntries(histPairs)
   terms.value = t.terms || []
   activeTerm.value = t.active_term || 'g5s1'
   if (!activeSubject.value || !unitsBySubject.value[activeSubject.value]) activeSubject.value = Object.keys(unitsBySubject.value)[0] || ''
   cursors.value = t.cursors || {}
   progressLock.value = t.progress_lock === '1'
-  weeklyGoal.value = sun && sun.weekly_goal != null ? sun.weekly_goal : 50
   hiddenSubjects.value = t.hidden_subjects || []
-
-  redemptions.value = rd
-  weekly.value = wk
-  familyToday.value = ft || { today: '', kids: [] }
-  if (pn && !Array.isArray(pn) && Array.isArray(pn.items)) {
-    penalties.value = pn.items
-    penaltySummary.value = pn.summary || { net: 0, count: 0, amount: 0, by_reason: [] }
-  } else {
-    penalties.value = Array.isArray(pn) ? pn : []
-    penaltySummary.value = { net: 0, count: 0, amount: 0, by_reason: [] }
-  }
-  tests.value = ts
-  insights.value = ig
-  testBands.value = (ig.rules?.test_bands || DEFAULT_TEST_BANDS).map(x => [...x])
-  catalog.value = cat && cat.tags ? cat : { tags: [], unit_tags: [] }
+}
+function applyWeak(wps) {
   const openWeakPoints = wps || []
   const wb = {}
   for (const x of openWeakPoints) {
@@ -232,16 +245,162 @@ async function loadAll() {
   }
   weakPoints.value = openWeakPoints
   weakByUnit.value = wb
-  reviewDue.value = rv || []
-  await loadWords()
-  await loadBank()
-  await loadSpritesCfg()
+}
+function applyPenalties(pn) {
+  if (pn && !Array.isArray(pn) && Array.isArray(pn.items)) {
+    penalties.value = pn.items
+    penaltySummary.value = pn.summary || { net: 0, count: 0, amount: 0, by_reason: [] }
+  } else {
+    penalties.value = Array.isArray(pn) ? pn : []
+    penaltySummary.value = { net: 0, count: 0, amount: 0, by_reason: [] }
+  }
+}
+function applyInsights(ig) {
+  insights.value = ig
+  testBands.value = (ig.rules?.test_bands || DEFAULT_TEST_BANDS).map(x => [...x])
 }
 
-async function loadBank() {
+async function loadTasks() {
+  const kid = selectedKid.value
+  const t = await api.tasks()
+  if (staleKid(kid)) return
+  applyTasks(t)
+}
+async function loadHist() {
+  const kid = selectedKid.value
+  const withM = (daily.value || []).filter(d => (d.metrics || []).length)
+  const histPairs = await Promise.all(withM.map(async d => {
+    try { return [d.id, await api.dailyHistory(d.id)] }
+    catch { return [d.id, []] }
+  }))
+  if (staleKid(kid)) return
+  dailyHist.value = Object.fromEntries(histPairs)
+}
+async function loadWeeklyPack() {
+  const kid = selectedKid.value
+  const [wk, sun] = await Promise.all([api.admin.weekly(), api.ledgerSummary(0).catch(() => null)])
+  if (staleKid(kid)) return
+  weekly.value = wk
+  weeklyGoal.value = sun && sun.weekly_goal != null ? sun.weekly_goal : 50
+}
+async function loadInsightsPack() {
+  const kid = selectedKid.value
+  const ig = await api.admin.insights()
+  if (staleKid(kid)) return
+  applyInsights(ig)
+}
+async function loadFamilyToday() {
+  const kid = selectedKid.value
+  const ft = await api.admin.familyToday() || { today: '', kids: [] }
+  if (staleKid(kid)) return
+  familyToday.value = ft
+}
+async function loadRedemptions() {
+  const kid = selectedKid.value
+  const rd = await api.admin.redemptions()
+  if (staleKid(kid)) return
+  redemptions.value = rd
+}
+async function loadReviewDue() {
+  const kid = selectedKid.value
+  const rv = await api.admin.reviewDue() || []
+  if (staleKid(kid)) return
+  reviewDue.value = rv
+}
+async function loadWeak() {
+  const kid = selectedKid.value
+  const wps = await api.admin.weakPoints('')
+  if (staleKid(kid)) return
+  applyWeak(wps)
+}
+async function loadCatalog() {
+  const cat = await api.admin.unitTags()
+  catalog.value = cat && cat.tags ? cat : { tags: [], unit_tags: [] }
+}
+async function loadTests() {
+  const kid = selectedKid.value
+  const ts = await api.admin.tests()
+  if (staleKid(kid)) return
+  tests.value = ts
+}
+async function loadRewards() { rewards.value = await api.rewards() }
+async function loadRanks() { ranks.value = await api.admin.ranks() }
+async function loadPenalties() {
+  const kid = selectedKid.value
+  const pn = await api.admin.penalties().catch(() => ({ items: [], summary: null }))
+  if (staleKid(kid)) return
+  applyPenalties(pn)
+}
+
+const PACK_LOADERS = {
+  tasks: loadTasks,
+  hist: loadHist,
+  weekly: loadWeeklyPack,
+  insights: loadInsightsPack,
+  familyToday: loadFamilyToday,
+  redemptions: loadRedemptions,
+  reviewDue: loadReviewDue,
+  weak: loadWeak,
+  catalog: loadCatalog,
+  tests: loadTests,
+  rewards: loadRewards,
+  ranks: loadRanks,
+  penalties: loadPenalties,
+  words: () => loadWords(),
+  bank: () => loadBank(),
+  sprites: () => loadSpritesCfg(),
+}
+
+async function ensureSection(id) {
   if (!selectedKid.value) return
+  const packs = SECTION_PACKS[id] || []
+  if (packs.includes('tasks')) await loadPack('tasks', loadTasks)
+  await Promise.all(packs.filter(name => name !== 'tasks').map(name => loadPack(name, PACK_LOADERS[name])))
+}
+
+async function loadCore() {
+  const userInfo = await api.me()
+  me.value = userInfo
+  const [ks, ms, fam, inv] = await Promise.all([api.admin.kids(), api.admin.members(), api.admin.family(), api.admin.invites()])
+  kids.value = ks
+  members.value = ms
+  inviteProtect.value = !!fam.invite_protect
+  penaltyEnabled.value = !!fam.penalty_enabled
+  invites.value = inv
+  if (!ks.length) {
+    terms.value = [{ id: 'g5s1', label: '五年级上册' }]
+    loadedKid = ''
+    return false
+  }
+  if (!selectedKid.value || !ks.some(k => k.id === selectedKid.value)) {
+    selectedKid.value = ks[0].id
+    setSelectedKid(ks[0].id)
+  }
+  if (selectedKid.value !== loadedKid) {
+    dropKidPacks()
+    loadedKid = selectedKid.value
+  }
+  return true
+}
+
+async function load() {
+  try {
+    const ok = await loadCore()
+    if (!ok) return
+    invalidateSection(section.value)
+    await ensureSection(section.value)
+  } catch (e) {
+    showToast(e && e.message ? `加载失败：${e.message}` : '加载失败，请检查网络后重试')
+  }
+}
+
+
+async function loadBank() {
+  const kid = selectedKid.value
+  if (!kid) return
   try {
     const [b, rs, ic] = await Promise.all([api.admin.bank(), api.admin.bankRequests(), api.admin.bankInterestConfig()])
+    if (staleKid(kid)) return
     bankData.value = b || bankData.value
     bankRequests.value = rs || []
     if (ic) Object.assign(bankInterest, ic)
@@ -287,23 +446,27 @@ async function settleInterestNow() {
     await loadBank()
   } catch (e) { showToast(e.message) }
 }
-
 const spriteCfg = reactive({ enabled: true, base_enabled: true })
+
 async function loadSpritesCfg() {
-  if (!selectedKid.value) return
+  const kid = selectedKid.value
+  if (!kid) return
   try {
     const cfg = await api.admin.spritesConfig()
+    if (staleKid(kid)) return
     spriteCfg.enabled = !!cfg.enabled
     spriteCfg.base_enabled = !!cfg.base_enabled
   } catch (e) { showToast(e.message) }
 }
 async function saveSpritesCfg(patch) {
+  const kid = selectedKid.value
   try {
     const cfg = await api.admin.setSpritesConfig(patch)
+    if (staleKid(kid)) return
     spriteCfg.enabled = !!cfg.enabled
     spriteCfg.base_enabled = !!cfg.base_enabled
     showToast('已保存')
-  } catch (e) { showToast(e.message); await loadSpritesCfg() }
+  } catch (e) { showToast(e.message); if (!staleKid(kid)) await loadSpritesCfg() }
 }
 
 const wordCfg = reactive({
@@ -396,7 +559,8 @@ const wordOverview = computed(() => {
   }
 })
 async function loadWords() {
-  if (!selectedKid.value) return
+  const kid = selectedKid.value
+  if (!kid) return
   try {
     const [cfg, today, problems, stats] = await Promise.all([
       api.admin.wordConfig(),
@@ -404,6 +568,7 @@ async function loadWords() {
       api.admin.problemWords().catch(() => []),
       api.admin.wordStats().catch(() => ({ days: [], completed_sessions: 0, first_try_rate: null })),
     ])
+    if (staleKid(kid)) return
     Object.assign(wordCfg, {
       enabled: !!cfg.enabled,
       new_per_day: cfg.new_per_day,
@@ -644,19 +809,22 @@ function weakPointTiming(x) {
   return `下次：${Number(month)}月${Number(day)}日`
 }
 async function toggleTag(uid, tid) {
+  const kid = selectedKid.value
   const prev = { ...(weakByUnit.value[uid] || {}) }
   const cur = { ...prev }
   if (cur[tid]) delete cur[tid]
   else cur[tid] = true
   weakByUnit.value = { ...weakByUnit.value, [uid]: cur }
   try {
-    const rows = await api.admin.setWeakPoints({ unit_id: uid, tag_ids: Object.keys(cur), kid_id: selectedKid.value, first_review: firstReview.value })
+    const rows = await api.admin.setWeakPoints({ unit_id: uid, tag_ids: Object.keys(cur), kid_id: kid, first_review: firstReview.value })
+    if (staleKid(kid)) return
     const other = weakPoints.value.filter(x => x.unit_id !== uid)
     weakPoints.value = [...other, ...rows]
     reviewDue.value = await api.admin.reviewDue()
+    if (staleKid(kid)) return
     showToast(cur[tid] ? '已加入今天复习' : '已取消记录')
   } catch (e) {
-    weakByUnit.value = { ...weakByUnit.value, [uid]: prev }
+    if (!staleKid(kid)) weakByUnit.value = { ...weakByUnit.value, [uid]: prev }
     showToast(e.message)
   }
 }
@@ -687,8 +855,10 @@ async function delDaily(id) { if (!confirm('删除这个每日任务？')) retur
 // —— 密码 / 游标 ——
 const pinForm = reactive({ cur: '', next: '', confirm: '' })
 async function setCursor(subj, taskId) {
+  const kid = selectedKid.value
   try {
     await api.admin.setCursor({ subject_id: subj, task_id: taskId })
+    if (staleKid(kid)) return
     cursors.value = { ...cursors.value, [subj]: taskId }
     showToast('已更新「已学到」')
   } catch (e) { showToast(e.message) }
@@ -699,7 +869,6 @@ async function switchKid() {
   reviewSubject.value = ''
   emit('switched')
   await load()
-  await loadBank()
 }
 async function pickKid(id) {
   selectedKid.value = id
