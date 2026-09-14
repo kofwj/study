@@ -72,6 +72,7 @@ const activeTerm = ref('g5s1')
 const activeSubject = ref('')
 const cursors = ref({})
 const progressLock = ref(true)
+const hiddenSubjects = ref([])
 const weeklyGoal = ref(50)
 const weeklyGoalBusy = ref(false)
 
@@ -2187,11 +2188,6 @@ button.fam-card { cursor: pointer; }
   .test-band-head { display: none; }
   .band-edit { grid-template-columns: minmax(100px, 1fr) 88px 18px 76px 18px; }
   .tag-guide-row { grid-template-columns: 1fr; }
-.review-scope-count { align-self: flex-end; padding-bottom: 10px; }
-.scope-books { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin: 4px 0 8px; }
-.scope-group { border: 1px solid var(--line); border-radius: var(--radius-md); padding: 10px 12px; background: var(--surface-2); }
-.scope-group > strong { display: block; margin-bottom: 7px; color: var(--brand-deep); font-size: 13px; }
-.scope-book-check { display: flex; align-items: center; gap: 6px; padding: 4px 0; color: var(--ink-2); font-size: 12px; }
 }
 
 /* —— 单元任务 / 每日任务 表单重排 —— */
@@ -2251,6 +2247,11 @@ button.fam-card { cursor: pointer; }
 .dc-m-head { font-size: 11px; color: var(--ink-3); font-weight: 800; margin-bottom: 8px; }
 .m-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
 
+.review-scope-count { align-self: flex-end; padding-bottom: 10px; }
+.scope-books { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin: 4px 0 8px; }
+.scope-group { border: 1px solid var(--line); border-radius: var(--radius-md); padding: 10px 12px; background: var(--surface-2); }
+.scope-group > strong { display: block; margin-bottom: 7px; color: var(--brand-deep); font-size: 13px; }
+.scope-book-check { display: flex; align-items: center; gap: 6px; padding: 4px 0; color: var(--ink-2); font-size: 12px; }
 .word-ov { grid-template-columns: repeat(5, 1fr); }
 .word-book { border: 1px solid var(--line); border-radius: var(--radius-md); padding: 12px 14px; margin-bottom: 10px; background: var(--surface); }
 .word-book-h { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
