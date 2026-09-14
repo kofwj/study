@@ -302,6 +302,25 @@ async function saveWordReviewMode(mode) {
   }
   await saveWordNow({ review_mode: mode, review_books: selected })
 }
+const WORD_SCOPE_PRESETS = [
+  { id: 'current', label: '当前词书（原模式）', terms: [] },
+  { id: 'g3', label: '三年级基础', terms: ['g3s1', 'g3x2'] },
+  { id: 'g4', label: '四年级基础', terms: ['g4s1', 'g4x2'] },
+  { id: 'g3g4', label: '三、四年级补基础', terms: ['g3s1', 'g3x2', 'g4s1', 'g4x2'] },
+]
+async function applyWordScopePreset(id) {
+  const preset = WORD_SCOPE_PRESETS.find(x => x.id === id)
+  if (!preset) return
+  if (id === 'current') {
+    await saveWordNow({ review_mode: 'current' })
+    return
+  }
+  const ids = wordBooks.value
+    .filter(b => b.is_system && preset.terms.includes(b.term_id))
+    .sort((a, b) => (Number(a.sort) || 0) - (Number(b.sort) || 0) || String(a.id).localeCompare(String(b.id)))
+    .map(b => b.id)
+  await saveWordNow({ review_mode: 'scope', review_books: ids, current_book: ids[0] || '' })
+}
 async function toggleReviewBook(book) {
   const selected = new Set(wordCfg.review_books || [])
   if (selected.has(book.id)) {
@@ -1641,6 +1660,12 @@ onMounted(load)
           <select :value="wordCfg.review_mode" @change="saveWordReviewMode($event.target.value)">
             <option value="current">跟随当前词书</option>
             <option value="scope">自定义范围（补基础）</option>
+          </select>
+        </label>
+        <label class="fld grow mt8"><span>快捷方案</span>
+          <select @change="applyWordScopePreset($event.target.value)">
+            <option value="" disabled selected>选择一个复习方案</option>
+            <option v-for="p in WORD_SCOPE_PRESETS" :key="p.id" :value="p.id">{{ p.label }}</option>
           </select>
         </label>
         <span class="dim review-scope-count">{{ wordCfg.review_mode === 'scope' ? `已选 ${selectedReviewBookCount} 本系统词书` : '当前模式只练当前词书；到期复习保持旧行为' }}</span>
