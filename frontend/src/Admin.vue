@@ -1859,21 +1859,6 @@ get up	起床</pre>
     <!-- 单元测试成绩 -->
     <section v-if="section === 'test'" class="a-card enter">
       <h3>单元测试</h3>
-      <div class="test-band-editor">
-        <div class="add-title">成绩对应阳光</div>
-        <div class="test-band-head"><span>分数区间</span><span>发放阳光</span></div>
-        <div class="band-edit" v-for="(band, i) in testBands" :key="i">
-          <span class="band-range">{{ testBandRange(i) }}</span>
-          <label class="fld band-threshold"><span>本档最低分</span><input v-model.number="band[0]" type="number" min="0" max="100" :disabled="i === testBands.length - 1" /></label>
-          <span class="band-arrow">→</span>
-          <label class="fld band-sun"><span>阳光</span><input v-model.number="band[1]" type="number" min="0" /></label>
-          <Sun class="ico sun" :size="14" />
-        </div>
-        <div class="band-actions">
-          <button class="ok" @click="saveTestBands">保存设置</button>
-          <button class="ghost-s" @click="resetTestBands">恢复默认</button>
-        </div>
-      </div>
       <div class="add-box">
         <div class="add-title">录入成绩</div>
         <div class="frm-row">
@@ -1893,7 +1878,6 @@ get up	起床</pre>
           <label class="fld w104"><span>备注</span><input v-model="newTest.note" placeholder="如：期中" /></label>
         </div>
         <p v-if="testPreview" class="test-preview">命中 {{ testPreview.range }}，将发 {{ testPreview.sun }} 阳光。</p>
-
         <button class="ok wide" @click="addTest">录成绩并发阳光</button>
       </div>
       <div v-if="!tests.length" class="dim">还没录过测试成绩。</div>
@@ -1904,6 +1888,44 @@ get up	起床</pre>
         <span class="st delivered">+{{ t.sunshine }} <Sun class="ico sun" :size="12" /></span>
         <button class="del" @click="delTest(t.id)">删</button>
       </div>
+      <button type="button" class="ghost-s rules-toggle" @click="rulesOpen = !rulesOpen">{{ rulesOpen ? '收起规则' : '成绩档位与诊断阈值' }}</button>
+      <template v-if="rulesOpen">
+        <div class="test-band-editor">
+          <div class="add-title">成绩对应阳光</div>
+          <div class="test-band-head"><span>分数区间</span><span>发放阳光</span></div>
+          <div class="band-edit" v-for="(band, i) in testBands" :key="i">
+            <span class="band-range">{{ testBandRange(i) }}</span>
+            <label class="fld band-threshold"><span>本档最低分</span><input v-model.number="band[0]" type="number" min="0" max="100" :disabled="i === testBands.length - 1" /></label>
+            <span class="band-arrow">→</span>
+            <label class="fld band-sun"><span>阳光</span><input v-model.number="band[1]" type="number" min="0" /></label>
+            <Sun class="ico sun" :size="14" />
+          </div>
+          <div class="band-actions">
+            <button class="ok" @click="saveTestBands">保存设置</button>
+            <button class="ghost-s" @click="resetTestBands">恢复默认</button>
+          </div>
+        </div>
+        <div class="a-item">
+          <span class="dim">连续低分次数</span>
+          <input class="w-num" type="number" :value="insights.rules.test_fail_count" @change="saveRule('test_fail_count', +$event.target.value)" />
+          <button class="ghost" @click="resetRule('test_fail_count')">默认</button>
+        </div>
+        <div class="a-item">
+          <span class="dim">低于多少分算低</span>
+          <input class="w-num" type="number" :value="insights.rules.test_fail_score" @change="saveRule('test_fail_score', +$event.target.value)" />
+          <button class="ghost" @click="resetRule('test_fail_score')">默认</button>
+        </div>
+        <div class="a-item">
+          <span class="dim">完成量少几成算下滑</span>
+          <input class="w-num" type="number" step="0.1" :value="insights.rules.drop_ratio" @change="saveRule('drop_ratio', +$event.target.value)" />
+          <button class="ghost" @click="resetRule('drop_ratio')">默认</button>
+        </div>
+        <div class="a-item">
+          <span class="dim">连击断几天再提</span>
+          <input class="w-num" type="number" :value="insights.rules.streak_break" @change="saveRule('streak_break', +$event.target.value)" />
+          <button class="ghost" @click="resetRule('streak_break')">默认</button>
+        </div>
+      </template>
     </section>
 
     <section v-if="section === 'kids'" class="a-card">
