@@ -1,0 +1,201 @@
+/* ============================================================
+   家长工作台 · 页面内容基础样式（全局）
+   ------------------------------------------------------------
+   为什么在这里而不是 Admin.vue 的 <style scoped>：
+   家长工作台要按页拆成子组件（AdminWords / AdminInsights / AdminTasks）。
+   子组件内部的元素拿不到 Admin.vue 的 scoped 样式，
+   所以把「页面内容共用」的类放到这里，一次写好，三个子组件都能用。
+
+   规则内容与搬迁前完全一致（只搬不改）。
+   每条选择器都加 .admin 前缀，保证只作用于家长工作台，
+   不会影响孩子端组件（BankPage / SunshinePage / WordPractice 等）。
+   壳自身的框架样式（.a-head / .a-side / .a-nav / .a-body / .setup…）
+   仍留在 Admin.vue 里。
+   ============================================================ */
+
+/* —— 卡片 —— */
+.admin .a-card { background: var(--surface); border-radius: var(--radius-xl); padding: 22px; margin-bottom: 14px; box-shadow: var(--shadow-md); border: 1px solid var(--line); }
+.admin .a-card h3 { margin: 0 0 6px; font-size: 22px; color: var(--ink); letter-spacing: -.02em; }
+
+/* —— 总览：数字格 / 图表 —— */
+.admin .dash-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 0 0 18px; }
+.admin .dash-stat {
+  display: block; width: 100%; text-align: left; border: none; cursor: pointer;
+  background: var(--surface-2); border-radius: var(--radius-lg); padding: 14px 16px;
+  font-family: inherit; color: inherit;
+}
+.admin .dash-stat span { display: block; font-size: 12px; color: var(--ink-3); font-weight: 700; }
+.admin .dash-stat b { display: block; margin-top: 4px; font-size: 24px; color: var(--ink); letter-spacing: -.03em; }
+.admin .dash-charts { display: grid; grid-template-columns: 1.2fr 1fr; gap: 16px; margin: 4px 0 8px; }
+.admin .dash-dailies { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+.admin .dash-daily { padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--surface); display: flex; flex-direction: column; gap: 2px; }
+.admin .dash-daily.on { background: var(--ok-bg); border-color: var(--ok-bg); }
+.admin .dash-undo { align-self: flex-start; margin-top: 2px; padding: 0; font-size: 11px; text-decoration: underline; opacity: .85; }
+.admin .dash-undo:hover { opacity: 1; }
+.admin .pe-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+.admin .pe-card { display: flex; flex-direction: column; gap: 4px; padding: 14px; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface-2); }
+.admin .pe-card b { font-size: 24px; letter-spacing: -.03em; }
+.admin .pe-card small { font-size: 12px; font-weight: 600; margin-left: 4px; color: var(--ink-3); }
+.admin .pe-std { margin: 6px 0 2px; }
+.admin .pe-svg { width: 100%; height: 56px; display: block; margin-top: 6px; }
+.admin .dash-chart .w-h { margin-top: 8px; }
+.admin .dash-bars { height: 100px; padding-top: 18px; }
+
+/* —— 通用文本 —— */
+.admin .lead { color: var(--ink-2); font-size: 13px; margin: 0 0 16px; line-height: 1.5; }
+.admin .dim { color: var(--ink-3); font-size: 12px; }
+.admin .unit-wp-count { margin-left: 6px; color: var(--accent-ink); font-size: 11px; font-weight: 700; }
+
+/* —— 开关行 / 开关 —— */
+.admin .lock-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; color: var(--ink-2); font-weight: 700; }
+.admin .toggle { border: none; background: var(--surface-2); color: var(--ink-2); padding: 7px 16px; border-radius: var(--radius-pill); font-weight: 800; cursor: pointer; font-family: inherit; }
+.admin .toggle.on { background: var(--accent); color: #fff; }
+
+/* —— 表单列宽 —— */
+.admin .w-num { width: 70px; }
+
+/* —— 徽章 / 状态 / 按钮 —— */
+.admin .badge { font-size: 11px; padding: 3px 8px; border-radius: var(--radius-sm); background: var(--surface-2); color: var(--brand-deep); white-space: nowrap; font-weight: 700; }
+.admin .badge.daily { background: var(--warm); color: var(--accent-ink); }
+.admin .badge.scope { font-weight: 600; }
+.admin .badge.scope.kid { background: var(--brand-deep); color: #fff; }
+.admin .rank-icon { font-size: 18px; }
+.admin .ok { padding: 7px 14px; border: none; border-radius: var(--radius-md); background: var(--accent); color: #fff; font-weight: 700; cursor: pointer; font-family: inherit; }
+.admin .ok.ghost-o { background: var(--brand); }
+.admin .del { padding: 6px 10px; border: none; border-radius: var(--radius-md); background: var(--danger-bg); color: var(--danger); cursor: pointer; font-family: inherit; }
+.admin .ghost-s { background: none; border: none; color: var(--brand-deep); font-size: 12px; cursor: pointer; font-family: inherit; }
+.admin .daily .d-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; width: 100%; padding: 4px 0; }
+
+/* —— 全家今日 —— */
+.admin .fam-today { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 8px; }
+.admin .fam-card { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-width: 150px; flex: 1; padding: 12px; border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--surface); text-align: left; font-family: inherit; }
+.admin button.fam-card { cursor: pointer; }
+.admin .fam-card.on { outline: 2px solid var(--accent); }
+.admin .fam-st { font-size: 12px; font-weight: 700; font-style: normal; }
+.admin .fam-st.amber { color: var(--accent-ink); }
+.admin .fam-st.gray { color: var(--ink-3); }
+.admin .fam-st.green { color: var(--ok); }
+.admin .fam-go { margin-top: 4px; }
+
+/* —— 折叠按钮 —— */
+.admin .rules-toggle { margin: 12px 0 8px; }
+
+/* —— 本周阳光：格子 / 折线 / 柱 / 各科 —— */
+.admin .w-kids { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 12px; }
+.admin .w-kids .w-box { cursor: pointer; }
+.admin .w-kids .w-box.on { outline: 2px solid var(--accent); }
+.admin .w-kids .w-box i { display: block; font-style: normal; font-size: 11px; }
+.admin .w-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.admin .w-box { background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--radius-md); padding: 12px 6px; text-align: center; }
+.admin .w-box span { display: block; font-size: 11px; color: var(--ink-3); margin-bottom: 4px; }
+.admin .w-box b { font-size: 20px; color: var(--ink); }
+.admin .w-h { margin: 20px 0 10px; font-size: 14px; color: var(--ink); }
+.admin .w-trend { margin-bottom: 4px; }
+.admin .w-trend-svg { width: 100%; height: 90px; }
+.admin .w-trend-labels { display: flex; justify-content: space-between; font-size: 11px; color: var(--ink-3); margin-top: 6px; }
+.admin .w-trend-labels i { font-style: normal; color: var(--brand-deep); font-weight: 700; margin-left: 3px; }
+.admin .w-chart { display: flex; align-items: flex-end; gap: 8px; height: 140px; padding-top: 20px; }
+.admin .w-bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5px; height: 100%; justify-content: flex-end; }
+.admin .w-bar { width: 100%; max-width: 34px; background: var(--accent); border-radius: var(--radius-xs) var(--radius-xs) 0 0; position: relative; min-height: 2px; }
+.admin .w-bar.down { background: var(--ink-3); }
+.admin .w-bar i { position: absolute; top: -20px; left: 0; width: 100%; text-align: center; font-size: 11px; color: var(--accent-ink); font-style: normal; font-weight: 700; }
+.admin .w-bar-col span { font-size: 11px; color: var(--ink-2); }
+.admin .w-subj-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
+.admin .w-subj-name { width: 48px; font-weight: 700; color: var(--ink); flex: none; }
+.admin .w-subj-track { flex: 1; background: var(--line); border-radius: var(--radius-xs); height: 12px; overflow: hidden; }
+.admin .w-subj-track i { display: block; height: 100%; background: linear-gradient(90deg,var(--brand),var(--brand)); border-radius: var(--radius-xs); }
+.admin .w-subj-num { flex: none; min-width: 2.6em; text-align: right; font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--ink-2); }
+
+/* —— 单元测试：档位 —— */
+.admin .band-box { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 14px; }
+.admin .band { font-size: 12px; padding: 4px 10px; border-radius: var(--radius-pill); background: var(--warm); color: var(--accent-ink); font-weight: 700; }
+.admin .test-band-editor { padding: 12px 0 4px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); margin-bottom: 14px; }
+.admin .test-band-head, .admin .band-edit { display: grid; grid-template-columns: minmax(120px, 1fr) 112px 20px 92px 18px; align-items: end; gap: 8px; }
+.admin .test-band-head { padding: 0 8px 6px; color: var(--ink-3); font-size: 11px; font-weight: 700; }
+.admin .band-edit { padding: 7px 8px; border-top: 1px solid var(--surface-2); }
+.admin .band-edit .fld { margin: 0; }
+.admin .band-range { color: var(--ink); font-weight: 700; font-size: 13px; padding-bottom: 10px; }
+.admin .band-threshold { grid-column: 2; }
+.admin .band-arrow { color: var(--ink-3); font-size: 12px; text-align: center; padding-bottom: 10px; }
+.admin .band-sun { grid-column: 4; }
+.admin .band-actions { display: flex; align-items: center; gap: 8px; margin: 10px 0 4px; }
+
+/* —— 表单：字段 / 列宽 / 操作区 —— */
+.admin .fld { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.admin .fld > span { font-size: 11px; color: var(--ink-3); font-weight: 700; }
+.admin .fld input, .admin .fld select { border: 1px solid var(--line); border-radius: var(--radius-md); padding: 8px 10px; font-size: 15px; color: var(--ink); background: var(--surface); font-family: inherit; width: 100%; min-height: 40px; }
+.admin .fld input:focus, .admin .fld select:focus { outline: none; border-color: var(--brand); }
+.admin .grow { flex: 1 1 120px; }
+.admin .w64 { width: 64px; flex: none; }
+.admin .w84 { width: 84px; flex: none; }
+.admin .w104 { width: 104px; flex: none; }
+.admin .ops { display: flex; gap:  6px; align-items: center; flex: none; }
+.admin .w-mastered { margin: 12px 0; padding: 9px 12px; border-radius: var(--radius-md); background: var(--brand); color: #fff; font-size: 13px; font-weight: 600; }
+.admin .w-next { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 0 0 14px; padding: 12px 14px; border-radius: var(--radius-md); background: var(--warm); }
+.admin .w-next strong { font-size: 13px; }
+.admin .w-next span { flex: 1; min-width: 160px; color: var(--ink-2); font-size: 13px; }
+.admin .test-preview { margin: 0 0 10px; color: var(--accent-ink); font-size: 13px; font-weight: 700; }
+.admin .goal-row { margin: 10px 0 4px; gap: 8px; }
+.admin .goal-row .w-num { width: 84px; }
+
+/* —— 科目 tab / 单元块 —— */
+.admin .subj-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+.admin .subj-tab { border: 1px solid var(--line); border-radius: var(--radius-pill); padding: 6px 14px; font-size: 13px; font-weight: 700; color: var(--ink); background: var(--surface); cursor: pointer; }
+.admin .subj-tab.on { background: var(--brand); color: #fff; border-color: var(--brand); }
+.admin .subj { border: 1px solid var(--line); border-radius: var(--radius-md); margin-bottom: 8px; background: var(--surface); overflow: hidden; }
+.admin .subj .unit-block:first-child { border-top: none; }
+.admin .unit-block { padding: 10px 14px 12px; border-top: 1px solid var(--surface-2); }
+.admin .unit-h { font-weight: 800; font-size: 13px; margin-bottom: 6px; }
+.admin .task-readonly-title { flex: 1; min-width: 160px; color: var(--ink-2); font-size: 13px; }
+.admin .task-add-box { margin: 0 0 18px; }
+.admin .form-help { margin: -4px 0 10px; color: var(--ink-3); font-size: 11px; }
+
+/* —— 考点卡 —— */
+.admin .tag-guide-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 8px; margin-bottom: 10px; }
+.admin .tag-guide { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-width: 0; padding: 10px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); color: var(--ink); text-align: left; font-family: inherit; cursor: pointer; }
+.admin .tag-guide:hover { border-color: var(--brand); }
+.admin .tag-guide.on { border-color: var(--accent); background: var(--warm); }
+.admin .tag-guide:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.admin .tag-guide.auto:not(.on) { opacity: .8; }
+.admin .tag-guide-title { font-size: 13px; font-weight: 800; }
+.admin .tag-guide-help { color: var(--ink-2); font-size: 12px; line-height: 1.5; }
+.admin .tag-guide-action { color: var(--brand-deep); font-size: 11px; font-weight: 700; }
+.admin .tag-guide.on .tag-guide-action { color: var(--accent-ink); }
+.admin .task-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 8px 14px; border-top: 1px solid var(--surface-2); }
+.admin .task-row .badge { flex: none; }
+
+/* —— 每日任务卡 —— */
+.admin .daily-card { border: 1px solid var(--line); border-radius: var(--radius-md); padding: 12px 14px; margin-bottom: 10px; background: var(--surface); }
+.admin .dc-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.admin .sys-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.admin .sys-name { font-weight: 700; }
+.admin .daily-note { flex-basis: 100%; color: var(--ink-2); font-size: 12px; padding-left: 58px; }
+.admin .dc-metrics { margin-top: 12px; border-top: 1px dashed var(--line); padding-top: 10px; }
+.admin .dc-m-head { font-size: 11px; color: var(--ink-3); font-weight: 800; margin-bottom: 8px; }
+.admin .m-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+
+/* —— 新增表单盒 —— */
+.admin .add-box { margin-top: 14px; border: 1px dashed var(--line); border-radius: var(--radius-md); padding: 14px; background: var(--surface-2); }
+.admin .add-title { font-size: 12px; font-weight: 800; color: var(--ink-2); margin-bottom: 10px; }
+.admin .frm-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.admin .ok.wide { width: 100%; }
+
+/* —— 审批 / 测试行 —— */
+.admin .apv-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--surface-2); flex-wrap: wrap; }
+.admin .apv-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.admin .apv-name { font-weight: 700; }
+.admin .apv-right { display: flex; align-items: center; gap: 8px; flex: none; }
+.admin .test-row { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--surface-2); flex-wrap: wrap; }
+.admin .test-row .dim { flex: 1; min-width: 0; }
+
+/* —— 窄屏 —— */
+@media (max-width: 760px) {
+  .admin .dash-stats { grid-template-columns: repeat(2, 1fr); }
+  .admin .dash-charts { grid-template-columns: 1fr; }
+}
+@media (max-width: 560px) {
+  .admin .test-band-head { display: none; }
+  .admin .band-edit { grid-template-columns: minmax(100px, 1fr) 88px 18px 76px 18px; }
+  .admin .tag-guide-row { grid-template-columns: 1fr; }
+  .admin .w-summary { grid-template-columns: repeat(2, 1fr); }
+}
