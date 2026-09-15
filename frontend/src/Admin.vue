@@ -1,5 +1,5 @@
 <script setup>
-import { ref, reactive, computed, watch, onMounted } from 'vue'
+import { ref, reactive, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { api, setSelectedKid } from './api.js'
 import { APP_LABEL, APP_REVISION } from './version.js'
 import { rankIcon } from './icons.js'
@@ -81,6 +81,7 @@ const subjects = ref([])
 const units = ref([])
 const tasks = ref([])
 const daily = ref([])
+const dailyAll = ref([])   // 全家每日任务（含只给别的孩子看的），只给管理列表用
 const fitnessGoals = ref({})
 const dailyHist = ref({})
 const terms = ref([])
@@ -107,6 +108,12 @@ const reviewDue = ref([])
 const firstReview = ref('')
 const DEFAULT_TEST_BANDS = [[100, 30], [95, 20], [90, 15], [85, 10], [0, 5]]
 const testBands = ref(DEFAULT_TEST_BANDS.map(x => [...x]))
+const weeklyGoalSnap = ref(null)
+const testBandsSnap = ref(null)
+const bankGoalSnap = ref(null)
+function snapWeeklyGoal() { weeklyGoalSnap.value = weeklyGoal.value }
+function snapTestBands() { testBandsSnap.value = (testBands.value || []).map(x => [...x]) }
+function snapBankGoal() { bankGoalSnap.value = { name: bankGoal.name, target: bankGoal.target } }
 const weekly = ref({ days: [], weeks: [], by_subject: [], kids: [], total_earned: 0, total_spent: 0, net: 0, balance: 0, earned_all: 0, streak: 0, checkins: 0, week_start: '', week_end: '', insight: null, family_insight: null, mastered_by_kid: [], penalty_net: 0, penalty_count: 0 })
 const insights = ref({ rules: { test_fail_count: 2, test_fail_score: 80, drop_ratio: 0.3, streak_break: 2 }, kids: [] })
 const familyToday = ref({ today: '', kids: [] })
@@ -124,7 +131,7 @@ const editSnap = ref(null)
 function cloneEdit(kind, row) {
   if (kind === 'reward') return { name: row.name, price: row.price, category: row.category }
   if (kind === 'rank') return { name: row.name, min_sunshine: row.min_sunshine }
-  if (kind === 'daily') return { name: row.name, subject_id: row.subject_id, sunshine: row.sunshine, bonus_per_metric: row.bonus_per_metric, note: row.note, metrics: JSON.parse(JSON.stringify(row.metrics || [])) }
+  if (kind === 'daily') return { name: row.name, subject_id: row.subject_id, sunshine: row.sunshine, bonus_per_metric: row.bonus_per_metric, note: row.note, kid_id: row.kid_id || '', metrics: JSON.parse(JSON.stringify(row.metrics || [])) }
   if (kind === 'task') return { title: row.title, action: row.action, sunshine: row.sunshine, kid_id: row.kid_id || '' }
   if (kind === 'kid') return { name: row.name, account: row.account, term_id: row.term_id, gender: row.gender || '' }
   return {}
@@ -132,7 +139,7 @@ function cloneEdit(kind, row) {
 function findEditRow(kind, id) {
   if (kind === 'reward') return rewards.value.find(x => x.id === id)
   if (kind === 'rank') return ranks.value.find(x => x.id === id)
-  if (kind === 'daily') return daily.value.find(x => x.id === id)
+  if (kind === 'daily') return dailyAll.value.find(x => x.id === id) || daily.value.find(x => x.id === id)
   if (kind === 'task') return tasks.value.find(x => x.id === id)
   if (kind === 'kid') return kids.value.find(x => x.id === id)
 }
@@ -151,6 +158,7 @@ function restoreEditSnap() {
       row.sunshine = snap.sunshine
       row.bonus_per_metric = snap.bonus_per_metric
       row.note = snap.note
+      row.kid_id = snap.kid_id || ''
       row.metrics = JSON.parse(JSON.stringify(snap.metrics || []))
     }
     else if (kind === 'task') { row.title = snap.title; row.action = snap.action; row.sunshine = snap.sunshine; row.kid_id = snap.kid_id || '' }
@@ -273,6 +281,7 @@ function applyTasks(t) {
   units.value = t.units
   tasks.value = (t.tasks || []).map(x => ({ ...x, kid_id: x.kid_id || '' }))
   daily.value = t.daily
+  dailyAll.value = t.daily_all || t.daily
   fitnessGoals.value = t.fitness_goals || {}
   terms.value = t.terms || []
   activeTerm.value = t.active_term || 'g5s1'
@@ -303,6 +312,7 @@ function applyPenalties(pn) {
 function applyInsights(ig) {
   insights.value = ig
   testBands.value = (ig.rules?.test_bands || DEFAULT_TEST_BANDS).map(x => [...x])
+  snapTestBands()
 }
 
 async function loadTasks() {
@@ -327,6 +337,7 @@ async function loadWeeklyPack() {
   if (staleKid(kid)) return
   weekly.value = wk
   weeklyGoal.value = sun && sun.weekly_goal != null ? sun.weekly_goal : 50
+  snapWeeklyGoal()
 }
 async function loadInsightsPack() {
   const kid = selectedKid.value
@@ -453,6 +464,7 @@ async function loadBank() {
     if (ic) Object.assign(bankInterest, ic)
     if (bankData.value.goal) Object.assign(bankGoal, { name: bankData.value.goal.name, target: bankData.value.goal.target })
     else Object.assign(bankGoal, { name: '', target: 100 })
+    snapBankGoal()
   } catch (e) { showToast(e.message) }
 }
 async function toggleBank() {
@@ -464,7 +476,7 @@ async function toggleBank() {
 async function saveBankGoal() {
   if (!bankGoal.name.trim()) return showToast('填目标名称')
   bankBusy.value = true
-  try { bankData.value = await api.admin.saveBankGoal({ name: bankGoal.name, target: bankGoal.target }); showToast('目标已保存') }
+  try { bankData.value = await api.admin.saveBankGoal({ name: bankGoal.name, target: bankGoal.target }); snapBankGoal(); showToast('目标已保存') }
   catch (e) { showToast(e.message) }
   finally { bankBusy.value = false }
 }
@@ -878,27 +890,122 @@ async function toggleTag(uid, tid) {
 
 // —— 每日任务 ——
 const DIRS = [['higher_better', '越多越好'], ['lower_better', '越少越好']]
-const newDaily = reactive({ subject_id: '体育', name: '', sunshine: 5, bonus_per_metric: 3, note: '', metrics: [] })
-const orderedDaily = computed(() => [...daily.value].sort((a, b) => Number(b.family_id != null) - Number(a.family_id != null)))
+const newDaily = reactive({ subject_id: '体育', name: '', sunshine: 5, bonus_per_metric: 3, note: '', kid_id: '', metrics: [] })
+const EMPTY_DAILY = { subject_id: '体育', name: '', sunshine: 5, bonus_per_metric: 3, note: '', kid_id: '', metrics: [] }
+const kidName = (id) => kids.value.find(k => k.id === id)?.name || '某个孩子'
+// 管理列表看全家的任务；系统内置排最后，其余按「全家 → 各孩子」分组
+const orderedDaily = computed(() => [...dailyAll.value].sort((a, b) =>
+  Number(b.family_id != null) - Number(a.family_id != null)
+  || String(a.kid_id || '').localeCompare(String(b.kid_id || ''))))
 function addMetric(arr) { arr.push({ id: 'm' + Date.now(), label: '', unit: '', direction: 'higher_better', note: '' }) }
 const cleanMetrics = (ms) => (ms || []).map(({ id, label, unit, direction, note }) => ({ id, label, unit, direction, note }))
 async function addDaily() {
   if (!newDaily.name) return showToast('填任务名')
   await withBusy(async () => {
-    await api.admin.createDaily({ ...newDaily, metrics: cleanMetrics(newDaily.metrics) })
-    Object.assign(newDaily, { subject_id: '体育', name: '', sunshine: 5, bonus_per_metric: 3, note: '', metrics: [] })
+    await api.admin.createDaily({ ...newDaily, kid_id: newDaily.kid_id || null, metrics: cleanMetrics(newDaily.metrics) })
+    const who = newDaily.kid_id ? kidName(newDaily.kid_id) : ''
+    Object.assign(newDaily, EMPTY_DAILY)
     dailyAddOpen.value = false
-    showToast('已新增'); await load()
+    showToast(who ? `已新增，只有「${who}」能看到` : '已新增'); await load()
   })
 }
 async function saveDaily(d) {
   await withBusy(async () => {
-    await api.admin.updateDaily(d.id, { subject_id: d.subject_id, name: d.name, sunshine: d.sunshine, bonus_per_metric: d.bonus_per_metric, note: d.note, metrics: cleanMetrics(d.metrics) })
+    await api.admin.updateDaily(d.id, { subject_id: d.subject_id, name: d.name, sunshine: d.sunshine, bonus_per_metric: d.bonus_per_metric, note: d.note, kid_id: d.kid_id || null, metrics: cleanMetrics(d.metrics) })
     clearEdit()
     showToast('已保存')
   })
 }
 async function delDaily(id) { if (!confirm('删除这个每日任务？')) return; await withBusy(async () => { await api.admin.delDaily(id); await load() }) }
+
+function sameJson(a, b) { return JSON.stringify(a) === JSON.stringify(b) }
+function filled(v) { return String(v ?? '').trim() !== '' }
+function isEditDirty() {
+  const kind = editKind.value
+  const id = editId.value
+  const snap = editSnap.value
+  if (!kind || !id || !snap) return false
+  const row = findEditRow(kind, id)
+  if (!row) return false
+  if (kind === 'kid' && String(row._pin || '').trim()) return true
+  return !sameJson(cloneEdit(kind, row), snap)
+}
+function isAddDirty() {
+  if (filled(newReward.name) || Number(newReward.price) !== 30 || (newReward.category || '') !== '娱乐') return true
+  if (filled(newRank.name) || Number(newRank.min_sunshine) !== 0) return true
+  if (newTask.subject_id || newTask.unit_id || filled(newTask.action) || filled(newTask.title) || Number(newTask.sunshine) !== 5 || newTask.kid_id) return true
+  if ((newDaily.subject_id || '体育') !== '体育' || filled(newDaily.name) || Number(newDaily.sunshine) !== 5 || Number(newDaily.bonus_per_metric) !== 3 || filled(newDaily.note) || (newDaily.kid_id || '') || (newDaily.metrics || []).length) return true
+  if (filled(newKid.name) || filled(newKid.account) || filled(newKid.pin) || filled(newKid.pin2) || (newKid.term_id || 'g5s1') !== 'g5s1' || (newKid.gender || '')) return true
+  return false
+}
+function isWeeklyDirty() {
+  if (weeklyGoalSnap.value == null) return false
+  return Number(weeklyGoal.value) !== Number(weeklyGoalSnap.value)
+}
+function isBandsDirty() {
+  if (testBandsSnap.value == null) return false
+  return !sameJson(testBands.value, testBandsSnap.value)
+}
+function isBankDirty() {
+  if (bankGoalSnap.value == null) return false
+  return (bankGoal.name || '') !== (bankGoalSnap.value.name || '') || Number(bankGoal.target) !== Number(bankGoalSnap.value.target)
+}
+const isDirty = computed(() => isEditDirty() || isAddDirty() || isWeeklyDirty() || isBandsDirty() || isBankDirty())
+function discardDirty() {
+  cancelEdit()
+  if (weeklyGoalSnap.value != null) weeklyGoal.value = weeklyGoalSnap.value
+  if (testBandsSnap.value != null) testBands.value = testBandsSnap.value.map(x => [...x])
+  if (bankGoalSnap.value != null) Object.assign(bankGoal, { name: bankGoalSnap.value.name, target: bankGoalSnap.value.target })
+  Object.assign(newReward, { name: '', price: 30, category: '娱乐' })
+  Object.assign(newRank, { name: '', min_sunshine: 0 })
+  Object.assign(newTask, { subject_id: '', unit_id: '', action: '', title: '', sunshine: 5, kid_id: '' })
+  Object.assign(newDaily, { subject_id: '体育', name: '', sunshine: 5, bonus_per_metric: 3, note: '', kid_id: '', metrics: [] })
+  Object.assign(newKid, { name: '', account: '', pin: '', pin2: '', term_id: 'g5s1', gender: '' })
+  taskAddOpen.value = false
+  dailyAddOpen.value = false
+  kidAddOpen.value = false
+}
+async function saveDirty() {
+  if (isAddDirty()) {
+    showToast('新增还没提交，点新增或放弃')
+    return
+  }
+  if (isEditDirty()) {
+    const row = findEditRow(editKind.value, editId.value)
+    if (!row) return
+    const kind = editKind.value
+    if (kind === 'reward') await saveReward(row)
+    else if (kind === 'rank') await saveRank(row)
+    else if (kind === 'daily') await saveDaily(row)
+    else if (kind === 'task') await saveTask(row)
+    else if (kind === 'kid') await saveKid(row)
+    if (isEditDirty()) return
+  }
+  if (isWeeklyDirty()) {
+    await saveWeeklyGoal()
+    if (isWeeklyDirty()) return
+  }
+  if (isBandsDirty()) {
+    await saveTestBands()
+    if (isBandsDirty()) return
+  }
+  if (isBankDirty()) await saveBankGoal()
+}
+function confirmLeave() {
+  if (!isDirty.value) return true
+  if (!confirm('有未保存的修改，要离开吗？离开会丢掉这些修改。')) return false
+  discardDirty()
+  return true
+}
+function goSection(id) {
+  if (!id || id === section.value) return
+  if (!confirmLeave()) return
+  section.value = id
+}
+function exitAdminView() {
+  if (!confirmLeave()) return
+  emit('exit')
+}
 
 // —— 密码 / 游标 ——
 const pinForm = reactive({ cur: '', next: '', confirm: '' })
@@ -919,6 +1026,8 @@ async function switchKid() {
   await load()
 }
 async function pickKid(id) {
+  if (id === selectedKid.value) return
+  if (!confirmLeave()) return
   selectedKid.value = id
   await switchKid()
 }
@@ -1005,6 +1114,7 @@ async function saveTestBands() {
   try {
     insights.value.rules = await api.admin.setInsightRules({ test_bands: testBands.value })
     testBands.value = (insights.value.rules?.test_bands || DEFAULT_TEST_BANDS).map(x => [...x])
+    snapTestBands()
     showToast('奖励标准已保存')
   } catch (e) { showToast(e.message) }
 }
@@ -1047,10 +1157,16 @@ const familyTodayEmpty = computed(() => {
   return ks.length === 1 ? '今天来了，没有到期复习。' : '今天都来了，没有到期复习。'
 })
 function goReviewKid(k) {
-  selectedKid.value = k.kid_id
-  setSelectedKid(k.kid_id)
+  if (k.kid_id === selectedKid.value && section.value === 'review') return
+  if (!confirmLeave()) return
+  if (k.kid_id !== selectedKid.value) {
+    selectedKid.value = k.kid_id
+    setSelectedKid(k.kid_id)
+    section.value = 'review'
+    load()
+    return
+  }
   section.value = 'review'
-  load()
 }
 function completedDelta(k) {
   const d = (k.completed || 0) - (k.completed_last || 0)
@@ -1164,6 +1280,12 @@ const penaltyReasonRows = computed(() => (penaltySummary.value.by_reason || []).
 const maxPenaltyAmount = computed(() => Math.max(1, ...penaltyReasonRows.value.map(x => x.amount || 0)))
 function goInsight(row) {
   const a = row.insight?.action
+  const nextSection = a === '单元测试' ? 'unit-task' : a === '今日复习' ? 'review' : ''
+  const leavingApp = a === '每日打卡' || a === '运动打卡'
+  const kidChange = !!(row.kid_id && row.kid_id !== selectedKid.value)
+  if ((nextSection && nextSection !== section.value) || leavingApp || kidChange) {
+    if (!confirmLeave()) return
+  }
   if (row.kid_id) {
     selectedKid.value = row.kid_id
     setSelectedKid(row.kid_id)
@@ -1195,6 +1317,7 @@ async function saveWeeklyGoal() {
   try {
     const r = await api.setWeeklyGoal(n)
     weeklyGoal.value = r.weekly_goal
+    snapWeeklyGoal()
     showToast(n ? `本周目标设为 ${n}` : '已关掉本周目标')
   } catch (e) { showToast(e.message) }
   finally { weeklyGoalBusy.value = false }
@@ -1309,7 +1432,16 @@ async function delMember(m) {
   } catch (e) { showToast(e.message) }
 }
 
-onMounted(load)
+function onBeforeUnload(e) {
+  if (!isDirty.value) return
+  e.preventDefault()
+  e.returnValue = ''
+}
+onMounted(() => {
+  window.addEventListener('beforeunload', onBeforeUnload)
+  load()
+})
+onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload))
 </script>
 
 <template>
@@ -1354,7 +1486,7 @@ onMounted(load)
           <button v-for="k in kids" :key="k.id" type="button" :class="{ on: selectedKid === k.id }" @click="pickKid(k.id)">{{ k.name }}</button>
         </div>
         <div v-else-if="currentKidName" class="kid-one">{{ currentKidName }}</div>
-        <button class="a-exit" @click="emit('exit')"><ArrowLeft class="ico" :size="14" /> 回到孩子端</button>
+        <button class="a-exit" @click="exitAdminView"><ArrowLeft class="ico" :size="14" /> 回到孩子端</button>
       </div>
     </header>
 
@@ -1362,7 +1494,7 @@ onMounted(load)
       <aside class="a-side">
         <template v-for="g in SECTIONS" :key="g.group">
           <div class="a-group">{{ g.group }}</div>
-          <button v-for="it in g.items" :key="it.id" :class="['a-nav', { on: section === it.id }]" @click="section = it.id">
+          <button v-for="it in g.items" :key="it.id" :class="['a-nav', { on: section === it.id }]" @click="goSection(it.id)">
             <span class="a-nav-ico"><component :is="it.icon" :size="16" /></span>{{ it.label }}
           </button>
         </template>
@@ -1379,7 +1511,7 @@ onMounted(load)
       </div>
       <div v-if="!reviewDue.length && !weakPoints.length" class="review-empty">
         <strong>没有薄弱考点</strong>
-        <button class="ghost-s review-link" @click="section = 'unit-task'">去记录 →</button>
+        <button class="ghost-s review-link" @click="goSection('unit-task')">去记录 →</button>
       </div>
       <div v-else-if="!reviewDue.length" class="review-empty">
         <strong>今天没有到期复习</strong>
@@ -1417,13 +1549,13 @@ onMounted(load)
       <div v-if="dashAttention.text" class="w-next">
         <strong>待处理</strong>
         <span>{{ dashAttention.text }}</span>
-        <button v-if="dashAttention.go" class="ok" @click="section = dashAttention.go">{{ dashAttention.label }}</button>
+        <button v-if="dashAttention.go" class="ok" @click="goSection(dashAttention.go)">{{ dashAttention.label }}</button>
       </div>
       <div class="dash-stats">
-        <button type="button" class="dash-stat" @click="section = 'review'">
+        <button type="button" class="dash-stat" @click="goSection('review')">
           <span>待复习</span><b>{{ reviewCount }}</b>
         </button>
-        <button type="button" class="dash-stat" @click="section = 'approve'">
+        <button type="button" class="dash-stat" @click="goSection('approve')">
           <span>待审批</span><b>{{ pendingRedeem }}</b>
         </button>
         <div class="dash-stat">
@@ -1865,6 +1997,7 @@ onMounted(load)
     <section v-if="section === 'unit-task'" class="a-card enter">
       <h3>每日任务</h3>
       <button type="button" class="ghost-s rules-toggle" @click="dailyAddOpen = !dailyAddOpen">{{ dailyAddOpen ? '收起新增' : '＋新增每日任务' }}</button>
+      <p class="dim">下面的列表是全家所有的每日任务（含只给某个孩子看的），点「改」可以随时换人。</p>
       <div v-if="dailyAddOpen" class="add-box task-add-box">
         <div class="add-title">新增每日任务</div>
         <div class="frm-row">
@@ -1874,6 +2007,12 @@ onMounted(load)
             </select>
           </label>
           <label class="fld grow"><span>名称</span><input v-model="newDaily.name" placeholder="如：跳绳打卡" /></label>
+          <label class="fld grow"><span>谁能看到</span>
+            <select v-model="newDaily.kid_id">
+              <option value="">全家</option>
+              <option v-for="k in kids" :key="k.id" :value="k.id">{{ k.name }}</option>
+            </select>
+          </label>
           <label class="fld w64"><span>基础阳光</span><input v-model.number="newDaily.sunshine" type="number" /></label>
           <label class="fld w84"><span>破纪录 +</span><input v-model.number="newDaily.bonus_per_metric" type="number" /></label>
           <label class="fld grow"><span>怎么做</span><input v-model="newDaily.note" placeholder="如：完成后让家长检查" /></label>
@@ -1909,6 +2048,12 @@ onMounted(load)
                   <option v-for="s in subjects" :key="s.id" :value="s.id">{{ s.name }}</option>
                 </select>
               </label>
+              <label class="fld grow"><span>谁能看到</span>
+                <select v-model="d.kid_id">
+                  <option value="">全家</option>
+                  <option v-for="k in kids" :key="k.id" :value="k.id">{{ k.name }}</option>
+                </select>
+              </label>
               <label class="fld w64"><span>基础阳光</span><input v-model.number="d.sunshine" type="number" /></label>
               <label class="fld w84"><span>破纪录 +</span><input v-model.number="d.bonus_per_metric" type="number" /></label>
               <label class="fld grow"><span>怎么做</span><input v-model="d.note" placeholder="如：完成后让家长检查" /></label>
@@ -1937,6 +2082,7 @@ onMounted(load)
             <div class="sys-row">
               <span class="badge daily">每天</span>
               <span class="sys-name">{{ d.name }}</span>
+              <span class="badge scope" :class="{ kid: d.kid_id }">{{ d.kid_id ? '只给 ' + kidName(d.kid_id) : '全家' }}</span>
               <span class="dim">{{ subjectName(d.subject_id) }} · +{{ d.sunshine }} 阳光<template v-if="d.bonus_per_metric"> · 破纪录 +{{ d.bonus_per_metric }}</template></span>
               <div class="ops">
                 <button class="ghost-s" @click="beginEdit('daily', d)">改</button>
@@ -2352,6 +2498,12 @@ get up	起床</pre>
         <button class="ok" type="submit">保存新密码</button>
       </form>
     </section>
+      <div v-if="isDirty" class="w-next dirty-bar">
+        <strong>有未保存的修改</strong>
+        <span></span>
+        <button type="button" class="ok" @click="saveDirty">保存</button>
+        <button type="button" class="ghost-s" @click="discardDirty">放弃</button>
+      </div>
       </main>
     </div>
 
@@ -2391,7 +2543,7 @@ get up	起床</pre>
 .a-nav:hover { background: var(--surface-2); }
 .a-nav.on { background: var(--accent); color: #fff; box-shadow: var(--shadow-button); }
 .a-nav-ico { width: 18px; text-align: center; }
-.a-main { flex: 1; min-width: 0; }
+.a-main { flex: 1; min-width: 0; padding-bottom: 72px; }
 .a-card { background: var(--surface); border-radius: var(--radius-xl); padding: 22px; margin-bottom: 14px; box-shadow: var(--shadow-md); border: 1px solid var(--line); }
 .a-card h3 { margin: 0 0 6px; font-size: 22px; color: var(--ink); letter-spacing: -.02em; }
 .dash-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 0 0 18px; }
@@ -2480,6 +2632,8 @@ get up	起床</pre>
 .w-cat { width: 90px; }
 .badge { font-size: 11px; padding: 3px 8px; border-radius: var(--radius-sm); background: var(--surface-2); color: var(--brand-deep); white-space: nowrap; font-weight: 700; }
 .badge.daily { background: var(--warm); color: var(--accent-ink); }
+.badge.scope { font-weight: 600; }
+.badge.scope.kid { background: var(--brand-deep); color: #fff; }
 .rank-icon { font-size: 18px; }
 .st { font-size: 11px; padding: 3px 9px; border-radius: var(--radius-sm); font-weight: 700; white-space: nowrap; }
 .st.pending { background: var(--warm); color: var(--accent-ink); }
@@ -2568,6 +2722,7 @@ button.fam-card { cursor: pointer; }
 .w-next { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 0 0 14px; padding: 12px 14px; border-radius: var(--radius-md); background: var(--warm); }
 .w-next strong { font-size: 13px; }
 .w-next span { flex: 1; min-width: 160px; color: var(--ink-2); font-size: 13px; }
+.dirty-bar { position: sticky; bottom: 0; margin: 0; z-index: 5; box-shadow: var(--shadow-md); padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
 .test-preview { margin: 0 0 10px; color: var(--accent-ink); font-size: 13px; font-weight: 700; }
 .goal-row { margin: 10px 0 4px; gap: 8px; }
 .goal-row .w-num { width: 84px; }

@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-page-node-id="nf4bGxhGqlNRxdLVSlLxJy">
+<head data-page-node-id="NhacbjADyLa7EzwLCcl2hn">
+<meta charset="utf-8" data-page-node-id="ahn2QDO6pNzDBu2OnuotCJ">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" data-page-node-id="hUI2C9sBrC7ICuhsZQCQ9p">
+<meta name="theme-color" content="#F7F5F0" data-page-node-id="8EIa1BVcw1lpz2Beud2SPJ">
+<title>大队委竞选笔试复习</title>
+<style>
+:root{
+  --bg:#F7F5F0; --card:#FFFFFF; --ink:#2B2A28; --ink2:#6B6862; --ink3:#9C988F;
+  --line:#E6E2D9; --sun:#E08A2E; --sun-bg:#FDF3E3;
+  --ok:#2F8F5B; --ok-bg:#EAF6EF; --no:#C4453C; --no-bg:#FBEDEC;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--ink);
+  font:16px/1.7 -apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  padding-bottom:84px;
+}
+.wrap{max-width:720px;margin:0 auto;padding:0 16px}
+header{padding:18px 0 10px;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+h1{font-size:19px;font-weight:600;margin:0;display:inline-block}
+.head-row{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.countdown{font-size:13px;color:var(--sun);font-weight:600;white-space:nowrap}
+.bar{height:6px;background:var(--line);border-radius:3px;overflow:hidden;margin:12px 0 6px}
+.bar>i{display:block;height:100%;background:var(--sun);width:0;transition:width .3s}
+.stat{font-size:13px;color:var(--ink2);display:flex;gap:14px;flex-wrap:wrap}
+.stat b{font-weight:600;color:var(--ink)}
+.stat .k b{color:var(--ok)} .stat .w b{color:var(--no)}
+
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px 18px;margin:14px 0}
+.qhead{font-size:13px;color:var(--ink3);margin-bottom:10px;display:flex;justify-content:space-between;gap:10px;align-items:center}
+.tag{background:var(--sun-bg);color:var(--sun);border-radius:6px;padding:1px 8px;font-weight:600;flex:none}
+.stem{font-size:18px;line-height:1.9;word-break:break-word}
+.stem .blank{display:inline-block;min-width:56px;border-bottom:2px solid var(--sun);margin:0 3px;vertical-align:baseline}
+.stem .filled{color:var(--ok);font-weight:600;border-bottom:2px solid var(--ok)}
+.opts{list-style:none;padding:0;margin:14px 0 0}
+.opts li{display:flex;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;margin-bottom:8px;font-size:16px;line-height:1.6}
+.opts li .k{font-weight:600;color:var(--ink2);flex:none}
+.opts li.pick{border-color:var(--sun);background:var(--sun-bg)}
+.opts li.ok{border-color:var(--ok);background:var(--ok-bg)}
+.opts li.no{border-color:var(--no);background:var(--no-bg)}
+.ans{margin-top:16px;padding:14px 16px;background:var(--ok-bg);border-radius:12px;font-size:17px;line-height:1.8}
+.ans .lbl{display:block;font-size:13px;color:var(--ok);font-weight:600;margin-bottom:4px}
+.ans .read{margin-top:10px;padding-top:10px;border-top:1px dashed #BFDCCB;font-size:16px;color:var(--ink2)}
+.fb{margin-top:14px;padding:12px 14px;border-radius:12px;font-size:15px;font-weight:600}
+.fb.ok{background:var(--ok-bg);color:var(--ok)}
+.fb.no{background:var(--no-bg);color:var(--no)}
+
+.row{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap}
+button{font:inherit;cursor:pointer;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:12px 16px;min-height:46px;flex:1;transition:transform .06s}
+button:active{transform:scale(.98)}
+button.primary{background:var(--sun);border-color:var(--sun);color:#fff;font-weight:600}
+button.ok{background:var(--ok-bg);border-color:#BFDCCB;color:var(--ok);font-weight:600}
+button.no{background:var(--no-bg);border-color:#EFCFCC;color:var(--no);font-weight:600}
+button.ghost{background:transparent;color:var(--ink2)}
+button.wide{flex:1 1 100%}
+
+.nav{display:flex;align-items:center;gap:10px;margin-top:14px}
+.nav .pos{flex:1;text-align:center;font-size:14px;color:var(--ink2)}
+.nav button{flex:0 0 auto;padding:10px 18px}
+
+.tabs{position:fixed;left:0;right:0;bottom:0;background:rgba(255,255,255,.97);border-top:1px solid var(--line);
+  display:flex;padding:6px 8px calc(6px + env(safe-area-inset-bottom));backdrop-filter:blur(8px);z-index:20}
+.tabs button{flex:1;border:none;background:transparent;color:var(--ink3);font-size:13px;padding:8px 4px;min-height:52px;
+  display:flex;flex-direction:column;align-items:center;gap:3px;border-radius:10px}
+.tabs button .ic{font-size:19px;line-height:1}
+.tabs button.on{color:var(--sun);background:var(--sun-bg);font-weight:600}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(44px,1fr));gap:7px;margin-top:14px}
+.grid b{display:flex;align-items:center;justify-content:center;height:42px;border-radius:9px;background:var(--bg);
+  border:1px solid var(--line);font-size:13px;font-weight:400;color:var(--ink2)}
+.grid b.k{background:var(--ok-bg);border-color:#BFDCCB;color:var(--ok);font-weight:600}
+.grid b.w{background:var(--no-bg);border-color:#EFCFCC;color:var(--no);font-weight:600}
+.grid b.cur{outline:2px solid var(--sun);outline-offset:1px}
+
+.empty{text-align:center;color:var(--ink2);padding:36px 12px;font-size:16px;line-height:2}
+.big{font-size:36px;font-weight:600;color:var(--sun);text-align:center;margin:6px 0}
+.mid{text-align:center;color:var(--ink2);font-size:15px;margin-bottom:8px}
+.hint{font-size:13px;color:var(--ink3);margin-top:10px;line-height:1.7}
+.sec{font-size:14px;color:var(--ink2);font-weight:600;margin:18px 0 6px}
+
+.sheet{position:fixed;inset:0;background:rgba(30,28,25,.45);display:none;z-index:40;align-items:flex-end}
+.sheet.on{display:flex}
+.sheet-in{background:var(--card);width:100%;max-width:720px;margin:0 auto;border-radius:18px 18px 0 0;
+  padding:20px 18px calc(20px + env(safe-area-inset-bottom));max-height:88vh;overflow:auto}
+.sheet h2{font-size:16px;margin:0 0 4px}
+.sheet label{display:block;font-size:13px;color:var(--ink2);margin:14px 0 6px}
+.sheet input[type=date]{font:inherit;padding:11px 12px;border:1px solid var(--line);border-radius:10px;width:100%;background:var(--bg);color:var(--ink)}
+.list{font-size:14px;line-height:1.8}
+.list .it{padding:9px 0;border-bottom:1px solid var(--line)}
+.list .it:last-child{border-bottom:none}
+.list .it small{color:var(--ink3)}
+.list .it .a{color:var(--ok)}
+pre.copy{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px;font-size:13px;
+  line-height:1.7;white-space:pre-wrap;word-break:break-word;max-height:220px;overflow:auto;
+  font-family:inherit;color:var(--ink2);margin:8px 0 0}
+</style>
+</head>
+<body data-page-node-id="63StGZWlsOICZkKpBiZjaY">
+<div class="wrap" data-page-node-id="7bnBFfCqTaxmtqgmPjFA3Q">
+  <header data-page-node-id="Gszxm8ln79S5itKzK8Enkp">
+    <div class="head-row" data-page-node-id="uU6N9p4zFWxI7gkGvwAO0l">
+      <h1 id="title" data-page-node-id="T5dIgrZ0S9zVpyjWuoVDhz">大队委竞选笔试复习</h1>
+      <span class="countdown" id="countdown" data-page-node-id="TzcwPjphFjAzdxGyQASRLe"></span>
+    </div>
+    <div class="bar" data-page-node-id="HwrB3crsPzIprkCggTjQX9"><i id="barfill" data-page-node-id="ES985qTH6ac8o3Qoi8V8H7"></i></div>
+    <div class="stat" id="stat" data-page-node-id="r1kF1Dm1Sa2z4ZzLPXG47L"></div>
+  </header>
+  <main id="main" data-page-node-id="YzD59n8cAkj0BOKD76x7PA"></main>
+</div>
+
+<nav class="tabs" data-page-node-id="qYfkB4ZNGEJRYNE5sRPbLA">
+  <button id="tab-study" onclick="go('study')" data-page-node-id="p5REuMSpaCeuhGbc0NCFWo"><span class="ic" data-page-node-id="oaf9UEntBiEEDMJh140oIG">📖</span>看题</button>
+  <button id="tab-practice" onclick="go('practice')" data-page-node-id="rsQVUDa6KZpx5uKWNdT7fL"><span class="ic" data-page-node-id="FjTfXEbaqEmol0aLl3BnqV">✏️</span>练习</button>
+  <button id="tab-exam" onclick="go('exam')" data-page-node-id="mLLOvDbNPGnVOwubU1xwDj"><span class="ic" data-page-node-id="j5XQqE2TUOHTtL29OPRiHG">📝</span>模拟考</button>
+</nav>
+
+<div class="sheet" id="sheet" onclick="if(event.target===this)closeSheet()" data-page-node-id="if3NFnu8LMyBtiINO1YeUP">
+  <div class="sheet-in" id="sheetIn" data-page-node-id="bhUBXcBiiu43fsNFblYMpA"></div>
+</div>
+
+<script id="quizSeed" type="application/json">{"curriculum_ver":"quiz-ddw-2026-v1","_meta":{"note":"家长指定的短期冲刺题库。不做通用题库，不推题；答案由孩子自评，家长抽查。","generated_from":"2026 年大队委竞选笔试复习.docx","review_doc":"data/quiz_review.md","kinds":{"choice":"单选，options 里选一个，answer 是字母","multi":"多选，answer 是字母数组","blank":"填空，stem 里用 ____ 表示空位，answer 按空位顺序排列","qa":"问答，answer 是参考答案全文"},"judge":"孩子自评（点「答对了 / 没答对」）；答案做规范化比较时忽略空格和标点","todo":["banks[0].end_at 留空 = 不过期；填上笔试日期后，刷题页会在那天之后显示「这场考试已经结束」","自动判分要用到的同义答案（accept）等做完整模块时再补"]},"banks":[{"id":"ddw-2026","name":"2026 大队委竞选笔试","sort":1,"end_at":null,"source":{"file":"2026 年大队委竞选笔试复习.docx","paragraphs":99,"questions_total":62,"dropped":[{"n":44,"why":"原文没有给出选项"}]},"questions":[{"id":"ddw-2026-001","n":1,"kind":"blank","stem":"我们的队名是____。","sort":1,"answer":["中国少年先锋队"]},{"id":"ddw-2026-002","n":2,"kind":"blank","stem":"我们队的创立者和领导者是____。","sort":2,"answer":["中国共产党"]},{"id":"ddw-2026-003","n":3,"kind":"blank","stem":"我们的队旗是____。","sort":3,"answer":["五角星加火炬的红旗"]},{"id":"ddw-2026-004","n":4,"kind":"blank","stem":"我们的标志是____，它代表____。","sort":4,"answer":["红领巾","红旗的一角，是革命先烈的鲜血染成的"]},{"id":"ddw-2026-005","n":5,"kind":"blank","stem":"中国少年先锋队的队歌____。","sort":5,"answer":["《我们是共产主义接班人》"]},{"id":"ddw-2026-006","n":6,"kind":"qa","stem":"“四有”新人指的是哪四有？","sort":6,"answer":["有理想有道德有文化有纪律"]},{"id":"ddw-2026-007","n":7,"kind":"blank","stem":"中国少年先锋队简称____。","sort":7,"answer":["“少先队”"]},{"id":"ddw-2026-008","n":8,"kind":"blank","stem":"《队章》规定的入队年龄是____","sort":8,"answer":["六周岁到十四周岁"]},{"id":"ddw-2026-009","n":9,"kind":"blank","stem":"我们的队徽是____","sort":9,"answer":["五角星加火炬和写有“中国少先队”的红色绶带"]},{"id":"ddw-2026-010","n":10,"kind":"blank","stem":"少先队的队礼表示____。","sort":10,"answer":["人民的利益高于一切"]},{"id":"ddw-2026-011","n":11,"kind":"blank","stem":"关于少先队干部标志以及红领巾,我们对少先队员的要求是____。","sort":11,"answer":["时时、处处要佩戴"]},{"id":"ddw-2026-012","n":12,"kind":"blank","stem":"少先队是由____直接领导。","sort":12,"answer":["中国共产党委托中国共青团"]},{"id":"ddw-2026-013","n":13,"kind":"blank","stem":"少先队建队日是____年____月____日。","sort":13,"answer":["1949年10月13日"]},{"id":"ddw-2026-014","n":14,"kind":"qa","stem":"“中国少年信息服务网”简称什么？","sort":14,"answer":["雏鹰网"]},{"id":"ddw-2026-015","n":15,"kind":"blank","stem":"我们的队礼应该____","sort":15,"answer":["手五指并拢，高举头上"]},{"id":"ddw-2026-016","n":16,"kind":"blank","stem":"我们的作风：____。","sort":16,"answer":["诚实、勇敢、活泼、团结"]},{"id":"ddw-2026-017","n":17,"kind":"qa","stem":"中队长向辅导员报告人数前，向全中队发出的口令是什么？","sort":17,"answer":["立正"]},{"id":"ddw-2026-018","n":18,"kind":"blank","stem":"全国代表大会原则上每____召开一次。","sort":18,"answer":["五年"]},{"id":"ddw-2026-019","n":19,"kind":"blank","stem":"少先队的呼号是____","sort":19,"answer":["“准备着：为共产主义事业而奋斗！”回答：“时刻准备着”"]},{"id":"ddw-2026-020","n":20,"kind":"blank","stem":"《中国少年先锋队队章》是____颁布的。","sort":20,"answer":["1954 年"]},{"id":"ddw-2026-021","n":21,"kind":"qa","stem":"少先队组织的标志是什么？","sort":21,"answer":["队旗"]},{"id":"ddw-2026-022","n":22,"kind":"blank","stem":"我们队的作风：____","sort":22,"answer":["诚实、勇敢、活泼、团结"]},{"id":"ddw-2026-023","n":23,"kind":"blank","stem":"队长和队委会委员都应在左臂佩戴白底红条标志，大队长和大队委员会委员标志中间是____，中队长和中队委员会委员标志是____，小队是____。","sort":23,"answer":["三条杠","二条杠","一条杠"]},{"id":"ddw-2026-024","n":24,"kind":"blank","stem":"学校少先队代表大会的召开年限为____","sort":24,"answer":["每年一次"]},{"id":"ddw-2026-025","n":25,"kind":"choice","stem":"大队旗一端剪去高为____厘米、底宽为 60 厘米的等腰三角形，形成一个三角缺口就是中队旗。","sort":25,"answer":["A"],"options":[{"k":"A","t":"20"},{"k":"B","t":"30"},{"k":"C","t":"40"},{"k":"D","t":"25"}]},{"id":"ddw-2026-026","n":26,"kind":"choice","stem":"少先队是____创立和领导的。","sort":26,"answer":["D"],"options":[{"k":"A","t":"中国共青团"},{"k":"B","t":"中国政协"},{"k":"C","t":"各阶级民主党派"},{"k":"D","t":"中国共产党"}]},{"id":"ddw-2026-027","n":27,"kind":"choice","stem":"五角星加火炬的红旗是我们的队旗，红旗象征____","sort":27,"answer":["C"],"options":[{"k":"A","t":"光明"},{"k":"B","t":"和谐"},{"k":"C","t":"革命胜利"},{"k":"D","t":"中国共产党"}]},{"id":"ddw-2026-028","n":28,"kind":"choice","stem":"五角星加火炬的红旗是我们的队旗，火炬象征____","sort":28,"answer":["A"],"options":[{"k":"A","t":"光明"},{"k":"B","t":"和谐"},{"k":"C","t":"前途"},{"k":"D","t":"活力"}]},{"id":"ddw-2026-029","n":29,"kind":"choice","stem":"在少先队集会时，应由谁来带领队员呼号？____","sort":29,"answer":["C"],"options":[{"k":"A","t":"大队长"},{"k":"B","t":"中队长"},{"k":"C","t":"辅导员"},{"k":"D","t":"小队长"}]},{"id":"ddw-2026-030","n":30,"kind":"choice","stem":"新的《中国少年先锋队章程》在中国少年先锋队第____次全国代表大会通过","sort":30,"answer":["C"],"options":[{"k":"A","t":"第 3 次"},{"k":"B","t":"第 4 次"},{"k":"C","t":"第 5 次"},{"k":"D","t":"第 6 次"}]},{"id":"ddw-2026-031","n":31,"kind":"choice","stem":"每天升旗手在升旗或降旗时，如果你正在操场上走动、玩耍、扫地或准备回家------此时，你会怎么做？____","sort":31,"answer":["A"],"options":[{"k":"A","t":"立正敬礼"},{"k":"B","t":"装做没看见"},{"k":"C","t":"继续做自己的事情"},{"k":"D","t":"不知道"}]},{"id":"ddw-2026-032","n":32,"kind":"choice","stem":"某中队要举办一个活动，但队员甲觉得活动方案有问题，作为中队的一员，他应该____。","sort":32,"answer":["D"],"options":[{"k":"A","t":"和朋友抱怨"},{"k":"B","t":"跟家长反映情况"},{"k":"C","t":"在 QQ 空间里倾诉"},{"k":"D","t":"向中队长提出意见"}]},{"id":"ddw-2026-033","n":33,"kind":"choice","stem":"以下对队干部地位表述的不正确的是____。","sort":33,"answer":["D"],"options":[{"k":"A","t":"管理者"},{"k":"B","t":"首创者"},{"k":"C","t":"服务者"},{"k":"D","t":"享受者"}]},{"id":"ddw-2026-034","n":34,"kind":"choice","stem":"二道杠指的是什么队干部？____","sort":34,"answer":["C"],"options":[{"k":"A","t":"正副大队长"},{"k":"B","t":"大队委"},{"k":"C","t":"中队长或中队委"},{"k":"D","t":"正副小队长"}]},{"id":"ddw-2026-035","n":35,"kind":"choice","stem":"以下队干部标志的长宽数字正确的是____。","sort":35,"answer":["B"],"options":[{"k":"A","t":"长 6 厘米、宽 6 厘米"},{"k":"B","t":"长 7 厘米、宽 6 厘米"},{"k":"C","t":"长 8 厘米、宽 5 厘米"},{"k":"D","t":"长 7 厘米、宽 4 厘米"}]},{"id":"ddw-2026-036","n":36,"kind":"choice","stem":"____不属于队干部的作用。","sort":36,"answer":["A"],"options":[{"k":"A","t":"独断作用"},{"k":"B","t":"带动作用"},{"k":"C","t":"表率作用"},{"k":"D","t":"助手作用"}]},{"id":"ddw-2026-037","n":37,"kind":"choice","stem":"以下____不属于大队文娱委员的职责。","sort":37,"answer":["D"],"options":[{"k":"A","t":"组织大队的文化娱乐活动"},{"k":"B","t":"建立各种文艺社团"},{"k":"C","t":"向“红领巾广播站”推荐好的歌曲或者舞蹈等"},{"k":"D","t":"培训体育骨干"}]},{"id":"ddw-2026-038","n":38,"kind":"choice","stem":"以下____属于根据学校实际需要，特别设置的委员。","sort":38,"answer":["C"],"options":[{"k":"A","t":"文娱委员"},{"k":"B","t":"体育委员"},{"k":"C","t":"儿童委员"},{"k":"D","t":"劳动委员"}]},{"id":"ddw-2026-039","n":39,"kind":"choice","stem":"以下对大队旗手表述分工及责任表述错误的是____。","sort":39,"answer":["D"],"options":[{"k":"A","t":"大队集会时负责出旗和退旗"},{"k":"B","t":"负责升旗仪式的组织工作"},{"k":"C","t":"保管队旗和鼓号"},{"k":"D","t":"负责接转队员的组织关系"}]},{"id":"ddw-2026-040","n":40,"kind":"choice","stem":"队干部的基本条件不包括____。","sort":40,"answer":["A"],"options":[{"k":"A","t":"不管学习，全心工作"},{"k":"B","t":"有组织能力，遇事同大家商量"},{"k":"C","t":"关心集体，热心服务,乐于助人"},{"k":"D","t":"学习刻苦，态度认真"}]},{"id":"ddw-2026-041","n":41,"kind":"choice","stem":"队干部选举工作首先要坚持____制度。","sort":41,"answer":["B"],"options":[{"k":"A","t":"辅导员指定"},{"k":"B","t":"民主选举"},{"k":"C","t":"拉拢队员"},{"k":"D","t":"校长安排"}]},{"id":"ddw-2026-042","n":42,"kind":"choice","stem":"下面对队干部是“火车头”理解表述正确的是____。","sort":42,"answer":["C"],"options":[{"k":"A","t":"队干部是“火车头”，有多快跑多快"},{"k":"B","t":"队干部是“火车头”，不用管队员，自己先跑"},{"k":"C","t":"队干部是“火车头”，带领队员们搞好队工作"},{"k":"D","t":"队干部是“火车头”，享受在前"}]},{"id":"ddw-2026-043","n":43,"kind":"choice","stem":"队干部是“领头雁”，以下对“领头雁”理解错误的是____。","sort":43,"answer":["C"],"options":[{"k":"A","t":"队干部是“领头雁”，带领大家一起飞"},{"k":"B","t":"队干部是“领头雁”，勇敢承担责任"},{"k":"C","t":"队干部是“领头雁”，只要自己优秀就行"},{"k":"D","t":"队干部是“领头雁”，帮助困难队员"}]},{"id":"ddw-2026-045","n":45,"kind":"choice","stem":"队干部工作的总原则是____。","sort":44,"answer":["D"],"options":[{"k":"A","t":"对学校负责"},{"k":"B","t":"对全体同学负责"},{"k":"C","t":"对少先队组织负责"},{"k":"D","t":"对少先队员负责，对少先队组织负责"}]},{"id":"ddw-2026-046","n":46,"kind":"choice","stem":"“是服务不是当官”体现了队干部工作的____原则。","sort":45,"answer":["B"],"options":[{"k":"A","t":"组织性"},{"k":"B","t":"服务性"},{"k":"C","t":"创新性"},{"k":"D","t":"趣味性"}]},{"id":"ddw-2026-047","n":47,"kind":"choice","stem":"“切忌纸上谈兵”说的是小干部在____时，为全体队员创造在实践中锻炼的机会。","sort":46,"answer":["C"],"options":[{"k":"A","t":"召开队会"},{"k":"B","t":"夏令营活动"},{"k":"C","t":"分配任务、安排分工"},{"k":"D","t":"华山论剑"}]},{"id":"ddw-2026-048","n":48,"kind":"choice","stem":"____是激发队员上进的好方法，够最大限度地激发每个队员的兴趣。","sort":47,"answer":["C"],"options":[{"k":"A","t":"表扬激励"},{"k":"B","t":"宣传鼓动"},{"k":"C","t":"竞赛评比"},{"k":"D","t":"以点带面法"}]},{"id":"ddw-2026-049","n":49,"kind":"choice","stem":"____是少先队的生命，没有它就谈不上少先队组织。","sort":48,"answer":["B"],"options":[{"k":"A","t":"少先队礼仪"},{"k":"B","t":"少先队活动"},{"k":"C","t":"少先队队会"},{"k":"D","t":"少先队队旗"}]},{"id":"ddw-2026-050","n":50,"kind":"choice","stem":"少先队活动按时间分，可分为假期活动和____。","sort":49,"answer":["D"],"options":[{"k":"A","t":"主题活动"},{"k":"B","t":"常规活动"},{"k":"C","t":"队务活动"},{"k":"D","t":"平时活动"}]},{"id":"ddw-2026-051","n":51,"kind":"choice","stem":"队会从____分，可分为竞赛式队会、讨论式队会、联谊式队会、论辩式队会、报告式队会。","sort":50,"answer":["B"],"options":[{"k":"A","t":"内容"},{"k":"B","t":"形式"},{"k":"C","t":"主题"},{"k":"D","t":"时间"}]},{"id":"ddw-2026-052","n":52,"kind":"multi","stem":"在中国少年先锋队建队 70 周年之际，中共中央总书记、国家主席、中央军委主席习近平发来贺信，代表党中央向全国亿万少先队员，向为党的少年儿童事业辛勤工作的广大少先队辅导员和少先队工作者，表示热烈的祝贺和诚挚的问候。习近平在贺信中指出，70 年来，在党的领导下，少先队坚持____相统一，为党和人民事业薪火相传作出重要贡献。","sort":51,"answer":["A","B","C"],"options":[{"k":"A","t":"组织教育"},{"k":"B","t":"自主教育"},{"k":"C","t":"实践教育"}]},{"id":"ddw-2026-053","n":53,"kind":"choice","stem":"队会中呼号的口号是____","sort":52,"answer":["C"],"options":[{"k":"A","t":"时刻准备着！"},{"k":"B","t":"为人民服务！"},{"k":"C","t":"准备着：为共产主义事业而奋斗！"},{"k":"D","t":"我们是共产主义接班人！"}]},{"id":"ddw-2026-054","n":54,"kind":"choice","stem":"“中国少年儿童队”改名为“中国少年先锋队”是在____年。","sort":53,"answer":["C"],"options":[{"k":"A","t":"1949"},{"k":"B","t":"1951"},{"k":"C","t":"1953"},{"k":"D","t":"1955"}]},{"id":"ddw-2026-055","n":55,"kind":"choice","stem":"五角星加火炬和写有“中国少先队”的____色绶带组成我们的队徽。","sort":54,"answer":["A"],"options":[{"k":"A","t":"红"},{"k":"B","t":"紫红"},{"k":"C","t":"粉红"}]},{"id":"ddw-2026-056","n":56,"kind":"blank","stem":"少先队代表大会____，是少先队大队或大队以上组织和机构召开，由____为主体参加的会议。少代会是同级队组织的最高权力机构，它有商讨、决定一个时期队的重大事务，选举产生队工作领导委员会的权力。","sort":55,"answer":["简称少代会","队员代表"]},{"id":"ddw-2026-057","n":57,"kind":"qa","stem":"队旗的寓意是什么？","sort":56,"answer":["队旗寓意着：在中国共产党的领导下，向着光明的未来前进。"]},{"id":"ddw-2026-058","n":58,"kind":"blank","stem":"全国少代会每____年召开一次，省____、市____少代会每五年召开一次，县____少代会每____年召开一次，学校少代会每学年召开一次。","sort":57,"answer":["五","自治区、直辖市","地、州、盟","市、区、旗","三"]},{"id":"ddw-2026-059","n":59,"kind":"qa","stem":"红领巾的规格要求是什么？","sort":58,"answer":["红领巾是等腰三角形，它的底长为 100 厘米，腰长为 60厘米。"]},{"id":"ddw-2026-060","n":60,"kind":"qa","stem":"少先队的最高领导机构是什么？","sort":59,"answer":["少先队全国工作委员会。"]},{"id":"ddw-2026-061","n":61,"kind":"qa","stem":"少先队设有哪几个基层组织？","sort":60,"answer":["少先队可以以学校为单位建立大队，大队下分中队，中队下设小队。"]},{"id":"ddw-2026-062","n":62,"kind":"qa","stem":"在全国第七次少先队代表开幕式时，习近平总书记寄语全国各族少年儿童时，提出了“三个学习”的要求，是指什么？","sort":61,"answer":["从小学习做人、从小学习立志、从小学习创造。"]},{"id":"ddw-2026-063","n":63,"kind":"qa","stem":"少先队的五有指的是哪五有？","sort":62,"answer":["有组织、有队伍、有活动、有阵地、有制度。"]}]}]}</script>
+<script>
+(function(){
+"use strict";
+
+var SEED = JSON.parse(document.getElementById('quizSeed').textContent);
+var BANK = SEED.banks[0];
+var QS = BANK.questions;
+var KEY = 'quiz.' + BANK.id;
+var KIND = {choice:'单选', multi:'多选', blank:'填空', qa:'问答'};
+
+var S = {v:1, examDate:null, q:{}, log:[]};
+try{
+  var raw = localStorage.getItem(KEY);
+  if(raw){ var o = JSON.parse(raw); S.v=o.v||1; S.examDate=o.examDate||null; S.q=o.q||{}; S.log=o.log||[]; }
+}catch(e){}
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){} }
+function st(id){ if(!S.q[id]) S.q[id]={seen:0,known:null,right:0,wrong:0}; return S.q[id]; }
+
+/* 掌握 = 明确标了「记住了」，或者在练习/考试里连对 2 次。
+   答错会把 right 清零并把 known 置 false，所以掌握会掉下来。 */
+function isKnown(id){ var s=S.q[id]; return !!(s && (s.known===true || s.right>=2)); }
+function isNew(id){ var s=S.q[id]; return !(s && s.seen>0); }
+function isWeak(id){ return !isKnown(id) && !isNew(id); }
+function isWrong(id){ return !!(S.q[id] && S.q[id].wrong>0); }
+
+function todayStr(){ var d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function examDate(){ return S.examDate || BANK.end_at || null; }
+var FORCE = false;
+function expired(){ if(FORCE) return false; var e=examDate(); return !!(e && todayStr() > e); }
+function daysLeft(){
+  var e=examDate(); if(!e) return null;
+  var a=new Date(todayStr()+'T00:00:00'), b=new Date(e+'T00:00:00');
+  return Math.round((b-a)/86400000);
+}
+
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function blanksOf(s){ return (s.match(/____/g)||[]).length; }
+function stemHtml(qq, filled){
+  var s = esc(qq.stem);
+  if(filled && qq.answer.length && qq.answer.length === blanksOf(qq.stem)){
+    var i = 0;
+    s = s.replace(/____/g, function(){ return '<span class="filled">'+esc(qq.answer[i++])+'</span>'; });
+  }else{
+    s = s.replace(/____/g, '<span class="blank"></span>');
+  }
+  return s;
+}
+function ansText(qq){
+  if(qq.kind==='choice' || qq.kind==='multi'){
+    var m={}; (qq.options||[]).forEach(function(o){ m[o.k]=o.t; });
+    return qq.answer.map(function(k){ return k + (m[k] ? ' ' + m[k] : ''); }).join('　');
+  }
+  return qq.answer.join('　／　');
+}
+function canReadThrough(qq){ return blanksOf(qq.stem) > 0 && blanksOf(qq.stem) === qq.answer.length; }
+function stats(){
+  var k=0,w=0,n=0;
+  QS.forEach(function(x){ if(isKnown(x.id))k++; else if(isNew(x.id))n++; else w++; });
+  return {k:k,w:w,n:n,total:QS.length};
+}
+function shuffle(a){ a=a.slice(); for(var i=a.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var t=a[i];a[i]=a[j];a[j]=t; } return a; }
+function findQ(id){ for(var i=0;i<QS.length;i++) if(QS[i].id===id) return QS[i]; return null; }
+
+function logIt(qq, ok, where){
+  S.log.unshift({t:Date.now(), id:qq.id, ok:!!ok, where:where});
+  S.log = S.log.slice(0,300);
+}
+function mark(qq, known){
+  var s = st(qq.id); s.seen++;
+  s.known = !!known;
+  if(known){ s.wrong = 0; } else { s.right = 0; }
+  logIt(qq, known, '看题'); save();
+}
+function record(qq, ok, where){
+  var s = st(qq.id); s.seen++;
+  if(ok){ s.right++; } else { s.wrong++; s.right = 0; s.known = false; }
+  logIt(qq, ok, where); save();
+}
+
+function paintHead(){
+  var s = stats();
+  document.getElementById('stat').innerHTML =
+    '<span class="k">已掌握 <b>'+s.k+'</b></span>' +
+    '<span class="w">还不熟 <b>'+s.w+'</b></span>' +
+    '<span>没看过 <b>'+s.n+'</b></span>';
+  document.getElementById('barfill').style.width = (s.total ? Math.round(s.k/s.total*100) : 0) + '%';
+  var d = daysLeft(), el = document.getElementById('countdown');
+  if(d===null){ el.textContent = ''; }
+  else if(d>0){ el.textContent = '距离笔试还有 '+d+' 天'; }
+  else if(d===0){ el.textContent = '今天就是笔试'; }
+  else { el.textContent = '笔试已过 ' + (-d) + ' 天'; }
+}
+
+function endedHtml(){
+  return '<div class="card empty">这场考试已经结束了。' +
+    '<div class="hint">下线日期是 '+esc(examDate())+'。家长长按标题可以改日期或清掉日期。</div></div>' +
+    '<div class="row"><button class="wide" onclick="forceStudy()">还是想再看看</button></div>';
+}
+function forceStudy(){ FORCE = true; paintHead(); go(MODE); }
+
+/* ---------------- 看题 ---------------- */
+var ST = {i:0, order:null, showAns:false, showGrid:false};
+function studyOrder(){
+  var weak=[], fresh=[], done=[];
+  QS.forEach(function(x){ if(isKnown(x.id)) done.push(x); else if(isNew(x.id)) fresh.push(x); else weak.push(x); });
+  return weak.concat(fresh, done);
+}
+function renderStudy(){
+  var main = document.getElementById('main');
+  if(expired()){ main.innerHTML = endedHtml(); return; }
+  if(!ST.order || ST.order.length !== QS.length) ST.order = studyOrder();
+  if(ST.i >= ST.order.length) ST.i = 0;
+  var qq = ST.order[ST.i];
+  var h = '<div class="card">';
+  h += '<div class="qhead"><span>第 '+qq.n+' 题　<small>看题 '+(ST.i+1)+'/'+ST.order.length+'</small></span><span class="tag">'+KIND[qq.kind]+'</span></div>';
+  h += '<div class="stem">'+stemHtml(qq, ST.showAns)+'</div>';
+  if(qq.options && qq.options.length){
+    h += '<ul class="opts">';
+    qq.options.forEach(function(o){ h += '<li><span class="k">'+o.k+'</span><span>'+esc(o.t)+'</span></li>'; });
+    h += '</ul>';
+  }
+  if(ST.showAns){
+    h += '<div class="ans"><span class="lbl">答案</span>'+esc(ansText(qq));
+    if(canReadThrough(qq)) h += '<div class="read">连起来读：'+stemHtml(qq, true)+'</div>';
+    h += '</div>';
+    h += '<div class="row"><button class="ok" onclick="markCur(true)">记住了</button>' +
+         '<button class="no" onclick="markCur(false)">还不熟</button></div>';
+  }else{
+    h += '<div class="row"><button class="primary wide" onclick="reveal()">看答案</button></div>';
+  }
+  h += '</div>';
+  h += '<div class="nav"><button onclick="step(-1)">上一题</button>' +
+       '<span class="pos">'+(ST.i+1)+' / '+ST.order.length+'</span>' +
+       '<button onclick="step(1)">下一题</button></div>';
+  h += '<div class="row"><button class="ghost" onclick="toggleGrid()">'+(ST.showGrid?'收起题目一览':'题目一览')+'</button></div>';
+  if(ST.showGrid){
+    h += '<div class="grid">';
+    ST.order.forEach(function(x, idx){
+      var cls = isKnown(x.id) ? 'k' : (isNew(x.id) ? '' : 'w');
+      if(idx===ST.i) cls += ' cur';
+      h += '<b class="'+cls+'" onclick="jump('+idx+')">'+x.n+'</b>';
+    });
+    h += '</div><div class="hint">绿＝已掌握　红＝还不熟　灰＝没看过</div>';
+  }
+  main.innerHTML = h;
+}
+function reveal(){ ST.showAns = true; renderStudy(); }
+function step(d){ ST.i = (ST.i + d + ST.order.length) % ST.order.length; ST.showAns = false; renderStudy(); }
+function jump(i){ ST.i = i; ST.showAns = false; renderStudy(); }
+function toggleGrid(){ ST.showGrid = !ST.showGrid; renderStudy(); }
+function markCur(known){
+  mark(ST.order[ST.i], known);
+  ST.showAns = false;
+  paintHead();
+  step(1);
+}
+
+/* ---------------- 练习 ---------------- */
+var PR = {items:[], i:0, right:0, state:'ask', picked:[], lastOk:null, done:false, wrongList:[]};
+function startPractice(n){
+  var weak  = shuffle(QS.filter(function(x){ return isWeak(x.id); }));
+  var fresh = shuffle(QS.filter(function(x){ return isNew(x.id); }));
+  var rest  = shuffle(QS.filter(function(x){ return isKnown(x.id); }));
+  PR = {items: weak.concat(fresh, rest).slice(0, n), i:0, right:0, state:'ask',
+        picked:[], lastOk:null, done:false, wrongList:[]};
+  renderPractice();
+}
+function renderPractice(){
+  var main = document.getElementById('main');
+  if(expired()){ main.innerHTML = endedHtml(); return; }
+  if(!PR.items.length){ main.innerHTML = '<div class="card empty">这里还没有题。</div>'; return; }
+  if(PR.done){
+    var pct = Math.round(PR.right / PR.items.length * 100);
+    var h = '<div class="card"><div class="mid">本次练习</div><div class="big">'+PR.right+' / '+PR.items.length+'</div>' +
+      '<div class="mid">正确率 '+pct+'%</div>';
+    if(PR.wrongList.length){
+      h += '<div class="sec">错的题（'+PR.wrongList.length+' 道）</div><div class="list">';
+      PR.wrongList.forEach(function(x){
+        h += '<div class="it">第 '+x.n+' 题　<small>'+esc(x.stem)+'</small><div class="a">'+esc(ansText(x))+'</div></div>';
+      });
+      h += '</div>';
+    }else{
+      h += '<div class="hint" style="text-align:center">全对，厉害。</div>';
+    }
+    h += '<div class="row"><button class="primary wide" onclick="startPractice(10)">再来 10 题</button></div></div>';
+    main.innerHTML = h; return;
+  }
+  var qq = PR.items[PR.i];
+  var showAns = (PR.state==='self' || PR.state==='done');
+  var h = '<div class="card">';
+  h += '<div class="qhead"><span>第 '+(PR.i+1)+' / '+PR.items.length+' 题　<small>原题 '+qq.n+'</small></span><span class="tag">'+KIND[qq.kind]+'</span></div>';
+  h += '<div class="stem">'+stemHtml(qq, showAns)+'</div>';
+  if(qq.options && qq.options.length){
+    h += '<ul class="opts">';
+    qq.options.forEach(function(o){
+      var cls = '';
+      if(PR.state==='ask'){ if(PR.picked.indexOf(o.k)>=0) cls='pick'; }
+      else if(qq.answer.indexOf(o.k)>=0){ cls='ok'; }
+      else if(PR.picked.indexOf(o.k)>=0){ cls='no'; }
+      h += '<li class="'+cls+'" onclick="pickOpt(\''+o.k+'\')"><span class="k">'+o.k+'</span><span>'+esc(o.t)+'</span></li>';
+    });
+    h += '</ul>';
+  }
+  if(PR.state==='ask'){
+    if(qq.kind==='choice' || qq.kind==='multi'){
+      var lbl = qq.kind==='multi' ? '确定（可多选）' : '确定';
+      h += '<div class="row"><button class="primary wide" onclick="submitOpt()">'+lbl+'</button></div>';
+    }else{
+      h += '<div class="row"><button class="primary wide" onclick="selfCheck()">看答案，自己判</button></div>';
+    }
+  }else if(PR.state==='self'){
+    h += '<div class="ans"><span class="lbl">答案</span>'+esc(ansText(qq));
+    if(canReadThrough(qq)) h += '<div class="read">连起来读：'+stemHtml(qq,true)+'</div>';
+    h += '</div>';
+    h += '<div class="row"><button class="ok" onclick="selfJudge(true)">答对了</button>' +
+         '<button class="no" onclick="selfJudge(false)">没答对</button></div>';
+  }else{
+    h += '<div class="fb '+(PR.lastOk?'ok':'no')+'">'+(PR.lastOk?'答对了':'答错了，看看正确答案')+'</div>';
+    h += '<div class="ans"><span class="lbl">答案</span>'+esc(ansText(qq))+'</div>';
+    h += '<div class="row"><button class="primary wide" onclick="nextPractice()">下一题</button></div>';
+  }
+  h += '</div>';
+  main.innerHTML = h;
+}
+function pickOpt(k){
+  if(PR.state!=='ask') return;
+  var qq = PR.items[PR.i];
+  if(qq.kind==='multi'){
+    var i = PR.picked.indexOf(k);
+    if(i>=0) PR.picked.splice(i,1); else PR.picked.push(k);
+  }else{ PR.picked = [k]; }
+  renderPractice();
+}
+function settle(ok){
+  var qq = PR.items[PR.i];
+  PR.lastOk = ok; PR.state = 'done';
+  if(ok){ PR.right++; } else { PR.wrongList.push(qq); }
+  record(qq, ok, '练习');
+  paintHead(); renderPractice();
+}
+function submitOpt(){
+  if(!PR.picked.length) return;
+  var qq = PR.items[PR.i];
+  settle(PR.picked.slice().sort().join('') === qq.answer.slice().sort().join(''));
+}
+function selfCheck(){ PR.state='self'; renderPractice(); }
+function selfJudge(ok){ settle(ok); }
+function nextPractice(){
+  PR.i++; PR.picked=[]; PR.state='ask'; PR.lastOk=null;
+  if(PR.i >= PR.items.length) PR.done = true;
+  renderPractice();
+}
+
+/* ---------------- 模拟考 ---------------- */
+var EX = {items:[], i:0, picked:[], done:false, right:0, auto:0, manual:[], wrongList:[], skipped:0};
+function startExam(){
+  EX = {items: shuffle(QS).slice(0, Math.min(20, QS.length)), i:0, picked:[],
+        done:false, right:0, auto:0, manual:[], wrongList:[], skipped:0};
+  renderExam();
+}
+function renderExam(){
+  var main = document.getElementById('main');
+  if(expired()){ main.innerHTML = endedHtml(); return; }
+  if(!EX.items.length){
+    main.innerHTML = '<div class="card"><div class="mid">模拟考</div>' +
+      '<div class="hint" style="text-align:center">抽 20 道题。中途不给答案，交卷后统一看分。<br>' +
+      '选择题自动判，填空和问答交卷后列出来自己对。</div>' +
+      '<div class="row"><button class="primary wide" onclick="startExam()">开始模拟考</button></div></div>';
+    return;
+  }
+  if(EX.done){
+    var h = '<div class="card"><div class="mid">模拟考成绩</div>' +
+      '<div class="big">'+(EX.auto ? EX.right+' / '+EX.auto : '—')+'</div>' +
+      '<div class="mid">选择题'+(EX.auto ? '得分 '+Math.round(EX.right/EX.auto*100)+' 分' : '本次没有')+
+      (EX.skipped ? '　·　没作答 '+EX.skipped+' 题' : '')+'</div>';
+    if(EX.wrongList.length){
+      h += '<div class="sec">选错的题（'+EX.wrongList.length+' 道）</div><div class="list">';
+      EX.wrongList.forEach(function(x){
+        h += '<div class="it">第 '+x.n+' 题　<small>'+esc(x.stem)+'</small><div class="a">'+esc(ansText(x))+'</div></div>';
+      });
+      h += '</div>';
+    }
+    if(EX.manual.length){
+      h += '<div class="sec">这几道填空/问答，自己对答案</div><div class="list">';
+      EX.manual.forEach(function(x){
+        h += '<div class="it">第 '+x.n+' 题　<small>'+esc(x.stem)+'</small><div class="a">'+esc(ansText(x))+'</div></div>';
+      });
+      h += '</div>';
+    }
+    h += '<div class="row"><button class="primary wide" onclick="startExam()">再考一次</button></div></div>';
+    main.innerHTML = h; return;
+  }
+  var qq = EX.items[EX.i];
+  var h = '<div class="card">';
+  h += '<div class="qhead"><span>第 '+(EX.i+1)+' / '+EX.items.length+' 题</span><span class="tag">'+KIND[qq.kind]+'</span></div>';
+  h += '<div class="stem">'+stemHtml(qq, false)+'</div>';
+  if(qq.options && qq.options.length){
+    h += '<ul class="opts">';
+    qq.options.forEach(function(o){
+      h += '<li class="'+(EX.picked.indexOf(o.k)>=0?'pick':'')+'" onclick="examPick(\''+o.k+'\')"><span class="k">'+o.k+'</span><span>'+esc(o.t)+'</span></li>';
+    });
+    h += '</ul>';
+  }else{
+    h += '<div class="hint">这题在纸上写，交卷后一起对答案。</div>';
+  }
+  h += '<div class="row"><button class="primary wide" onclick="examNext()">' +
+       (EX.i===EX.items.length-1 ? '交卷' : '下一题') + '</button></div>';
+  h += '</div>';
+  main.innerHTML = h;
+}
+function examPick(k){
+  var qq = EX.items[EX.i];
+  if(qq.kind==='multi'){ var i=EX.picked.indexOf(k); if(i>=0) EX.picked.splice(i,1); else EX.picked.push(k); }
+  else { EX.picked = [k]; }
+  renderExam();
+}
+function gradeExam(){
+  var qq = EX.items[EX.i];
+  if(qq.kind==='choice' || qq.kind==='multi'){
+    EX.auto++;
+    if(!EX.picked.length){
+      EX.skipped++; EX.wrongList.push(qq); record(qq, false, '模拟考');
+    }else{
+      var ok = EX.picked.slice().sort().join('') === qq.answer.slice().sort().join('');
+      if(ok){ EX.right++; } else { EX.wrongList.push(qq); }
+      record(qq, ok, '模拟考');
+    }
+  }else{
+    EX.manual.push(qq);
+  }
+  paintHead();
+}
+function examNext(){
+  gradeExam(); EX.picked = []; EX.i++;
+  if(EX.i >= EX.items.length) EX.done = true;
+  renderExam();
+}
+
+/* ---------------- 家长设置 ---------------- */
+function openSheet(){
+  var e = examDate() || '';
+  var wrong = QS.filter(function(x){ return isWrong(x.id); });
+  var s = stats();
+  var h = '<h2>家长设置</h2><div class="hint">长按标题打开，孩子平时碰不到。</div>';
+  h += '<label>下线日期（过了这天，孩子端显示「这场考试已经结束」）</label>';
+  h += '<input type="date" id="examDateInput" value="'+esc(e)+'">';
+  h += '<div class="row"><button class="primary" onclick="saveDate()">保存</button>' +
+       '<button class="ghost" onclick="clearDate()">清除</button></div>';
+  h += BANK.end_at
+    ? '<div class="hint">题库自带默认日期 '+esc(BANK.end_at)+'，这里填的会覆盖它。</div>'
+    : '<div class="hint">题库没设默认日期，所以现在不会自动下线。填一个日期就行。</div>';
+
+  h += '<div class="sec">孩子的情况</div><div class="list">';
+  h += '<div class="it">已掌握 '+s.k+' 题　·　还不熟 '+s.w+' 题　·　没看过 '+s.n+' 题</div>';
+  h += '<div class="it">累计答错过的题：'+wrong.length+' 道</div>';
+  h += '</div>';
+
+  h += '<div class="sec">错题清单（抽查用）</div>';
+  if(!wrong.length){ h += '<div class="hint">还没有答错的题。</div>'; }
+  else{
+    h += '<div class="list">';
+    wrong.slice(0,40).forEach(function(x){
+      h += '<div class="it">第 '+x.n+' 题　<small>错 '+S.q[x.id].wrong+' 次</small>' +
+           '<div>'+esc(x.stem)+'</div><div class="a">'+esc(ansText(x))+'</div></div>';
+    });
+    h += '</div>';
+    if(wrong.length>40) h += '<div class="hint">只显示前 40 道。</div>';
+  }
+
+  h += '<div class="sec">最近记录</div>';
+  if(!S.log.length){ h += '<div class="hint">还没有记录。</div>'; }
+  else{
+    h += '<div class="list">';
+    S.log.slice(0,20).forEach(function(x){
+      var qq = findQ(x.id), d = new Date(x.t);
+      var ts = (d.getMonth()+1)+'/'+d.getDate()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+      h += '<div class="it"><small>'+ts+'　'+esc(x.where)+'</small>　第 '+(qq?qq.n:'?')+' 题　' +
+           '<b style="color:'+(x.ok?'var(--ok)':'var(--no)')+'">'+(x.ok?'对':'错')+'</b></div>';
+    });
+    h += '</div>';
+  }
+
+  h += '<div class="sec">给家长看的汇总</div>';
+  h += '<pre class="copy" id="copyBox">'+esc(reportText())+'</pre>';
+  h += '<div class="row"><button class="primary wide" onclick="copyReport()">复制这段发给家长</button></div>';
+  h += '<div class="row"><button class="ghost wide" onclick="resetAll()">清空全部进度</button></div>';
+  h += '<div class="row"><button class="ghost wide" onclick="closeSheet()">关闭</button></div>';
+  h += '<div class="hint" style="text-align:center;margin-top:16px">题库版本 '+esc(SEED.curriculum_ver)+'　·　共 '+QS.length+' 题</div>';
+  document.getElementById('sheetIn').innerHTML = h;
+  document.getElementById('sheet').classList.add('on');
+}
+function closeSheet(){ document.getElementById('sheet').classList.remove('on'); }
+function saveDate(){ S.examDate = document.getElementById('examDateInput').value || null; save(); paintHead(); go(MODE); openSheet(); }
+function clearDate(){ S.examDate = null; save(); paintHead(); go(MODE); openSheet(); }
+function resetAll(){
+  if(!confirm('清空全部练习进度和记录？这个不能撤销。')) return;
+  S.q = {}; S.log = []; save(); ST.i = 0; ST.order = null; paintHead(); go(MODE); openSheet();
+}
+function reportText(){
+  var s = stats(), e = examDate(), lines = [];
+  lines.push('大队委竞选笔试复习 · 进度');
+  lines.push('日期：'+todayStr() + (e ? '（下线日期 '+e+'）' : ''));
+  lines.push('已掌握 '+s.k+' / '+s.total+'，还不熟 '+s.w+'，没看过 '+s.n);
+  var wrong = QS.filter(function(x){ return isWrong(x.id); });
+  lines.push('');
+  if(wrong.length){
+    lines.push('答错过的题：');
+    wrong.forEach(function(x){ lines.push('  第'+x.n+'题 '+x.stem+'　答案：'+ansText(x)); });
+  }else{
+    lines.push('目前没有答错的题。');
+  }
+  return lines.join('\n');
+}
+function doCopy(t, done, fail){
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(t).then(done, function(){ legacyCopy(t, done, fail); });
+  }else{
+    legacyCopy(t, done, fail);
+  }
+}
+function legacyCopy(t, done, fail){
+  var ta = document.createElement('textarea');
+  ta.value = t; ta.style.position='fixed'; ta.style.top='-1000px';
+  document.body.appendChild(ta); ta.select();
+  try{ document.execCommand('copy'); done(); }catch(e){ fail(); }
+  document.body.removeChild(ta);
+}
+function copyReport(){
+  doCopy(reportText(), function(){ alert('已经复制好了'); },
+         function(){ alert('复制失败，可以手动选中上面那段。'); });
+}
+function bindHold(el, fn){
+  var timer = null;
+  var start = function(){ if(timer) clearTimeout(timer); timer = setTimeout(fn, 1200); };
+  var stop  = function(){ if(timer){ clearTimeout(timer); timer = null; } };
+  el.addEventListener('touchstart', start, {passive:true});
+  el.addEventListener('touchend', stop);
+  el.addEventListener('touchmove', stop);
+  el.addEventListener('mousedown', start);
+  el.addEventListener('mouseup', stop);
+  el.addEventListener('mouseleave', stop);
+}
+
+/* ---------------- 路由 ---------------- */
+var MODE = 'study';
+function go(m){
+  MODE = m;
+  ['study','practice','exam'].forEach(function(k){
+    document.getElementById('tab-'+k).classList.toggle('on', k===m);
+  });
+  if(m==='study'){ renderStudy(); }
+  else if(m==='practice'){ if(!PR.items.length || PR.done){ startPractice(10); } else { renderPractice(); } }
+  else { renderExam(); }
+}
+window.go = go; window.reveal = reveal; window.step = step; window.jump = jump;
+window.toggleGrid = toggleGrid; window.markCur = markCur; window.forceStudy = forceStudy;
+window.pickOpt = pickOpt; window.submitOpt = submitOpt; window.selfCheck = selfCheck;
+window.selfJudge = selfJudge; window.nextPractice = nextPractice; window.startPractice = startPractice;
+window.startExam = startExam; window.examPick = examPick; window.examNext = examNext;
+window.saveDate = saveDate; window.clearDate = clearDate; window.resetAll = resetAll;
+window.closeSheet = closeSheet; window.copyReport = copyReport; window.openSheet = openSheet;
+
+bindHold(document.getElementById('title'), openSheet);
+paintHead();
+go('study');
+})();
+</script>
+</body>
+</html>

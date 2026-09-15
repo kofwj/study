@@ -936,7 +936,13 @@ def _ach_currents(c, kid):
         "SELECT date, task_id, created_at FROM completions WHERE status='completed' AND kind='daily' AND kid_id=?",
         (kid,)).fetchall()
     early_dates = {r["date"] for r in daily_rows if (_created_hour(r["created_at"]) or 99) < 8}
-    daily_ids = [r[0] for r in c.execute("SELECT id FROM daily_tasks").fetchall()]
+    # 全勤只数「这个孩子看得到的」每日任务：系统内置 + 本家庭里给他或给全家的。
+    # 否则家长给弟弟单独加一个任务，乐乐的全勤就永远差一个。
+    daily_ids = [r[0] for r in c.execute(
+        "SELECT dt.id FROM daily_tasks dt WHERE dt.family_id IS NULL "
+        "OR (dt.family_id=(SELECT u.family_id FROM users u WHERE u.id=?) "
+        "AND (dt.kid_id IS NULL OR dt.kid_id=?))", (kid, kid)).fetchall()]
+
     n_daily = len(daily_ids)
     by_date = {}
     for r in daily_rows:
@@ -1153,7 +1159,7 @@ def hidden_subjects_for(c, kid):
 
 
 @app.get("/api/tasks")
-def tasks():
+def tasks(request: Request):
     c = get_conn()
     term = active_term(c)
     term_row = c.execute("SELECT * FROM terms WHERE id=?", (term,)).fetchone()
@@ -1198,8 +1204,11 @@ def tasks():
                      "past": is_past(c, t["id"], t["subject_id"]),
                      "locked": t["id"] in locked_ids} for t in tasks_rows]
     # 每日任务 + 今日状态 + 历史最好
+    # 系统内置（family_id IS NULL）恒为全家；自家任务按 kid_id 过滤（NULL=全家）
     dts = c.execute(
-        "SELECT * FROM daily_tasks WHERE family_id IS NULL OR family_id=?", (_fam.get(),)).fetchall()
+        "SELECT * FROM daily_tasks WHERE family_id IS NULL "
+        "OR (family_id=? AND (kid_id IS NULL OR kid_id=?))",
+        (_fam.get(), kid_id())).fetchall()
     
     # 预加载所有任务的今日完成状态
     task_ids = [d["id"] for d in dts]
@@ -1230,30 +1239,41 @@ def tasks():
                 all_completions[comp["task_id"]] = []
             all_completions[comp["task_id"]].append(comp)
     
-    daily = []
-    for d in dts:
-        dct = dict(d)
-        comp_today = today_completions.get(d["id"])
-        dct["done_today"] = comp_today is not None
-        dct["today_metrics"] = json.loads(comp_today["metrics"]) if comp_today and comp_today["metrics"] else None
-        dct["metrics"] = all_metrics.get(d["id"], [])
-        
-        # 历史最好（个人纪录）
-        pb = {}
-        for m in dct["metrics"]:
-            best = None
-            for comp in all_completions.get(d["id"], []):
-                v = (json.loads(comp["metrics"]) or {}).get(m["id"])
-                if v is None:
-                    continue
-                if best is None or (m["direction"] == "higher_better" and v > best) or \
-                   (m["direction"] == "lower_better" and v < best):
-                    best = v
-            pb[m["id"]] = best
-        dct["pb"] = pb
-        dct["bonus_per_metric"] = d["bonus_per_metric"]
-        daily.append(dct)
-    out["daily"] = daily
+    def _mk_daily(rows):
+        out_rows = []
+        for d in rows:
+            dct = dict(d)
+            comp_today = today_completions.get(d["id"])
+            dct["done_today"] = comp_today is not None
+            dct["today_metrics"] = json.loads(comp_today["metrics"]) if comp_today and comp_today["metrics"] else None
+            dct["metrics"] = all_metrics.get(d["id"], [])
+
+            # 历史最好（个人纪录）
+            pb = {}
+            for m in dct["metrics"]:
+                best = None
+                for comp in all_completions.get(d["id"], []):
+                    v = (json.loads(comp["metrics"]) or {}).get(m["id"])
+                    if v is None:
+                        continue
+                    if best is None or (m["direction"] == "higher_better" and v > best) or \
+                       (m["direction"] == "lower_better" and v < best):
+                        best = v
+                pb[m["id"]] = best
+            dct["pb"] = pb
+            dct["bonus_per_metric"] = d["bonus_per_metric"]
+            out_rows.append(dct)
+        return out_rows
+
+    out["daily"] = _mk_daily(dts)
+    # 家长端「每日任务」管理页要看全家的任务（含只给别的孩子看的），
+    # 否则一旦设成「只给弟弟」，家长在乐乐页签下就会以为任务没了。
+    _u = getattr(request.state, "user", None)
+    if _u and _u["role"] == "parent":
+        all_dts = c.execute(
+            "SELECT * FROM daily_tasks WHERE family_id IS NULL OR family_id=?",
+            (_fam.get(),)).fetchall()
+        out["daily_all"] = _mk_daily(all_dts)
     rules = insight_rules(c)
     out["test_fail_score"] = int(rules["test_fail_score"])
     u = c.execute("SELECT gender, term_id FROM users WHERE id=?", (kid_id(),)).fetchone()
@@ -1391,8 +1411,9 @@ def complete(body: CompleteBody):
             c.commit()
             res = {"delta": delta, "bonus": 0, "milestone": m, "level": level_info(c)}
             return res
-        d = c.execute("SELECT * FROM daily_tasks WHERE id=? AND (family_id IS NULL OR family_id=?)",
-                      (tid, _fam.get())).fetchone()
+        d = c.execute("SELECT * FROM daily_tasks WHERE id=? AND (family_id IS NULL "
+                      "OR (family_id=? AND (kid_id IS NULL OR kid_id=?)))",
+                      (tid, _fam.get(), kid_id())).fetchone()
         if d:
             delta, bonus, detail = daily_award(c, d, body.metrics)
             mj = json.dumps(body.metrics) if body.metrics else None
@@ -3607,6 +3628,17 @@ class DailyTaskIn(BaseModel):
     bonus_per_metric: Optional[int] = 3
     note: str = ""
     metrics: Optional[list] = None
+    kid_id: Optional[str] = None  # None/"" = 全家可见
+
+
+def _scope_kid(c, kid_id):
+    """校验「只给某个孩子看」的目标确实是本家庭的孩子；非法一律当全家，不报错打断家长。"""
+    k = (kid_id or "").strip()
+    if not k:
+        return None
+    row = c.execute("SELECT 1 FROM users WHERE id=? AND family_id=? AND role='kid'",
+                    (k, _fam.get())).fetchone()
+    return k if row else None
 
 
 def _replace_metrics(c, did, metrics):
@@ -3620,9 +3652,9 @@ def _replace_metrics(c, did, metrics):
 def daily_create(b: DailyTaskIn):
     c = get_conn()
     did = uuid.uuid4().hex[:8]
-    c.execute("INSERT INTO daily_tasks(id,subject_id,name,sunshine,frequency,bonus_type,bonus_per_metric,note,family_id) "
-              "VALUES(?,?,?,?,'daily','personal_best',?,?,?)",
-              (did, b.subject_id, b.name, _sun(b.sunshine), _sun(b.bonus_per_metric if b.bonus_per_metric is not None else 0), (b.note or "").strip()[:120], _fam.get()))
+    c.execute("INSERT INTO daily_tasks(id,subject_id,name,sunshine,frequency,bonus_type,bonus_per_metric,note,family_id,kid_id) "
+              "VALUES(?,?,?,?,'daily','personal_best',?,?,?,?)",
+              (did, b.subject_id, b.name, _sun(b.sunshine), _sun(b.bonus_per_metric if b.bonus_per_metric is not None else 0), (b.note or "").strip()[:120], _fam.get(), _scope_kid(c, b.kid_id)))
     _replace_metrics(c, did, b.metrics)
     c.commit(); c.close()
     return {"id": did}
@@ -3634,8 +3666,8 @@ def daily_update(did: str, b: DailyTaskIn):
     row = c.execute("SELECT family_id FROM daily_tasks WHERE id=?", (did,)).fetchone()
     if not row or not row["family_id"]:
         c.close(); raise HTTPException(403, "系统每日任务不能改")
-    c.execute("UPDATE daily_tasks SET subject_id=?, name=?, sunshine=?, bonus_per_metric=?, note=? WHERE id=? AND family_id=?",
-              (b.subject_id, b.name, _sun(b.sunshine), _sun(b.bonus_per_metric if b.bonus_per_metric is not None else 0), (b.note or "").strip()[:120], did, _fam.get()))
+    c.execute("UPDATE daily_tasks SET subject_id=?, name=?, sunshine=?, bonus_per_metric=?, note=?, kid_id=? WHERE id=? AND family_id=?",
+              (b.subject_id, b.name, _sun(b.sunshine), _sun(b.bonus_per_metric if b.bonus_per_metric is not None else 0), (b.note or "").strip()[:120], _scope_kid(c, b.kid_id), did, _fam.get()))
     _replace_metrics(c, did, b.metrics)
     c.commit(); c.close()
     return {"ok": True}
