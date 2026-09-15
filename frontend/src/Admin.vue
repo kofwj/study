@@ -116,38 +116,69 @@ const redeemFilter = ref('pending')
 const bankHistoryOpen = ref(false)
 const taskAddOpen = ref(false)
 const textbookOpen = reactive({})
-const editRewardId = ref('')
-const editRankId = ref('')
-const editDailyId = ref('')
 const dailyAddOpen = ref(false)
-const editKidId = ref('')
 const kidAddOpen = ref(false)
-const kidEditSnap = ref(null)
-function restoreKidSnap() {
-  const snap = kidEditSnap.value
-  if (!snap) return
-  const prev = kids.value.find(x => x.id === snap.id)
-  if (prev) {
-    prev.name = snap.name
-    prev.account = snap.account
-    prev.term_id = snap.term_id
-    prev.gender = snap.gender
-    prev._pin = ''
+const editKind = ref('')
+const editId = ref('')
+const editSnap = ref(null)
+function cloneEdit(kind, row) {
+  if (kind === 'reward') return { name: row.name, price: row.price, category: row.category }
+  if (kind === 'rank') return { name: row.name, min_sunshine: row.min_sunshine }
+  if (kind === 'daily') return { name: row.name, subject_id: row.subject_id, sunshine: row.sunshine, bonus_per_metric: row.bonus_per_metric, note: row.note, metrics: JSON.parse(JSON.stringify(row.metrics || [])) }
+  if (kind === 'task') return { title: row.title, action: row.action, sunshine: row.sunshine, kid_id: row.kid_id || '' }
+  if (kind === 'kid') return { name: row.name, account: row.account, term_id: row.term_id, gender: row.gender || '' }
+  return {}
+}
+function findEditRow(kind, id) {
+  if (kind === 'reward') return rewards.value.find(x => x.id === id)
+  if (kind === 'rank') return ranks.value.find(x => x.id === id)
+  if (kind === 'daily') return daily.value.find(x => x.id === id)
+  if (kind === 'task') return tasks.value.find(x => x.id === id)
+  if (kind === 'kid') return kids.value.find(x => x.id === id)
+}
+function restoreEditSnap() {
+  const snap = editSnap.value
+  const kind = editKind.value
+  const id = editId.value
+  if (!snap || !kind || !id) return
+  const row = findEditRow(kind, id)
+  if (row) {
+    if (kind === 'reward') { row.name = snap.name; row.price = snap.price; row.category = snap.category }
+    else if (kind === 'rank') { row.name = snap.name; row.min_sunshine = snap.min_sunshine }
+    else if (kind === 'daily') {
+      row.name = snap.name
+      row.subject_id = snap.subject_id
+      row.sunshine = snap.sunshine
+      row.bonus_per_metric = snap.bonus_per_metric
+      row.note = snap.note
+      row.metrics = JSON.parse(JSON.stringify(snap.metrics || []))
+    }
+    else if (kind === 'task') { row.title = snap.title; row.action = snap.action; row.sunshine = snap.sunshine; row.kid_id = snap.kid_id || '' }
+    else if (kind === 'kid') { row.name = snap.name; row.account = snap.account; row.term_id = snap.term_id; row.gender = snap.gender; row._pin = '' }
   }
-  kidEditSnap.value = null
+  editSnap.value = null
 }
-function startEditKid(k) {
-  if (editKidId.value === k.id) return
-  restoreKidSnap()
-  kidEditSnap.value = { id: k.id, name: k.name, account: k.account, term_id: k.term_id, gender: k.gender || '' }
-  k._pin = ''
-  editKidId.value = k.id
+function clearEdit() {
+  editSnap.value = null
+  editKind.value = ''
+  editId.value = ''
 }
-function cancelEditKid(k) {
-  restoreKidSnap()
-  if (k) k._pin = ''
-  editKidId.value = ''
+function beginEdit(kind, row) {
+  if (editKind.value === kind && editId.value === row.id) return
+  restoreEditSnap()
+  editSnap.value = cloneEdit(kind, row)
+  if (kind === 'kid') row._pin = ''
+  editKind.value = kind
+  editId.value = row.id
 }
+function cancelEdit() {
+  restoreEditSnap()
+  clearEdit()
+}
+function isEditing(kind, id) {
+  return editKind.value === kind && editId.value === id
+}
+
 
 
 
@@ -401,12 +432,14 @@ async function load() {
   try {
     const ok = await loadCore()
     if (!ok) return
+    clearEdit()
     invalidateSection(section.value)
     await ensureSection(section.value)
   } catch (e) {
     showToast(e && e.message ? `加载失败：${e.message}` : '加载失败，请检查网络后重试')
   }
 }
+
 
 
 async function loadBank() {
@@ -700,7 +733,7 @@ async function addReward() {
     showToast('已新增'); await load()
   })
 }
-async function saveReward(r) { await withBusy(async () => { await api.admin.updateReward(r.id, r); showToast('已保存') }) }
+async function saveReward(r) { await withBusy(async () => { await api.admin.updateReward(r.id, r); clearEdit(); showToast('已保存') }) }
 async function delReward(id) { if (!confirm('删除这个奖励？')) return; await withBusy(async () => { await api.admin.delReward(id); await load() }) }
 
 // —— 兑换审批 ——
@@ -742,7 +775,7 @@ async function addRank() {
     showToast('已新增'); await load()
   })
 }
-async function saveRank(r) { await withBusy(async () => { await api.admin.updateRank(r.id, r); showToast('已保存') }) }
+async function saveRank(r) { await withBusy(async () => { await api.admin.updateRank(r.id, r); clearEdit(); showToast('已保存') }) }
 async function delRank(id) {
   if (!confirm('删除这个等级？')) return
   try { await api.admin.delRank(id); await load() } catch (e) { showToast(e.message) }
@@ -765,7 +798,7 @@ async function addTask() {
     showToast('已新增'); await load()
   })
 }
-async function saveTask(t) { await withBusy(async () => { await api.admin.updateTask(t.id, { ...t, kid_id: t.kid_id || null }); showToast('已保存') }) }
+async function saveTask(t) { await withBusy(async () => { await api.admin.updateTask(t.id, { ...t, kid_id: t.kid_id || null }); clearEdit(); showToast('已保存') }) }
 async function delTask(id) { if (!confirm('删除这个任务？')) return; await withBusy(async () => { await api.admin.delTask(id); await load() }) }
 
 const tasksBySubject = computed(() => {
@@ -861,6 +894,7 @@ async function addDaily() {
 async function saveDaily(d) {
   await withBusy(async () => {
     await api.admin.updateDaily(d.id, { subject_id: d.subject_id, name: d.name, sunshine: d.sunshine, bonus_per_metric: d.bonus_per_metric, note: d.note, metrics: cleanMetrics(d.metrics) })
+    clearEdit()
     showToast('已保存')
   })
 }
@@ -932,8 +966,7 @@ async function saveKid(k) {
   try {
     await api.admin.updateKid(k.id, { name: k.name, account: k.account, term_id: k.term_id, pin: k._pin || '', gender: k.gender || '' })
     k._pin = ''
-    kidEditSnap.value = null
-    editKidId.value = ''
+    clearEdit()
     showToast('已保存')
     await load()
   } catch (e) { showToast(e.message) }
@@ -1521,13 +1554,13 @@ onMounted(load)
       <h3>阳光</h3>
       <h4 class="w-h">兑换商店</h4>
       <div class="task-row" v-for="r in rewards" :key="r.id">
-        <template v-if="editRewardId === r.id">
+        <template v-if="isEditing('reward', r.id)">
           <label class="fld grow"><span>奖励名</span><input v-model="r.name" /></label>
           <label class="fld w64"><span>阳光</span><input v-model.number="r.price" type="number" /></label>
           <label class="fld w84"><span>分类</span><input v-model="r.category" /></label>
           <div class="ops">
-            <button class="ok" @click="saveReward(r); editRewardId = ''">保存</button>
-            <button class="ghost-s" @click="editRewardId = ''">取消</button>
+            <button class="ok" @click="saveReward(r)">保存</button>
+            <button class="ghost-s" @click="cancelEdit">取消</button>
           </div>
         </template>
         <template v-else>
@@ -1535,7 +1568,7 @@ onMounted(load)
           <span class="badge daily">{{ r.price }} 阳光</span>
           <span class="dim">{{ r.category }}</span>
           <div class="ops">
-            <button class="ghost-s" @click="editRewardId = r.id">改</button>
+            <button class="ghost-s" @click="beginEdit('reward', r)">改</button>
             <button class="del" @click="delReward(r.id)">删</button>
           </div>
         </template>
@@ -1707,19 +1740,19 @@ onMounted(load)
       <h3>成长等级</h3>
       <div class="task-row" v-for="r in ranks" :key="r.id">
         <span class="rank-icon"><component :is="rankIcon(r.icon)" class="ico" :size="18" /></span>
-        <template v-if="editRankId === r.id">
+        <template v-if="isEditing('rank', r.id)">
           <label class="fld grow"><span>等级名</span><input v-model="r.name" /></label>
           <label class="fld w84"><span>累计阳光 ≥</span><input v-model.number="r.min_sunshine" type="number" /></label>
           <div class="ops">
-            <button class="ok" @click="saveRank(r); editRankId = ''">保存</button>
-            <button class="ghost-s" @click="editRankId = ''">取消</button>
+            <button class="ok" @click="saveRank(r)">保存</button>
+            <button class="ghost-s" @click="cancelEdit">取消</button>
           </div>
         </template>
         <template v-else>
           <span class="task-readonly-title">{{ r.name }}</span>
           <span class="dim">累计阳光 ≥ {{ r.min_sunshine }}</span>
           <div class="ops">
-            <button class="ghost-s" @click="editRankId = r.id">改</button>
+            <button class="ghost-s" @click="beginEdit('rank', r)">改</button>
             <button class="del" @click="delRank(r.id)">删</button>
           </div>
         </template>
@@ -1792,19 +1825,31 @@ onMounted(load)
             <span v-if="!tagsFor(u.id).length" class="dim">无考点</span>
           </div>
           <div class="task-row" v-for="t in customUnitTasks(sid, u.id)" :key="t.id">
-            <label class="fld grow"><span>家长任务名称</span><input v-model="t.title" /></label>
-            <label class="fld w84"><span>怎么做</span><input v-model="t.action" /></label>
-            <label class="fld w64"><span>阳光</span><input v-model.number="t.sunshine" type="number" min="0" /></label>
-            <label class="fld w104"><span>谁能看到</span>
-              <select v-model="t.kid_id">
-                <option value="">全家</option>
-                <option v-for="k in kids" :key="k.id" :value="k.id">{{ k.name }}</option>
-              </select>
-            </label>
-            <div class="ops">
-              <button class="ok" @click="saveTask(t)">保存</button>
-              <button class="del" @click="delTask(t.id)">删</button>
-            </div>
+            <template v-if="isEditing('task', t.id)">
+              <label class="fld grow"><span>家长任务名称</span><input v-model="t.title" /></label>
+              <label class="fld w84"><span>怎么做</span><input v-model="t.action" /></label>
+              <label class="fld w64"><span>阳光</span><input v-model.number="t.sunshine" type="number" min="0" /></label>
+              <label class="fld w104"><span>谁能看到</span>
+                <select v-model="t.kid_id">
+                  <option value="">全家</option>
+                  <option v-for="k in kids" :key="k.id" :value="k.id">{{ k.name }}</option>
+                </select>
+              </label>
+              <div class="ops">
+                <button class="ok" @click="saveTask(t)">保存</button>
+                <button class="ghost-s" @click="cancelEdit">取消</button>
+                <button class="del" @click="delTask(t.id)">删</button>
+              </div>
+            </template>
+            <template v-else>
+              <span class="task-readonly-title">{{ t.title }}</span>
+              <span class="badge">{{ t.action }}</span>
+              <span class="dim">+{{ t.sunshine }} 阳光 · {{ t.kid_id ? ((kids.find(k => k.id === t.kid_id) || {}).name || '指定孩子') : '全家' }}</span>
+              <div class="ops">
+                <button class="ghost-s" @click="beginEdit('task', t)">改</button>
+                <button class="del" @click="delTask(t.id)">删</button>
+              </div>
+            </template>
           </div>
           <button v-if="textbookUnitTasks(sid, u.id).length" type="button" class="ghost-s" @click="textbookOpen[u.id] = !textbookOpen[u.id]">{{ textbookOpen[u.id] ? '收起教材任务' : '教材任务 ' + textbookUnitTasks(sid, u.id).length + ' 项' }}</button>
           <div v-if="textbookOpen[u.id]" class="task-row" v-for="t in textbookUnitTasks(sid, u.id)" :key="t.id">
@@ -1855,7 +1900,7 @@ onMounted(load)
           <div v-if="d.note" class="daily-note">怎么做：{{ d.note }}</div>
         </div>
         <template v-else>
-          <template v-if="editDailyId === d.id">
+          <template v-if="isEditing('daily', d.id)">
             <div class="dc-head">
               <span class="badge daily">每天</span>
               <label class="fld grow"><span>名称</span><input v-model="d.name" /></label>
@@ -1868,8 +1913,8 @@ onMounted(load)
               <label class="fld w84"><span>破纪录 +</span><input v-model.number="d.bonus_per_metric" type="number" /></label>
               <label class="fld grow"><span>怎么做</span><input v-model="d.note" placeholder="如：完成后让家长检查" /></label>
               <div class="ops">
-                <button class="ok" @click="saveDaily(d); editDailyId = ''">保存</button>
-                <button class="ghost-s" @click="editDailyId = ''">取消</button>
+                <button class="ok" @click="saveDaily(d)">保存</button>
+                <button class="ghost-s" @click="cancelEdit">取消</button>
               </div>
             </div>
             <div class="dc-metrics" v-if="d.metrics.length">
@@ -1894,7 +1939,7 @@ onMounted(load)
               <span class="sys-name">{{ d.name }}</span>
               <span class="dim">{{ subjectName(d.subject_id) }} · +{{ d.sunshine }} 阳光<template v-if="d.bonus_per_metric"> · 破纪录 +{{ d.bonus_per_metric }}</template></span>
               <div class="ops">
-                <button class="ghost-s" @click="editDailyId = d.id">改</button>
+                <button class="ghost-s" @click="beginEdit('daily', d)">改</button>
                 <button class="del" @click="delDaily(d.id)">删</button>
               </div>
               <div v-if="d.note" class="daily-note">怎么做：{{ d.note }}</div>
@@ -2188,7 +2233,7 @@ get up	起床</pre>
       <p v-if="!terms.length" class="dim">学期列表还没载入，退出再进一次家长端。</p>
 
       <div class="kid-card" v-for="k in kids" :key="k.id">
-        <template v-if="editKidId === k.id">
+        <template v-if="isEditing('kid', k.id)">
           <label class="fld"><span>家里怎么叫</span><input v-model="k.name" placeholder="如：乐乐" /></label>
           <label class="fld"><span>登录账号</span><input v-model="k.account" placeholder="如：lele" /></label>
           <label class="fld"><span>现在读哪册</span>
@@ -2207,7 +2252,7 @@ get up	起床</pre>
           <label class="fld kid-pin"><span>改密码</span><input v-model="k._pin" type="password" autocomplete="new-password" placeholder="至少 6 位，不要重复或连续数字" /></label>
           <div class="ops">
             <button class="ok" @click="saveKid(k)">保存资料</button>
-            <button class="ghost-s" @click="cancelEditKid(k)">取消</button>
+            <button class="ghost-s" @click="cancelEdit">取消</button>
             <button v-if="isOwner" class="del" @click="delKid(k)">删除账号</button>
             <span v-else class="dim">只有创建者能删除孩子</span>
           </div>
@@ -2217,7 +2262,7 @@ get up	起床</pre>
             <span class="sys-name">{{ k.name }}</span>
             <span class="dim">{{ k.account }} · {{ (terms.find(tm => tm.id === k.term_id) || {}).label || k.term_id }}<template v-if="k.gender"> · {{ k.gender }}</template></span>
             <div class="ops">
-              <button class="ghost-s" @click="startEditKid(k)">改</button>
+              <button class="ghost-s" @click="beginEdit('kid', k)">改</button>
               <button v-if="isOwner" class="del" @click="delKid(k)">删</button>
             </div>
           </div>
