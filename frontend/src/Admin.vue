@@ -5,7 +5,7 @@ import { APP_LABEL, APP_REVISION } from './version.js'
 import { rankIcon } from './icons.js'
 import { tagHelp } from './tagHelp.js'
 import { SUBJECT_ORDER, n1, isTimeMetric, formatDuration, formatMetricValue } from './format.js'
-import { Eye, Baby, Users, KeyRound, Lock, Store, Trophy, ClipboardCheck, ClipboardList, BookOpen, RefreshCw, MapPinned, MinusCircle, Sun, Star, Check, ArrowLeft, BookMarked, Globe, Landmark, Sparkles } from '@lucide/vue'
+import { Eye, Baby, Store, ClipboardCheck, BookOpen, MapPinned, Sun, Star, Check, ArrowLeft, BookMarked, Globe } from '@lucide/vue'
 
 const props = defineProps({ recoveryCode: { type: String, default: '' } })
 const emit = defineEmits(['exit', 'switched', 'consumed-recovery'])
@@ -39,24 +39,15 @@ const SECTIONS = [
     { id: 'approve', icon: ClipboardCheck, label: '兑换审批' },
   ] },
   { group: '学习', items: [
-    { id: 'unit-task', icon: BookOpen, label: '任务与考点' },
-    { id: 'daily', icon: RefreshCw, label: '每日任务' },
+    { id: 'unit-task', icon: BookOpen, label: '任务' },
     { id: 'words', icon: Globe, label: '英语单词' },
-    { id: 'sprites', icon: Sparkles, label: '阳光图鉴' },
     { id: 'cursor', icon: MapPinned, label: '已学到' },
-    { id: 'test', icon: ClipboardList, label: '单元测试' },
   ] },
   { group: '阳光', items: [
-    { id: 'shop', icon: Store, label: '兑换商店' },
-    { id: 'bank', icon: Landmark, label: '阳光银行' },
-    { id: 'rank', icon: Trophy, label: '成长等级' },
-    { id: 'penalty', icon: MinusCircle, label: '扣分' },
+    { id: 'shop', icon: Store, label: '阳光' },
   ] },
   { group: '家庭', items: [
-    { id: 'kids', icon: Baby, label: '孩子账号' },
-    { id: 'members', icon: Users, label: '家长成员' },
-    { id: 'invites', icon: KeyRound, label: '邀请码' },
-    { id: 'pin', icon: Lock, label: '家长密码' },
+    { id: 'kids', icon: Baby, label: '家庭' },
   ] },
 ]
 const SECTION_IDS = new Set(SECTIONS.flatMap(g => g.items.map(it => it.id)))
@@ -67,11 +58,13 @@ function persistSection(id) {
 function rememberedSection() {
   try {
     const saved = localStorage.getItem(SECTION_KEY)
-    if (saved === 'weekly' || (saved && !SECTION_IDS.has(saved))) {
-      persistSection('insights')
-      return 'insights'
+    const mapped = { weekly: 'insights', sprites: 'cursor', daily: 'unit-task', test: 'unit-task', bank: 'shop', rank: 'shop', penalty: 'shop', members: 'kids', invites: 'kids', pin: 'kids' }[saved]
+    const id = mapped || saved
+    if (id && SECTION_IDS.has(id)) {
+      if (id !== saved) persistSection(id)
+      return id
     }
-    if (saved && SECTION_IDS.has(saved)) return saved
+    if (saved) persistSection('insights')
   } catch {}
   return 'insights'
 }
@@ -170,20 +163,11 @@ const SECTION_PACKS = {
   insights: ['tasks', 'hist', 'weekly', 'insights', 'familyToday', 'redemptions', 'reviewDue'],
   review: ['tasks', 'reviewDue', 'weak'],
   approve: ['redemptions'],
-  'unit-task': ['tasks', 'catalog', 'weak'],
-  daily: ['tasks'],
+  'unit-task': ['tasks', 'catalog', 'weak', 'tests', 'insights'],
   words: ['tasks', 'words'],
-  sprites: ['sprites'],
   cursor: ['tasks', 'sprites'],
-  test: ['tasks', 'tests', 'insights'],
-  shop: ['rewards'],
-  bank: ['bank'],
-  rank: ['ranks'],
-  penalty: ['penalties'],
+  shop: ['rewards', 'bank', 'ranks', 'penalties'],
   kids: ['tasks'],
-  members: [],
-  invites: [],
-  pin: [],
 }
 let loadedKid = ''
 let loadGen = 0
@@ -1118,7 +1102,7 @@ function goInsight(row) {
     selectedKid.value = row.kid_id
     setSelectedKid(row.kid_id)
   }
-  if (a === '单元测试') section.value = 'test'
+  if (a === '单元测试') section.value = 'unit-task'
   else if (a === '每日打卡' || a === '运动打卡') emit('exit')
   else if (a === '今日复习') section.value = 'review'
   if (row.kid_id) load()
@@ -1501,7 +1485,8 @@ onMounted(load)
 
     <!-- 商店 -->
     <section v-if="section === 'shop'" class="a-card enter">
-      <h3>兑换商店</h3>
+      <h3>阳光</h3>
+      <h4 class="w-h">兑换商店</h4>
       <div class="task-row" v-for="r in rewards" :key="r.id">
         <template v-if="editRewardId === r.id">
           <label class="fld grow"><span>奖励名</span><input v-model="r.name" /></label>
@@ -1531,11 +1516,9 @@ onMounted(load)
         </div>
         <button class="ok wide" @click="addReward">＋新增奖励</button>
       </div>
-    </section>
 
     <!-- 阳光银行 -->
-    <section v-if="section === 'bank'" class="a-card enter">
-      <h3>阳光银行{{ currentKidName ? ' · ' + currentKidName : '' }}</h3>
+      <h4 class="w-h">阳光银行{{ currentKidName ? ' · ' + currentKidName : '' }}</h4>
       <div class="lock-row">
         <span class="badge">孩子端开关</span>
         <span class="grow">关闭后不显示入口，余额和目标保留</span>
@@ -1605,7 +1588,7 @@ onMounted(load)
     </section>
 
     <!-- 扣分 -->
-    <section v-if="section === 'penalty'" class="a-card enter">
+    <section v-if="section === 'shop'" class="a-card enter">
       <h3>记下扣分{{ currentKidName ? ' · ' + currentKidName : '' }}</h3>
       <div class="lock-row">
         <span class="badge">扣分开关</span>
@@ -1687,7 +1670,7 @@ onMounted(load)
     </section>
 
     <!-- 等级 -->
-    <section v-if="section === 'rank'" class="a-card enter">
+    <section v-if="section === 'shop'" class="a-card enter">
       <h3>成长等级</h3>
       <div class="task-row" v-for="r in ranks" :key="r.id">
         <span class="rank-icon"><component :is="rankIcon(r.icon)" class="ico" :size="18" /></span>
@@ -1721,7 +1704,8 @@ onMounted(load)
 
     <!-- 任务 -->
     <section v-if="section === 'unit-task'" class="a-card enter">
-      <h3>任务与考点</h3>
+      <h3>任务</h3>
+      <h4 class="w-h">任务与考点</h4>
       <button type="button" class="ghost-s rules-toggle" @click="taskAddOpen = !taskAddOpen">{{ taskAddOpen ? '收起新增' : '＋给这一科加任务' }}</button>
       <div v-if="taskAddOpen" class="add-box task-add-box">
         <div class="add-title">新增家长任务</div>
@@ -1800,7 +1784,7 @@ onMounted(load)
     </section>
 
     <!-- 每日任务 -->
-    <section v-if="section === 'daily'" class="a-card enter">
+    <section v-if="section === 'unit-task'" class="a-card enter">
       <h3>每日任务</h3>
       <button type="button" class="ghost-s rules-toggle" @click="dailyAddOpen = !dailyAddOpen">{{ dailyAddOpen ? '收起新增' : '＋新增每日任务' }}</button>
       <div v-if="dailyAddOpen" class="add-box task-add-box">
@@ -1891,11 +1875,7 @@ onMounted(load)
       </div>
     </section>
 
-    <section v-if="section === 'sprites'" class="a-card enter">
-      <h3>阳光图鉴</h3>
-      <p class="dim">图鉴与基地开关已移到「已学到」页。</p>
-      <button class="ok" @click="section = 'cursor'">去已学到设置</button>
-    </section>
+
 
     <section v-if="section === 'words'" class="a-card enter">
       <h3>英语单词</h3>
@@ -2098,7 +2078,7 @@ get up	起床</pre>
       </div>
     </section>
     <!-- 单元测试成绩 -->
-    <section v-if="section === 'test'" class="a-card enter">
+    <section v-if="section === 'unit-task'" class="a-card enter">
       <h3>单元测试</h3>
       <div class="add-box">
         <div class="add-title">录入成绩</div>
@@ -2170,7 +2150,8 @@ get up	起床</pre>
     </section>
 
     <section v-if="section === 'kids'" class="a-card">
-      <h3>孩子账号</h3>
+      <h3>家庭</h3>
+      <h4 class="w-h">孩子账号</h4>
       <p v-if="!terms.length" class="dim">学期列表还没载入，退出再进一次家长端。</p>
 
       <div class="kid-card" v-for="k in kids" :key="k.id">
@@ -2222,7 +2203,7 @@ get up	起床</pre>
     </section>
 
     <!-- 家长成员 -->
-    <section v-if="section === 'members'" class="a-card enter">
+    <section v-if="section === 'kids'" class="a-card enter">
       <h3>家长成员</h3>
       <div class="member-row" v-for="m in members" :key="m.id">
         <div class="member-info">
@@ -2238,7 +2219,7 @@ get up	起床</pre>
     </section>
 
     <!-- 邀请码 -->
-    <section v-if="section === 'invites'" class="a-card enter">
+    <section v-if="section === 'kids'" class="a-card enter">
       <h3>邀请码</h3>
       <div class="lock-row">
         <span class="badge">邀请码保护</span>
@@ -2260,7 +2241,7 @@ get up	起床</pre>
       <p v-if="!invites.length" class="dim mt6">还没有邀请码。</p>
     </section>
 
-    <section v-if="section === 'pin'" class="a-card enter">
+    <section v-if="section === 'kids'" class="a-card enter">
       <h3>修改家长密码</h3>
       <p class="dim">当前账号 {{ me.account || '—' }}</p>
       <form class="settings-form" @submit.prevent="changePin">
