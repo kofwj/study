@@ -5,8 +5,9 @@
 import { reactive, computed } from 'vue'
 import { Sun } from '@lucide/vue'
 import { isTimeMetric, pad2, secondsToMetric, isGoPlay, goWinCount } from '../format.js'
+import { quizToday } from '../store.js'
 
-const emit = defineEmits(['submit'])
+const emit = defineEmits(['submit', 'go-link'])
 
 const dailyDialog = reactive({ open: false, task: null, vals: {}, time: {} })
 // 时间输入的函数 ref：秒填满 2 位后自动跳百分秒（替代旧的 getElementById）
@@ -23,6 +24,7 @@ function dailySubmitLabel(task) {
   if (isGoPlay(task) && goDialogWins.value < 1) return '记下对局，这次没有阳光'
   return '打卡，赚阳光'
 }
+const quizBlocked = computed(() => !!(dailyDialog.task && dailyDialog.task.require_quiz && !quizToday.value.done))
 
 function open(task) {
   dailyDialog.task = task
@@ -62,6 +64,7 @@ function timePartsToSeconds(t) {
   return Math.round(total * 100) / 100
 }
 function submit(event) {
+  if (quizBlocked.value) return
   const metrics = {}
   for (const m of dailyDialog.task.metrics) {
     if (isTimeMetric(m)) {
@@ -85,7 +88,8 @@ function submit(event) {
     <div class="shop-modal enter">
       <h3>{{ dailyDialog.task.name }}</h3>
       <p v-if="dailyDialog.task.note" class="daily-dialog-note">怎么做：{{ dailyDialog.task.note }}</p>
-      <a v-if="dailyDialog.task.link" class="go-first" :href="dailyDialog.task.link">先去打开 → 做完回来打卡</a>
+      <p v-if="quizBlocked" class="daily-dialog-note quiz-need">需先完成今日题库练习</p>
+      <button v-if="dailyDialog.task.link" type="button" class="go-first" @click="emit('go-link', dailyDialog.task)">{{ quizBlocked ? '先去做题库' : '去做' }}</button>
       <p v-if="isGoPlay(dailyDialog.task)" class="daily-dialog-award">{{ dailySunshineHint(dailyDialog.task) }}</p>
       <div v-for="m in dailyDialog.task.metrics" :key="m.id" class="metric">
         <label>{{ m.label }}</label>
@@ -99,7 +103,7 @@ function submit(event) {
         </div>
         <input v-else v-model.number="dailyDialog.vals[m.id]" type="number" inputmode="decimal" min="0" :placeholder="m.unit" />
       </div>
-      <button class="do big" @click="submit($event)">{{ dailySubmitLabel(dailyDialog.task) }} <Sun v-if="!(isGoPlay(dailyDialog.task) && goDialogWins < 1)" class="ico" :size="15" /></button>
+      <button v-if="!quizBlocked" class="do big" @click="submit($event)">{{ dailySubmitLabel(dailyDialog.task) }} <Sun v-if="!(isGoPlay(dailyDialog.task) && goDialogWins < 1)" class="ico" :size="15" /></button>
       <button class="ghost" @click="close">取消</button>
     </div>
   </div>
@@ -109,8 +113,9 @@ function submit(event) {
 .metric { margin-bottom: 10px; }
 .metric label { display: block; font-size: 13px; margin-bottom: 4px; }
 .daily-dialog-note, .metric-note { margin: -4px 0 8px; color: var(--ink-3); font-size: 12px; line-height: 1.5; }
-.go-first { display: inline-block; margin: 2px 0 10px; padding: 9px 14px; border-radius: var(--radius-md); background: var(--brand-deep); color: #fff; font-size: 14px; font-weight: 700; text-decoration: none; }
+.go-first { display: inline-block; margin: 2px 0 10px; padding: 9px 14px; border: none; border-radius: var(--radius-md); background: var(--brand-deep); color: #fff; font-size: 14px; font-weight: 700; font-family: inherit; cursor: pointer; }
 .go-first:hover { filter: brightness(1.08); }
+.quiz-need { color: #E08A2E; }
 .daily-dialog-award { margin: -2px 0 10px; color: var(--accent-ink); font-size: 13px; line-height: 1.5; font-weight: 700; }
 .metric-note { margin: -1px 0 4px; }
 .time-row { display: flex; gap: 6px; align-items: center; }

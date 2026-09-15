@@ -326,9 +326,17 @@ function dailySunshineHint(task) {
   if (isGoPlay(task)) return `看「赢了几局」：填 1 或更多才给 +${task.sunshine || 5} 阳光。赢 0 局（空着也算 0）不给，输了几局不影响`
   return `打卡 +${task.sunshine || 5} 阳光`
 }
+function quizBlocked(task) {
+  return !!(task && task.require_quiz && !quizToday.value.done)
+}
 async function openDaily(task) {
   if (task.done_today) return
   if (!guardCheckinOpen()) return
+  if (quizBlocked(task)) {
+    showToast('需先完成今日题库练习')
+    if (task.link) goTaskLink(task)
+    return
+  }
   dailyRef.value?.open(task)
 }
 // 每日任务可以带一个「去哪做」的链接（家长在后台填，如 /quiz/）。
@@ -338,6 +346,11 @@ function goTaskLink(task) {
   window.location.href = task.link
 }
 async function submitDaily({ task, metrics, event }) {
+  if (quizBlocked(task)) {
+    showToast('需先完成今日题库练习')
+    if (task.link) goTaskLink(task)
+    return
+  }
   if (actionBusy.value) return
   actionBusy.value = true
   try {
@@ -696,8 +709,9 @@ function reloadApp() {
                       <div class="fit-bar"><i :style="{ width: fitnessBar(it.d).pct + '%' }"></i><em>{{ fitnessBar(it.d).status }}</em></div>
                       <div class="fit-std">{{ fitnessBar(it.d).lines }}</div>
                     </template>
-                    <div v-if="it.d.require_quiz && !quizToday.done" class="card-detail" style="color:#E08A2E">需先完成今日题库练习</div>
+                    <div v-if="quizBlocked(it.d)" class="card-detail quiz-need">需先完成今日题库练习</div>
                     <div class="plus">{{ dailySunshineHint(it.d) }} <Sun class="ico sun" :size="12" /></div>
+                    <button v-if="it.d.link" class="go-link" @click="goTaskLink(it.d)">去做 <ArrowRight :size="14" /></button>
                   </div>
                   <button class="trend" @click="openChart(it.d)" title="看趋势"><TrendingUp :size="15" /></button>
                 </div>
@@ -771,6 +785,7 @@ function reloadApp() {
                     <div class="fit-bar"><i :style="{ width: fitnessBar(d).pct + '%' }"></i><em>{{ fitnessBar(d).status }}</em></div>
                     <div class="fit-std">{{ fitnessBar(d).lines }}</div>
                   </template>
+                  <div v-if="quizBlocked(d)" class="card-detail quiz-need">需先完成今日题库练习</div>
                   <div class="plus">{{ dailySunshineHint(d) }} <Sun class="ico sun" :size="12" /></div>
                   <button v-if="d.link" class="go-link" @click="goTaskLink(d)">去做 <ArrowRight :size="14" /></button>
                 </div>
@@ -830,7 +845,7 @@ function reloadApp() {
     <CapsuleBox ref="capsuleRef" />
 
     <!-- 每日打卡弹窗（components/DailyDialog.vue） -->
-    <DailyDialog ref="dailyRef" @submit="submitDaily" />
+    <DailyDialog ref="dailyRef" @submit="submitDaily" @go-link="goTaskLink" />
 
     <!-- 跳绳趋势（components/TrendChart.vue） -->
     <TrendChart ref="chartRef" />
@@ -1385,6 +1400,7 @@ body {
 /* 「去做」：家长给每日任务配了「去哪做」链接时才出现。天蓝=去别处做事，和琥珀色的「赚阳光」区分开 */
 .go-link { align-self: flex-start; margin-top: 8px; display: inline-flex; align-items: center; gap: 4px; border: none; background: var(--brand-deep); color: #fff; border-radius: var(--radius-pill); padding: 6px 14px; font-size: 13px; font-weight: 700; font-family: inherit; cursor: pointer; }
 .go-link:hover { filter: brightness(1.08); }
+.quiz-need { color: #E08A2E; }
 .parent { border: none; background: none; color: var(--ink-3); font-size: 13px; font-weight: 700; cursor: pointer; padding: 10px 4px; white-space: nowrap; }
 
 /* 登录页 */
