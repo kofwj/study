@@ -187,6 +187,65 @@ def test_quiz_today_endpoint():
         assert t1["done"] is True
 
 
+def test_study_mode_opens_today_gate():
+    """mode=study 可以 start → complete，之后 /api/quiz/today 的 done 为 true。"""
+    _reset_db()
+    db.init_db()
+    with TestClient(main.app) as cli:
+        _setup(cli)
+        _login_kid(cli)
+
+        r = cli.post("/api/quiz/start", json={"bank_id": "ddw-2026", "mode": "study", "qids": ["ddw-2026-001"]})
+        assert r.status_code == 200, r.text
+        sess = r.json()["session"]
+        assert sess["state"] == "active"
+        sid = sess["id"]
+
+        assert cli.get("/api/quiz/today").json()["done"] is False
+
+        c = cli.post("/api/quiz/complete", json={"session_id": sid})
+        assert c.status_code == 200, c.text
+        assert c.json()["finished"] is True
+        assert cli.get("/api/quiz/today").json()["done"] is True
+
+
+def test_study_start_without_complete_still_blocks_daily():
+    """require_quiz 的每日任务：只 start 不 complete，打卡仍 409；complete 后可以打卡。"""
+    _reset_db()
+    db.init_db()
+    with TestClient(main.app) as cli:
+        _setup(cli)
+        did = cli.post("/api/admin/daily", json={
+            "subject_id": "体育", "name": "大队委复习", "sunshine": 5,
+            "require_quiz": True,
+        }).json()["id"]
+
+        _login_kid(cli)
+        r = cli.post("/api/quiz/start", json={"bank_id": "ddw-2026", "mode": "study", "qids": ["ddw-2026-001"]})
+        sid = r.json()["session"]["id"]
+
+        blocked = cli.post("/api/complete", json={"task_id": did})
+        assert blocked.status_code == 409
+        assert "题库" in blocked.json()["detail"]
+
+        cli.post("/api/quiz/complete", json={"session_id": sid})
+        ok = cli.post("/api/complete", json={"task_id": did})
+        assert ok.status_code == 200, ok.text
+        assert ok.json()["delta"] == 5
+
+
+def test_quiz_mode_must_be_known():
+    """未知 mode 返回 400。"""
+    _reset_db()
+    db.init_db()
+    with TestClient(main.app) as cli:
+        _setup(cli)
+        _login_kid(cli)
+        r = cli.post("/api/quiz/start", json={"bank_id": "ddw-2026", "mode": "nope", "qids": ["ddw-2026-001"]})
+        assert r.status_code == 400
+        assert "练习方式" in r.json()["detail"]
+
+
 def test_migration_042_creates_tables():
     """迁移 042 后 quiz 四张表和 daily_tasks.require_quiz 列存在。"""
     _reset_db()

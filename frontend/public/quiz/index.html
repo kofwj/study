@@ -105,7 +105,7 @@ pre.copy{background:var(--bg);border:1px solid var(--line);border-radius:10px;pa
 <body data-page-node-id="63StGZWlsOICZkKpBiZjaY">
 <div class="wrap" data-page-node-id="7bnBFfCqTaxmtqgmPjFA3Q">
   <header data-page-node-id="Gszxm8ln79S5itKzK8Enkp">
-    <a class="back" href="/">← 回工作台</a>
+    <a class="back" href="/" onclick="return goHome(event)">← 回今天</a>
     <div class="head-row" data-page-node-id="uU6N9p4zFWxI7gkGvwAO0l">
       <h1 id="title" data-page-node-id="T5dIgrZ0S9zVpyjWuoVDhz">大队委竞选笔试复习</h1>
       <span class="countdown" id="countdown" data-page-node-id="TzcwPjphFjAzdxGyQASRLe"></span>
@@ -156,7 +156,42 @@ function apiAttempt(qid, answer, correct){
 }
 function apiComplete(){
   if(!API_SID) return Promise.resolve(null);
-  return api('POST','/api/quiz/complete',{session_id:API_SID}).then(function(){ API_SID = null; });
+  var sid = API_SID;
+  return api('POST','/api/quiz/complete',{session_id:sid}).then(function(){
+    if(API_SID === sid) API_SID = null;
+  });
+}
+
+
+var STUDY_QIDS = [];
+var STUDY_MODE = false;
+var STUDY_START = null;
+function noteStudy(id){
+  if(!id) return;
+  if(STUDY_QIDS.indexOf(id) < 0) STUDY_QIDS.push(id);
+  if(STUDY_QIDS.length === 1) ensureStudySession();
+}
+function ensureStudySession(){
+  if(API_SID || !API_ENABLED || expired()) return Promise.resolve(null);
+  if(STUDY_START) return STUDY_START;
+  STUDY_MODE = true;
+  STUDY_START = apiStart('study', STUDY_QIDS.slice()).then(function(){ STUDY_START = null; });
+  return STUDY_START;
+}
+function finishStudySession(){
+  var start = STUDY_START || Promise.resolve(null);
+  return start.then(function(){
+    if(!STUDY_MODE || !API_SID) return null;
+    STUDY_MODE = false;
+    return apiComplete();
+  });
+}
+
+
+function goHome(ev){
+  if(ev) ev.preventDefault();
+  finishStudySession().then(function(){ location.href = '/'; });
+  return false;
 }
 
 var S = {v:1, examDate:null, q:{}, log:[]};
@@ -296,11 +331,19 @@ function renderStudy(){
   main.innerHTML = h;
 }
 function reveal(){ ST.showAns = true; renderStudy(); }
-function step(d){ ST.i = (ST.i + d + ST.order.length) % ST.order.length; ST.showAns = false; renderStudy(); }
-function jump(i){ ST.i = i; ST.showAns = false; renderStudy(); }
+function step(d){
+  ST.i = (ST.i + d + ST.order.length) % ST.order.length; ST.showAns = false; renderStudy();
+  if(ST.order && ST.order[ST.i]) noteStudy(ST.order[ST.i].id);
+}
+function jump(i){
+  ST.i = i; ST.showAns = false; renderStudy();
+  if(ST.order && ST.order[ST.i]) noteStudy(ST.order[ST.i].id);
+}
 function toggleGrid(){ ST.showGrid = !ST.showGrid; renderStudy(); }
 function markCur(known){
-  mark(ST.order[ST.i], known);
+  var qq = ST.order[ST.i];
+  mark(qq, known);
+  noteStudy(qq.id);
   ST.showAns = false;
   paintHead();
   step(1);
@@ -314,7 +357,9 @@ function startPractice(n){
   var rest  = shuffle(QS.filter(function(x){ return isKnown(x.id); }));
   PR = {items: weak.concat(fresh, rest).slice(0, n), i:0, right:0, state:'ask',
         picked:[], lastOk:null, done:false, wrongList:[]};
-  apiStart('practice', PR.items.map(function(x){ return x.id; }));
+  finishStudySession().then(function(){
+    apiStart('practice', PR.items.map(function(x){ return x.id; }));
+  });
   renderPractice();
 }
 function renderPractice(){
@@ -410,7 +455,9 @@ var EX = {items:[], i:0, picked:[], done:false, right:0, auto:0, manual:[], wron
 function startExam(){
   EX = {items: shuffle(QS).slice(0, Math.min(20, QS.length)), i:0, picked:[],
         done:false, right:0, auto:0, manual:[], wrongList:[], skipped:0};
-  apiStart('exam', EX.items.map(function(x){ return x.id; }));
+  finishStudySession().then(function(){
+    apiStart('exam', EX.items.map(function(x){ return x.id; }));
+  });
   renderExam();
 }
 function renderExam(){
@@ -607,9 +654,17 @@ function go(m){
     document.getElementById('tab-'+k).classList.toggle('on', k===m);
   });
   if(m==='study'){ renderStudy(); }
-  else if(m==='practice'){ if(!PR.items.length || PR.done){ startPractice(10); } else { renderPractice(); } }
-  else { renderExam(); }
+  else if(m==='practice'){
+    if(!PR.items.length || PR.done){ startPractice(10); }
+    else { finishStudySession().then(function(){ renderPractice(); }); }
+  }
+  else {
+    finishStudySession().then(function(){ renderExam(); });
+  }
+
 }
+
+
 window.go = go; window.reveal = reveal; window.step = step; window.jump = jump;
 window.toggleGrid = toggleGrid; window.markCur = markCur; window.forceStudy = forceStudy;
 window.pickOpt = pickOpt; window.submitOpt = submitOpt; window.selfCheck = selfCheck;
@@ -618,6 +673,9 @@ window.startExam = startExam; window.examPick = examPick; window.examNext = exam
 window.saveDate = saveDate; window.clearDate = clearDate; window.resetAll = resetAll;
 window.closeSheet = closeSheet; window.copyReport = copyReport; window.openSheet = openSheet;
 
+window.goHome = goHome;
+document.addEventListener('visibilitychange', function(){ if(document.hidden) finishStudySession(); });
+window.addEventListener('pagehide', function(){ finishStudySession(); });
 bindHold(document.getElementById('title'), openSheet);
 paintHead();
 go('study');

@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 import db
 
 QUIZ_SEED = db.BASE.parent / "data" / "quiz.seed.json"
+QUIZ_MODES = ("study", "practice", "exam")
 
 
 class QuizError(Exception):
@@ -159,7 +160,8 @@ def bank_questions(c, bank_id):
 
 
 def today_payload(c, kid, fam, bank_id, mode, create=False):
-    """获取今天指定 bank+mode 的 session 状态。mode 为 'practice'/'exam'。"""
+    """获取今天指定 bank+mode 的 session 状态。mode 为 study / practice / exam。"""
+
     t = _today()
     row = c.execute(
         "SELECT * FROM quiz_sessions WHERE kid_id=? AND study_date=? AND bank_id=? AND mode=?",
@@ -186,8 +188,11 @@ def today_payload(c, kid, fam, bank_id, mode, create=False):
 
 def start_session(c, kid, fam, bank_id, mode, qids):
     """开始（或复用）今天的 session，并写入题目顺序。"""
+    if mode not in QUIZ_MODES:
+        raise QuizError(400, "练习方式不对")
     payload = today_payload(c, kid, fam, bank_id, mode, create=True)
     sess = payload["session"]
+
     if payload["finished"]:
         return payload
     sid = sess["id"]
