@@ -8,6 +8,7 @@ import { SUBJECT_ORDER, n1, isTimeMetric, formatDuration, formatMetricValue } fr
 import { initAdminWords, loadWords } from './adminWords.js'
 import AdminWords from './components/AdminWords.vue'
 import AdminInsights from './components/AdminInsights.vue'
+import { initAdminEdit, useAdminEdit } from './adminEdit.js'
 import { Eye, Baby, Store, ClipboardCheck, BookOpen, MapPinned, Sun, Star, Check, ArrowLeft, BookMarked, Globe } from '@lucide/vue'
 
 const props = defineProps({ recoveryCode: { type: String, default: '' } })
@@ -127,69 +128,14 @@ const taskAddOpen = ref(false)
 const textbookOpen = reactive({})
 const dailyAddOpen = ref(false)
 const kidAddOpen = ref(false)
-const editKind = ref('')
-const editId = ref('')
-const editSnap = ref(null)
-function cloneEdit(kind, row) {
-  if (kind === 'reward') return { name: row.name, price: row.price, category: row.category }
-  if (kind === 'rank') return { name: row.name, min_sunshine: row.min_sunshine }
-  if (kind === 'daily') return { name: row.name, subject_id: row.subject_id, sunshine: row.sunshine, bonus_per_metric: row.bonus_per_metric, note: row.note, kid_id: row.kid_id || '', link: row.link || '', require_quiz: !!row.require_quiz, metrics: JSON.parse(JSON.stringify(row.metrics || [])) }
-  if (kind === 'task') return { title: row.title, action: row.action, sunshine: row.sunshine, kid_id: row.kid_id || '' }
-  if (kind === 'kid') return { name: row.name, account: row.account, term_id: row.term_id, gender: row.gender || '' }
-  return {}
-}
-function findEditRow(kind, id) {
-  if (kind === 'reward') return rewards.value.find(x => x.id === id)
-  if (kind === 'rank') return ranks.value.find(x => x.id === id)
-  if (kind === 'daily') return dailyAll.value.find(x => x.id === id) || daily.value.find(x => x.id === id)
-  if (kind === 'task') return tasks.value.find(x => x.id === id)
-  if (kind === 'kid') return kids.value.find(x => x.id === id)
-}
-function restoreEditSnap() {
-  const snap = editSnap.value
-  const kind = editKind.value
-  const id = editId.value
-  if (!snap || !kind || !id) return
-  const row = findEditRow(kind, id)
-  if (row) {
-    if (kind === 'reward') { row.name = snap.name; row.price = snap.price; row.category = snap.category }
-    else if (kind === 'rank') { row.name = snap.name; row.min_sunshine = snap.min_sunshine }
-    else if (kind === 'daily') {
-      row.name = snap.name
-      row.subject_id = snap.subject_id
-      row.sunshine = snap.sunshine
-      row.bonus_per_metric = snap.bonus_per_metric
-      row.note = snap.note
-      row.kid_id = snap.kid_id || ''
-      row.link = snap.link || ''
-      row.require_quiz = !!snap.require_quiz
-      row.metrics = JSON.parse(JSON.stringify(snap.metrics || []))
-    }
-    else if (kind === 'task') { row.title = snap.title; row.action = snap.action; row.sunshine = snap.sunshine; row.kid_id = snap.kid_id || '' }
-    else if (kind === 'kid') { row.name = snap.name; row.account = snap.account; row.term_id = snap.term_id; row.gender = snap.gender; row._pin = '' }
-  }
-  editSnap.value = null
-}
-function clearEdit() {
-  editSnap.value = null
-  editKind.value = ''
-  editId.value = ''
-}
-function beginEdit(kind, row) {
-  if (editKind.value === kind && editId.value === row.id) return
-  restoreEditSnap()
-  editSnap.value = cloneEdit(kind, row)
-  if (kind === 'kid') row._pin = ''
-  editKind.value = kind
-  editId.value = row.id
-}
-function cancelEdit() {
-  restoreEditSnap()
-  clearEdit()
-}
-function isEditing(kind, id) {
-  return editKind.value === kind && editId.value === id
-}
+// 编辑会话在 adminEdit.js（模块级单例）：商店、等级、家长任务、每日任务、孩子共用同一套
+initAdminEdit({
+  getLists: () => ({ rewards: rewards.value, ranks: ranks.value, dailyAll: dailyAll.value, daily: daily.value, tasks: tasks.value, kids: kids.value }),
+})
+const {
+  editKind, editId, findEditRow, clearEdit,
+  beginEdit, cancelEdit, isEditing, isEditDirty,
+} = useAdminEdit()
 
 
 
@@ -716,16 +662,6 @@ async function delDaily(id) { if (!confirm('删除这个每日任务？')) retur
 
 function sameJson(a, b) { return JSON.stringify(a) === JSON.stringify(b) }
 function filled(v) { return String(v ?? '').trim() !== '' }
-function isEditDirty() {
-  const kind = editKind.value
-  const id = editId.value
-  const snap = editSnap.value
-  if (!kind || !id || !snap) return false
-  const row = findEditRow(kind, id)
-  if (!row) return false
-  if (kind === 'kid' && String(row._pin || '').trim()) return true
-  return !sameJson(cloneEdit(kind, row), snap)
-}
 function isAddDirty() {
   if (filled(newReward.name) || Number(newReward.price) !== 30 || (newReward.category || '') !== '娱乐') return true
   if (filled(newRank.name) || Number(newRank.min_sunshine) !== 0) return true
