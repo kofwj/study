@@ -329,8 +329,13 @@ function renderStudy(){
     h += '</div><div class="hint">绿＝已掌握　红＝还不熟　灰＝没看过</div>';
   }
   main.innerHTML = h;
+  if (qq) noteStudy(qq.id);
 }
-function reveal(){ ST.showAns = true; renderStudy(); }
+function reveal(){
+  if (ST.order && ST.order[ST.i]) noteStudy(ST.order[ST.i].id);
+  ST.showAns = true; renderStudy();
+}
+
 function step(d){
   ST.i = (ST.i + d + ST.order.length) % ST.order.length; ST.showAns = false; renderStudy();
   if(ST.order && ST.order[ST.i]) noteStudy(ST.order[ST.i].id);
