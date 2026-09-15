@@ -120,6 +120,36 @@ const editRewardId = ref('')
 const editRankId = ref('')
 const editDailyId = ref('')
 const dailyAddOpen = ref(false)
+const editKidId = ref('')
+const kidAddOpen = ref(false)
+const kidEditSnap = ref(null)
+function restoreKidSnap() {
+  const snap = kidEditSnap.value
+  if (!snap) return
+  const prev = kids.value.find(x => x.id === snap.id)
+  if (prev) {
+    prev.name = snap.name
+    prev.account = snap.account
+    prev.term_id = snap.term_id
+    prev.gender = snap.gender
+    prev._pin = ''
+  }
+  kidEditSnap.value = null
+}
+function startEditKid(k) {
+  if (editKidId.value === k.id) return
+  restoreKidSnap()
+  kidEditSnap.value = { id: k.id, name: k.name, account: k.account, term_id: k.term_id, gender: k.gender || '' }
+  k._pin = ''
+  editKidId.value = k.id
+}
+function cancelEditKid(k) {
+  restoreKidSnap()
+  if (k) k._pin = ''
+  editKidId.value = ''
+}
+
+
 
 const RULE_DEFAULTS = { test_fail_count: 2, test_fail_score: 80, drop_ratio: 0.3, streak_break: 2 }
 const toast = ref('')
@@ -870,6 +900,7 @@ async function addKid() {
     newKid.gender = ''
     if (r && r.pin) alert(`已添加。${kidName}的登录密码是：${r.pin}\n（系统随机生成，只显示这一次，请记下来告诉孩子）`)
     else showToast('已添加')
+    kidAddOpen.value = false
     await load()
   } catch (e) { showToast(e.message) }
 }
@@ -901,6 +932,8 @@ async function saveKid(k) {
   try {
     await api.admin.updateKid(k.id, { name: k.name, account: k.account, term_id: k.term_id, pin: k._pin || '', gender: k.gender || '' })
     k._pin = ''
+    kidEditSnap.value = null
+    editKidId.value = ''
     showToast('已保存')
     await load()
   } catch (e) { showToast(e.message) }
@@ -2155,29 +2188,43 @@ get up	起床</pre>
       <p v-if="!terms.length" class="dim">学期列表还没载入，退出再进一次家长端。</p>
 
       <div class="kid-card" v-for="k in kids" :key="k.id">
-        <label class="fld"><span>家里怎么叫</span><input v-model="k.name" placeholder="如：乐乐" /></label>
-        <label class="fld"><span>登录账号</span><input v-model="k.account" placeholder="如：lele" /></label>
-        <label class="fld"><span>现在读哪册</span>
-          <select v-model="k.term_id">
-            <option disabled value="">请选择</option>
-            <option v-for="tm in terms" :key="tm.id" :value="tm.id">{{ tm.label }}</option>
-          </select>
-        </label>
-        <label class="fld"><span>性别</span>
-          <select v-model="k.gender">
-            <option value="">还没填</option>
-            <option value="男">男</option>
-            <option value="女">女</option>
-          </select>
-        </label>
-        <label class="fld kid-pin"><span>改密码</span><input v-model="k._pin" type="password" autocomplete="new-password" placeholder="至少 6 位，不要重复或连续数字" /></label>
-        <div class="ops">
-          <button class="ok" @click="saveKid(k)">保存资料</button>
-          <button v-if="isOwner" class="del" @click="delKid(k)">删除账号</button>
-          <span v-else class="dim">只有创建者能删除孩子</span>
-        </div>
+        <template v-if="editKidId === k.id">
+          <label class="fld"><span>家里怎么叫</span><input v-model="k.name" placeholder="如：乐乐" /></label>
+          <label class="fld"><span>登录账号</span><input v-model="k.account" placeholder="如：lele" /></label>
+          <label class="fld"><span>现在读哪册</span>
+            <select v-model="k.term_id">
+              <option disabled value="">请选择</option>
+              <option v-for="tm in terms" :key="tm.id" :value="tm.id">{{ tm.label }}</option>
+            </select>
+          </label>
+          <label class="fld"><span>性别</span>
+            <select v-model="k.gender">
+              <option value="">还没填</option>
+              <option value="男">男</option>
+              <option value="女">女</option>
+            </select>
+          </label>
+          <label class="fld kid-pin"><span>改密码</span><input v-model="k._pin" type="password" autocomplete="new-password" placeholder="至少 6 位，不要重复或连续数字" /></label>
+          <div class="ops">
+            <button class="ok" @click="saveKid(k)">保存资料</button>
+            <button class="ghost-s" @click="cancelEditKid(k)">取消</button>
+            <button v-if="isOwner" class="del" @click="delKid(k)">删除账号</button>
+            <span v-else class="dim">只有创建者能删除孩子</span>
+          </div>
+        </template>
+        <template v-else>
+          <div class="sys-row kid-readonly">
+            <span class="sys-name">{{ k.name }}</span>
+            <span class="dim">{{ k.account }} · {{ (terms.find(tm => tm.id === k.term_id) || {}).label || k.term_id }}<template v-if="k.gender"> · {{ k.gender }}</template></span>
+            <div class="ops">
+              <button class="ghost-s" @click="startEditKid(k)">改</button>
+              <button v-if="isOwner" class="del" @click="delKid(k)">删</button>
+            </div>
+          </div>
+        </template>
       </div>
-      <div class="add-box">
+      <button type="button" class="ghost-s rules-toggle" @click="kidAddOpen = !kidAddOpen">{{ kidAddOpen ? '收起新增' : '＋再加一个孩子' }}</button>
+      <div v-if="kidAddOpen" class="add-box">
         <div class="add-title">再加一个孩子</div>
         <div class="frm-row">
           <label class="fld grow"><span>家里怎么叫</span><input v-model="newKid.name" placeholder="如：弟弟" /></label>
