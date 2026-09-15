@@ -38,6 +38,7 @@ export const api = {
   achievements: () => j('/api/achievements'),
   markAchievementSeen: (id) => j(`/api/achievements/${encodeURIComponent(id)}/mark-seen`, { method: 'POST' }),
   wordsToday: () => j('/api/words/today'),
+  quizToday: () => j('/api/quiz/today'),
   wordsStart: () => j('/api/words/session/start', { method: 'POST' }),
   wordsStudy: (sid, word_id, action) => j(`/api/words/session/${encodeURIComponent(sid)}/study`, { method: 'POST', ...body({ word_id, action }) }),
   wordsSpell: (sid, o) => j(`/api/words/session/${encodeURIComponent(sid)}/spell`, { method: 'POST', ...body(o) }),

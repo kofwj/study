@@ -48,6 +48,7 @@ export const pendingRecovery = ref('') // 家长注册/找回后的一次性找�
 
 // ---- 单词练习：共享状态与纯派生（App 卡片与 WordPractice 组件共用）----
 export const wordToday = ref({ enabled: false, finished: false, session: null, config: {} })
+export const quizToday = ref({ done: false, sessions: [] })
 export function wordItems() { return wordToday.value.session?.items || [] }
 export function wordLaneOf(item) { return item && item.source === 'due' ? 'due' : 'new' }
 export const wordSun = computed(() => {

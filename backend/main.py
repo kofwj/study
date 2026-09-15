@@ -32,6 +32,7 @@ import sprites as spritemod
 import capsules as capmod
 import bank_deposits as depmod
 import words as wordmod
+import quiz as quizmod
 from version import app_label, app_revision, app_version
 
 # 配置日志
@@ -1415,6 +1416,9 @@ def complete(body: CompleteBody):
                       "OR (family_id=? AND (kid_id IS NULL OR kid_id=?)))",
                       (tid, _fam.get(), kid_id())).fetchone()
         if d:
+            if d["require_quiz"]:
+                if not quizmod.quiz_done_today(c, kid_id()):
+                    raise HTTPException(409, "先去完成今日题库练习，再来打卡领阳光吧")
             delta, bonus, detail = daily_award(c, d, body.metrics)
             mj = json.dumps(body.metrics) if body.metrics else None
             cid = db.insert(c, "INSERT INTO completions(task_id,date,status,sunshine,metrics,kind,created_at,kid_id) "
@@ -3628,7 +3632,9 @@ class DailyTaskIn(BaseModel):
     bonus_per_metric: Optional[int] = 3
     note: str = ""
     metrics: Optional[list] = None
-    kid_id: Optional[str] = None  # None/"" = 全家可见
+    kid_id: Optional[str] = None       # None/"" = 全家可见
+    link: Optional[str] = None         # 「去哪做」，如 /quiz/；空 = 没有跳转
+    require_quiz: Optional[bool] = None  # True = 必须先完成今日 quiz 才能打卡领阳光
 
 
 def _scope_kid(c, kid_id):
@@ -3639,6 +3645,24 @@ def _scope_kid(c, kid_id):
     row = c.execute("SELECT 1 FROM users WHERE id=? AND family_id=? AND role='kid'",
                     (k, _fam.get())).fetchone()
     return k if row else None
+
+
+def _scope_link(raw):
+    """「去哪做」的链接只放行站内相对路径和 https。
+
+    这个值会被渲染成孩子端的 <a href>，所以必须挡掉 javascript: / data: 这类
+    会变成存储型 XSS 的写法，以及 //host 这种协议相对写法（会跳到站外）。
+    非法值一律当「没填」，不报错打断家长。
+    """
+    s = (raw or "").strip()[:300]
+    if not s:
+        return None
+    low = s.lower()
+    if low.startswith("https://"):
+        return s
+    if s.startswith("/") and not s.startswith("//") and not s.startswith("/\\"):
+        return s
+    return None
 
 
 def _replace_metrics(c, did, metrics):
@@ -3652,9 +3676,10 @@ def _replace_metrics(c, did, metrics):
 def daily_create(b: DailyTaskIn):
     c = get_conn()
     did = uuid.uuid4().hex[:8]
-    c.execute("INSERT INTO daily_tasks(id,subject_id,name,sunshine,frequency,bonus_type,bonus_per_metric,note,family_id,kid_id) "
-              "VALUES(?,?,?,?,'daily','personal_best',?,?,?,?)",
-              (did, b.subject_id, b.name, _sun(b.sunshine), _sun(b.bonus_per_metric if b.bonus_per_metric is not None else 0), (b.note or "").strip()[:120], _fam.get(), _scope_kid(c, b.kid_id)))
+    rq = 1 if b.require_quiz else 0
+    c.execute("INSERT INTO daily_tasks(id,subject_id,name,sunshine,frequency,bonus_type,bonus_per_metric,note,family_id,kid_id,link,require_quiz) "
+              "VALUES(?,?,?,?,'daily','personal_best',?,?,?,?,?,?)",
+              (did, b.subject_id, b.name, _sun(b.sunshine), _sun(b.bonus_per_metric if b.bonus_per_metric is not None else 0), (b.note or "").strip()[:120], _fam.get(), _scope_kid(c, b.kid_id), _scope_link(b.link), rq))
     _replace_metrics(c, did, b.metrics)
     c.commit(); c.close()
     return {"id": did}
@@ -3666,8 +3691,9 @@ def daily_update(did: str, b: DailyTaskIn):
     row = c.execute("SELECT family_id FROM daily_tasks WHERE id=?", (did,)).fetchone()
     if not row or not row["family_id"]:
         c.close(); raise HTTPException(403, "系统每日任务不能改")
-    c.execute("UPDATE daily_tasks SET subject_id=?, name=?, sunshine=?, bonus_per_metric=?, note=?, kid_id=? WHERE id=? AND family_id=?",
-              (b.subject_id, b.name, _sun(b.sunshine), _sun(b.bonus_per_metric if b.bonus_per_metric is not None else 0), (b.note or "").strip()[:120], _scope_kid(c, b.kid_id), did, _fam.get()))
+    rq = 1 if b.require_quiz else 0
+    c.execute("UPDATE daily_tasks SET subject_id=?, name=?, sunshine=?, bonus_per_metric=?, note=?, kid_id=?, link=?, require_quiz=? WHERE id=? AND family_id=?",
+              (b.subject_id, b.name, _sun(b.sunshine), _sun(b.bonus_per_metric if b.bonus_per_metric is not None else 0), (b.note or "").strip()[:120], _scope_kid(c, b.kid_id), _scope_link(b.link), rq, did, _fam.get()))
     _replace_metrics(c, did, b.metrics)
     c.commit(); c.close()
     return {"ok": True}
@@ -4111,6 +4137,87 @@ def words_session_spell(sid: str, b: WordSpellIn):
 def words_session_complete(sid: str):
     require_checkin_open()
     return _word_call(wordmod.complete_session, kid_id(), _fam.get(), sid)
+
+
+# ---------------- Quiz（家长指定的短期冲刺题库）-------------
+
+class QuizStartIn(BaseModel):
+    bank_id: str
+    mode: str  # practice / exam
+    qids: list
+
+class QuizAttemptIn(BaseModel):
+    session_id: str
+    question_id: str = ""
+    answer: str = ""
+    correct: Optional[bool] = None  # blank/qa 由前端自评传入
+
+
+@app.get("/api/quiz/banks")
+def quiz_banks():
+    c = get_conn()
+    out = quizmod.list_banks(c, _fam.get())
+    c.close()
+    return out
+
+
+@app.get("/api/quiz/banks/{bank_id}/questions")
+def quiz_bank_questions(bank_id: str):
+    c = get_conn()
+    out = quizmod.bank_questions(c, bank_id)
+    c.close()
+    return out
+
+
+@app.get("/api/quiz/today")
+def quiz_today():
+    c = get_conn()
+    out = quizmod.today_summary(c, kid_id())
+    c.close()
+    return out
+
+
+@app.post("/api/quiz/start")
+def quiz_start(b: QuizStartIn):
+    require_checkin_open()
+    c = get_conn()
+    try:
+        out = quizmod.start_session(c, kid_id(), _fam.get(), b.bank_id, b.mode, b.qids)
+        c.commit()
+        return out
+    except quizmod.QuizError as e:
+        raise HTTPException(e.status, e.detail)
+    finally:
+        c.close()
+
+
+@app.post("/api/quiz/attempt")
+def quiz_attempt(b: QuizAttemptIn):
+    require_checkin_open()
+    c = get_conn()
+    try:
+        out = quizmod.record_attempt(c, kid_id(), _fam.get(), b.session_id, b.question_id, b.answer, b.correct)
+        c.commit()
+        return out
+    except quizmod.QuizError as e:
+        raise HTTPException(e.status, e.detail)
+    finally:
+        c.close()
+
+
+@app.post("/api/quiz/complete")
+def quiz_complete(b: QuizAttemptIn):
+    """完成 quiz session；参数里的 session_id 取自 b.session_id（复用 QuizAttemptIn 的 session_id 字段）。"""
+    require_checkin_open()
+    c = get_conn()
+    try:
+        out = quizmod.complete_session(c, kid_id(), _fam.get(), b.session_id)
+        c.commit()
+        return out
+    except quizmod.QuizError as e:
+        raise HTTPException(e.status, e.detail)
+    finally:
+        c.close()
 
 
 @app.get("/api/admin/words/stats", dependencies=[Depends(require_parent)])

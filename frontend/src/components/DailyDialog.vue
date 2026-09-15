@@ -85,6 +85,7 @@ function submit(event) {
     <div class="shop-modal enter">
       <h3>{{ dailyDialog.task.name }}</h3>
       <p v-if="dailyDialog.task.note" class="daily-dialog-note">怎么做：{{ dailyDialog.task.note }}</p>
+      <a v-if="dailyDialog.task.link" class="go-first" :href="dailyDialog.task.link">先去打开 → 做完回来打卡</a>
       <p v-if="isGoPlay(dailyDialog.task)" class="daily-dialog-award">{{ dailySunshineHint(dailyDialog.task) }}</p>
       <div v-for="m in dailyDialog.task.metrics" :key="m.id" class="metric">
         <label>{{ m.label }}</label>
@@ -108,6 +109,8 @@ function submit(event) {
 .metric { margin-bottom: 10px; }
 .metric label { display: block; font-size: 13px; margin-bottom: 4px; }
 .daily-dialog-note, .metric-note { margin: -4px 0 8px; color: var(--ink-3); font-size: 12px; line-height: 1.5; }
+.go-first { display: inline-block; margin: 2px 0 10px; padding: 9px 14px; border-radius: var(--radius-md); background: var(--brand-deep); color: #fff; font-size: 14px; font-weight: 700; text-decoration: none; }
+.go-first:hover { filter: brightness(1.08); }
 .daily-dialog-award { margin: -2px 0 10px; color: var(--accent-ink); font-size: 13px; line-height: 1.5; font-weight: 700; }
 .metric-note { margin: -1px 0 4px; }
 .time-row { display: flex; gap: 6px; align-items: center; }

@@ -131,7 +131,7 @@ const editSnap = ref(null)
 function cloneEdit(kind, row) {
   if (kind === 'reward') return { name: row.name, price: row.price, category: row.category }
   if (kind === 'rank') return { name: row.name, min_sunshine: row.min_sunshine }
-  if (kind === 'daily') return { name: row.name, subject_id: row.subject_id, sunshine: row.sunshine, bonus_per_metric: row.bonus_per_metric, note: row.note, kid_id: row.kid_id || '', metrics: JSON.parse(JSON.stringify(row.metrics || [])) }
+  if (kind === 'daily') return { name: row.name, subject_id: row.subject_id, sunshine: row.sunshine, bonus_per_metric: row.bonus_per_metric, note: row.note, kid_id: row.kid_id || '', link: row.link || '', require_quiz: !!row.require_quiz, metrics: JSON.parse(JSON.stringify(row.metrics || [])) }
   if (kind === 'task') return { title: row.title, action: row.action, sunshine: row.sunshine, kid_id: row.kid_id || '' }
   if (kind === 'kid') return { name: row.name, account: row.account, term_id: row.term_id, gender: row.gender || '' }
   return {}
@@ -159,6 +159,8 @@ function restoreEditSnap() {
       row.bonus_per_metric = snap.bonus_per_metric
       row.note = snap.note
       row.kid_id = snap.kid_id || ''
+      row.link = snap.link || ''
+      row.require_quiz = !!snap.require_quiz
       row.metrics = JSON.parse(JSON.stringify(snap.metrics || []))
     }
     else if (kind === 'task') { row.title = snap.title; row.action = snap.action; row.sunshine = snap.sunshine; row.kid_id = snap.kid_id || '' }
@@ -890,8 +892,8 @@ async function toggleTag(uid, tid) {
 
 // —— 每日任务 ——
 const DIRS = [['higher_better', '越多越好'], ['lower_better', '越少越好']]
-const newDaily = reactive({ subject_id: '体育', name: '', sunshine: 5, bonus_per_metric: 3, note: '', kid_id: '', metrics: [] })
-const EMPTY_DAILY = { subject_id: '体育', name: '', sunshine: 5, bonus_per_metric: 3, note: '', kid_id: '', metrics: [] }
+const newDaily = reactive({ subject_id: '体育', name: '', sunshine: 5, bonus_per_metric: 3, note: '', kid_id: '', link: '', require_quiz: false, metrics: [] })
+const EMPTY_DAILY = { subject_id: '体育', name: '', sunshine: 5, bonus_per_metric: 3, note: '', kid_id: '', link: '', require_quiz: false, metrics: [] }
 const kidName = (id) => kids.value.find(k => k.id === id)?.name || '某个孩子'
 // 管理列表看全家的任务；系统内置排最后，其余按「全家 → 各孩子」分组
 const orderedDaily = computed(() => [...dailyAll.value].sort((a, b) =>
@@ -902,7 +904,7 @@ const cleanMetrics = (ms) => (ms || []).map(({ id, label, unit, direction, note 
 async function addDaily() {
   if (!newDaily.name) return showToast('填任务名')
   await withBusy(async () => {
-    await api.admin.createDaily({ ...newDaily, kid_id: newDaily.kid_id || null, metrics: cleanMetrics(newDaily.metrics) })
+    await api.admin.createDaily({ ...newDaily, kid_id: newDaily.kid_id || null, link: newDaily.link || null, require_quiz: newDaily.require_quiz, metrics: cleanMetrics(newDaily.metrics) })
     const who = newDaily.kid_id ? kidName(newDaily.kid_id) : ''
     Object.assign(newDaily, EMPTY_DAILY)
     dailyAddOpen.value = false
@@ -911,7 +913,7 @@ async function addDaily() {
 }
 async function saveDaily(d) {
   await withBusy(async () => {
-    await api.admin.updateDaily(d.id, { subject_id: d.subject_id, name: d.name, sunshine: d.sunshine, bonus_per_metric: d.bonus_per_metric, note: d.note, kid_id: d.kid_id || null, metrics: cleanMetrics(d.metrics) })
+    await api.admin.updateDaily(d.id, { subject_id: d.subject_id, name: d.name, sunshine: d.sunshine, bonus_per_metric: d.bonus_per_metric, note: d.note, kid_id: d.kid_id || null, link: d.link || null, require_quiz: d.require_quiz, metrics: cleanMetrics(d.metrics) })
     clearEdit()
     showToast('已保存')
   })
@@ -934,7 +936,7 @@ function isAddDirty() {
   if (filled(newReward.name) || Number(newReward.price) !== 30 || (newReward.category || '') !== '娱乐') return true
   if (filled(newRank.name) || Number(newRank.min_sunshine) !== 0) return true
   if (newTask.subject_id || newTask.unit_id || filled(newTask.action) || filled(newTask.title) || Number(newTask.sunshine) !== 5 || newTask.kid_id) return true
-  if ((newDaily.subject_id || '体育') !== '体育' || filled(newDaily.name) || Number(newDaily.sunshine) !== 5 || Number(newDaily.bonus_per_metric) !== 3 || filled(newDaily.note) || (newDaily.kid_id || '') || (newDaily.metrics || []).length) return true
+  if ((newDaily.subject_id || '体育') !== '体育' || filled(newDaily.name) || Number(newDaily.sunshine) !== 5 || Number(newDaily.bonus_per_metric) !== 3 || filled(newDaily.note) || (newDaily.kid_id || '') || filled(newDaily.link) || newDaily.require_quiz || (newDaily.metrics || []).length) return true
   if (filled(newKid.name) || filled(newKid.account) || filled(newKid.pin) || filled(newKid.pin2) || (newKid.term_id || 'g5s1') !== 'g5s1' || (newKid.gender || '')) return true
   return false
 }
@@ -959,7 +961,7 @@ function discardDirty() {
   Object.assign(newReward, { name: '', price: 30, category: '娱乐' })
   Object.assign(newRank, { name: '', min_sunshine: 0 })
   Object.assign(newTask, { subject_id: '', unit_id: '', action: '', title: '', sunshine: 5, kid_id: '' })
-  Object.assign(newDaily, { subject_id: '体育', name: '', sunshine: 5, bonus_per_metric: 3, note: '', kid_id: '', metrics: [] })
+  Object.assign(newDaily, { subject_id: '体育', name: '', sunshine: 5, bonus_per_metric: 3, note: '', kid_id: '', link: '', require_quiz: false, metrics: [] })
   Object.assign(newKid, { name: '', account: '', pin: '', pin2: '', term_id: 'g5s1', gender: '' })
   taskAddOpen.value = false
   dailyAddOpen.value = false
@@ -1234,6 +1236,17 @@ function metricLine(series) {
 const dashDailies = computed(() => (daily.value || []).map(d => ({
   id: d.id, name: d.name, subject: d.subject_id || '', done: !!d.done_today,
 })))
+// 家长抽查：孩子自己点了打卡但没做，家长一键撤销、阳光扣回（走 /api/cancel，与孩子端「点绿勾」同一个动作）
+async function undoDaily(d) {
+  if (!confirm(`撤销「${d.name}」今天的打卡？\n${currentKidName.value || '这个孩子'}的阳光会扣回。`)) return
+  await withBusy(async () => {
+    try {
+      await api.cancel(d.id)
+      showToast('已撤销，阳光已扣回')
+      await load()
+    } catch (e) { showToast(e.message) }
+  })
+}
 const peCards = computed(() => {
   const cards = []
   for (const d of daily.value || []) {
@@ -1572,6 +1585,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload)
             <span class="apv-name">{{ d.name }}</span>
             <em class="fam-st" :class="d.done ? 'green' : 'gray'">{{ d.done ? '已打卡' : '还没做' }}</em>
             <span class="dim">{{ subjectName(d.subject) }}</span>
+            <button v-if="d.done" type="button" class="ghost-s dash-undo" @click="undoDaily(d)">撤销</button>
           </div>
         </div>
       </template>
@@ -2016,6 +2030,8 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload)
           <label class="fld w64"><span>基础阳光</span><input v-model.number="newDaily.sunshine" type="number" /></label>
           <label class="fld w84"><span>破纪录 +</span><input v-model.number="newDaily.bonus_per_metric" type="number" /></label>
           <label class="fld grow"><span>怎么做</span><input v-model="newDaily.note" placeholder="如：完成后让家长检查" /></label>
+          <label class="fld grow"><span>去哪做</span><input v-model="newDaily.link" placeholder="如 /quiz/，留空则不跳转" /></label>
+          <label class="fld" style="display:flex;align-items:center;gap:6px;white-space:nowrap"><input type="checkbox" v-model="newDaily.require_quiz" /> 必须先完成今日题库</label>
         </div>
         <div class="m-row" v-for="(m, i) in newDaily.metrics" :key="m.id">
           <label class="fld grow"><span>指标名</span><input v-model="m.label" placeholder="如：跳绳个数" /></label>
@@ -2057,6 +2073,8 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload)
               <label class="fld w64"><span>基础阳光</span><input v-model.number="d.sunshine" type="number" /></label>
               <label class="fld w84"><span>破纪录 +</span><input v-model.number="d.bonus_per_metric" type="number" /></label>
               <label class="fld grow"><span>怎么做</span><input v-model="d.note" placeholder="如：完成后让家长检查" /></label>
+              <label class="fld grow"><span>去哪做</span><input v-model="d.link" placeholder="如 /quiz/，留空则不跳转" /></label>
+              <label class="fld" style="display:flex;align-items:center;gap:6px;white-space:nowrap"><input type="checkbox" v-model="d.require_quiz" /> 必须先完成今日题库</label>
               <div class="ops">
                 <button class="ok" @click="saveDaily(d)">保存</button>
                 <button class="ghost-s" @click="cancelEdit">取消</button>
@@ -2083,12 +2101,14 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload)
               <span class="badge daily">每天</span>
               <span class="sys-name">{{ d.name }}</span>
               <span class="badge scope" :class="{ kid: d.kid_id }">{{ d.kid_id ? '只给 ' + kidName(d.kid_id) : '全家' }}</span>
+              <span v-if="d.require_quiz" class="badge" style="background:#EAF6EF;color:#2F8F5B">需题库</span>
               <span class="dim">{{ subjectName(d.subject_id) }} · +{{ d.sunshine }} 阳光<template v-if="d.bonus_per_metric"> · 破纪录 +{{ d.bonus_per_metric }}</template></span>
               <div class="ops">
                 <button class="ghost-s" @click="beginEdit('daily', d)">改</button>
                 <button class="del" @click="delDaily(d.id)">删</button>
               </div>
               <div v-if="d.note" class="daily-note">怎么做：{{ d.note }}</div>
+              <div v-if="d.link" class="daily-note">去哪做：<a :href="d.link" target="_blank" rel="noopener noreferrer">{{ d.link }}</a></div>
             </div>
             <div class="dc-metrics" v-if="d.metrics && d.metrics.length">
               <div class="dc-m-head">破纪录指标</div>
@@ -2558,6 +2578,8 @@ get up	起床</pre>
 .dash-dailies { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
 .dash-daily { padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--surface); display: flex; flex-direction: column; gap: 2px; }
 .dash-daily.on { background: var(--ok-bg); border-color: var(--ok-bg); }
+.dash-undo { align-self: flex-start; margin-top: 2px; padding: 0; font-size: 11px; text-decoration: underline; opacity: .85; }
+.dash-undo:hover { opacity: 1; }
 .pe-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
 .pe-card { display: flex; flex-direction: column; gap: 4px; padding: 14px; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface-2); }
 .pe-card b { font-size: 24px; letter-spacing: -.03em; }

@@ -6,12 +6,12 @@ import { APP_LABEL, APP_REVISION } from './version.js'
 const Admin = defineAsyncComponent(() => import('./Admin.vue'))
 import { SUBJECT_ICONS as ICONS, rankIcon } from './icons.js'
 import { mottoFor } from './dailyMottos.js'
-import { Sun, Lock, Gift, Check, TrendingUp, Target, User, ShoppingCart, Medal, Map, CalendarDays, RefreshCw, PartyPopper, Sparkles, BookOpen, Flame, House, Landmark, Mail } from '@lucide/vue'
+import { Sun, Lock, Gift, Check, TrendingUp, Target, User, ShoppingCart, Medal, Map, CalendarDays, RefreshCw, PartyPopper, Sparkles, BookOpen, Flame, House, Landmark, Mail, ArrowRight } from '@lucide/vue'
 
 import { soundManager, playSound, playCompleteBeep, playCoinBeep } from './sounds.js'
 import { getEncouragement, getCompanionMessage } from './encouragements.js'
 import { SUBJECT_ORDER, n1, isGoPlay } from './format.js'
-import { data, loading, err, me, authed, isAdmin, mustChangePin, pendingRecovery, rewards, achievements, boxes, recentLedger, ledgerSummary, weekOffset, reviewDue, activeTab, toast, showToast, newAchCount, achNew, companion, companionImage, companionTitle, companionPulse, companionEvolve, pendingLevelUp, pulseCompanion, showLevelCelebrate, triggerCompanionEvolve, wordToday, wordDueCard, wordNewCard, wordSun, sprites, capsule, spriteScene, spritesOpen, dutySprite, spImg, displayName, loadSprites, maybeShowMorning, applyCapsule, todayPenalty } from './store.js'
+import { data, loading, err, me, authed, isAdmin, mustChangePin, pendingRecovery, rewards, achievements, boxes, recentLedger, ledgerSummary, weekOffset, reviewDue, activeTab, toast, showToast, newAchCount, achNew, companion, companionImage, companionTitle, companionPulse, companionEvolve, pendingLevelUp, pulseCompanion, showLevelCelebrate, triggerCompanionEvolve, wordToday, wordDueCard, wordNewCard, wordSun, sprites, capsule, spriteScene, spritesOpen, dutySprite, spImg, displayName, loadSprites, maybeShowMorning, applyCapsule, todayPenalty, quizToday } from './store.js'
 
 
 import SunshinePage from './components/SunshinePage.vue'
@@ -183,7 +183,7 @@ let refreshSeq = 0
 async function refresh() {
   const seq = ++refreshSeq
   try {
-    const [t, r, bx, rv, led, sum, ach, wd, sp, cap] = await Promise.all([
+    const [t, r, bx, rv, led, sum, ach, wd, sp, cap, qz] = await Promise.all([
       api.tasks(), api.rewards(), api.boxes(),
       api.reviewDue().catch(() => []), api.ledger().catch(() => []),
       api.ledgerSummary(weekOffset.value || 0).catch(() => null),
@@ -192,6 +192,7 @@ async function refresh() {
       api.wordsToday().catch(() => null),
       api.sprites().catch(() => null),
       api.capsule().catch(() => null),
+      api.quizToday().catch(() => null),
     ])
 
     if (seq !== refreshSeq) return // 已有更新的刷新在途，丢弃旧响应避免回滚新状态
@@ -216,6 +217,7 @@ async function refresh() {
 
     if (Array.isArray(ach)) achievements.value = ach
     if (wd) wordToday.value = wd
+    if (qz) quizToday.value = qz
     if (sp) {
       Object.assign(sprites.value, sp)
       sprites.value.loaded = true
@@ -328,6 +330,12 @@ async function openDaily(task) {
   if (task.done_today) return
   if (!guardCheckinOpen()) return
   dailyRef.value?.open(task)
+}
+// 每日任务可以带一个「去哪做」的链接（家长在后台填，如 /quiz/）。
+// 同标签跳转而不是开新窗口：平板上的 APK 是个 WebView 壳，target=_blank 常常没反应。
+function goTaskLink(task) {
+  if (!task || !task.link) return
+  window.location.href = task.link
 }
 async function submitDaily({ task, metrics, event }) {
   if (actionBusy.value) return
@@ -688,6 +696,7 @@ function reloadApp() {
                       <div class="fit-bar"><i :style="{ width: fitnessBar(it.d).pct + '%' }"></i><em>{{ fitnessBar(it.d).status }}</em></div>
                       <div class="fit-std">{{ fitnessBar(it.d).lines }}</div>
                     </template>
+                    <div v-if="it.d.require_quiz && !quizToday.done" class="card-detail" style="color:#E08A2E">需先完成今日题库练习</div>
                     <div class="plus">{{ dailySunshineHint(it.d) }} <Sun class="ico sun" :size="12" /></div>
                   </div>
                   <button class="trend" @click="openChart(it.d)" title="看趋势"><TrendingUp :size="15" /></button>
@@ -763,6 +772,7 @@ function reloadApp() {
                     <div class="fit-std">{{ fitnessBar(d).lines }}</div>
                   </template>
                   <div class="plus">{{ dailySunshineHint(d) }} <Sun class="ico sun" :size="12" /></div>
+                  <button v-if="d.link" class="go-link" @click="goTaskLink(d)">去做 <ArrowRight :size="14" /></button>
                 </div>
                 <button class="trend" @click="openChart(d)" title="看趋势"><TrendingUp :size="15" /></button>
               </div>
@@ -1372,6 +1382,9 @@ body {
 }
 .word-daily-card { cursor: pointer; }
 .trend { position: absolute; top: 8px; right: 8px; border: none; background: var(--warm); border-radius: var(--radius-lg); padding: 3px 8px; font-size: 15px; cursor: pointer; line-height: 1; }
+/* 「去做」：家长给每日任务配了「去哪做」链接时才出现。天蓝=去别处做事，和琥珀色的「赚阳光」区分开 */
+.go-link { align-self: flex-start; margin-top: 8px; display: inline-flex; align-items: center; gap: 4px; border: none; background: var(--brand-deep); color: #fff; border-radius: var(--radius-pill); padding: 6px 14px; font-size: 13px; font-weight: 700; font-family: inherit; cursor: pointer; }
+.go-link:hover { filter: brightness(1.08); }
 .parent { border: none; background: none; color: var(--ink-3); font-size: 13px; font-weight: 700; cursor: pointer; padding: 10px 4px; white-space: nowrap; }
 
 /* 登录页 */

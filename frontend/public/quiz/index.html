@@ -22,6 +22,10 @@ body{
 header{padding:18px 0 10px;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
 h1{font-size:19px;font-weight:600;margin:0;display:inline-block}
 .head-row{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+/* 从工作台的「去做」跳进来是同标签跳转（平板 APK 是 WebView 壳，target=_blank 常常没反应），
+   所以这里要给一条回去的路 */
+.back{display:inline-flex;align-items:center;font-size:13px;color:var(--ink2);text-decoration:none;margin-bottom:10px}
+.back:hover{color:var(--ink)}
 .countdown{font-size:13px;color:var(--sun);font-weight:600;white-space:nowrap}
 .bar{height:6px;background:var(--line);border-radius:3px;overflow:hidden;margin:12px 0 6px}
 .bar>i{display:block;height:100%;background:var(--sun);width:0;transition:width .3s}
@@ -101,6 +105,7 @@ pre.copy{background:var(--bg);border:1px solid var(--line);border-radius:10px;pa
 <body data-page-node-id="63StGZWlsOICZkKpBiZjaY">
 <div class="wrap" data-page-node-id="7bnBFfCqTaxmtqgmPjFA3Q">
   <header data-page-node-id="Gszxm8ln79S5itKzK8Enkp">
+    <a class="back" href="/">← 回工作台</a>
     <div class="head-row" data-page-node-id="uU6N9p4zFWxI7gkGvwAO0l">
       <h1 id="title" data-page-node-id="T5dIgrZ0S9zVpyjWuoVDhz">大队委竞选笔试复习</h1>
       <span class="countdown" id="countdown" data-page-node-id="TzcwPjphFjAzdxGyQASRLe"></span>
@@ -131,6 +136,28 @@ var BANK = SEED.banks[0];
 var QS = BANK.questions;
 var KEY = 'quiz.' + BANK.id;
 var KIND = {choice:'单选', multi:'多选', blank:'填空', qa:'问答'};
+
+/* ---------- 同源后端上报（file:// 环境不触发） ---------- */
+var API_ENABLED = location.protocol !== 'file:' && location.hostname !== '';
+var API_SID = null;
+function api(method, path, body){
+  if(!API_ENABLED) return Promise.resolve(null);
+  return fetch(path, {method:method, headers:{'Content-Type':'application/json'}, body: body?JSON.stringify(body):undefined})
+    .then(function(r){ if(!r.ok) throw new Error(''+r.status); return r.json(); })
+    .catch(function(e){ console.log('quiz api err', path, e); return null; });
+}
+function apiStart(mode, qids){
+  return api('POST','/api/quiz/start',{bank_id:BANK.id, mode:mode, qids:qids})
+    .then(function(res){ if(res && res.session){ API_SID = res.session.id; } });
+}
+function apiAttempt(qid, answer, correct){
+  if(!API_SID) return Promise.resolve(null);
+  return api('POST','/api/quiz/attempt',{session_id:API_SID, question_id:qid, answer:answer||'', correct:correct});
+}
+function apiComplete(){
+  if(!API_SID) return Promise.resolve(null);
+  return api('POST','/api/quiz/complete',{session_id:API_SID}).then(function(){ API_SID = null; });
+}
 
 var S = {v:1, examDate:null, q:{}, log:[]};
 try{
@@ -287,6 +314,7 @@ function startPractice(n){
   var rest  = shuffle(QS.filter(function(x){ return isKnown(x.id); }));
   PR = {items: weak.concat(fresh, rest).slice(0, n), i:0, right:0, state:'ask',
         picked:[], lastOk:null, done:false, wrongList:[]};
+  apiStart('practice', PR.items.map(function(x){ return x.id; }));
   renderPractice();
 }
 function renderPractice(){
@@ -360,6 +388,8 @@ function settle(ok){
   PR.lastOk = ok; PR.state = 'done';
   if(ok){ PR.right++; } else { PR.wrongList.push(qq); }
   record(qq, ok, '练习');
+  var ans = (qq.kind==='choice'||qq.kind==='multi') ? PR.picked.slice().sort().join(',') : '';
+  apiAttempt(qq.id, ans, ok);
   paintHead(); renderPractice();
 }
 function submitOpt(){
@@ -371,7 +401,7 @@ function selfCheck(){ PR.state='self'; renderPractice(); }
 function selfJudge(ok){ settle(ok); }
 function nextPractice(){
   PR.i++; PR.picked=[]; PR.state='ask'; PR.lastOk=null;
-  if(PR.i >= PR.items.length) PR.done = true;
+  if(PR.i >= PR.items.length){ PR.done = true; apiComplete(); }
   renderPractice();
 }
 
@@ -380,6 +410,7 @@ var EX = {items:[], i:0, picked:[], done:false, right:0, auto:0, manual:[], wron
 function startExam(){
   EX = {items: shuffle(QS).slice(0, Math.min(20, QS.length)), i:0, picked:[],
         done:false, right:0, auto:0, manual:[], wrongList:[], skipped:0};
+  apiStart('exam', EX.items.map(function(x){ return x.id; }));
   renderExam();
 }
 function renderExam(){
@@ -444,19 +475,22 @@ function gradeExam(){
     EX.auto++;
     if(!EX.picked.length){
       EX.skipped++; EX.wrongList.push(qq); record(qq, false, '模拟考');
+      apiAttempt(qq.id, '', false);
     }else{
       var ok = EX.picked.slice().sort().join('') === qq.answer.slice().sort().join('');
       if(ok){ EX.right++; } else { EX.wrongList.push(qq); }
       record(qq, ok, '模拟考');
+      apiAttempt(qq.id, EX.picked.slice().sort().join(','), ok);
     }
   }else{
     EX.manual.push(qq);
+    apiAttempt(qq.id, '', null);
   }
   paintHead();
 }
 function examNext(){
   gradeExam(); EX.picked = []; EX.i++;
-  if(EX.i >= EX.items.length) EX.done = true;
+  if(EX.i >= EX.items.length){ EX.done = true; apiComplete(); }
   renderExam();
 }
 
