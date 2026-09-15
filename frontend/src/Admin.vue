@@ -5,6 +5,8 @@ import { APP_LABEL, APP_REVISION } from './version.js'
 import { rankIcon } from './icons.js'
 import { tagHelp } from './tagHelp.js'
 import { SUBJECT_ORDER, n1, isTimeMetric, formatDuration, formatMetricValue } from './format.js'
+import { initAdminWords, loadWords } from './adminWords.js'
+import AdminWords from './components/AdminWords.vue'
 import { Eye, Baby, Store, ClipboardCheck, BookOpen, MapPinned, Sun, Star, Check, ArrowLeft, BookMarked, Globe } from '@lucide/vue'
 
 const props = defineProps({ recoveryCode: { type: String, default: '' } })
@@ -225,6 +227,14 @@ function showToast(m) {
   if (toastTimer) clearTimeout(toastTimer)
   toastTimer = setTimeout(() => (toast.value = ''), 2200)
 }
+
+// 单词页的数据与请求在 adminWords.js（模块级单例）：包调度和单词视图共用同一份
+initAdminWords({
+  getKid: () => selectedKid.value,
+  getTerms: () => terms.value,
+  toast: showToast,
+})
+
 function unitName(id) { return units.value.find(u => u.id === id)?.name || id }
 
 const loaded = new Set()
@@ -528,204 +538,6 @@ async function saveSpritesCfg(patch) {
     spriteCfg.base_enabled = !!cfg.base_enabled
     showToast('已保存')
   } catch (e) { showToast(e.message); if (!staleKid(kid)) await loadSpritesCfg() }
-}
-
-const wordCfg = reactive({
-  enabled: false, new_per_day: 5, max_due: 10, base_sunshine: 3, perfect_sunshine: 2,
-  unlock_by_cursor: true, current_book: '', review_mode: 'current', review_books: [],
-  tts: true, tts_autoplay: false, tts_lang: 'en-GB',
-})
-const wordBooks = ref([])
-const wordBookGroups = computed(() => {
-  const groups = {}
-  for (const b of wordBooks.value.filter(x => x.is_system)) {
-    const key = b.term_id || 'other'
-    if (!groups[key]) groups[key] = { id: key, label: terms.value.find(t => t.id === key)?.label || key, books: [] }
-    groups[key].books.push(b)
-  }
-  return Object.values(groups)
-})
-const selectedReviewBookCount = computed(() => (wordCfg.review_books || []).length)
-function isReviewBook(id) { return (wordCfg.review_books || []).includes(id) }
-async function saveWordReviewMode(mode) {
-  let selected = [...(wordCfg.review_books || [])]
-  if (mode === 'scope' && wordCfg.current_book) {
-    const current = wordBooks.value.find(b => b.id === wordCfg.current_book)
-    if (current?.is_system && !selected.includes(current.id)) selected.push(current.id)
-  }
-  await saveWordNow({ review_mode: mode, review_books: selected })
-}
-function wordScopePresetIds(preset) {
-  return wordBooks.value
-    .filter(b => b.is_system && preset.terms.includes(b.term_id))
-    .sort((a, b) => (Number(a.sort) || 0) - (Number(b.sort) || 0) || String(a.id).localeCompare(String(b.id)))
-    .map(b => b.id)
-}
-const WORD_SCOPE_PRESETS = [
-  { id: 'g3', label: '三年级基础', terms: ['g3s1', 'g3x2'] },
-  { id: 'g4', label: '四年级基础', terms: ['g4s1', 'g4x2'] },
-  { id: 'g3g4', label: '三、四年级补基础', terms: ['g3s1', 'g3x2', 'g4s1', 'g4x2'] },
-]
-const matchedWordScopePreset = computed(() => {
-  if (wordCfg.review_mode !== 'scope') return ''
-  const selected = new Set(wordCfg.review_books || [])
-  if (!selected.size) return ''
-  for (const p of WORD_SCOPE_PRESETS) {
-    const ids = wordScopePresetIds(p)
-    if (!ids.length || ids.length !== selected.size) continue
-    if (ids.every(id => selected.has(id))) return p.id
-  }
-  return ''
-})
-async function applyWordScopePreset(id) {
-  if (!id) return
-  const preset = WORD_SCOPE_PRESETS.find(x => x.id === id)
-  if (!preset) return
-  const ids = wordScopePresetIds(preset)
-  await saveWordNow({ review_mode: 'scope', review_books: ids, current_book: ids[0] || '' })
-}
-async function toggleReviewBook(book) {
-  const selected = new Set(wordCfg.review_books || [])
-  if (selected.has(book.id)) {
-    selected.delete(book.id)
-    if (wordCfg.current_book === book.id) {
-      await saveWordNow({ review_books: [...selected], current_book: '' })
-      return
-    }
-  } else selected.add(book.id)
-  await saveWordNow({ review_books: [...selected] })
-}
-const wordToday = ref({ enabled: false, finished: true, backlog_due: 0, session: null })
-const wordProblems = ref([])
-const wordStats = ref({ days: [], completed_sessions: 0, first_try_rate: null })
-const wordNewBook = ref('')
-const wordImportOpen = ref(false)
-const wordWeekOpen = ref(false)
-const wordImport = reactive({ book_id: '', text: '', result: null })
-const wordOpenBook = ref(null)
-const wordBusy = ref(false)
-const wordOverview = computed(() => {
-  const s = wordToday.value.session
-  const counts = (s && s.counts) || { due: 0, new: 0, answered: 0, correct_first_try: 0 }
-  const total = ((s && s.items) || []).length
-  const left = ((s && s.items) || []).filter(x => x.state !== 'done').length
-  return {
-    newn: counts.new || 0,
-    due: counts.due || 0,
-    correct: counts.correct_first_try || 0,
-    total,
-    left: wordToday.value.finished ? 0 : (s ? left : (wordToday.value.enabled ? '—' : 0)),
-    backlog: wordToday.value.backlog_due || 0,
-    finished: !!wordToday.value.finished,
-  }
-})
-async function loadWords() {
-  const kid = selectedKid.value
-  if (!kid) return
-  try {
-    const [cfg, today, problems, stats] = await Promise.all([
-      api.admin.wordConfig(),
-      api.wordsToday().catch(() => null),
-      api.admin.problemWords().catch(() => []),
-      api.admin.wordStats().catch(() => ({ days: [], completed_sessions: 0, first_try_rate: null })),
-    ])
-    if (staleKid(kid)) return
-    Object.assign(wordCfg, {
-      enabled: !!cfg.enabled,
-      new_per_day: cfg.new_per_day,
-      max_due: cfg.max_due,
-      base_sunshine: cfg.base_sunshine,
-      perfect_sunshine: cfg.perfect_sunshine,
-      unlock_by_cursor: cfg.unlock_by_cursor !== false,
-      current_book: cfg.current_book || '',
-      review_mode: cfg.review_mode === 'scope' ? 'scope' : 'current',
-      review_books: Array.isArray(cfg.review_books) ? cfg.review_books : [],
-      tts: cfg.tts !== false,
-      tts_autoplay: !!cfg.tts_autoplay,
-      tts_lang: cfg.tts_lang === 'en-US' ? 'en-US' : 'en-GB',
-    })
-    wordBooks.value = cfg.books || []
-    wordToday.value = today || { enabled: false, finished: true, backlog_due: 0, session: null }
-    wordProblems.value = problems || []
-    wordStats.value = stats || { days: [], completed_sessions: 0, first_try_rate: null }
-  } catch (e) { showToast(e.message) }
-}
-async function saveWordNow(patch) {
-  try {
-    const cfg = await api.admin.setWordConfig(patch)
-    Object.assign(wordCfg, {
-      enabled: !!cfg.enabled,
-      current_book: cfg.current_book || '',
-      review_mode: cfg.review_mode === 'scope' ? 'scope' : 'current',
-      review_books: Array.isArray(cfg.review_books) ? cfg.review_books : [],
-      tts: cfg.tts !== false,
-      tts_autoplay: !!cfg.tts_autoplay,
-      tts_lang: cfg.tts_lang === 'en-US' ? 'en-US' : 'en-GB',
-      unlock_by_cursor: cfg.unlock_by_cursor !== false,
-    })
-    wordBooks.value = cfg.books || []
-    await loadWords()
-  } catch (e) { showToast(e.message); await loadWords() }
-}
-async function saveWordRhythm() {
-  try {
-    await api.admin.setWordConfig({
-      new_per_day: wordCfg.new_per_day,
-      max_due: wordCfg.max_due,
-      base_sunshine: wordCfg.base_sunshine,
-      perfect_sunshine: wordCfg.perfect_sunshine,
-    })
-    showToast('已保存，明天的新练习才按这个来')
-  } catch (e) { showToast(e.message) }
-}
-async function addWordBook() {
-  const name = wordNewBook.value.trim()
-  if (!name) return showToast('填词书名字')
-  try {
-    await api.admin.createWordBook({ name })
-    wordNewBook.value = ''
-    showToast('已建家庭词书')
-    await loadWords()
-  } catch (e) { showToast(e.message) }
-}
-async function saveWordBook(b) {
-  try {
-    await api.admin.updateWordBook(b.id, { name: b.name })
-    showToast('已改名')
-    await loadWords()
-  } catch (e) { showToast(e.message) }
-}
-async function delWordBook(b) {
-  if (!confirm('关掉这本家庭词书？')) return
-  try {
-    await api.admin.delWordBook(b.id)
-    if (wordImport.book_id === b.id) wordImport.book_id = ''
-    showToast('已处理')
-    await loadWords()
-  } catch (e) { showToast(e.message) }
-}
-async function importWordBook() {
-  if (!wordImport.book_id) return showToast('先选一本家庭词书')
-  if (!wordImport.text.trim()) return showToast('粘贴单词')
-  wordBusy.value = true
-  try {
-    wordImport.result = await api.admin.importWords(wordImport.book_id, wordImport.text)
-    showToast('导入 ' + wordImport.result.ok + ' 个')
-    await loadWords()
-  } catch (e) { showToast(e.message) }
-  finally { wordBusy.value = false }
-}
-async function openWordBook(id) {
-  try {
-    wordOpenBook.value = await api.admin.wordBook(id)
-  } catch (e) { showToast(e.message) }
-}
-async function focusWord(id) {
-  try {
-    await api.admin.focusWord(id)
-    showToast('明天会练到')
-    await loadWords()
-  } catch (e) { showToast(e.message) }
 }
 
 // 保存类操作统一包装：防重复提交 + 失败提示（避免 unhandled rejection）
@@ -2121,170 +1933,11 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload)
 
 
 
-    <section v-if="section === 'words'" class="a-card enter">
-      <h3>英语单词</h3>
-      <p class="dim">给 {{ currentKidName || '当前孩子' }} 用。朗读马上生效；每天几个词、给多少阳光，明天新的一组才按这个来。</p>
-      <h4 class="w-h">今天</h4>
-      <div class="w-summary word-ov">
-        <div class="w-box"><span>新词</span><b>{{ wordOverview.newn }}</b></div>
-        <div class="w-box"><span>复习</span><b>{{ wordOverview.due }}</b></div>
-        <div class="w-box"><span>首轮对</span><b>{{ wordOverview.correct }}/{{ wordOverview.total || 0 }}</b></div>
-        <div class="w-box"><span>还没写完</span><b>{{ wordOverview.left }}</b></div>
-        <div class="w-box"><span>积压到期</span><b>{{ wordOverview.backlog }}</b></div>
-      </div>
-      <h4 class="w-h">高频错词</h4>
-      <p v-if="!wordProblems.length" class="dim">还没有错两次以上的词。</p>
-      <div v-for="w in wordProblems" :key="w.word_id" class="word-row">
-        <div>
-          <b>{{ w.word }}</b>
-          <span>{{ w.cn }} · 错 {{ w.wrong_count }} 次 · {{ w.book_name }}<template v-if="w.unit_id"> · {{ w.unit_id }}</template></span>
-          <em>{{ [w.last_seen_at ? ('最近 ' + String(w.last_seen_at).slice(0, 10)) : '', w.due_at ? ('下次 ' + w.due_at) : ''].filter(Boolean).join(' · ') }}</em>
-        </div>
-        <button class="ok" @click="focusWord(w.word_id)">明天重点练</button>
-      </div>
-      <button type="button" class="ghost-s rules-toggle" @click="wordWeekOpen = !wordWeekOpen">{{ wordWeekOpen ? '收起近 7 日' : '近 7 日' }}</button>
-      <template v-if="wordWeekOpen">
-        <p class="dim">完成 {{ wordStats.completed_sessions || 0 }} 次<template v-if="wordStats.first_try_rate != null"> · 首轮正确率 {{ wordStats.first_try_rate }}%</template></p>
-        <div class="w-chart word-week">
-          <div v-for="d in wordStats.days || []" :key="d.date" class="w-bar-col">
-            <div class="w-bar" :class="{ down: !d.completed }" :style="{ height: (d.completed ? Math.max(18, d.rate == null ? 40 : d.rate) : 6) + '%' }"><i v-if="d.rate != null">{{ d.rate }}%</i></div>
-            <span>{{ d.label }}</span>
-          </div>
-        </div>
-      </template>
-      <h4 class="w-h">怎么练</h4>
-      <div class="lock-row mt14">
-        <span class="badge">单词练习</span>
-        <span class="grow">孩子端显示今日单词</span>
-        <button type="button" :class="['toggle', { on: wordCfg.enabled }]" @click="saveWordNow({ enabled: !wordCfg.enabled })">{{ wordCfg.enabled ? '开' : '关' }}</button>
-      </div>
-      <div class="frm-row mt14">
-        <label class="fld grow"><span>复习范围</span>
-          <select :value="wordCfg.review_mode" @change="saveWordReviewMode($event.target.value)">
-            <option value="current">跟随当前词书</option>
-            <option value="scope">自定义范围（补基础）</option>
-          </select>
-        </label>
-        <label v-if="wordCfg.review_mode === 'scope'" class="fld grow mt8"><span>快捷方案</span>
-          <select :value="matchedWordScopePreset" @change="applyWordScopePreset($event.target.value)">
-            <option v-if="!matchedWordScopePreset" value="" disabled>选择一个复习方案</option>
-            <option v-for="p in WORD_SCOPE_PRESETS" :key="p.id" :value="p.id">{{ p.label }}</option>
-          </select>
-        </label>
-        <span class="dim review-scope-count">{{ wordCfg.review_mode === 'scope' ? `已选 ${selectedReviewBookCount} 本系统词书` : '当前模式只练当前词书；到期复习保持旧行为' }}</span>
-      </div>
-      <template v-if="wordCfg.review_mode === 'current'">
-        <div class="frm-row">
-          <label class="fld grow"><span>当前新词词书</span>
-            <select :value="wordCfg.current_book" @change="saveWordNow({ current_book: $event.target.value })">
-              <option value="">还没选</option>
-              <option v-for="b in wordBooks" :key="b.id" :value="b.id" :disabled="b.is_system && !b.selectable">
-                {{ b.name }}{{ b.is_system ? ' · 系统' : ' · 家庭' }}{{ b.is_system && !b.selectable ? '（先设英语已学到）' : '' }}
-              </option>
-            </select>
-          </label>
-        </div>
-      </template>
-      <template v-else>
-        <div class="scope-books">
-          <div v-for="group in wordBookGroups" :key="group.id" class="scope-group">
-            <strong>{{ group.label }}</strong>
-            <label v-for="b in group.books" :key="b.id" class="scope-book-check">
-              <input type="checkbox" :checked="isReviewBook(b.id)" @change="toggleReviewBook(b)" />
-              <span>{{ b.name }}</span>
-            </label>
-          </div>
-        </div>
-        <label class="fld grow mt8"><span>新词起始/当前书（可选）</span>
-          <select :value="wordCfg.current_book" @change="saveWordNow({ current_book: $event.target.value })">
-            <option value="">从范围首本开始</option>
-            <option v-for="b in wordBooks.filter(x => isReviewBook(x.id))" :key="b.id" :value="b.id">{{ b.name }}</option>
-          </select>
-        </label>
-        <p class="dim">自定义范围不受英语「已学到」游标限制；新词会从当前书及之后依次进入，已学过的词自动跳过。</p>
-      </template>
-      <div class="frm-row">
-        <label class="fld w64"><span>每天新词</span><input v-model.number="wordCfg.new_per_day" type="number" min="1" max="10" /></label>
-        <label class="fld w64"><span>到期上限</span><input v-model.number="wordCfg.max_due" type="number" min="5" max="15" /></label>
-        <label class="fld w64"><span>完成阳光</span><input v-model.number="wordCfg.base_sunshine" type="number" min="0" max="10" /></label>
-        <label class="fld w64"><span>全对阳光</span><input v-model.number="wordCfg.perfect_sunshine" type="number" min="0" max="5" /></label>
-        <button class="ok" @click="saveWordRhythm">保存节奏</button>
-      </div>
-      <div v-if="wordCfg.review_mode === 'current'" class="lock-row mt14">
-        <span class="badge">词书锁</span>
-        <span class="grow">系统词书跟着英语「已学到」</span>
-        <button type="button" :class="['toggle', { on: wordCfg.unlock_by_cursor }]" @click="saveWordNow({ unlock_by_cursor: !wordCfg.unlock_by_cursor })">{{ wordCfg.unlock_by_cursor ? '开' : '关' }}</button>
-      </div>
-      <div class="lock-row">
-        <span class="badge">朗读</span>
-        <span class="grow">看词页听读音</span>
-        <button type="button" :class="['toggle', { on: wordCfg.tts }]" @click="saveWordNow({ tts: !wordCfg.tts })">{{ wordCfg.tts ? '开' : '关' }}</button>
-      </div>
-      <div class="lock-row">
-        <span class="badge">自动读</span>
-        <span class="grow">进入看词页读一次（默写不出声）</span>
-        <button type="button" :class="['toggle', { on: wordCfg.tts_autoplay }]" @click="saveWordNow({ tts_autoplay: !wordCfg.tts_autoplay })">{{ wordCfg.tts_autoplay ? '开' : '关' }}</button>
-      </div>
-      <div class="frm-row">
-        <label class="fld w104"><span>口音</span>
-          <select :value="wordCfg.tts_lang" @change="saveWordNow({ tts_lang: $event.target.value })">
-            <option value="en-GB">英式</option>
-            <option value="en-US">美式</option>
-          </select>
-        </label>
-      </div>
-
-      <h4 class="w-h">词书</h4>
-      <div class="word-book" v-for="b in wordBooks" :key="b.id">
-        <div class="word-book-h">
-          <strong>{{ b.name }}</strong>
-          <span class="badge">{{ b.is_system ? '系统' : '家庭' }}</span>
-          <span class="dim">{{ b.word_count }} 词<template v-if="b.source_unit"> · {{ b.source_unit }}</template><template v-if="b.source_ver"> · {{ b.source_ver }}</template> · 已学 {{ b.learned_count }} · 到期 {{ b.due_count }} · 错词 {{ b.problem_count }}</span>
-          <button class="ghost-s" @click="openWordBook(b.id)">看词</button>
-        </div>
-        <template v-if="!b.is_system">
-          <div class="frm-row">
-            <label class="fld grow"><span>名字</span><input v-model="b.name" /></label>
-            <button class="ok" @click="saveWordBook(b)">改名</button>
-            <button class="del" @click="delWordBook(b)">删</button>
-          </div>
-        </template>
-        <p v-else class="dim">系统词书只读，不能改词、不能导入。</p>
-      </div>
-      <div class="frm-row">
-        <label class="fld grow"><span>新建家庭词书</span><input v-model="wordNewBook" placeholder="如：课外词" maxlength="30" /></label>
-        <button class="ok" @click="addWordBook">＋新建</button>
-      </div>
-      <button type="button" class="ghost-s rules-toggle" @click="wordImportOpen = !wordImportOpen">{{ wordImportOpen ? '收起导入' : '导入单词' }}</button>
-      <div v-if="wordImportOpen" class="add-box mt14">
-        <div class="add-title">导入家庭词书</div>
-        <p class="dim">一列英文、一列中文，音标可空。制表符或逗号都行，一次最多 500 行。</p>
-        <pre class="word-sample">always	总是	/ˈɔːlweɪz/
-usually	通常	/ˈjuːʒuəli/
-get up	起床</pre>
-        <label class="fld grow"><span>导入到</span>
-          <select v-model="wordImport.book_id">
-            <option value="">选一本家庭词书</option>
-            <option v-for="b in wordBooks.filter(x => !x.is_system)" :key="b.id" :value="b.id">{{ b.name }}</option>
-          </select>
-        </label>
-        <textarea v-model="wordImport.text" class="word-import" rows="5" placeholder="always	总是	/ˈɔːlweɪz/&#10;get up	起床"></textarea>
-        <button class="ok" :disabled="wordBusy" @click="importWordBook">导入</button>
-        <p v-if="wordImport.result" class="dim">成功 {{ wordImport.result.ok }} 行<template v-if="(wordImport.result.errors || []).length"> · {{ wordImport.result.errors.length }} 行有问题</template></p>
-        <ul v-if="wordImport.result && wordImport.result.errors && wordImport.result.errors.length" class="word-err">
-          <li v-for="e in wordImport.result.errors.slice(0, 8)" :key="e.line">第 {{ e.line }} 行：{{ e.error }}</li>
-        </ul>
-      </div>
-      <div v-if="wordOpenBook" class="word-list">
-        <h4 class="w-h">{{ wordOpenBook.name }} 的词</h4>
-        <div v-for="w in (wordOpenBook.words || []).filter(x => x.active !== 0)" :key="w.id" class="word-row">
-          <b>{{ w.word }}</b>
-          <span>{{ w.cn }}</span>
-          <em>{{ w.ipa }}</em>
-        </div>
-        <button class="ghost-s" @click="wordOpenBook = null">收起</button>
-      </div>
-    </section>
+    <AdminWords
+      v-if="section === 'words'"
+      :kid="selectedKid"
+      :kid-name="currentKidName"
+    />
 
     <!-- 已学到 -->
     <section v-if="section === 'cursor'" class="a-card enter">
@@ -2640,26 +2293,7 @@ get up	起床</pre>
 .kid-card .ops { grid-column: 1 / -1; justify-content: space-between; }
 .dirty-bar { position: sticky; bottom: 0; margin: 0; z-index: 5; box-shadow: var(--shadow-md); padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
 
-.review-scope-count { align-self: flex-end; padding-bottom: 10px; }
-.scope-books { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin: 4px 0 8px; }
-.scope-group { border: 1px solid var(--line); border-radius: var(--radius-md); padding: 10px 12px; background: var(--surface-2); }
-.scope-group > strong { display: block; margin-bottom: 7px; color: var(--brand-deep); font-size: 13px; }
-.scope-book-check { display: flex; align-items: center; gap: 6px; padding: 4px 0; color: var(--ink-2); font-size: 12px; }
-.word-ov { grid-template-columns: repeat(5, 1fr); }
-.word-book { border: 1px solid var(--line); border-radius: var(--radius-md); padding: 12px 14px; margin-bottom: 10px; background: var(--surface); }
-.word-book-h { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
-.word-book-h strong { font-size: 15px; }
-.word-import { width: 100%; margin: 8px 0; border: 1px solid var(--line); border-radius: var(--radius-md); padding: 8px 10px; font-family: ui-monospace, Menlo, monospace; font-size: 13px; min-height: 100px; color: var(--ink); background: var(--surface); resize: vertical; }
-.word-sample { margin: 6px 0 10px; padding: 10px 12px; background: var(--surface); border-radius: var(--radius-sm); font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: var(--ink-2); white-space: pre-wrap; overflow-x: auto; }
-.word-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--surface-2); flex-wrap: wrap; }
-.word-row > div { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; min-width: 0; }
-.word-row em { font-style: normal; color: var(--ink-3); font-size: 11px; }
-.word-list { margin-top: 10px; padding: 10px 12px; background: var(--surface-2); border-radius: var(--radius-md); }
-.word-err { margin: 6px 0 0; padding-left: 18px; color: var(--danger); font-size: 12px; }
-.word-week { height: 120px; }
-
 @media (max-width: 760px) {
-  .word-ov { grid-template-columns: repeat(3, 1fr); }
   .a-body { flex-direction: column; }
   .a-side { width: 100%; position: static; display: flex; gap: 6px; overflow-x: auto; padding: 8px; }
   .a-group { display: none; }
@@ -2667,9 +2301,6 @@ get up	起床</pre>
   .cursor-row { grid-template-columns: 1fr; gap: 6px; }
   .kid-card { grid-template-columns: 1fr; }
   .a-title { font-size: 22px; }
-}
-@media (max-width: 560px) {
-  .word-ov { grid-template-columns: repeat(2, 1fr); }
 }
 .setup { min-height: 80vh; display: flex; align-items: center; justify-content: center; }
 .setup-card { max-width: 420px; width: 100%; }
