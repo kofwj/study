@@ -80,10 +80,24 @@ jobs:
         id: changelog
         run: |
           VERSION="${{ steps.version.outputs.VERSION }}"
-          CHANGELOG=$(awk "/## .*v${VERSION}/,/## .*v[0-9]/" CHANGELOG.md | sed '1d;$d')
-          echo "CHANGELOG<<EOF" >> $GITHUB_OUTPUT
-          echo "$CHANGELOG" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          # 别用 awk "/起点/,/终点/" 的范围写法：同一行同时命中首尾模式时，
+          # 范围会在该行立即结束，抽出来只剩标题行，再被 sed '1d;$d' 删光，
+          # Release 正文就变成「没有更新内容」。改成分状态扫描。
+          VER_ESC=$(printf '%s' "v${VERSION}" | sed 's/\./\\./g')
+          CHANGELOG=$(awk -v pat="^## .*${VER_ESC}([^0-9]|\$)" '
+            $0 ~ pat { found = 1; next }
+            found && /^## / { exit }
+            found { print }
+          ' CHANGELOG.md)
+          if [ -z "$(printf '%s' "$CHANGELOG" | tr -d '[:space:]')" ]; then
+            echo "⚠️ 没抽到 v${VERSION} 的更新记录，先用兜底文案"
+            CHANGELOG="（本版没写单独的更新记录，详见 CHANGELOG.md）"
+          fi
+          {
+            echo "CHANGELOG<<EOF"
+            echo "$CHANGELOG"
+            echo "EOF"
+          } >> $GITHUB_OUTPUT
       
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
