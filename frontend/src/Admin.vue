@@ -7,6 +7,7 @@ import { tagHelp } from './tagHelp.js'
 import { SUBJECT_ORDER, n1, isTimeMetric, formatDuration, formatMetricValue } from './format.js'
 import { initAdminWords, loadWords } from './adminWords.js'
 import AdminWords from './components/AdminWords.vue'
+import AdminInsights from './components/AdminInsights.vue'
 import { Eye, Baby, Store, ClipboardCheck, BookOpen, MapPinned, Sun, Star, Check, ArrowLeft, BookMarked, Globe } from '@lucide/vue'
 
 const props = defineProps({ recoveryCode: { type: String, default: '' } })
@@ -120,7 +121,6 @@ const weekly = ref({ days: [], weeks: [], by_subject: [], kids: [], total_earned
 const insights = ref({ rules: { test_fail_count: 2, test_fail_score: 80, drop_ratio: 0.3, streak_break: 2 }, kids: [] })
 const familyToday = ref({ today: '', kids: [] })
 const rulesOpen = ref(false)
-const dashWeekOpen = ref(false)
 const redeemFilter = ref('pending')
 const bankHistoryOpen = ref(false)
 const taskAddOpen = ref(false)
@@ -197,28 +197,10 @@ function isEditing(kind, id) {
 const RULE_DEFAULTS = { test_fail_count: 2, test_fail_score: 80, drop_ratio: 0.3, streak_break: 2 }
 const toast = ref('')
 
-const dayNet = (d) => Number(d && (d.net != null ? d.net : d.earned)) || 0
-const maxDayEarn = computed(() => Math.max(1, ...(weekly.value.days || []).map((d) => Math.abs(dayNet(d)))))
-const subjectRows = computed(() => [...(weekly.value.by_subject || [])].sort((a, b) => (b.sun || 0) - (a.sun || 0)))
-const maxSubj = computed(() => Math.max(1, ...subjectRows.value.map((s) => s.sun || 0)))
 const weekNet = (w) => Number(w && (w.net != null ? w.net : w.earned)) || 0
 const maxWeek = computed(() => {
   const vals = (weekly.value.weeks || []).map(weekNet)
   return Math.max(1, ...vals.map(Math.abs), 0)
-})
-const weekPoints = computed(() => {
-  const ws = weekly.value.weeks || []
-  if (!ws.length) return ''
-  const vals = ws.map(weekNet)
-  const min = Math.min(0, ...vals)
-  const max = Math.max(0, ...vals)
-  const span = (max - min) || 1
-  const W = 288, H = 80, pad = 14
-  return ws.map((w, i) => {
-    const x = ws.length === 1 ? pad : pad + i * (W - 2 * pad) / (ws.length - 1)
-    const y = H - pad - (weekNet(w) - min) / span * (H - 2 * pad)
-    return `${x.toFixed(1)},${y.toFixed(1)}`
-  }).join(' ')
 })
 
 let toastTimer = null
@@ -959,11 +941,6 @@ const testPreview = computed(() => {
   }
   return { range: '', sun: 0 }
 })
-function familyTodayStatus(k) {
-  if (k.review_due > 0) return { cls: 'amber', text: '今日复习 ' + k.review_due + ' 项' }
-  if (!k.checkin) return { cls: 'gray', text: '还没来' }
-  return { cls: 'green', text: '今天来了' }
-}
 const familyTodayEmpty = computed(() => {
   const ks = familyToday.value.kids || []
   if (!ks.length) return ''
@@ -982,24 +959,7 @@ function goReviewKid(k) {
   }
   section.value = 'review'
 }
-function completedDelta(k) {
-  const d = (k.completed || 0) - (k.completed_last || 0)
-  if (d > 0) return '比上周多 ' + d + ' 张'
-  if (d < 0) return '比上周少 ' + (-d) + ' 张'
-  return '和上周差不多'
-}
-const masteredLine = computed(() => {
-  const rows = weekly.value.mastered_by_kid || []
-  if (!rows.length) return ''
-  return rows.map(r => r.name + '：' + (r.items || []).join('、')).join('；')
-})
 const currentKidName = computed(() => kids.value.find(k => k.id === selectedKid.value)?.name || '')
-const greet = computed(() => {
-  const h = new Date().getHours()
-  if (h < 12) return '上午好'
-  if (h < 18) return '下午好'
-  return '晚上好'
-})
 const pendingRedeem = computed(() => (redemptions.value || []).filter(r => r.status === 'pending').length)
 const filteredRedemptions = computed(() => {
   const rows = redemptions.value || []
@@ -1015,39 +975,7 @@ const redeemEmptyText = computed(() => {
 const pendingBankRequests = computed(() => (bankRequests.value || []).filter(r => r.status === 'pending'))
 const historyBankRequests = computed(() => (bankRequests.value || []).filter(r => r.status !== 'pending'))
 const reviewCount = computed(() => (reviewDue.value || []).length)
-const checkinCount = computed(() => (familyToday.value.kids || []).filter(k => k.checkin).length)
-const kidCount = computed(() => (familyToday.value.kids || []).length)
 const isMultiKid = computed(() => kids.value.length > 1)
-const dashAttention = computed(() => {
-  if (reviewCount.value) return { text: `今天有 ${reviewCount.value} 项复习到期`, go: 'review', label: '去复习' }
-  if (pendingRedeem.value) return { text: `有 ${pendingRedeem.value} 笔兑换待同意`, go: 'approve', label: '去审批' }
-  return { text: '', go: '', label: '' }
-})
-function lastMetric(d, mid) {
-  if (d.today_metrics && d.today_metrics[mid] != null && d.today_metrics[mid] !== '') return Number(d.today_metrics[mid])
-  const hist = dailyHist.value[d.id] || []
-  for (let i = hist.length - 1; i >= 0; i--) {
-    const v = hist[i].metrics && hist[i].metrics[mid]
-    if (v != null && v !== '') return Number(v)
-  }
-  if (d.pb && d.pb[mid] != null) return Number(d.pb[mid])
-  return null
-}
-function metricLine(series) {
-  if (!series.length) return ''
-  const vals = series.map(s => s.v)
-  const min = Math.min(...vals), max = Math.max(...vals)
-  const span = (max - min) || 1
-  const W = 288, H = 56, pad = 8
-  return series.map((s, i) => {
-    const x = series.length === 1 ? W / 2 : pad + i * (W - 2 * pad) / (series.length - 1)
-    const y = H - pad - (s.v - min) / span * (H - 2 * pad)
-    return `${x.toFixed(1)},${y.toFixed(1)}`
-  }).join(' ')
-}
-const dashDailies = computed(() => (daily.value || []).map(d => ({
-  id: d.id, name: d.name, subject: d.subject_id || '', done: !!d.done_today,
-})))
 // 家长抽查：孩子自己点了打卡但没做，家长一键撤销、阳光扣回（走 /api/cancel，与孩子端「点绿勾」同一个动作）
 async function undoDaily(d) {
   if (!confirm(`撤销「${d.name}」今天的打卡？\n${currentKidName.value || '这个孩子'}的阳光会扣回。`)) return
@@ -1059,48 +987,6 @@ async function undoDaily(d) {
     } catch (e) { showToast(e.message) }
   })
 }
-const peCards = computed(() => {
-  const cards = []
-  for (const d of daily.value || []) {
-    const metrics = d.metrics || []
-    if (!metrics.length) continue
-    const g = fitnessGoals.value[d.id]
-    if (!g) continue
-    const hist = dailyHist.value[d.id] || []
-    for (const m of metrics) {
-      if (g.metric_id && m.id !== g.metric_id) continue
-      const series = hist
-        .filter(h => h.metrics && h.metrics[m.id] != null && h.metrics[m.id] !== '')
-        .map(h => ({ date: h.date, v: Number(h.metrics[m.id]) }))
-      const last = lastMetric(d, m.id)
-      const pb = d.pb ? d.pb[m.id] : null
-      const unit = m.unit || (g && g.metric_id === m.id ? g.unit : '') || ''
-      let status = '还没记过'
-      let cls = 'gray'
-      let gap = ''
-      let pct = 0
-      const goal = g && g.metric_id === m.id ? g : null
-      if (goal && last != null) {
-        const cap = goal.excellent || goal.pass
-        pct = Math.max(0, Math.min(100, Math.round(last / cap * 100)))
-        if (goal.excellent != null && last >= goal.excellent) { status = '优秀'; cls = 'green' }
-        else if (last >= goal.pass) { status = '达标'; cls = 'green' }
-        else { status = '未达标'; cls = 'amber'; gap = `还差 ${n1(goal.pass - last)}${unit}` }
-      } else if (last != null) {
-        status = '有记录'; cls = 'green'
-      }
-      cards.push({
-        key: d.id + '-' + m.id,
-        name: d.name,
-        label: m.label || (goal && goal.item) || m.id,
-        unit, last, pb, status, cls, gap, pct, goal, series,
-        pts: metricLine(series),
-        today: !!(d.today_metrics && d.today_metrics[m.id] != null),
-      })
-    }
-  }
-  return cards
-})
 const penaltyReasonRows = computed(() => (penaltySummary.value.by_reason || []).filter(x => x.count > 0))
 const maxPenaltyAmount = computed(() => Math.max(1, ...penaltyReasonRows.value.map(x => x.amount || 0)))
 function goInsight(row) {
@@ -1369,143 +1255,31 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload)
     </section>
 
     <!-- 概览：全家今日 + 本周盯点 -->
-    <section v-if="section === 'insights'" class="a-card enter dash">
-      <h3>{{ greet }}，{{ me.name || '家长' }}</h3>
-      <div v-if="dashAttention.text" class="w-next">
-        <strong>待处理</strong>
-        <span>{{ dashAttention.text }}</span>
-        <button v-if="dashAttention.go" class="ok" @click="goSection(dashAttention.go)">{{ dashAttention.label }}</button>
-      </div>
-      <div class="dash-stats">
-        <button type="button" class="dash-stat" @click="goSection('review')">
-          <span>待复习</span><b>{{ reviewCount }}</b>
-        </button>
-        <button type="button" class="dash-stat" @click="goSection('approve')">
-          <span>待审批</span><b>{{ pendingRedeem }}</b>
-        </button>
-        <div class="dash-stat">
-          <span>今日签到</span><b>{{ isMultiKid ? (checkinCount + '/' + kidCount) : (checkinCount ? '已来' : (kidCount ? '还没来' : '—')) }}</b>
-        </div>
-        <div class="dash-stat">
-          <span>连击</span><b>{{ weekly.streak || 0 }} 天</b>
-        </div>
-      </div>
-      <template v-if="dashDailies.length">
-        <h4 class="w-h">今日打卡</h4>
-        <div class="dash-dailies">
-          <div v-for="d in dashDailies" :key="d.id" class="dash-daily" :class="{ on: d.done }">
-            <span class="apv-name">{{ d.name }}</span>
-            <em class="fam-st" :class="d.done ? 'green' : 'gray'">{{ d.done ? '已打卡' : '还没做' }}</em>
-            <span class="dim">{{ subjectName(d.subject) }}</span>
-            <button v-if="d.done" type="button" class="ghost-s dash-undo" @click="undoDaily(d)">撤销</button>
-          </div>
-        </div>
-      </template>
-      <h4 class="w-h">本周阳光{{ currentKidName ? ' · ' + currentKidName : '' }}</h4>
-      <p class="lead dim">{{ weekly.week_start }} ~ {{ weekly.week_end }}</p>
-      <div class="w-summary">
-        <div class="w-box"><span>本周赚</span><b>+{{ weekly.total_earned }}</b></div>
-        <div class="w-box"><span>兑换花</span><b>-{{ weekly.total_spent }}</b></div>
-        <div class="w-box"><span>当前余额</span><b>{{ weekly.balance }}</b></div>
-      </div>
-      <div class="w-subj-row goal-row">
-        <span class="dim">本周目标</span>
-        <input v-model.number="weeklyGoal" type="number" min="0" max="10000" class="w-num" />
-        <button class="ok" @click="saveWeeklyGoal" :disabled="weeklyGoalBusy">保存目标</button>
-      </div>
-      <div v-if="masteredLine" class="w-mastered">本周已掌握：<b>{{ masteredLine }}</b></div>
-      <div v-if="isMultiKid && (weekly.kids || []).length" class="w-kids">
-        <div v-for="k in weekly.kids" :key="k.id" class="w-box" :class="{ on: k.current }" @click="pickKid(k.id)">
-          <span>{{ k.name }}</span><b>+{{ k.earned }}</b>
-          <i class="dim">完成 {{ k.completed || 0 }} 张 · {{ completedDelta(k) }}</i>
-          <i class="dim">花 {{ k.spent }} · 连击 {{ k.streak }}</i>
-        </div>
-      </div>
-      <template v-if="isMultiKid && kidCount">
-        <h4 class="w-h">孩子们</h4>
-        <div class="fam-today">
-          <button v-for="k in familyToday.kids" :key="k.kid_id" type="button"
-            class="fam-card" :class="{ on: selectedKid === k.kid_id }" @click="pickKid(k.kid_id)">
-            <span class="apv-name">{{ k.name }}</span>
-            <em class="fam-st" :class="familyTodayStatus(k).cls">{{ familyTodayStatus(k).text }}</em>
-            <span class="dim">完成 {{ k.completed_today }} · 连击 {{ k.streak }} · 余额 {{ k.balance }}</span>
-            <span v-if="k.review_due > 0" class="ok fam-go" @click.stop="goReviewKid(k)">去复习</span>
-          </button>
-        </div>
-      </template>
-      <p v-else-if="!kidCount" class="dim">还没有孩子，到「家庭」里添加。</p>
-      <template v-if="(insights.kids || []).length">
-        <h4 class="w-h">本周盯点</h4>
-        <div v-for="row in insights.kids" :key="row.kid_id" class="apv-row">
-          <div class="apv-info">
-            <span v-if="isMultiKid" class="apv-name">{{ row.name }}</span>
-            <span class="dim">{{ row.insight ? row.insight.text : '无' }}</span>
-          </div>
-          <button v-if="row.insight && row.insight.action" class="ok" @click="goInsight(row)">去解决</button>
-        </div>
-      </template>
-      <button type="button" class="ghost-s rules-toggle" @click="dashWeekOpen = !dashWeekOpen">{{ dashWeekOpen ? '收起本周详情' : '本周详情' }}</button>
-      <template v-if="dashWeekOpen">
-        <div class="w-summary">
-          <div v-if="weekly.penalty_net" class="w-box"><span>本周约定</span><b>{{ weekly.penalty_net }}</b></div>
-          <div class="w-box"><span>净增</span><b>{{ weekly.net }}</b></div>
-          <div class="w-box"><span>本周签到</span><b>{{ weekly.checkins }} 天</b></div>
-        </div>
-        <template v-if="peCards.length">
-          <h4 class="w-h">体测数值</h4>
-          <div class="pe-grid">
-            <div v-for="c in peCards" :key="c.key" class="pe-card">
-              <span class="dim">{{ c.name }}</span>
-              <strong>{{ c.label }}</strong>
-              <b>{{ formatMetricValue({ unit: c.unit }, c.last) }}<small v-if="!isTimeMetric({ unit: c.unit })">{{ c.unit }}</small></b>
-              <em class="fam-st" :class="c.cls">{{ c.gap || c.status }}{{ c.today ? ' · 今天记的' : '' }}</em>
-              <div v-if="c.goal" class="w-subj-row pe-std">
-                <div class="w-subj-track"><i :style="{ width: c.pct + '%' }"></i></div>
-                <span class="w-subj-num">达标 {{ n1(c.goal.pass) }}{{ c.unit }}</span>
-              </div>
-              <span class="dim">个人最好 {{ formatMetricValue({ unit: c.unit }, c.pb) }}{{ c.series.length ? ' · ' + c.series.length + ' 次' : '' }}</span>
-              <svg v-if="c.pts" viewBox="0 0 288 56" class="pe-svg" preserveAspectRatio="none">
-                <polyline :points="c.pts" fill="none" stroke="var(--brand)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
-              </svg>
-            </div>
-          </div>
-        </template>
-        <div class="dash-charts">
-          <div class="dash-chart">
-            <h4 class="w-h">近 4 周净增</h4>
-            <div class="w-trend">
-              <svg viewBox="0 0 288 80" class="w-trend-svg" preserveAspectRatio="none">
-                <polyline :points="weekPoints" fill="none" stroke="var(--brand)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
-              </svg>
-              <div class="w-trend-labels">
-                <span v-for="w in weekly.weeks" :key="w.week_start">{{ w.label }}<i>{{ weekNet(w) > 0 ? '+' : '' }}{{ weekNet(w) }}</i></span>
-              </div>
-            </div>
-          </div>
-          <div class="dash-chart">
-            <h4 class="w-h">本周每天净增</h4>
-            <div class="w-chart dash-bars">
-              <div v-for="d in weekly.days" :key="d.date" class="w-bar-col">
-                <div class="w-bar" :class="{ down: dayNet(d) < 0 }" :style="{ height: (Math.abs(dayNet(d)) / maxDayEarn * 100) + '%' }">
-                  <i v-if="dayNet(d)">{{ dayNet(d) > 0 ? '+' : '' }}{{ dayNet(d) }}</i>
-                </div>
-                <span>周{{ d.weekday }}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div v-if="weekly.by_subject && weekly.by_subject.length" class="dash-chart">
-          <h4 class="w-h">本周各科</h4>
-          <div class="w-subj">
-            <div v-for="s in subjectRows" :key="s.name" class="w-subj-row">
-              <span class="w-subj-name">{{ s.name }}</span>
-              <div class="w-subj-track"><i :style="{ width: ((s.sun || 0) / maxSubj * 100) + '%' }"></i></div>
-              <span class="w-subj-num">+{{ s.sun }}</span>
-            </div>
-          </div>
-        </div>
-      </template>
-    </section>
+    <AdminInsights
+      v-if="section === 'insights'"
+      :weekly="weekly"
+      :family-today="familyToday"
+      :insight-kids="insights.kids"
+      :daily="daily"
+      :daily-hist="dailyHist"
+      :fitness-goals="fitnessGoals"
+      :review-count="reviewCount"
+      :pending-redeem="pendingRedeem"
+      :is-multi-kid="isMultiKid"
+      :selected-kid="selectedKid"
+      :kid-name="currentKidName"
+      :parent-name="me.name || ''"
+      :weekly-goal="weeklyGoal"
+      :weekly-goal-busy="weeklyGoalBusy"
+      :subject-name="subjectName"
+      @update:weekly-goal="weeklyGoal = $event"
+      @save-weekly-goal="saveWeeklyGoal"
+      @go-section="goSection"
+      @pick-kid="pickKid"
+      @go-review-kid="goReviewKid"
+      @go-insight="goInsight"
+      @undo-daily="undoDaily"
+    />
 
     <!-- 商店 -->
     <section v-if="section === 'shop'" class="a-card enter">
