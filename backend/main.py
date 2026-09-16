@@ -20,6 +20,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 from fastapi import FastAPI, HTTPException, Depends, Request, Response
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
@@ -229,6 +230,30 @@ def _user_from_request(request: Request):
 
 
 PUBLIC_API = {"/api/health", "/api/auth/login", "/api/auth/logout", "/api/auth/register", "/api/auth/join", "/api/auth/recover"}
+
+CACHE_IMMUTABLE = "public, max-age=31536000, immutable"
+CACHE_NOCACHE = "no-cache"
+
+
+def static_cache_control(path: str):
+    """带 hash 的静态资源可缓存一年；html / sw.js 每次都要重新问服务器。API 不管。"""
+    p = (path or "").split("?", 1)[0]
+    if p.startswith("/api/"):
+        return None
+    if p == "/sw.js" or p.endswith(".html") or p in ("/", "/word", "/word/"):
+        return CACHE_NOCACHE
+    if p.startswith("/assets/") or p.startswith("/sprites/") or p.startswith("/sounds/"):
+        return CACHE_IMMUTABLE
+    return None
+
+
+@app.middleware("http")
+async def static_cache_mw(request: Request, call_next):
+    response = await call_next(request)
+    cc = static_cache_control(request.url.path)
+    if cc:
+        response.headers["Cache-Control"] = cc
+    return response
 
 
 @app.middleware("http")
@@ -4746,5 +4771,7 @@ if (_DIST / "index.html").exists():
     @app.get("/sw.js", include_in_schema=False)
     def _sw_js():
         from fastapi.responses import FileResponse
-        return FileResponse(str(_DIST / "sw.js"), headers={"Cache-Control": "no-cache"})
+        return FileResponse(str(_DIST / "sw.js"), headers={"Cache-Control": CACHE_NOCACHE})
     app.mount("/", StaticFiles(directory=str(_DIST), html=True), name="static")
+
+app.add_middleware(GZipMiddleware, minimum_size=500)
