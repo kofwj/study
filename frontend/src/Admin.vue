@@ -91,7 +91,6 @@ const fitnessGoals = ref({})
 const dailyHist = ref({})
 const terms = ref([])
 const activeTerm = ref('g5s1')
-const activeSubject = ref('')
 const cursors = ref({})
 const progressLock = ref(true)
 const hiddenSubjects = ref([])
@@ -105,7 +104,6 @@ const bankInterest = reactive({ enabled: false, cycle: 'weekly', rate: 5.0, thre
 const bankBusy = ref(false)
 const redemptions = ref([])
 const tests = ref([])
-const newTest = reactive({ subject_id: '', unit_id: '', score: '', note: '' })
 const catalog = ref({ tags: [], unit_tags: [] })
 const weakByUnit = ref({})
 const weakPoints = ref([])
@@ -122,12 +120,8 @@ function snapBankGoal() { bankGoalSnap.value = { name: bankGoal.name, target: ba
 const weekly = ref({ days: [], weeks: [], by_subject: [], kids: [], total_earned: 0, total_spent: 0, net: 0, balance: 0, earned_all: 0, streak: 0, checkins: 0, week_start: '', week_end: '', insight: null, family_insight: null, mastered_by_kid: [], penalty_net: 0, penalty_count: 0 })
 const insights = ref({ rules: { test_fail_count: 2, test_fail_score: 80, drop_ratio: 0.3, streak_break: 2 }, kids: [] })
 const familyToday = ref({ today: '', kids: [] })
-const rulesOpen = ref(false)
 const redeemFilter = ref('pending')
 const bankHistoryOpen = ref(false)
-const taskAddOpen = ref(false)
-const textbookOpen = reactive({})
-const dailyAddOpen = ref(false)
 const kidAddOpen = ref(false)
 const tasksRef = ref(null)  // 任务页子组件：脏条要调它的 isAddDirty/discardAdd/saveCurrentEdit
 // 编辑会话在 adminEdit.js（模块级单例）：商店、等级、家长任务、每日任务、孩子共用同一套
@@ -227,7 +221,6 @@ function applyTasks(t) {
   fitnessGoals.value = t.fitness_goals || {}
   terms.value = t.terms || []
   activeTerm.value = t.active_term || 'g5s1'
-  if (!activeSubject.value || !unitsBySubject.value[activeSubject.value]) activeSubject.value = Object.keys(unitsBySubject.value)[0] || ''
   cursors.value = t.cursors || {}
   progressLock.value = t.progress_lock === '1'
   hiddenSubjects.value = t.hidden_subjects || []
@@ -506,21 +499,6 @@ async function deliverRedeem(id) {
   try { await api.admin.deliverRedeem(id); showToast('已标记兑现'); await load() }
   catch (e) { showToast(e.message) }
 }
-async function addTest() {
-  if (!newTest.subject_id || newTest.score === '' || newTest.score === null) return showToast('选科目、填分数')
-  const sc = Number(newTest.score)
-  if (sc < 0 || sc > 100) return showToast('分数要在 0~100')
-  try {
-    const r = await api.admin.createTest({ subject_id: newTest.subject_id, unit_id: newTest.unit_id, score: sc, note: newTest.note })
-    showToast(`已发 +${r.sunshine} 阳光`)
-    Object.assign(newTest, { subject_id: '', unit_id: '', score: '', note: '' })
-    await load()
-  } catch (e) { showToast(e.message) }
-}
-async function delTest(id) {
-  if (!confirm('删除这条测试记录？会冲正扣回阳光。')) return
-  await withBusy(async () => { await api.admin.delTest(id); await load() })
-}
 // —— 等级 ——
 const newRank = reactive({ name: '', min_sunshine: 0 })
 async function addRank() {
@@ -538,24 +516,6 @@ async function delRank(id) {
 }
 
 // —— 单元任务 ——
-const newTask = reactive({ subject_id: '', unit_id: '', action: '', title: '', sunshine: 5, kid_id: '' })
-const unitOptions = computed(() => units.value.filter(u => u.subject_id === newTask.subject_id && u.term_id === activeTerm.value))
-const testUnitOptions = computed(() => units.value.filter(u => u.subject_id === newTest.subject_id && u.term_id === activeTerm.value))
-function pickSubject() { newTask.unit_id = '' }
-function unitTasks(sid, uid) { return (tasksBySubject.value[sid] || []).filter(x => x.unit_id === uid) }
-function customUnitTasks(sid, uid) { return unitTasks(sid, uid).filter(x => x.custom) }
-function textbookUnitTasks(sid, uid) { return unitTasks(sid, uid).filter(x => !x.custom) }
-async function addTask() {
-  if (!newTask.subject_id || !newTask.unit_id || !newTask.title) return showToast('选科目/单元、填标题')
-  await withBusy(async () => {
-    await api.admin.createTask({ ...newTask, kid_id: newTask.kid_id || null })
-    Object.assign(newTask, { subject_id: '', unit_id: '', action: '', title: '', sunshine: 5, kid_id: '' })
-    taskAddOpen.value = false
-    showToast('已新增'); await load()
-  })
-}
-async function saveTask(t) { await withBusy(async () => { await api.admin.updateTask(t.id, { ...t, kid_id: t.kid_id || null }); clearEdit(); showToast('已保存') }) }
-async function delTask(id) { if (!confirm('删除这个任务？')) return; await withBusy(async () => { await api.admin.delTask(id); await load() }) }
 
 const tasksBySubject = computed(() => {
   const m = {}
@@ -594,15 +554,6 @@ const unitsBySubject = computed(() => {
 })
 const tagFor = (id) => (catalog.value.tags || []).find(t => t.id === id) || { id, name: id }
 const tagName = (id) => tagFor(id).name
-function tagsFor(uid) {
-  // 自动标签只是未精标课程的内部占位，不能当作家长可判断的薄弱考点。
-  return (catalog.value.unit_tags || []).filter(x => x.unit_id === uid).map(x => ({ ...x, ...tagFor(x.tag_id) })).filter(x => x.name && !x.auto)
-}
-function hasAutoTags(uid) {
-  return (catalog.value.unit_tags || []).some(x => x.unit_id === uid && x.auto)
-}
-function tagOn(uid, tid) { return !!(weakByUnit.value[uid] && weakByUnit.value[uid][tid]) }
-function weakTagCount(uid) { return Object.keys(weakByUnit.value[uid] || {}).length }
 function weakPointTiming(x) {
   if (!x.review_due_at) return '等待安排'
   const now = new Date()
@@ -633,34 +584,8 @@ async function toggleTag(uid, tid) {
 }
 
 // —— 每日任务 ——
-const DIRS = [['higher_better', '越多越好'], ['lower_better', '越少越好']]
-const newDaily = reactive({ subject_id: '体育', name: '', sunshine: 5, bonus_per_metric: 3, note: '', kid_id: '', link: '', require_quiz: false, metrics: [] })
-const EMPTY_DAILY = { subject_id: '体育', name: '', sunshine: 5, bonus_per_metric: 3, note: '', kid_id: '', link: '', require_quiz: false, metrics: [] }
 const kidName = (id) => kids.value.find(k => k.id === id)?.name || '某个孩子'
 // 管理列表看全家的任务；系统内置排最后，其余按「全家 → 各孩子」分组
-const orderedDaily = computed(() => [...dailyAll.value].sort((a, b) =>
-  Number(b.family_id != null) - Number(a.family_id != null)
-  || String(a.kid_id || '').localeCompare(String(b.kid_id || ''))))
-function addMetric(arr) { arr.push({ id: 'm' + Date.now(), label: '', unit: '', direction: 'higher_better', note: '' }) }
-const cleanMetrics = (ms) => (ms || []).map(({ id, label, unit, direction, note }) => ({ id, label, unit, direction, note }))
-async function addDaily() {
-  if (!newDaily.name) return showToast('填任务名')
-  await withBusy(async () => {
-    await api.admin.createDaily({ ...newDaily, kid_id: newDaily.kid_id || null, link: newDaily.link || null, require_quiz: newDaily.require_quiz, metrics: cleanMetrics(newDaily.metrics) })
-    const who = newDaily.kid_id ? kidName(newDaily.kid_id) : ''
-    Object.assign(newDaily, EMPTY_DAILY)
-    dailyAddOpen.value = false
-    showToast(who ? `已新增，只有「${who}」能看到` : '已新增'); await load()
-  })
-}
-async function saveDaily(d) {
-  await withBusy(async () => {
-    await api.admin.updateDaily(d.id, { subject_id: d.subject_id, name: d.name, sunshine: d.sunshine, bonus_per_metric: d.bonus_per_metric, note: d.note, kid_id: d.kid_id || null, link: d.link || null, require_quiz: d.require_quiz, metrics: cleanMetrics(d.metrics) })
-    clearEdit()
-    showToast('已保存')
-  })
-}
-async function delDaily(id) { if (!confirm('删除这个每日任务？')) return; await withBusy(async () => { await api.admin.delDaily(id); await load() }) }
 
 function sameJson(a, b) { return JSON.stringify(a) === JSON.stringify(b) }
 function filled(v) { return String(v ?? '').trim() !== '' }
@@ -850,11 +775,6 @@ async function resetTestBands() {
   testBands.value = DEFAULT_TEST_BANDS.map(x => [...x])
   await saveTestBands()
 }
-function testBandRange(i) {
-  const low = Number(testBands.value[i][0])
-  const high = i === 0 ? 100 : Number(testBands.value[i - 1][0]) - 1
-  return low === high ? `${low} 分` : `${low}～${high} 分`
-}
 const reviewSubject = ref('')
 const reviewSubjects = computed(() => {
   const ids = [...new Set((reviewDue.value || []).map(x => x.subject_id).filter(Boolean))]
@@ -863,15 +783,6 @@ const reviewSubjects = computed(() => {
 const filteredReviewDue = computed(() => {
   const rows = reviewDue.value || []
   return reviewSubject.value ? rows.filter(x => x.subject_id === reviewSubject.value) : rows
-})
-const testPreview = computed(() => {
-  const sc = Number(newTest.score)
-  if (newTest.score === '' || newTest.score === null || Number.isNaN(sc) || sc < 0 || sc > 100) return null
-  const bands = testBands.value || []
-  for (let i = 0; i < bands.length; i++) {
-    if (sc >= Number(bands[i][0])) return { range: testBandRange(i), sun: Number(bands[i][1]) }
-  }
-  return { range: '', sun: 0 }
 })
 const familyTodayEmpty = computed(() => {
   const ks = familyToday.value.kids || []
