@@ -2,8 +2,7 @@
 import { ref, reactive, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { api, setSelectedKid } from './api.js'
 import { APP_LABEL, APP_REVISION } from './version.js'
-import { tagHelp } from './tagHelp.js'
-import { SUBJECT_ORDER, n1, isTimeMetric, formatDuration, formatMetricValue } from './format.js'
+import { SUBJECT_ORDER } from './format.js'
 import { initAdminWords, loadWords } from './adminWords.js'
 import AdminWords from './components/AdminWords.vue'
 import AdminInsights from './components/AdminInsights.vue'
@@ -13,7 +12,7 @@ import AdminReview from './components/AdminReview.vue'
 import AdminShop from './components/AdminShop.vue'
 import AdminKids from './components/AdminKids.vue'
 import { initAdminEdit, useAdminEdit } from './adminEdit.js'
-import { Eye, Baby, Store, ClipboardCheck, BookOpen, MapPinned, Sun, Check, ArrowLeft, BookMarked, Globe } from '@lucide/vue'
+import { Eye, Baby, Store, ClipboardCheck, BookOpen, MapPinned, ArrowLeft, BookMarked, Globe } from '@lucide/vue'
 
 const props = defineProps({ recoveryCode: { type: String, default: '' } })
 const emit = defineEmits(['exit', 'switched', 'consumed-recovery'])
