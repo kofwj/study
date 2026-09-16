@@ -272,3 +272,19 @@
 .admin .a-item.add { border-top: 1px dashed var(--line); margin-top: 8px; padding-top: 12px; }
 .admin .a-item input, .admin .a-item select { border: 1px solid var(--line); border-radius: var(--radius-md); padding: 8px 10px; font-size: 15px; color: var(--ink); background: var(--surface); font-family: inherit; min-height: 40px; }
 .admin .a-item input:focus, .admin .a-item select:focus { outline: none; border-color: var(--brand); }
+
+/* —— 已学到（已学到哪一课 / 显示学科 / 进度锁）—— */
+.admin .cursor-row {
+  display: grid; grid-template-columns: 88px minmax(0, 1fr); align-items: center; gap: 12px;
+  padding: 10px 0; border-bottom: 1px solid var(--surface-2);
+}
+.admin .cursor-subj { font-weight: 800; color: var(--brand-deep); }
+.admin .cursor-row select {
+  width: 100%; min-width: 0; border: 1px solid var(--line); border-radius: var(--radius-md);
+  padding: 8px 10px; font-size: 15px; color: var(--ink); background: var(--surface);
+  font-family: inherit; min-height: 40px;
+}
+
+@media (max-width: 760px) {
+.admin .cursor-row { grid-template-columns: 1fr; gap: 6px; }
+}

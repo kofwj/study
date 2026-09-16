@@ -2,7 +2,6 @@
 import { ref, reactive, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { api, setSelectedKid } from './api.js'
 import { APP_LABEL, APP_REVISION } from './version.js'
-import { SUBJECT_ORDER } from './format.js'
 import { initAdminWords, loadWords } from './adminWords.js'
 import AdminWords from './components/AdminWords.vue'
 import AdminInsights from './components/AdminInsights.vue'
@@ -11,6 +10,7 @@ import AdminApprove from './components/AdminApprove.vue'
 import AdminReview from './components/AdminReview.vue'
 import AdminShop from './components/AdminShop.vue'
 import AdminKids from './components/AdminKids.vue'
+import AdminCursor from './components/AdminCursor.vue'
 import { initAdminEdit, useAdminEdit } from './adminEdit.js'
 import { Eye, Baby, Store, ClipboardCheck, BookOpen, MapPinned, ArrowLeft, BookMarked, Globe } from '@lucide/vue'
 
@@ -467,20 +467,6 @@ const tasksBySubject = computed(() => {
 })
 const subjectName = (id) => subjects.value.find(s => s.id === id)?.name || id
 const termUnits = computed(() => units.value.filter(u => u.term_id === activeTerm.value || (u.id || '').startsWith(activeTerm.value)))
-const cursorSubjects = computed(() => {
-  const unitIds = new Set(termUnits.value.map(u => u.id))
-  const ids = new Set(tasks.value.filter(t => unitIds.has(t.unit_id)).map(t => t.subject_id))
-  return subjects.value.filter(s => ids.has(s.id))
-})
-const displaySubjects = computed(() => {
-  const ids = new Set([
-    ...tasks.value.map(t => t.subject_id),
-    ...daily.value.map(d => d.subject_id),
-  ])
-  const list = subjects.value.filter(s => ids.has(s.id))
-  list.sort((a, b) => SUBJECT_ORDER.indexOf(a.id) - SUBJECT_ORDER.indexOf(b.id))
-  return list
-})
 function subjectShown(id) {
   return !(hiddenSubjects.value || []).includes(id)
 }
@@ -940,40 +926,23 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload)
     />
 
     <!-- 已学到 -->
-    <section v-if="section === 'cursor'" class="a-card enter">
-      <h3>已学到哪一课</h3>
-      <div class="cursor-row" v-for="s in cursorSubjects" :key="s.id">
-        <span class="cursor-subj">{{ s.name }}</span>
-        <select :value="cursors[s.id] || ''" @change="setCursor(s.id, $event.target.value)">
-          <option value="">从头开始</option>
-          <option v-for="t in (tasksBySubject[s.id] || [])" :key="t.id" :value="t.id">{{ t.title }}</option>
-        </select>
-      </div>
-      <h4 class="w-h">孩子端显示学科</h4>
-      <p class="dim">关掉的科目，孩子侧栏和今日推荐都看不到；任务还在，随时开回来。</p>
-      <div class="lock-row" v-for="s in displaySubjects" :key="'vis-' + s.id">
-        <span class="badge">{{ s.name }}</span>
-        <span class="grow">孩子端显示</span>
-        <button type="button" :class="['toggle', { on: subjectShown(s.id) }]" @click="toggleSubjectVisible(s.id)">{{ subjectShown(s.id) ? '开' : '关' }}</button>
-      </div>
-      <div class="lock-row mt14">
-        <span class="badge">进度锁</span>
-        <span class="grow">只让打「当前单元」</span>
-        <button :class="['toggle', { on: progressLock }]" @click="toggleLock">{{ progressLock ? '开' : '关' }}</button>
-      </div>
-      <h4 class="w-h">图鉴与基地</h4>
-      <p class="dim">给 {{ currentKidName || '当前孩子' }} 用。关掉图鉴后，连击宝箱只给阳光；秘密基地仍在，孩子端显示「建设中」。</p>
-      <div class="lock-row">
-        <span class="badge">阳光图鉴</span>
-        <span class="grow">连击宝箱会孵出阳光精灵，进图鉴。关掉则宝箱只给阳光。</span>
-        <button type="button" :class="['toggle', { on: spriteCfg.enabled }]" @click="saveSpritesCfg({ enabled: !spriteCfg.enabled })">{{ spriteCfg.enabled ? '开' : '关' }}</button>
-      </div>
-      <div class="lock-row">
-        <span class="badge">秘密基地</span>
-        <span class="grow">精灵住进天台/树屋/云上，星尘可以买小玩具。关掉则图鉴只显示格子。</span>
-        <button type="button" :class="['toggle', { on: spriteCfg.base_enabled }]" @click="saveSpritesCfg({ base_enabled: !spriteCfg.base_enabled })">{{ spriteCfg.base_enabled ? '开' : '关' }}</button>
-      </div>
-    </section>
+    <AdminCursor
+      v-if="section === 'cursor'"
+      :cursors="cursors"
+      :progress-lock="progressLock"
+      :hidden-subjects="hiddenSubjects"
+      :sprite-cfg="spriteCfg"
+      :tasks-by-subject="tasksBySubject"
+      :kid-name="currentKidName"
+      :subjects="subjects"
+      :tasks="tasks"
+      :daily="daily"
+      :term-units="termUnits"
+      @set-cursor="setCursor"
+      @toggle-lock="toggleLock"
+      @set-subject-visible="toggleSubjectVisible"
+      @save-sprites-cfg="saveSpritesCfg"
+    />
     <!-- 单元测试成绩 -->
 
     <!-- 家庭（孩子账号 / 家长成员 / 邀请码 / 家长密码）-->
@@ -1038,16 +1007,6 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload)
 .a-nav.on { background: var(--accent); color: #fff; box-shadow: var(--shadow-button); }
 .a-nav-ico { width: 18px; text-align: center; }
 .a-main { flex: 1; min-width: 0; padding-bottom: 72px; }
-.cursor-row {
-  display: grid; grid-template-columns: 88px minmax(0, 1fr); align-items: center; gap: 12px;
-  padding: 10px 0; border-bottom: 1px solid var(--surface-2);
-}
-.cursor-subj { font-weight: 800; color: var(--brand-deep); }
-.cursor-row select {
-  width: 100%; min-width: 0; border: 1px solid var(--line); border-radius: var(--radius-md);
-  padding: 8px 10px; font-size: 15px; color: var(--ink); background: var(--surface);
-  font-family: inherit; min-height: 40px;
-}
 @media (max-width: 560px) {
   .admin { padding: 10px; padding-top: calc(10px + env(safe-area-inset-top)); }
 }
@@ -1063,7 +1022,6 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload)
   .a-side { width: 100%; position: static; display: flex; gap: 6px; overflow-x: auto; padding: 8px; }
   .a-group { display: none; }
   .a-nav { flex: 0 0 auto; width: auto; white-space: nowrap; }
-  .cursor-row { grid-template-columns: 1fr; gap: 6px; }
   .a-title { font-size: 22px; }
 }
 .setup { min-height: 80vh; display: flex; align-items: center; justify-content: center; }
