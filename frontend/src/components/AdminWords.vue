@@ -123,10 +123,12 @@ const {
         <label class="fld w64"><span>每日目标</span><input v-model.number="wordCfg.daily_goal" type="number" min="0" max="40" /></label>
         <label class="fld w64"><span>连线每块</span><input v-model.number="wordCfg.match_size" type="number" min="3" max="6" /></label>
         <label class="fld w64"><span>连线块数</span><input v-model.number="wordCfg.match_blocks" type="number" min="0" max="3" /></label>
+        <label class="fld w64"><span>一关几步</span><input v-model.number="wordCfg.level_size" type="number" min="3" max="10" /></label>
         <button class="ok" @click="saveWordRhythm">保存节奏</button>
       </div>
       <p class="dim">每日目标：今天写够几个词点亮目标环，<b>0 = 不显示</b>；连线每块 3–6 个词（默认 5），
-        连线块数 <b>0 = 不玩「连一连」</b>（只认 + 写）。这三项下一局生效。</p>
+        连线块数 <b>0 = 不玩「连一连」</b>（只认 + 写）；<b>一关几步</b>决定「做完几题弹一次星星」——
+        默认 6，越小弹得越勤（3–10）。这几项下一局生效。</p>
       <div v-if="wordCfg.review_mode === 'current'" class="lock-row mt14">
         <span class="badge">词书锁</span>
         <span class="grow">系统词书跟着英语「已学到」</span>

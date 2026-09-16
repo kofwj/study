@@ -1,15 +1,25 @@
-// 英语复习独立页（/word/）—— P3：题型按掌握度自动切（认 4 选 1 / 写 / 连一连）+ 每日目标环。
-// 口径没变：只有「写」计分（分母 = 这一局词数），钱由后端按当天最好一轮补差；认/连一连不计分、不发钱。
-// 拼写判分用 src/wordSpell.js（标点/空格自动带出，孩子只敲字母）；题型规则用 src/wordGame.js（有单测）。
+// 英语复习独立页（/word/）—— 小关制 + 发音 + 「收获式」结算。
+//
+// 阳光口径（2026-09-16 改）：**不看正确率**，改看「完成 + 进步」——
+// 今天写过一个词 0.25 分、其中写对的再 0.25 分；错题不扣分；一天上限 10。
+// 三种题型都推进「今天写了几个词」；正确率只给家长看，不给孩子当分数。
+// 钱由后端按当天累计补差（口径在 backend/words.py），这一页只让孩子看见「练了多少、会了多少」。
+//
+// 发音（2026-09-16 新增）：家长端早就配好了 tts / tts_autoplay / tts_lang（见
+// components/WordPractice.vue），/api/words/game/start 也一直在返回这三个值，这一页以前没用。
+// 现在：认一认自动念、连一连点左边念、写完后各念一遍，默写时另有「🔊 听一听」当提示（比「看一眼」轻）。
+// 拼写判分用 src/wordSpell.js；题型/小关规则用 src/wordGame.js（有单测）。
 import { slotCells, assembleSpelling, lettersOf } from '../src/wordSpell.js'
-import { scoreOf, streakUpdate, planSession, buildOptions, buildMatchBoard, shuffleQueue } from '../src/wordGame.js'
+import {
+  streakUpdate, planSession, buildOptions, buildMatchBoard, shuffleQueue, chunkLevels, levelEnds,
+} from '../src/wordGame.js'
 
 const $ = (id) => document.getElementById(id)
 
 const KIND = { recognize: '先认一认', spell: '默写', match: '连一连' }
 
 // 家长端可设的三个旋钮（开局时读一次；局中改了不生效，下一局才变）
-const cfg = { matchSize: 5, matchBlocks: 3 }
+const cfg = { matchSize: 5, matchBlocks: 3, tts: true, ttsAutoplay: false, ttsLang: 'en-GB', levelSize: 6 }
 
 const state = {
   sid: '',
@@ -34,8 +44,16 @@ const state = {
   recDone: false,
   goal: { scored_words: 0, goal: 0, goal_done: false },
   counted: new Set(),  // 今天已经写过的词（开局时按 first_result 记下；目标环靠它判重）
-  phase: 'idle',       // idle | ask | feedback | sum
+  phase: 'idle',       // idle | ask | feedback | level | sum
   busy: false,
+  // 小关：把一局切成几小关，做完一关就给一次星星，不用等整局做完才看到「忙完了」
+  levelEnds: [],
+  levelIdx: 0,
+  levelCount: 0,
+  levelSpell: [],
+  lvRight: 0,
+  lvAnswered: 0,
+  today: null,         // 结算时服务端回来的数字（今天写了几个 / 对几个）
 }
 
 async function api(path, method = 'GET', body) {
@@ -64,6 +82,54 @@ function showErr(title, msg) {
 }
 function hideErr() { $('err').hidden = true }
 
+/* ============================================================
+   发音：优先走平板壳的原生桥（SunshineTts），退回浏览器 speechSynthesis
+   —— 和 components/WordPractice.vue 同一套做法，家长端三个开关直接生效
+   ============================================================ */
+let utter = null
+let ttsVoices = []
+function ttsReady() { return typeof speechSynthesis !== 'undefined' }
+function loadTtsVoices() {
+  if (!ttsReady()) return []
+  try { ttsVoices = speechSynthesis.getVoices() || [] } catch { ttsVoices = [] }
+  return ttsVoices
+}
+function pickTtsVoice(lang) {
+  const want = String(lang || 'en-GB').toLowerCase()
+  const en = loadTtsVoices().filter((v) => String(v.lang || '').toLowerCase().startsWith('en'))
+  if (!en.length) return null
+  return en.find((v) => String(v.lang || '').toLowerCase() === want)
+    || en.find((v) => String(v.lang || '').toLowerCase().startsWith(want.slice(0, 2)))
+    || en[0]
+}
+function nativeTts() {
+  try { return typeof SunshineTts !== 'undefined' && SunshineTts && typeof SunshineTts.speak === 'function' } catch { return false }
+}
+function stopSpeech() {
+  utter = null
+  try { if (nativeTts()) SunshineTts.stop() } catch { /* 没有原生桥就算了 */ }
+  try { if (ttsReady()) speechSynthesis.cancel() } catch { /* 同上 */ }
+}
+function speak(text) {
+  const t = String(text || '').trim()
+  if (!cfg.tts || !t) return false
+  const lang = cfg.ttsLang || 'en-GB'
+  try { if (nativeTts()) { SunshineTts.speak(t, lang); return true } } catch { /* 落到浏览器 TTS */ }
+  if (!ttsReady()) return false
+  try {
+    speechSynthesis.cancel()
+    const u = new SpeechSynthesisUtterance(t)
+    const v = pickTtsVoice(lang)
+    if (v) { u.voice = v; u.lang = v.lang || lang } else { u.lang = lang }
+    u.rate = 0.85
+    u.onerror = () => { if (utter === u) utter = null }
+    u.onend = () => { if (utter === u) utter = null }
+    utter = u
+    speechSynthesis.speak(u)
+    return true
+  } catch { return false }
+}
+
 /* ---------- 每日目标环（只展示，不发钱） ---------- */
 function setGoal(next) {
   if (next) state.goal = { ...state.goal, ...next }
@@ -75,7 +141,8 @@ function setGoal(next) {
   $('goal-fill').style.width = Math.min(100, Math.round((n / goal) * 100)) + '%'
   $('goal-mark').textContent = goal_done ? '🎉' : ''
 }
-// 乐观更新：结算时会被服务端数字纠正；今天已经写过的词先记在 counted 里，不重复加
+// 乐观更新：结算时会被服务端数字纠正；今天已经写过的词先记在 counted 里，不重复加。
+// 写错的词也算「写过」（服务端就是这么算的），所以这里不看对错。
 function bumpGoal(item) {
   const { goal, scored_words: n } = state.goal
   if (!goal || !item || state.counted.has(item.word_id)) return
@@ -85,10 +152,12 @@ function bumpGoal(item) {
 }
 
 /* ---------- 顶部进度 ---------- */
+/* ---------- 顶部进度：倒着数「还剩几个词」 ---------- */
 function setStat() {
   const total = state.steps.length
-  const n = Math.min(state.si + 1, total)
-  $('stat').textContent = total ? `第 ${n}/${total} 题 · 连击 ${state.streak}` : ''
+  const left = state.steps.slice(state.si).filter((s) => s.kind === 'spell').length
+  const lv = Math.min(state.levelIdx + 1, state.levelCount || 1)
+  $('stat').textContent = total ? `第 ${lv} 关 · 还剩 ${left} 个词` : ''
   $('progress').style.width = total ? Math.round((state.si / total) * 100) + '%' : '0%'
 }
 
@@ -127,8 +196,10 @@ function focusInput() {
 function renderActions() {
   if (state.phase === 'ask' && state.step && state.step.kind === 'spell') {
     $('actions').innerHTML = '<button class="do" id="check" type="button">检查</button>' +
+      '<button class="sec" id="hear" type="button">🔊 听一听</button>' +
       '<button class="sec" id="peek" type="button">忘了，看一眼</button>'
     $('check').onclick = check
+    $('hear').onclick = () => speak(state.item && state.item.word)
     $('peek').onclick = peek
   } else {
     $('actions').innerHTML = ''
@@ -148,7 +219,7 @@ function askSpell() {
   focusInput()
 }
 
-/* ---------- 认（4 选 1）· 不计分 ---------- */
+/* ---------- 认（4 选 1）· 不给孩子打分 ---------- */
 function askRecognize() {
   state.recDone = false
   state.recOpts = buildOptions(state.item, state.queue, 4)
@@ -156,11 +227,14 @@ function askRecognize() {
   $('rec-opts').innerHTML = state.recOpts
     .map((t, i) => `<button class="opt" type="button" data-i="${i}">${t}</button>`).join('')
   for (const b of $('rec-opts').querySelectorAll('.opt')) b.onclick = () => answerRecognize(b)
+  $('rec-hear').onclick = () => speak(state.item && state.item.word)
+  if (cfg.ttsAutoplay) speak(state.item.word)     // 认一认念出来不泄题（题面本来就是英文）
 }
 
 function answerRecognize(btn) {
   if (state.recDone) return
   state.recDone = true
+  speak(state.item.word)                          // 对错都把音和形再对一次
   const answer = state.item.cn || ''
   const right = state.recOpts[+btn.dataset.i] === answer
   btn.classList.add(right ? 'ok' : 'no')
@@ -208,6 +282,7 @@ function pickMatch(el) {
   if (el.dataset.side === 'L') {
     if (state.pickL) state.pickL.classList.remove('pick')
     state.pickL = el
+    speak(el.textContent)                                  // 点英文那侧就念一遍
   } else {
     if (state.pickR) state.pickR.classList.remove('pick')
     state.pickR = el
@@ -260,8 +335,24 @@ function nextStep() {
   return askSpell()
 }
 
+/* ---------- 小关：做完一关就给一次星星，不用等整局做完 ---------- */
+function showLevelDone() {
+  const spellN = state.levelSpell[state.levelIdx] || 0
+  const right = state.lvRight
+  const stars = spellN === 0 ? 3 : (right >= spellN ? 3 : (right * 10 >= spellN * 7 ? 2 : 1))
+  state.phase = 'level'
+  $('lv-stars').textContent = '⭐'.repeat(stars) + '☆'.repeat(3 - stars)
+  $('lv-title').textContent = `第 ${state.levelIdx + 1} 小关过完啦`
+  $('lv-sub').textContent = spellN ? `这一关写了 ${spellN} 个词，对了 ${right} 个` : '这一关全配上了'
+  $('card-quiz').hidden = true
+  $('card-level').hidden = false
+  setStat()
+}
+
 function advance() {
+  const finished = state.si            // 刚做完的那一步
   state.si += 1
+  if (state.levelEnds.includes(finished) && state.si < state.steps.length) return showLevelDone()
   nextStep()
 }
 
@@ -269,6 +360,7 @@ function renderFeedback(right, typed) {
   const item = state.item
   renderSlots(right ? 'right' : 'wrong')
   renderStreak()
+  speak(item.word)                                        // 对错都念一遍，把音记住
   const head = right
     ? `<p class="fb ok">对了！</p><div class="big-en">${item.word}</div>`
     : `<p class="fb no">你写了 ${typed || '（空）'}</p><div class="big-en">${item.word}</div>` +
@@ -299,10 +391,11 @@ async function submit(text, retry) {
     const right = payload && payload.result === 'right'
     if (!retry) {                       // 「再写一次」不计分、也不算连击（那一次已经判过了）
       state.answered += 1
-      if (right) state.right += 1
+      state.lvAnswered += 1
+      if (right) { state.right += 1; state.lvRight += 1 }
       state.streak = streakUpdate(state.streak, right)
       state.best = Math.max(state.best, state.streak)
-      if (right) bumpGoal(item)
+      bumpGoal(item)                    // 写错也算「写过」（服务端就是这么算的）
     }
     state.phase = 'feedback'
     renderFeedback(right, text)
@@ -329,6 +422,7 @@ function check() {
 function peek() {
   const item = state.item
   if (!item) return
+  speak(item.word)                                    // 看一眼：顺便把音记住
   $('feedback').innerHTML = `<p class="fb no">看一眼：<b>${item.word}</b></p>` +
     '<div class="row"><button class="sec" id="peek-retry" type="button">再写一次</button>' +
     '<button class="sec" id="peek-skip" type="button">下一题</button></div>'
@@ -340,6 +434,7 @@ function peek() {
   }
   $('peek-skip').onclick = () => {
     state.answered += 1                 // 跳过的算没对（分母就是这一局词数）
+    state.lvAnswered += 1
     state.streak = streakUpdate(state.streak, false)
     advance()
   }
@@ -347,6 +442,7 @@ function peek() {
 }
 
 /* ---------- 结算 ---------- */
+/* ---------- 结算：说「收获」，不给孩子打分 ---------- */
 function renderSumGoal() {
   const { scored_words: n, goal, goal_done } = state.goal
   if (!goal) { $('sum-goal').hidden = true; return }
@@ -357,29 +453,41 @@ function renderSumGoal() {
     : `今天写了 ${n} 个词 · 目标 ${goal}`
 }
 
+// 收获清单：练了多少 / 会了多少 / 还有多少要再来一回。没有百分比、没有「错」字。
+function renderSumList() {
+  const t = state.today || {}
+  const done = t.words_done != null ? Number(t.words_done) : state.answered
+  const right = t.words_right != null ? Number(t.words_right) : state.right
+  const again = Math.max(0, done - right)
+  const rows = [['今天练了', `${done} 个词`], ['已经会写', `${right} 个`]]
+  if (again > 0) rows.push(['还要再来一回', `${again} 个`])
+  $('sum-list').innerHTML = rows
+    .map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join('')
+}
+
 async function finish() {
   state.phase = 'sum'
   $('card-quiz').hidden = true
+  $('card-level').hidden = true
   $('card-sum').hidden = false
   $('sum-note').hidden = true
   $('sum-goal').hidden = true
-  const size = state.queue.length || state.answered
-  $('sum-pct').textContent = scoreOf(state.right, size) + '%'
-  $('sum-sub').textContent = `这一轮答对 ${state.right}/${size} 题 · 最高连击 ${state.best}`
   $('progress').style.width = '100%'
   $('stat').textContent = ''
+  state.today = null
+  renderSumList()
+  renderSumGoal()
   if (!state.sid) return
   try {
     const res = await api('/api/words/game/settle', 'POST', { session_id: state.sid })
-    const t = res.today || {}
-    const rnd = res.round || {}
-    const got = t.granted || 0
-    const n = rnd.size || size
-    const right = rnd.correct != null ? rnd.correct : state.right
-    if (rnd.score != null) $('sum-pct').textContent = rnd.score + '%'
-    $('sum-sub').textContent = `这一轮答对 ${right}/${n} 题 · 最高连击 ${state.best}`
-    $('sum-note').textContent = (got > 0 ? `阳光 +${got} · ` : '') +
-      `今天英语阳光 ${t.got || 0}/${t.limit || 10}（最好 ${t.best_score || 0} 分）`
+    state.today = res.today || {}
+    const t = state.today
+    renderSumList()                                  // 用服务端的数字纠正（分母口径以服务端为准）
+    const bits = []
+    if ((t.granted || 0) > 0) bits.push(`阳光 +${t.granted}`)
+    bits.push(`今天英语阳光 ${t.got || 0}/${t.limit || 10}`)
+    if (state.best >= 3) bits.push(`最高连击 ${state.best} 🔥`)
+    $('sum-note').textContent = bits.join(' · ')
     $('sum-note').hidden = false
     setGoal(t)
   } catch (e) {
@@ -389,24 +497,39 @@ async function finish() {
   renderSumGoal()
 }
 
-function again() {
+// 开局与「再练一遍」共用：重置这一轮的计数、把小关切开、从第一步开始
+function beginRound() {
   state.si = 0
-  state.round += 1
   state.right = 0
   state.answered = 0
   state.streak = 0
   state.best = 0
   state.blockNo = 0
-  state.queue = shuffleQueue(state.queue)          // ① 每次「再练一遍」也换顺序
-  state.steps = planSession(state.queue, { matchSize: cfg.matchSize, matchBlocks: cfg.matchBlocks }).steps
+  state.lvRight = 0
+  state.lvAnswered = 0
+  state.levelIdx = 0
+  state.today = null
+  const groups = chunkLevels(state.steps, cfg.levelSize)
+  state.levelCount = groups.length
+  state.levelSpell = groups.map((g) => g.filter((s) => s.kind === 'spell').length)
+  state.levelEnds = levelEnds(state.steps.length, cfg.levelSize)
   $('card-sum').hidden = true
+  $('card-level').hidden = true
   $('card-quiz').hidden = false
   nextStep()
+}
+
+function again() {
+  state.round += 1
+  state.queue = shuffleQueue(state.queue)          // ① 每次「再练一遍」也换顺序
+  state.steps = planSession(state.queue, { matchSize: cfg.matchSize, matchBlocks: cfg.matchBlocks }).steps
+  beginRound()
 }
 
 async function load() {
   $('card-loading').hidden = false
   $('card-quiz').hidden = true
+  $('card-level').hidden = true
   $('card-sum').hidden = true
   $('goal').hidden = true
   hideErr()
@@ -425,6 +548,11 @@ async function load() {
   cfg.matchBlocks = (c.match_blocks === undefined || c.match_blocks === null)
     ? 3                                                    // 老后端没这个键时按默认 3 块
     : (Number(c.match_blocks) || 0)
+  // 发音三件套：家长端「英语单词」页已经能设、后端一直在发，这一页以前没用上
+  cfg.tts = c.tts !== false
+  cfg.ttsAutoplay = !!c.tts_autoplay
+  cfg.ttsLang = c.tts_lang === 'en-US' ? 'en-US' : 'en-GB'
+  cfg.levelSize = Number(c.level_size) > 0 ? Number(c.level_size) : 6   // 一小关几步（家长端「一关几步」3–10）
   setGoal(today && today.goal)
   const session = today && today.session
   const items = (session && session.items) || []
@@ -435,16 +563,9 @@ async function load() {
   // 今天已经写过的词先记下来：目标环的乐观更新靠它判重（结算时再按服务端数字对齐）
   state.counted = new Set(items.filter((x) => x.first_result).map((x) => x.word_id))
   state.queue = shuffleQueue(state.queue)          // ① 每次打开都换顺序（词序不固定）
-  state.si = 0
   state.round = 1
-  state.right = 0
-  state.answered = 0
-  state.streak = 0
-  state.best = 0
-  state.blockNo = 0
   state.steps = planSession(state.queue, { matchSize: cfg.matchSize, matchBlocks: cfg.matchBlocks }).steps
-  $('card-quiz').hidden = false
-  nextStep()
+  beginRound()
 }
 
 $('slots').addEventListener('click', focusInput)
@@ -453,8 +574,19 @@ $('input').addEventListener('input', (e) => {
   renderSlots('')
 })
 $('input').addEventListener('keyup', (e) => { if (e.key === 'Enter') check() })
+$('lv-next').addEventListener('click', () => {
+  state.levelIdx += 1
+  state.lvRight = 0
+  state.lvAnswered = 0
+  $('card-level').hidden = true
+  $('card-quiz').hidden = false
+  nextStep()
+})
 $('again').addEventListener('click', again)
-$('home').addEventListener('click', () => { location.href = '/' })
+$('home').addEventListener('click', () => { stopSpeech(); location.href = '/' })
 $('err-retry').addEventListener('click', load)
+// 有些浏览器要等用户碰一下才肯发声；顺便把音色列表加载进来（Chrome 是异步给的）
+document.addEventListener('pointerdown', () => { loadTtsVoices() }, { once: true })
+if (ttsReady()) { try { speechSynthesis.onvoiceschanged = loadTtsVoices } catch { /* 不支持就算了 */ } }
 
 load()

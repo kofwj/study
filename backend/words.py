@@ -30,6 +30,7 @@ CFG_GAME_SIZE = "words_game_size"   # 一局多少词（独立页 /word/ 用，1
 CFG_DAILY_GOAL = "words_daily_goal"     # 每日目标：今天写够几个词算达标（0 = 关闭）5–40
 CFG_MATCH_SIZE = "words_match_size"     # 「连一连」一块几个词 3–6
 CFG_MATCH_BLOCKS = "words_match_blocks"  # 「连一连」一局最多几块 0–3（0 = 不玩连一连）
+CFG_LEVEL_SIZE = "words_level_size"     # 一小关几步 3–10（做完一关弹一次星星）
 CFG_CURSOR = "words_unlock_by_cursor"
 CFG_BOOK = "words_current_book"
 CFG_REVIEW_MODE = "words_review_mode"
@@ -136,6 +137,7 @@ def kid_config(c, kid):
         "daily_goal": _clamp_goal(db.get_kid_setting(c, kid, CFG_DAILY_GOAL, "10")),
         "match_size": _clamp_int(db.get_kid_setting(c, kid, CFG_MATCH_SIZE, "5"), 5, 3, 6),
         "match_blocks": _clamp_int(db.get_kid_setting(c, kid, CFG_MATCH_BLOCKS, "3"), 3, 0, 3),
+        "level_size": _clamp_int(db.get_kid_setting(c, kid, CFG_LEVEL_SIZE, "6"), 6, 3, 10),
         "unlock_by_cursor": unlock,
         "current_book": db.get_kid_setting(c, kid, CFG_BOOK, "") or "",
         "review_mode": mode,
@@ -155,6 +157,7 @@ def set_kid_config(c, kid, **fields):
         "daily_goal": (CFG_DAILY_GOAL, lambda v: str(_clamp_goal(v))),
         "match_size": (CFG_MATCH_SIZE, lambda v: str(_clamp_int(v, 5, 3, 6))),
         "match_blocks": (CFG_MATCH_BLOCKS, lambda v: str(_clamp_int(v, 3, 0, 3))),
+        "level_size": (CFG_LEVEL_SIZE, lambda v: str(_clamp_int(v, 6, 3, 10))),
         "unlock_by_cursor": (CFG_CURSOR, lambda v: "1" if v else "0"),
         "current_book": (CFG_BOOK, lambda v: (v or "").strip()),
         "review_mode": (CFG_REVIEW_MODE, lambda v: "scope" if v == "scope" else "current"),
@@ -613,15 +616,24 @@ def _counts(items):
     return {"due": due, "new": new, "answered": answered, "correct_first_try": correct}
 
 
+def words_today(c, kid):
+    """今天「写了几个词 / 其中写对几个」（去重）：只数 phase='spell' 的正式作答，retry 不算。
+    服务端算，不信客户端。写对 = 这个词今天有过一次 spell 判对 ——
+    第一轮写错、第二轮「再练一遍」改对也算「进步」，两边都算进来。"""
+    row = c.execute(
+        "SELECT COUNT(DISTINCT a.word_id) AS done, "
+        "COUNT(DISTINCT CASE WHEN a.result='right' THEN a.word_id END) AS right_n "
+        "FROM word_attempts a JOIN word_sessions s ON s.id=a.session_id "
+        "WHERE a.kid_id=? AND a.phase='spell' AND s.study_date=?",
+        (kid, db.today()),
+    ).fetchone()
+    return int(row["done"] or 0), int(row["right_n"] or 0)
+
+
 def scored_words_today(c, kid):
     """今天「写过」的词数（去重）：只数 phase='spell' 的正式作答，retry 不算。
     服务端算，不信客户端 —— 和「一轮得分」的分母同一套数据。"""
-    return int(c.execute(
-        "SELECT COUNT(DISTINCT a.word_id) FROM word_attempts a "
-        "JOIN word_sessions s ON s.id=a.session_id "
-        "WHERE a.kid_id=? AND a.phase='spell' AND s.study_date=?",
-        (kid, db.today()),
-    ).fetchone()[0] or 0)
+    return words_today(c, kid)[0]
 
 
 def goal_state(c, kid, cfg):
@@ -1224,28 +1236,32 @@ def complete_session(c, kid, fam, sid):
     if getattr(cur, "rowcount", 0) == 0:
         return today_payload(c, kid, fam, create=False)
     row = _session_owned(c, kid, sid)
-    # v0.3.53：单词流程不再发阳光 —— 英语阳光改由独立页 /word/ 按当天最好成绩结算（≤10/天）
+    # v0.3.53：单词流程不再发阳光 —— 英语阳光改由独立页 /word/ 结算（≤10/天，口径见 GAME_MAX_SUNSHINE）
     return today_payload(c, kid, fam, create=False)
 
 
-# ---------------- 英语复习独立页 /word/（P2：按成绩发阳光 + 写打卡）----------------
-# 口径（2026-09-16 定）：一轮得分 = 该轮答对 / 这一局词数（没答的当没对）；
-# 当天按最好一轮结算一次额度：60 分以下 0，60–100 线性到 10（向下取整）。只补差额。
-# 「一轮」= word_attempts.attempt_no 分组（服务端算，不信客户端）。
+# ---------------- 英语复习独立页 /word/（发阳光 + 写打卡）----------------
+# 口径（2026-09-16 改）：**不看正确率**，改看「完成 + 进步」——
+# 今天写过一个词 0.25 分、其中写对的再 0.25 分（错题不扣分），一天上限 GAME_MAX_SUNSHINE。只补差额。
+# 「一轮」= word_attempts.attempt_no 分组（服务端算，不信客户端）；正确率只给家长看，不参与发钱。
 
 GAME_MAX_SUNSHINE = 10
 
 
-def sunshine_for_score(score):
-    """与前端 frontend/src/wordGame.js 的 sunshineFor 同一张表（两边都有测试钉住）。"""
-    try:
-        s = float(score)
-    except (TypeError, ValueError):
-        return 0
-    if s < 60:
-        return 0
-    capped = min(100.0, s)
-    return max(0, min(GAME_MAX_SUNSHINE, int((capped - 60) / 40 * GAME_MAX_SUNSHINE)))
+def sunshine_for_progress(done, right):
+    """与前端 frontend/src/wordGame.js 的 sunshineForProgress 同一张表（两边都有测试钉住）。
+    口径（2026-09-16 改）：不看正确率，改看「完成 + 进步」——
+    今天写过一个词给 0.25 分，其中写对的再给 0.25 分；**错题不扣分**。
+    20 词全对 = 10；20 词做完但全错 = 5（来了就有保底）。一天上限 GAME_MAX_SUNSHINE。"""
+    def _n(v):
+        try:
+            return max(0, int(v or 0))
+        except (TypeError, ValueError):
+            return 0
+    d, r = _n(done), _n(right)
+    if r > d:
+        r = d                                   # 写对的不会多于写过的
+    return max(0, min(GAME_MAX_SUNSHINE, int((d + r) * 0.25)))
 
 
 def _game_rounds(c, kid, sid):
@@ -1277,10 +1293,12 @@ def _game_got(c, kid, today):
 
 def _game_today(c, kid, sid):
     rounds = _game_rounds(c, kid, sid)
-    best = max([r["score"] for r in rounds], default=0)
-    should = sunshine_for_score(best)
+    best = max([r["score"] for r in rounds], default=0)   # 只给家长看，不参与发钱
+    done, right = words_today(c, kid)
+    should = sunshine_for_progress(done, right)
     got = _game_got(c, kid, db.today())
     return {"rounds": rounds, "best_score": best, "should": should, "got": got,
+            "words_done": done, "words_right": right,
             "can_grant": max(0, should - got),
             "checkin": c.execute("SELECT 1 FROM checkins WHERE date=? AND kid_id=?",
                                  (db.today(), kid)).fetchone() is not None}
@@ -1307,7 +1325,8 @@ def game_info(c, kid, fam):
     row = _today_session(c, kid)
     sess = _session_public(c, kid, fam, row) if row else None
     today = _game_today(c, kid, row["id"]) if row else {"rounds": [], "best_score": 0,
-                                                        "should": 0, "got": 0, "can_grant": 0, "checkin": False}
+                                                        "should": 0, "got": 0, "can_grant": 0,
+                                                        "checkin": False, "words_done": 0, "words_right": 0}
     today.pop("rounds", None)
     today.update(goal_state(c, kid, cfg))
     return {"enabled": cfg["enabled"], "size": int(cfg["game_size"]), "config": cfg,
@@ -1315,7 +1334,8 @@ def game_info(c, kid, fam):
 
 
 def settle_game(c, kid, fam, sid):
-    """一轮结束：算本轮成绩 → 更新今日最好 → 补差发阳光 → 写当天打卡 → 标记会话完成。"""
+    """一轮结束：算这一轮成绩（只展示，不参与发钱）→ 按「今天完成 + 写对」补差发阳光 →
+    写当天打卡 → 标记会话完成。**错题不扣分**：阳光只增不减。"""
     row = _session_owned(c, kid, sid)
     if not row:
         raise WordError(404, "没找到今天的单词练习")
@@ -1326,9 +1346,10 @@ def settle_game(c, kid, fam, sid):
     round_now = rounds[-1]
     should, got = info["should"], info["got"]
     granted = max(0, should - got)
+    done, right = info["words_done"], info["words_right"]
     if granted:
         db.insert_ledger(c, db.today(), granted, "word_game", "wg-%s-%d" % (db.today(), should),
-                         "英语复习 · 当天最好成绩 %d 分" % info["best_score"], kid_id=kid)
+                         "英语复习 · 今天写了 %d 个词（对 %d 个）" % (done, right), kid_id=kid)
     # 做完一轮就等于今天打卡（幂等；连击/全勤沿用既有逻辑）
     db.insert(c, "INSERT INTO checkins(date,sunshine,created_at,kid_id) VALUES(?,?,?,?) ON CONFLICT DO NOTHING",
               (db.today(), 0, db.now(), kid))
@@ -1338,8 +1359,9 @@ def settle_game(c, kid, fam, sid):
         "round": round_now,
         "today": {"best_score": info["best_score"], "should": should, "got": got + granted,
                   "granted": granted, "limit": GAME_MAX_SUNSHINE, "checkin": True,
+                  "words_done": done, "words_right": right, "words_wrong": max(0, done - right),
                   **goal_state(c, kid, kid_config(c, kid))},
-        "day_best_hint": ("今天最好 %d 分（今天英语阳光 %d/%d）"
-                          % (info["best_score"], got + granted, GAME_MAX_SUNSHINE)),
+        "day_best_hint": ("今天写了 %d 个词（对 %d 个）· 英语阳光 %d/%d"
+                          % (done, right, got + granted, GAME_MAX_SUNSHINE)),
     }
     return payload

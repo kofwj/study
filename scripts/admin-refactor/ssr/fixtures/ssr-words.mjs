@@ -42,7 +42,7 @@ const warns = []
 async function render(stats, cfg) {
   Object.assign(aw.wordCfg, {
     enabled: true, new_per_day: 5, max_due: 10, game_size: 20,
-    daily_goal: 10, match_size: 5, match_blocks: 3, ...(cfg || {}),
+    daily_goal: 10, match_size: 5, match_blocks: 3, level_size: 6, ...(cfg || {}),
   })
   aw.wordBooks.value = []
   aw.wordProblems.value = []

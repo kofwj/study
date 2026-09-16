@@ -1,11 +1,14 @@
 #!/usr/bin/env node
-// 英语复习页（/word/）的规则回归：阳光档位 + 正确率 + 连击 + 题型编排，逐条断言。
-// 口径（2026-09-16 定）：60 分以下 0；60–100 线性到 10，向下取整（70→2、80→5、95→8、100→10）。
-// 题型（P3）：认 4 选 1（不计分）→ 写（唯一计分）；熟词先过一遍「连一连」（不计分）。
+// 英语复习页（/word/）的规则回归：阳光档位 + 正确率 + 连击 + 题型编排 + 小关切分，逐条断言。
+// 阳光口径（2026-09-16 改）：**不看正确率**，改看「完成 + 进步」——
+// 今天写过一个词 0.25、其中写对的再 0.25；错题不扣分；一天上限 10。
+// 例：20 词全对 = 10；20 词做完全错 = 5；10 词全对 = 5。
+// 题型（P3）：认 4 选 1 → 写；熟词先过一遍「连一连」。三种题型都推进「今天写了几个词」。
 // 用法：node scripts/check_word_game.mjs
 import {
-  scoreOf, sunshineFor, streakUpdate,
+  scoreOf, sunshineForProgress, streakUpdate,
   questionPlan, buildOptions, matchGroups, buildMatchBoard, planSession, entryCardText, shuffleQueue,
+  chunkLevels, levelEnds,
 } from '../frontend/src/wordGame.js'
 
 let bad = 0
@@ -17,17 +20,19 @@ function seeded(seed) {
   return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296 }
 }
 
-/* ---------- 阳光档位 / 正确率 / 连击 ---------- */
-const cases = [
-  [0, 0], [59, 0], [60, 0], [61, 0], [70, 2], [75, 3], [80, 5], [90, 7], [95, 8], [99, 9], [100, 10],
-  [120, 10],                       // 超范围按满分
-  ['70', 2],                       // 字符串也能算
-  [null, 0], [NaN, 0],
+/* ---------- 阳光档位（完成 + 进步）/ 正确率 / 连击 ---------- */
+const progCases = [
+  [0, 0, 0], [1, 0, 0], [2, 0, 0], [4, 0, 1], [2, 2, 1],
+  [10, 0, 2], [10, 10, 5], [20, 0, 5], [20, 10, 7], [20, 14, 8], [20, 20, 10],
+  [100, 100, 10],                  // 超范围按满分
+  ['20', '14', 8],                 // 字符串也能算
+  [3, 99, 1],                      // 写对的不会多于写过的
+  [null, null, 0], [NaN, NaN, 0], [-5, -5, 0], [undefined, undefined, 0],
 ]
-for (const [score, want] of cases) {
+for (const [d, r2, want] of progCases) {
   n++
-  const got = sunshineFor(score)
-  if (got !== want) { console.log(`  阳光档位不符：${score} → ${got}（应为 ${want}）`); bad++ }
+  const got = sunshineForProgress(d, r2)
+  if (got !== want) { console.log(`  阳光档位不符：写了${d}/对${r2} → ${got}（应为 ${want}）`); bad++ }
 }
 const scoreCases = [[0, 0, 0], [1, 1, 100], [17, 20, 85], [1, 3, 33], [2, 3, 67]]
 for (const [right, total, want] of scoreCases) {
@@ -197,5 +202,23 @@ ok(q.map((x) => x.word_id).join(',') === '1,2,3,4,5', '换顺序：不改原数�
 const many = shuffleQueue(Array.from({ length: 40 }, (_, i) => ({ word_id: i + 1 })))
 ok(many.length === 40 && new Set(many.map((x) => x.word_id)).size === 40, '换顺序：40 个词也不丢不重')
 
+
+/* ---------- 小关切分（chunkLevels / levelEnds） ---------- */
+const L = (k) => Array.from({ length: k }, (_, i) => ({ kind: 'spell', item: { word_id: i + 1 } }))
+const cl = chunkLevels(L(20), 6)
+ok(cl.length === 4, `20 步 6 步一关 → 4 小关，实际 ${cl.length}`)
+ok(cl.map((g) => g.length).join(',') === '6,6,6,2', `最后一关可以不满：${cl.map((g) => g.length).join(',')}`)
+ok(chunkLevels(L(18), 6).length === 3, '正好整除 → 3 关，不凭空多一关')
+ok(chunkLevels(L(20), 0).length === 4, '每关步数传 0 → 按默认 6 算，不炸')
+ok(chunkLevels(L(5), 6).length === 1, '不足一关 → 1 关')
+ok(chunkLevels([], 6).length === 0 && chunkLevels(undefined, 6).length === 0, '空/undefined 不炸')
+ok(chunkLevels(L(20), 6).flat().length === 20, '切关不丢步、不多步')
+ok(levelEnds(20, 6).join(',') === '5,11,17,19', `20 步 6 步一关 → 关尾 5,11,17,19，实际 ${levelEnds(20, 6).join(',')}`)
+ok(levelEnds(18, 6).join(',') === '5,11,17', '正好整除 → 关尾 5,11,17')
+ok(levelEnds(6, 6).join(',') === '5', '刚好一关 → 关尾 5，不重复补一个')
+ok(levelEnds(7, 6).join(',') === '5,6', '第二关只有一步 → 也要补关尾')
+ok(levelEnds(1, 6).join(',') === '0', '只有一步 → 关尾 0')
+ok(levelEnds(0, 6).length === 0 && levelEnds(undefined, 6).length === 0, '没有步骤 → 没有关尾')
+ok(levelEnds(20, 6).every((i) => i >= 0 && i < 20), '关尾下标都在这一局的范围内')
 console.log(`英语复习页规则：${n} 条断言，失败 ${bad} 条`)
 process.exit(bad ? 1 : 0)

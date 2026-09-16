@@ -68,10 +68,19 @@
     .big-en { text-align: center; font-size: 30px; font-weight: 800; margin: 10px 0 2px; }
     .ipa { text-align: center; color: var(--ink-3); font-size: 13px; }
     .sum { text-align: center; }
-    .sum .pct { font-size: 44px; font-weight: 800; letter-spacing: -.03em; }
+    .sum .emoji { font-size: 40px; line-height: 1.1; }
+    .sum .title { font-size: 21px; font-weight: 800; margin-top: 2px; }
     .sum .sub { color: var(--ink-2); font-size: 14px; margin-top: 4px; }
+    .sum .list { max-width: 330px; margin: 14px auto 0; text-align: left; }
+    .sum .list div { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; padding: 8px 2px; border-bottom: 1px dashed var(--line); font-size: 15px; color: var(--ink-2); font-weight: 700; }
+    .sum .list div:last-child { border-bottom: none; }
+    .sum .list b { color: var(--ink); font-size: 17px; font-weight: 800; }
     .sum .goal-line { font-weight: 800; }
     .sum .goal-line.done { color: var(--ok); }
+    .lv { text-align: center; }
+    .lv .stars { font-size: 38px; letter-spacing: 6px; line-height: 1.2; }
+    .lv .title { font-size: 22px; font-weight: 800; }
+    .lv .sub { color: var(--ink-2); font-size: 14px; margin-top: 6px; }
     .err { margin-top: 12px; padding: 12px 14px; border: 1px solid #e9b4b4; background: #fdeeee; border-radius: var(--radius-md); }
     .err strong { display: block; margin-bottom: 4px; color: #a33; }
     .err span { color: var(--ink-2); font-size: 13px; word-break: break-all; }
@@ -109,7 +118,8 @@
 
       <div id="q-recognize" hidden>
         <div class="en" id="rec-word"></div>
-        <p class="hint">选出它的意思（不计分，认一认就好）</p>
+        <div class="row"><button class="sec" id="rec-hear" type="button">🔊 听发音</button></div>
+        <p class="hint">选出它的意思（认一认就好）</p>
         <div class="opts" id="rec-opts"></div>
       </div>
 
@@ -119,7 +129,7 @@
           <div class="col" id="m-left"></div>
           <div class="col" id="m-right"></div>
         </div>
-        <p class="hint">先点左边一个、再点右边一个（反过来也行）</p>
+        <p class="hint">先点左边一个、再点右边一个（点左边会念出来）</p>
       </div>
 
       <div id="q-spell">
@@ -135,9 +145,17 @@
       <div class="streak" id="streak"></div>
     </div>
 
+    <div class="card lv" id="card-level" hidden>
+      <div class="stars" id="lv-stars"></div>
+      <div class="title" id="lv-title">这一小关过完啦</div>
+      <div class="sub" id="lv-sub"></div>
+      <div class="row"><button class="do big" id="lv-next" type="button">继续</button></div>
+    </div>
+
     <div class="card sum" id="card-sum" hidden>
-      <div class="pct" id="sum-pct">0%</div>
-      <div class="sub" id="sum-sub"></div>
+      <div class="emoji">🎉</div>
+      <div class="title" id="sum-title">今天的英语复习做完啦</div>
+      <div class="list" id="sum-list"></div>
       <div class="sub goal-line" id="sum-goal" hidden></div>
       <div class="sub" id="sum-note" hidden></div>
       <div class="row">
@@ -146,7 +164,7 @@
       </div>
     </div>
 
-    <p class="foot">写完这一局，回「今天」看看还有哪些事</p>
+    <p class="foot">错的词明天还会再来，不用怕写错</p>
   </div>
   <script type="module" src="./game.js"></script>
 </body>

@@ -38,7 +38,8 @@ def test_ledger_summary(monkeypatch):
         seed(c, kid, "2026-09-09", -10, "redeem", "s4", note="兑换贴纸")  # 周三 兑换 -10
 
         seed(c, kid, "2026-09-07", 2, "milestone", "s5")            # 周一 连击 +2（box 途径）
-        seed(c, kid, "2026-09-13", 4, "word_perfect", "s6")         # 周日 单词全对 +4
+        seed(c, kid, "2026-09-13", 4, "word_perfect", "s6")         # 周日 单词全对 +4（历史理由，老流水仍要能画）
+        seed(c, kid, "2026-09-13", 3, "word_game", "s7")            # 周日 /word/ 结算 +3（现行理由）
         seed(c, kid, "2026-09-09", 50, "task", "s-bank", account="bank")  # 其它银行流水不计入
 
         seed(c, kid, "2026-09-09", -5, "penalty", "pen1", note="作业拖拉")  # 约定不进柱
@@ -74,10 +75,10 @@ def test_ledger_summary(monkeypatch):
         mon = d["days"][0]
         assert mon["earn"] == 2 and mon["by_reason"]["box"] == 2
         sun = d["days"][6]
-        assert sun["earn"] == 4 and sun["by_reason"]["word"] == 4
+        assert sun["earn"] == 7 and sun["by_reason"]["word"] == 7
         # 周内未来天（周四~周六）为 0
         assert all(d["days"][i]["earn"] == 0 for i in (3, 4, 5))
-        assert d["week_in"] == 32 and d["week_out"] == 10
+        assert d["week_in"] == 35 and d["week_out"] == 10
         assert d["redemptions"] == [{"date": "2026-09-09", "note": "兑换贴纸", "delta": -10}]
 
         day = cli.get("/api/ledger?date=2026-09-09").json()
@@ -99,7 +100,7 @@ def test_ledger_summary(monkeypatch):
         c.close()
         d = cli.get("/api/ledger/summary").json()
         assert d["penalty_today"] is None
-        assert d["week_in"] == 32
+        assert d["week_in"] == 35
 
 
         # 上一周

@@ -1,23 +1,23 @@
-// 英语复习页（/word/）的纯逻辑：算分、连击、阳光档位、题型编排。
+// 英语复习页（/word/）的纯逻辑：阳光档位、连击、题型编排、小关切分。
 // 单独放一个模块是为了能跑 scripts/check_word_game.mjs 逐条断言（别再把规则写死在页面里）。
 //
-// 阳光口径（2026-09-16 定）：一局得分 = 本局正确率（整数百分比）；
-// 当天按**最好成绩**结算一次额度：60 分以下 0，60–100 分线性到 10，向下取整。
-// （补差额与幂等由后端负责，这里只给「这个分数对应多少阳光」。）
+// 阳光口径（2026-09-16 改）：**不看正确率**，改看「完成 + 进步」——
+// 今天写过一个词 0.25 分、其中写对的再 0.25 分；**错题不扣分**，一天上限 10。
+// 20 词全对 = 10；20 词做完但全错 = 5（来了就有保底）。
+// （补差额与幂等由后端负责，这里只给「这个进度对应多少阳光」。）
 //
-// 题型口径（P3）：认（4 选 1，不计分）→ 写（拼写，唯一计分）；熟词先过一遍「连一连」（不计分）。
-// 每个词最后都要「写」，所以分数与分母口径完全没变。
+// 题型口径（P3）：认（4 选 1）→ 写（拼写）；熟词先过一遍「连一连」。
+// 三种题型都推进「今天写了几个词」；正确率只给家长看，不给孩子当分数。
 
 export function scoreOf(right, total) {
   if (!total) return 0
   return Math.max(0, Math.min(100, Math.round((right / total) * 100)))
 }
 
-export function sunshineFor(score) {
-  const s = Number(score)
-  if (!Number.isFinite(s) || s < 60) return 0
-  const capped = Math.min(100, s)
-  return Math.max(0, Math.min(10, Math.floor(((capped - 60) / 40) * 10)))
+export function sunshineForProgress(done, right) {
+  const d = Math.max(0, Math.floor(Number(done) || 0))
+  const r = Math.min(d, Math.max(0, Math.floor(Number(right) || 0)))   // 写对的不会多于写过的
+  return Math.max(0, Math.min(10, Math.floor((d + r) * 0.25)))
 }
 
 export function streakUpdate(streak, right) {
@@ -128,6 +128,27 @@ export function planSession(items, opts = {}) {
     steps.push({ kind: 'spell', item: it })
   }
   return { steps, blocks }
+}
+
+/* 小关：把一局的步骤切成几小关（默认 6 步一关），做完一关就给一次星星/彩带 ——
+   不用等 20 题全做完才看到「忙完了」。连一连一块板算一步，认/写各算一步。 */
+export function chunkLevels(steps, perLevel = 6) {
+  const n = Math.max(1, Math.floor(Number(perLevel) || 6))
+  const list = Array.isArray(steps) ? steps : []
+  const out = []
+  for (let i = 0; i < list.length; i += n) out.push(list.slice(i, i + n))
+  return out
+}
+
+/* 每小关最后一步在整局里的下标（0 基）：做完这些步就该弹一次小庆祝。
+   total=20、perLevel=6 → [5, 11, 17, 19]（最后一关可能不满）。 */
+export function levelEnds(total, perLevel = 6) {
+  const t = Math.max(0, Math.floor(Number(total) || 0))
+  const n = Math.max(1, Math.floor(Number(perLevel) || 6))
+  const out = []
+  for (let i = n - 1; i < t; i += n) out.push(i)
+  if (t > 0 && (out.length === 0 || out[out.length - 1] !== t - 1)) out.push(t - 1)
+  return out
 }
 
 /* ============================================================

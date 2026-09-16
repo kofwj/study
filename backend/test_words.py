@@ -532,7 +532,7 @@ def test_english_sentences_pure():
 
 
 def test_admin_words_stats_today_and_money_match():
-    """P4-a：家长端「今天」的数字要和 /word/ 那一局完全一致（写了 20 词 / 70 分 / 阳光 2）。"""
+    """P4-a：家长端「今天」的数字要和 /word/ 那一局完全一致（写了 20 词 / 对 14 个 / 阳光 8）。"""
     db.init_db()
     real_now = os.environ.get("SUNSHINE_NOW")
     os.environ["SUNSHINE_NOW"] = "2026-09-16T12:00:00"     # 固定时间：落在打卡时间窗内、due 也稳定
@@ -556,13 +556,13 @@ def test_admin_words_stats_today_and_money_match():
                 r = _spell(cli, sid, it, text=(it["word"] if i < 14 else "zzz"))
                 assert r.status_code == 200, r.text
             b = cli.post("/api/words/game/settle", json={"session_id": sid}).json()
-            assert b["round"]["score"] == 70 and b["today"]["granted"] == 2, b
+            assert b["round"]["score"] == 70 and b["today"]["granted"] == 8, b
 
             s = cli.get("/api/admin/words/stats").json()
             t = s["today"]
-            assert (t["wrote"], t["rounds"], t["best_score"], t["sunshine"], t["sunshine_limit"]) == (20, 1, 70, 2, 10), t
+            assert (t["wrote"], t["rounds"], t["best_score"], t["sunshine"], t["sunshine_limit"]) == (20, 1, 70, 8, 10), t
             assert t["goal_done"] is True and t["finished"] is True
-            assert s["today_sentence"] == "今天写了 20 词（目标 10，已达标） · 最好一轮 70 分 · 阳光 2/10"
+            assert s["today_sentence"] == "今天写了 20 词（目标 10，已达标） · 最好一轮 70 分 · 阳光 8/10"
             assert s["week"] == {"days": 1, "words": 20, "rate": 70}
             assert s["week_sentence"] == "这周练了 1 天，首轮正确率 70%；今天写了 20/10 词（达标）"
             # 孩子端「今天」也带目标环（P4-b 的入口卡靠它算「今天写了 7/10」）
@@ -575,7 +575,7 @@ def test_admin_words_stats_today_and_money_match():
             assert s["today"]["books"] and s["today"]["books"][0]["n"] == 20, s["today"]["books"]
             assert s["today_source"].startswith("这批词来自：") and "新词：" in s["today_source"], s["today_source"]
             assert s["today"]["goal"] == 0
-            assert s["today_sentence"] == "今天写了 20 个词 · 最好一轮 70 分 · 阳光 2/10"
+            assert s["today_sentence"] == "今天写了 20 个词 · 最好一轮 70 分 · 阳光 8/10"
 
             # 英语关掉：两句都写「英语单词没开」，数字照样读得出来（页面不空白）
             assert cli.put("/api/admin/words/config", json={"enabled": False}).status_code == 200

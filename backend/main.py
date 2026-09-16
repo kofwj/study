@@ -2215,10 +2215,12 @@ def ledger(limit: int = 20, date: Optional[str] = None):
 
 
 
-EARN_REASONS = {"task", "daily", "word_daily", "word_perfect", "test", "box", "milestone", "bank_deposit", "bank_interest"}
+EARN_REASONS = {"task", "daily", "word_daily", "word_perfect", "word_game", "test", "box", "milestone",
+                "bank_deposit", "bank_interest"}
 REVERT_REASONS = {"cancel", "test_cancel"}
 SPEND_REASONS = {"redeem"}
-PATH_OF = {"task": "task", "word_daily": "word", "word_perfect": "word", "daily": "daily", "test": "test", "box": "box", "milestone": "box"}
+PATH_OF = {"task": "task", "word_daily": "word", "word_perfect": "word", "word_game": "word",
+           "daily": "daily", "test": "test", "box": "box", "milestone": "box"}
 WEEKLY_GOAL_KEY = "weekly_goal"
 WEEKLY_GOAL_DEFAULT = 50
 
@@ -4288,6 +4290,7 @@ class WordConfigIn(BaseModel):
     daily_goal: Optional[int] = None         # 每日目标：今天写够几个词（0 = 关闭）5–40
     match_size: Optional[int] = None         # 「连一连」一块几个词 3–6
     match_blocks: Optional[int] = None       # 「连一连」一局最多几块 0–3（0 = 不玩）
+    level_size: Optional[int] = None         # 一小关几步 3–10（默认 6）
     base_sunshine: Optional[int] = None
     perfect_sunshine: Optional[int] = None
     unlock_by_cursor: Optional[bool] = None
