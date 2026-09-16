@@ -10,10 +10,11 @@ import AdminApprove from './components/AdminApprove.vue'
 import AdminReview from './components/AdminReview.vue'
 import AdminShop from './components/AdminShop.vue'
 import AdminKids from './components/AdminKids.vue'
+import AdminQuiz from './components/AdminQuiz.vue'
 import AdminCursor from './components/AdminCursor.vue'
 import { initAdminEdit, useAdminEdit } from './adminEdit.js'
 import PageBoundary from './components/PageBoundary.vue'
-import { Eye, Baby, Store, ClipboardCheck, BookOpen, MapPinned, ArrowLeft, BookMarked, Globe } from '@lucide/vue'
+import { Eye, Baby, Store, ClipboardCheck, BookOpen, MapPinned, ArrowLeft, BookMarked, Globe, Trophy } from '@lucide/vue'
 
 const props = defineProps({ recoveryCode: { type: String, default: '' } })
 const emit = defineEmits(['exit', 'switched', 'consumed-recovery'])
@@ -48,6 +49,7 @@ const SECTIONS = [
   ] },
   { group: '学习', items: [
     { id: 'unit-task', icon: BookOpen, label: '任务' },
+    { id: 'quiz', icon: Trophy, label: '大队委' },
     { id: 'words', icon: Globe, label: '英语单词' },
     { id: 'cursor', icon: MapPinned, label: '已学到' },
   ] },
@@ -962,6 +964,15 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload)
       @reset-rule="resetRule"
       @toggle-tag="toggleTag"
       @reload="load"
+    />
+
+    <!-- 大队委（题库成绩）：机器判的 / 孩子自评的分开报 -->
+    <AdminQuiz
+      v-if="section === 'quiz'"
+      :kids="kids"
+      :kid="selectedKid"
+      :show-toast="showToast"
+      @pick-kid="pickKid"
     />
 
     <!-- 每日任务 -->

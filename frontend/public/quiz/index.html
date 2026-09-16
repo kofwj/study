@@ -100,6 +100,14 @@ button.wide{flex:1 1 100%}
 pre.copy{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px;font-size:13px;
   line-height:1.7;white-space:pre-wrap;word-break:break-word;max-height:220px;overflow:auto;
   font-family:inherit;color:var(--ink2);margin:8px 0 0}
+    /* 填空/问答的输入框（2026-09-16：填空不再「看答案自己判」，改成孩子真的写进去） */
+    .inputs{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+    .typein{box-sizing:border-box;padding:11px 12px;font-size:17px;font-family:inherit;color:var(--ink);
+      background:#fff;border:1.5px solid #D8E3EC;border-radius:10px;outline:none}
+    .typein:focus{border-color:var(--sun)}
+    .inputs .typein{flex:1 1 130px;min-width:110px}
+    .typein.qa{display:block;width:100%;resize:vertical;line-height:1.6;margin-top:14px}
+    .ans + .ans{margin-top:8px}
 </style>
 </head>
 <body data-page-node-id="63StGZWlsOICZkKpBiZjaY">
@@ -239,6 +247,38 @@ function ansText(qq){
   return qq.answer.join('　／　');
 }
 function canReadThrough(qq){ return blanksOf(qq.stem) > 0 && blanksOf(qq.stem) === qq.answer.length; }
+
+/* QUIZ-JUDGE-START —— 与 backend/quiz.py 的 _norm_text / _judge_blank 同一套口径。
+   两边都有断言钉住（scripts/check_quiz_judge.mjs 从这段里抽出来跑），改一边必须改另一边。
+   页面双击打开（file://）时连不上后端，只能本地判 —— 这就是这段存在的理由。 */
+var SEP = '\u001f';
+var PUNCT_RE = /[，,。.、；;：:！!？?“”"'‘’（）()《》〈〉【】\[\]{}—\-–~·…／/\\|]+/g;
+function normText(s){
+  var t = (s === null || s === undefined) ? '' : String(s);
+  try { t = t.normalize('NFKC'); } catch(e){ /* 老浏览器没有 normalize 就算了 */ }
+  return t.trim().toLowerCase().replace(/\s+/g, '').replace(PUNCT_RE, '');
+}
+function judgeBlankLocal(qq, parts){
+  var want = (qq && qq.answer) || [];
+  if(!want.length || parts.length !== want.length) return false;   // 空位数对不上：不可能对
+  for(var i = 0; i < want.length; i++){
+    var got = normText(parts[i]);
+    if(!got) return false;
+    var okSet = [normText(want[i])];
+    var acc = (qq.accept && qq.accept[i]) || [];
+    for(var j = 0; j < acc.length; j++) okSet.push(normText(acc[j]));
+    if(okSet.indexOf(got) < 0) return false;
+  }
+  return true;
+}
+function displayGot(t){
+  t = t || '';
+  if(t.indexOf(SEP) >= 0){
+    return t.split(SEP).map(function(x){ return String(x).trim() || '（空）'; }).join(' ／ ');
+  }
+  return t;
+}
+/* QUIZ-JUDGE-END */
 function stats(){
   var k=0,w=0,n=0;
   QS.forEach(function(x){ if(isKnown(x.id))k++; else if(isNew(x.id))n++; else w++; });
@@ -355,13 +395,14 @@ function markCur(known){
 }
 
 /* ---------------- 练习 ---------------- */
-var PR = {items:[], i:0, right:0, state:'ask', picked:[], lastOk:null, done:false, wrongList:[]};
+var PR = {items:[], i:0, right:0, state:'ask', picked:[], lastOk:null, done:false, wrongList:[],
+          inputs:[], qaText:'', answer:''};
 function startPractice(n){
   var weak  = shuffle(QS.filter(function(x){ return isWeak(x.id); }));
   var fresh = shuffle(QS.filter(function(x){ return isNew(x.id); }));
   var rest  = shuffle(QS.filter(function(x){ return isKnown(x.id); }));
   PR = {items: weak.concat(fresh, rest).slice(0, n), i:0, right:0, state:'ask',
-        picked:[], lastOk:null, done:false, wrongList:[]};
+        picked:[], lastOk:null, done:false, wrongList:[], inputs:[], qaText:'', answer:''};
   finishStudySession().then(function(){
     apiStart('practice', PR.items.map(function(x){ return x.id; }));
   });
@@ -407,18 +448,35 @@ function renderPractice(){
     if(qq.kind==='choice' || qq.kind==='multi'){
       var lbl = qq.kind==='multi' ? '确定（可多选）' : '确定';
       h += '<div class="row"><button class="primary wide" onclick="submitOpt()">'+lbl+'</button></div>';
+    }else if(qq.kind==='blank'){
+      var bn = blanksOf(qq.stem);
+      h += '<div class="inputs">';
+      for(var bi=0; bi<bn; bi++){
+        h += '<input class="typein" type="text" autocomplete="off" autocapitalize="off" spellcheck="false"'
+           + ' value="'+esc(PR.inputs[bi]||'')+'" oninput="setBlank('+bi+', this.value)" />';
+      }
+      h += '</div>';
+      h += '<div class="hint" id="askHint"></div>';
+      h += '<div class="row"><button class="primary wide" onclick="submitBlank()">确定</button></div>';
     }else{
-      h += '<div class="row"><button class="primary wide" onclick="selfCheck()">看答案，自己判</button></div>';
+      h += '<textarea class="typein qa" rows="3" placeholder="先把答案写在这里，写完再看参考答案"'
+         + ' oninput="setQa(this.value)">'+esc(PR.qaText||'')+'</textarea>';
+      h += '<div class="hint" id="askHint"></div>';
+      h += '<div class="row"><button class="primary wide" onclick="submitQa()">看答案，自己判</button></div>';
     }
   }else if(PR.state==='self'){
-    h += '<div class="ans"><span class="lbl">答案</span>'+esc(ansText(qq));
+    h += '<div class="ans"><span class="lbl">你写的</span>'+esc(displayGot(PR.qaText) || '（空）')+'</div>';
+    h += '<div class="ans"><span class="lbl">参考答案</span>'+esc(ansText(qq));
     if(canReadThrough(qq)) h += '<div class="read">连起来读：'+stemHtml(qq,true)+'</div>';
     h += '</div>';
     h += '<div class="row"><button class="ok" onclick="selfJudge(true)">答对了</button>' +
          '<button class="no" onclick="selfJudge(false)">没答对</button></div>';
   }else{
     h += '<div class="fb '+(PR.lastOk?'ok':'no')+'">'+(PR.lastOk?'答对了':'答错了，看看正确答案')+'</div>';
-    h += '<div class="ans"><span class="lbl">答案</span>'+esc(ansText(qq))+'</div>';
+    if(qq.kind==='blank' || qq.kind==='qa'){
+      h += '<div class="ans"><span class="lbl">你写的</span>'+esc(displayGot(PR.answer))+'</div>';
+    }
+    h += '<div class="ans"><span class="lbl">参考答案</span>'+esc(ansText(qq))+'</div>';
     h += '<div class="row"><button class="primary wide" onclick="nextPractice()">下一题</button></div>';
   }
   h += '</div>';
@@ -433,64 +491,107 @@ function pickOpt(k){
   }else{ PR.picked = [k]; }
   renderPractice();
 }
-function settle(ok){
+function settle(ok, answer){
   var qq = PR.items[PR.i];
   PR.lastOk = ok; PR.state = 'done';
+  if(answer !== undefined) PR.answer = answer;
   if(ok){ PR.right++; } else { PR.wrongList.push(qq); }
   record(qq, ok, '练习');
-  var ans = (qq.kind==='choice'||qq.kind==='multi') ? PR.picked.slice().sort().join(',') : '';
-  apiAttempt(qq.id, ans, ok);
   paintHead(); renderPractice();
+}
+/* 交一道题：能连上后端就**让后端判**（孩子看到的判决必须和家长看到的一致）；
+   连不上（双击打开 / 断网）才退回本地判。填空绝不把本地判决当结果上报上去。 */
+function submitAnswer(answer, localOk){
+  var qq = PR.items[PR.i];
+  var isQa = qq.kind === 'qa';
+  PR.answer = answer;
+  if(!API_ENABLED){ settle(localOk, answer); return; }
+  waitSid().then(function(){
+    return apiAttempt(qq.id, answer, isQa ? localOk : null);
+  }).then(function(res){
+    var ok = (res && typeof res.correct === 'boolean') ? res.correct : localOk;
+    settle(ok, answer);
+  })['catch'](function(){ settle(localOk, answer); });
+}
+function waitSid(tries){
+  tries = tries || 0;
+  if(API_SID || !API_ENABLED) return Promise.resolve(API_SID);
+  if(tries >= 20) return Promise.resolve(null);        // 最多等约 1 秒，别把孩子卡住
+  return new Promise(function(res){ setTimeout(function(){ res(waitSid(tries + 1)); }, 50); });
+}
+function setBlank(i, v){ PR.inputs[i] = v; }
+function setQa(v){ PR.qaText = v; }
+function askHint(msg){ var el = document.getElementById('askHint'); if(el) el.textContent = msg; }
+function submitBlank(){
+  var qq = PR.items[PR.i];
+  var n = blanksOf(qq.stem);
+  var parts = [];
+  for(var i = 0; i < n; i++) parts.push(String(PR.inputs[i] || ''));
+  if(!normText(parts.join(''))) return askHint('先写一写，再点确定');
+  submitAnswer(parts.join(SEP), judgeBlankLocal(qq, parts));
+}
+function submitQa(){
+  if(!normText(PR.qaText)) return askHint('先把答案写下来，再判自己对不对');
+  PR.state = 'self'; renderPractice();
 }
 function submitOpt(){
   if(!PR.picked.length) return;
   var qq = PR.items[PR.i];
-  settle(PR.picked.slice().sort().join('') === qq.answer.slice().sort().join(''));
+  var ans = PR.picked.slice().sort().join(',');
+  var mine = ans.replace(/,/g, '').toUpperCase();
+  var want = qq.answer.slice().sort().join('').toUpperCase();
+  submitAnswer(ans, mine === want);
 }
-function selfCheck(){ PR.state='self'; renderPractice(); }
-function selfJudge(ok){ settle(ok); }
+function selfJudge(ok){ submitAnswer(PR.qaText, ok); }
 function nextPractice(){
   PR.i++; PR.picked=[]; PR.state='ask'; PR.lastOk=null;
+  PR.inputs=[]; PR.qaText=''; PR.answer='';
   if(PR.i >= PR.items.length){ PR.done = true; apiComplete(); }
   renderPractice();
 }
 
 /* ---------------- 模拟考 ---------------- */
-var EX = {items:[], i:0, picked:[], done:false, right:0, auto:0, manual:[], wrongList:[], skipped:0};
+var EX = {items:[], i:0, picked:[], inputs:[], qaText:'', done:false, right:0, auto:0, manual:[], wrongList:[], skipped:0};
 function startExam(){
   EX = {items: shuffle(QS).slice(0, Math.min(20, QS.length)), i:0, picked:[],
-        done:false, right:0, auto:0, manual:[], wrongList:[], skipped:0};
+        inputs:[], qaText:'', done:false, right:0, auto:0, manual:[], wrongList:[], skipped:0};
   finishStudySession().then(function(){
     apiStart('exam', EX.items.map(function(x){ return x.id; }));
   });
   renderExam();
 }
+function setExamBlank(i, v){ EX.inputs[i] = v; }
+function setExamQa(v){ EX.qaText = v; }
 function renderExam(){
   var main = document.getElementById('main');
   if(expired()){ main.innerHTML = endedHtml(); return; }
   if(!EX.items.length){
     main.innerHTML = '<div class="card"><div class="mid">模拟考</div>' +
       '<div class="hint" style="text-align:center">抽 20 道题。中途不给答案，交卷后统一看分。<br>' +
-      '选择题自动判，填空和问答交卷后列出来自己对。</div>' +
+      '选择和填空由系统判，问答交卷后列出来自己对。</div>' +
       '<div class="row"><button class="primary wide" onclick="startExam()">开始模拟考</button></div></div>';
     return;
   }
   if(EX.done){
     var h = '<div class="card"><div class="mid">模拟考成绩</div>' +
       '<div class="big">'+(EX.auto ? EX.right+' / '+EX.auto : '—')+'</div>' +
-      '<div class="mid">选择题'+(EX.auto ? '得分 '+Math.round(EX.right/EX.auto*100)+' 分' : '本次没有')+
+      '<div class="mid">选择/填空'+(EX.auto ? '得分 '+Math.round(EX.right/EX.auto*100)+' 分' : '本次没有')+
       (EX.skipped ? '　·　没作答 '+EX.skipped+' 题' : '')+'</div>';
     if(EX.wrongList.length){
-      h += '<div class="sec">选错的题（'+EX.wrongList.length+' 道）</div><div class="list">';
+      h += '<div class="sec">选错 / 填错的题（'+EX.wrongList.length+' 道）</div><div class="list">';
       EX.wrongList.forEach(function(x){
-        h += '<div class="it">第 '+x.n+' 题　<small>'+esc(x.stem)+'</small><div class="a">'+esc(ansText(x))+'</div></div>';
+        h += '<div class="it">第 '+x.n+' 题　<small>'+esc(x.stem)+'</small>';
+        if(x.got) h += '<div class="a">你写的：'+esc(x.got)+'</div>';
+        h += '<div class="a">'+esc(ansText(x))+'</div></div>';
       });
       h += '</div>';
     }
     if(EX.manual.length){
-      h += '<div class="sec">这几道填空/问答，自己对答案</div><div class="list">';
+      h += '<div class="sec">这几道问答，自己对答案</div><div class="list">';
       EX.manual.forEach(function(x){
-        h += '<div class="it">第 '+x.n+' 题　<small>'+esc(x.stem)+'</small><div class="a">'+esc(ansText(x))+'</div></div>';
+        h += '<div class="it">第 '+x.n+' 题　<small>'+esc(x.stem)+'</small>';
+        if(x.got) h += '<div class="a">你写的：'+esc(x.got)+'</div>';
+        h += '<div class="a">'+esc(ansText(x))+'</div></div>';
       });
       h += '</div>';
     }
@@ -507,8 +608,17 @@ function renderExam(){
       h += '<li class="'+(EX.picked.indexOf(o.k)>=0?'pick':'')+'" onclick="examPick(\''+o.k+'\')"><span class="k">'+o.k+'</span><span>'+esc(o.t)+'</span></li>';
     });
     h += '</ul>';
+  }else if(qq.kind==='blank'){
+    var bn = blanksOf(qq.stem);
+    h += '<div class="inputs">';
+    for(var bi=0; bi<bn; bi++){
+      h += '<input class="typein" type="text" autocomplete="off" autocapitalize="off" spellcheck="false"'
+         + ' value="'+esc(EX.inputs[bi]||'')+'" oninput="setExamBlank('+bi+', this.value)" />';
+    }
+    h += '</div>';
   }else{
-    h += '<div class="hint">这题在纸上写，交卷后一起对答案。</div>';
+    h += '<textarea class="typein qa" rows="3" placeholder="先把答案写在这里"'
+       + ' oninput="setExamQa(this.value)">'+esc(EX.qaText||'')+'</textarea>';
   }
   h += '<div class="row"><button class="primary wide" onclick="examNext()">' +
        (EX.i===EX.items.length-1 ? '交卷' : '下一题') + '</button></div>';
@@ -529,19 +639,33 @@ function gradeExam(){
       EX.skipped++; EX.wrongList.push(qq); record(qq, false, '模拟考');
       apiAttempt(qq.id, '', false);
     }else{
-      var ok = EX.picked.slice().sort().join('') === qq.answer.slice().sort().join('');
+      var ans = EX.picked.slice().sort().join(',');
+      var mine = ans.replace(/,/g, '').toUpperCase();
+      var want = qq.answer.slice().sort().join('').toUpperCase();
+      var ok = mine === want;
       if(ok){ EX.right++; } else { EX.wrongList.push(qq); }
       record(qq, ok, '模拟考');
-      apiAttempt(qq.id, EX.picked.slice().sort().join(','), ok);
+      apiAttempt(qq.id, ans, null);
     }
+    var n = blanksOf(qq.stem);
+    var parts = [];
+    for(var i = 0; i < n; i++) parts.push(String(EX.inputs[i] || ''));
+    var answer = parts.join(SEP);
+    var ok = judgeBlankLocal(qq, parts);
+    EX.auto++;
+    if(!normText(parts.join(''))) EX.skipped++;
+    if(ok){ EX.right++; } else { qq.got = displayGot(answer); EX.wrongList.push(qq); }
+    record(qq, ok, '模拟考');
+    apiAttempt(qq.id, answer, null);
   }else{
+    qq.got = displayGot(EX.qaText);
     EX.manual.push(qq);
-    apiAttempt(qq.id, '', null);
+    apiAttempt(qq.id, EX.qaText || '', null);
   }
   paintHead();
 }
 function examNext(){
-  gradeExam(); EX.picked = []; EX.i++;
+  gradeExam(); EX.picked = []; EX.inputs = []; EX.qaText = ''; EX.i++;
   if(EX.i >= EX.items.length){ EX.done = true; apiComplete(); }
   renderExam();
 }
@@ -672,7 +796,10 @@ function go(m){
 
 window.go = go; window.reveal = reveal; window.step = step; window.jump = jump;
 window.toggleGrid = toggleGrid; window.markCur = markCur; window.forceStudy = forceStudy;
-window.pickOpt = pickOpt; window.submitOpt = submitOpt; window.selfCheck = selfCheck;
+window.pickOpt = pickOpt; window.submitOpt = submitOpt;
+window.setBlank = setBlank; window.setQa = setQa;
+window.setExamBlank = setExamBlank; window.setExamQa = setExamQa;
+window.submitBlank = submitBlank; window.submitQa = submitQa;
 window.selfJudge = selfJudge; window.nextPractice = nextPractice; window.startPractice = startPractice;
 window.startExam = startExam; window.examPick = examPick; window.examNext = examNext;
 window.saveDate = saveDate; window.clearDate = clearDate; window.resetAll = resetAll;

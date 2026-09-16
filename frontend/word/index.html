@@ -52,10 +52,15 @@
     .slots i { width: 22px; height: 34px; border-bottom: 2px solid var(--ink-3); display: inline-flex; align-items: flex-end; justify-content: center; font-weight: 800; font-size: 21px; line-height: 1; font-style: normal; }
     .slots i.space { width: 12px; border: none; }
     .slots i.fix { border: none; align-items: center; }
-    .slots i.cur { border-color: var(--accent); }
+    .slots i.cur { border-color: var(--accent); background: #fff4e0; border-radius: 5px 5px 0 0; }
     .slots.right i { border-color: var(--ok); color: var(--ok); }
     .slots.wrong i { border-color: var(--accent); color: #b06a00; }
-    .ghost { position: absolute; opacity: 0; pointer-events: none; height: 1px; width: 1px; }
+    .slotwrap { position: relative; }
+    /* 幽灵输入框：铺在格子上面，只当键盘通道（看不见、点不到，由点格子来定位光标）。
+       铺满是为了聚焦时不会把页面滚到别处；font-size 至少 16px 免得 iOS 聚焦时缩放。 */
+    .ghost { position: absolute; inset: 0; opacity: 0; pointer-events: none; border: none;
+      background: none; font-size: 16px; color: transparent; }
+    .slotwrap.caret-off .slots { opacity: .5; }
     .row { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 12px; }
     button { font-family: inherit; font-size: 16px; font-weight: 800; border-radius: var(--radius-pill); padding: 12px 20px; cursor: pointer; border: 1px solid transparent; }
     .do { background: var(--brand); color: #fff; min-width: 128px; }
@@ -135,9 +140,13 @@
       <div id="q-spell">
         <div class="cn" id="cn"></div>
         <p class="hint" id="hint">按中文写出英文，只敲字母就行（空格和标点会自动补）</p>
-        <div class="slots" id="slots"></div>
-        <input class="ghost" id="input" type="text" inputmode="text" autocomplete="off"
-               autocapitalize="none" spellcheck="false" enterkeyhint="done" maxlength="60" aria-label="默写" />
+        <div class="slotwrap" id="slotwrap">
+          <div class="slots" id="slots"></div>
+          <input class="ghost" id="input" type="text" lang="en" inputmode="latin" autocomplete="off"
+                 autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="done"
+                 maxlength="60" aria-label="默写" />
+        </div>
+        <p class="hint" id="tap-hint" hidden>想改哪一格，点它一下再打字</p>
         <div class="row" id="actions"></div>
       </div>
 

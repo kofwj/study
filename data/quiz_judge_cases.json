@@ -1,0 +1,32 @@
+{
+  "note": "大队委填空题判分的共享用例。frontend/public/quiz/index.html 的 QUIZ-JUDGE 段 与 backend/quiz.py 的 _norm_text / _judge_blank 必须用同一套口径 —— 两边都读这个文件跑断言（node scripts/check_quiz_judge.mjs 和 backend/test_quiz_phase2.py）。改口径就改这里。",
+  "norm_equal": [
+    ["中国少年先锋队", "中国少年先锋队"],
+    ["《我们是共产主义接班人》", "我们是共产主义接班人"],
+    ["诚实、勇敢、活泼、团结", "诚实勇敢活泼团结"],
+    ["“准备着：为共产主义事业而奋斗！”", "准备着为共产主义事业而奋斗"],
+    ["1949年10月13日 ", "1949年10月13日"],
+    ["Ａ Ｂ", "ab"],
+    ["  五  ", "五"]
+  ],
+  "norm_diff": [
+    ["中国少年先锋队", "少先队"],
+    ["1949年10月13日", "19491013"],
+    ["人民的利益高于一切", "人民利益高于一切"]
+  ],
+  "blank": [
+    { "why": "单空答对", "answer": ["中国少年先锋队"], "parts": ["中国少年先锋队"], "want": true },
+    { "why": "同义简称：没有 accept 时必须判错（要靠 accept 兜）", "answer": ["中国少年先锋队"], "parts": ["少先队"], "want": false },
+    { "why": "规范化：书名号不算错", "answer": ["《我们是共产主义接班人》"], "parts": ["我们是共产主义接班人"], "want": true },
+    { "why": "accept 兜底同义写法", "answer": ["中国少年先锋队"], "accept": [["少先队"]], "parts": ["少先队"], "want": true },
+    { "why": "汉字数字 vs 阿拉伯数字要靠 accept", "answer": ["五"], "accept": [["5"]], "parts": ["5"], "want": true },
+    { "why": "accept 只认自己那个空位，不能串位", "answer": ["三条杠", "二条杠"], "accept": [["第三条杠"], []], "parts": ["第三条杠", "三条杠"], "want": false },
+    { "why": "空着算错", "answer": ["五年"], "parts": [""], "want": false },
+    { "why": "只填空格也算没写", "answer": ["五年"], "parts": ["   "], "want": false },
+    { "why": "三空全对", "answer": ["三条杠", "二条杠", "一条杠"], "parts": ["三条杠", "二条杠", "一条杠"], "want": true },
+    { "why": "少填一个空：空位数对不上，不可能对", "answer": ["三条杠", "二条杠", "一条杠"], "parts": ["三条杠", "二条杠"], "want": false },
+    { "why": "多填一个空：也算错", "answer": ["三条杠"], "parts": ["三条杠", "多余"], "want": false },
+    { "why": "中间那个填错", "answer": ["三条杠", "二条杠", "一条杠"], "parts": ["三条杠", "三条杠", "一条杠"], "want": false },
+    { "why": "没有参考答案：后端返回未评（None），页面本地只能当错", "answer": [], "parts": ["随便"], "want": null }
+  ]
+}

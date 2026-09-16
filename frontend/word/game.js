@@ -33,7 +33,11 @@ const state = {
   best: 0,
   step: null,
   item: null,
-  typing: '',
+  // 默写：字母和光标都归我们自己管（平板上的输入框把光标钉在 0 位，
+  // 依赖原生光标会出现「按顺序敲 good、显示成 doog」——见 v0.3.65 的输入层）
+  letters: '',
+  caret: 0,
+  buf: '',
   retryNext: false,
   board: null,
   pickL: null,
@@ -174,10 +178,11 @@ function showPane(kind) {
 }
 
 /* ---------- 写（拼写） ---------- */
+// 光标在第几个字母前（0..字母数）。输入框里只留字母，所以 selectionStart 就是字母序号。
 function renderSlots(cls) {
   const item = state.item
   if (!item) return
-  const cells = slotCells(item.word, state.typing)
+  const cells = slotCells(item.word, state.letters, state.caret)
   $('slots').className = 'slots' + (cls ? ' ' + cls : '')
   $('slots').innerHTML = cells.map((c) => {
     const kind = c.kind === 'hyphen' ? 'fix' : c.kind
@@ -187,10 +192,72 @@ function renderSlots(cls) {
   }).join('')
 }
 
-function focusInput() {
+/* 把输入框里的新字符并进来。
+   为什么不用输入框自己的光标：**平板（Android WebView）会把插入点钉在最前面**，
+   于是按顺序敲 g-o-o-d 会显示成 d-o-o-g。所以这里只把输入框当「按键来源」：
+   每次读完立刻清空它，字符插到我们自己维护的 letters 上的 caret 处 —— 平台怎么插都不影响。 */
+function insertLetters(chars) {
+  for (const ch of String(chars || '')) {
+    if (!/[A-Za-z]/.test(ch)) continue
+    if (state.caret < state.letters.length) {
+      state.letters = state.letters.slice(0, state.caret) + ch + state.letters.slice(state.caret + 1)
+    } else {
+      state.letters += ch
+    }
+    state.caret += 1
+  }
+}
+
+function backspaceLetter() {
+  if (state.caret <= 0 || !state.letters.length) return
+  state.letters = state.letters.slice(0, state.caret - 1) + state.letters.slice(state.caret)
+  state.caret -= 1
+}
+
+// 两个字符串的最长公共前后缀之间就是「这次新敲进去的」
+function diffInserted(prev, next) {
+  const p = String(prev || ''), n = String(next || '')
+  let a = 0
+  while (a < p.length && a < n.length && p[a] === n[a]) a += 1
+  let b = 0
+  while (b < p.length - a && b < n.length - a && p[p.length - 1 - b] === n[n.length - 1 - b]) b += 1
+  return n.slice(a, n.length - b)
+}
+
+function clearBuf() {
+  state.buf = ''
   const el = $('input')
-  el.value = state.typing
-  try { el.focus() } catch { /* 认/连一连的时候输入框是隐藏的，聚焦失败不影响 */ }
+  el.value = ''
+  try { el.setSelectionRange(0, 0) } catch { /* 老浏览器没有就算了 */ }
+}
+
+function syncFocus() {
+  const on = document.activeElement === $('input')
+  const w = $('slotwrap')
+  if (w) w.classList.toggle('caret-off', !on)
+  const t = $('tap-hint')
+  if (t) t.hidden = on || state.phase !== 'ask' || !(state.step && state.step.kind === 'spell')
+  renderSlots('')
+}
+
+function focusInput() {
+  try { $('input').focus() } catch { /* 认/连一连的时候输入框是隐藏的，聚焦失败不影响 */ }
+  clearBuf()
+  syncFocus()
+}
+
+// 点某一格 → 光标移到那一格（这就是「改中间那个字母」不用退格删到那儿的原因）
+function focusSlotAt(target) {
+  let idx = 0
+  for (const c of $('slots').querySelectorAll('i')) {
+    if (c.classList.contains('space') || c.classList.contains('fix')) continue
+    if (c === target) break
+    idx += 1
+  }
+  state.caret = Math.max(0, Math.min(state.letters.length, idx))
+  try { $('input').focus() } catch { /* 同上 */ }
+  clearBuf()
+  syncFocus()
 }
 
 function renderActions() {
@@ -208,7 +275,9 @@ function renderActions() {
 
 function askSpell() {
   const item = state.item
-  state.typing = ''
+  state.letters = ''
+  state.caret = 0
+  state.buf = ''
   state.retryNext = false
   state.phase = 'ask'
   $('feedback').innerHTML = ''
@@ -322,7 +391,9 @@ function pickMatch(el) {
 function nextStep() {
   state.step = state.steps[state.si] || null
   state.item = state.step && state.step.item ? state.step.item : null
-  state.typing = ''
+  state.letters = ''
+  state.caret = 0
+  state.buf = ''
   state.retryNext = false
   state.phase = 'ask'
   $('feedback').innerHTML = ''
@@ -373,6 +444,8 @@ function renderFeedback(right, typed) {
     $('retry').onclick = () => {
       state.retryNext = true
       state.phase = 'ask'
+      state.letters = ''          // 「再写一次」就是把空的格子重写，不带着上一次的错字
+      state.caret = 0
       renderActions()
       $('feedback').innerHTML = ''
       renderSlots('')
@@ -413,8 +486,8 @@ async function submit(text, retry) {
 function check() {
   if (state.busy || state.phase !== 'ask' || !state.item) return
   if (!state.step || state.step.kind !== 'spell') return
-  const text = assembleSpelling(state.item.word, state.typing)
-  if (!lettersOf(state.typing)) { $('hint').textContent = '先写一写'; focusInput(); return }
+  const text = assembleSpelling(state.item.word, state.letters)
+  if (!lettersOf(state.letters)) { $('hint').textContent = '先写一写'; focusInput(); return }
   hideErr()
   submit(text, state.retryNext)
 }
@@ -427,9 +500,12 @@ function peek() {
     '<div class="row"><button class="sec" id="peek-retry" type="button">再写一次</button>' +
     '<button class="sec" id="peek-skip" type="button">下一题</button></div>'
   $('peek-retry').onclick = () => {
+    state.letters = ''           // 同上：看过答案之后从头写
+    state.caret = 0
     $('feedback').innerHTML = ''
     state.phase = 'ask'
     renderActions()
+    renderSlots('')
     focusInput()
   }
   $('peek-skip').onclick = () => {
@@ -568,12 +644,38 @@ async function load() {
   beginRound()
 }
 
-$('slots').addEventListener('click', focusInput)
+$('input').addEventListener('focus', syncFocus)
+$('input').addEventListener('blur', syncFocus)
+$('slots').addEventListener('click', (e) => {
+  const cell = e.target && e.target.closest ? e.target.closest('i') : null
+  if (cell) return focusSlotAt(cell)
+  focusInput()
+})
+// 退格：keydown 就拦下来（preventDefault 之后浏览器不会动输入框，也就不会再冒 input 事件）
+$('input').addEventListener('keydown', (e) => {
+  if (e.key !== 'Backspace') return
+  if (state.phase !== 'ask' || !state.step || state.step.kind !== 'spell') return
+  e.preventDefault()
+  backspaceLetter()
+  renderSlots('')
+})
 $('input').addEventListener('input', (e) => {
-  state.typing = e.target.value
+  if (state.phase !== 'ask' || !state.step || state.step.kind !== 'spell') return
+  const el = e.target
+  const raw = String(el.value || '')
+  const type = String(e.inputType || '')
+  if (type.indexOf('delete') === 0) {
+    backspaceLetter()
+  } else {
+    insertLetters(lettersOf(diffInserted(state.buf, raw)))
+  }
+  clearBuf()                       // 读完就清空：平台的插入位置从此与我们无关
   renderSlots('')
 })
 $('input').addEventListener('keyup', (e) => { if (e.key === 'Enter') check() })
+document.addEventListener('selectionchange', () => {
+  if (document.activeElement === $('input')) clearBuf()
+})
 $('lv-next').addEventListener('click', () => {
   state.levelIdx += 1
   state.lvRight = 0

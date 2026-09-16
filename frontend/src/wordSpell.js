@@ -15,9 +15,14 @@ export function lettersOf(input) {
   return String(input || '').replace(/[^A-Za-z]/g, '')
 }
 
-/** 槽位：空格、标点、撇号固定（复用 hyphen 的样式），字母对应孩子输入的下一个字符 */
-export function slotCells(word, input) {
+/** 槽位：空格、标点、撇号固定（复用 hyphen 的样式），字母对应孩子输入的下一个字符。
+ *  caret（可选）= 光标在第几个字母前（0..字母数）。给了就按它标「当前格」，
+ *  不给就沿用老行为（当前格 = 第一个空位）。**旧签名行为不变**，只是多一个可选参数。 */
+export function slotCells(word, input, caret) {
   const letters = lettersOf(input)
+  const at = (caret === undefined || caret === null)
+    ? letters.length
+    : Math.max(0, Math.min(letters.length, Math.floor(Number(caret)) || 0))
   let li = 0
   return [...String(word || '')].map((ch) => {
     if (!LETTER.test(ch)) {
@@ -26,7 +31,7 @@ export function slotCells(word, input) {
         : { kind: 'hyphen', fill: ch, cur: false }
     }
     const fill = letters[li] || ''
-    const cur = li === letters.length
+    const cur = li === at
     li += 1
     return { kind: 'letter', fill, cur }
   })

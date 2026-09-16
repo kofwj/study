@@ -84,6 +84,46 @@ for (const it of words) {
   if (onlyPunct && lettersOf(onlyPunct) !== '') problems.push([word, '只敲标点竟然算有输入', onlyPunct, lettersOf(onlyPunct)])
 }
 
+/* 6) 光标（v0.3.63 加）：slotCells 第三个参数 = 光标在第几个字母前。
+   不传 = 老行为（当前格 = 第一个空位）；传了就要精确落在那一格 ——
+   这是「点某一格就能改那一格」的底层保证。 */
+const caretCases = [
+  ['hello', 'hel', 0],          // 光标在开头
+  ['hello', 'hel', 2],          // 中间
+  ['hello', 'hel', 3],          // 正好是第一个空位（= 老行为）
+  ['do exercise', 'doex', 0],   // 空格/固定格不算字母序号
+  ['do exercise', 'doex', 2],
+  ['It\u2019s your turn.', 'its', 1],
+  ['hello', 'hel', -5],         // 越界夹住 → 0
+  ['hello', 'hel', 99],         // 越界夹住 → 字母数
+]
+for (const [word, typed, rawCaret] of caretCases) {
+  n += 1
+  const cells = slotCells(word, typed, rawCaret)
+  const letterCells = []
+  cells.forEach((c, i) => { if (c.kind === 'letter') letterCells.push(i) })
+  const curs = letterCells.filter((i) => cells[i].cur)
+  // 光标的上界是「已经敲进去的字母数」，不是单词的字母格数
+  const wantNo = Math.max(0, Math.min(lettersOf(typed).length, Math.floor(rawCaret)))
+  const gotNo = curs.length === 1 ? letterCells.indexOf(curs[0]) : -1
+  if (gotNo !== wantNo) {
+    problems.push([word, `「当前格」应落在第 ${wantNo} 个字母格（光标 ${rawCaret}）`, typed, `实际 ${gotNo}`])
+  }
+}
+// 填满了就没有「当前格」（和以前一致）
+n += 1
+if (slotCells('hello', 'hello', 5).some((c) => c.cur)) {
+  problems.push(['hello', '填满时不该有「当前格」', 'hello', ''])
+}
+// 不传 / null / undefined 三种都必须和以前一模一样
+for (const [word, typed] of [['hello', 'he'], ['do exercise', 'doex'], ['hello', '']]) {
+  n += 1
+  const a = JSON.stringify(slotCells(word, typed))
+  const b = JSON.stringify(slotCells(word, typed, null))
+  const c = JSON.stringify(slotCells(word, typed, undefined))
+  if (a !== b || a !== c) problems.push([word, '不传 caret 时行为和以前不一致', typed, ''])
+}
+
 console.log(`词条 ${words.length} 条（含标点 ${punctWords} 条，其中带撇号 ${aposWords} 条）；断言 ${n} 条，失败 ${problems.length} 条`)
 for (const [w, why, typed, got] of problems.slice(0, 10)) {
   console.log(`  ${JSON.stringify(w)}  ${why}：敲「${typed}」却拼出「${got}」`)

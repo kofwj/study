@@ -898,6 +898,7 @@ CREATE TABLE IF NOT EXISTS quiz_questions (
   stem TEXT NOT NULL,
   sort INTEGER NOT NULL DEFAULT 0,
   answer_json TEXT NOT NULL DEFAULT '[]',
+  accept_json TEXT NOT NULL DEFAULT '[]',
   options_json TEXT NOT NULL DEFAULT '[]',
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
@@ -929,6 +930,7 @@ CREATE TABLE IF NOT EXISTS quiz_attempts (
   item_order INTEGER NOT NULL,
   answer TEXT NOT NULL DEFAULT '',
   correct INTEGER,
+  judged_by TEXT NOT NULL DEFAULT '',
   created_at TEXT NOT NULL
 )""")
     conn.execute("CREATE INDEX IF NOT EXISTS ix_quiz_attempts_session ON quiz_attempts(session_id, item_order)")
@@ -975,6 +977,13 @@ def _migrate_045(conn):
     _add_column(conn, "families", "bank_open_hour INTEGER DEFAULT 8")
     _add_column(conn, "families", "bank_close_hour INTEGER DEFAULT 20")
 
+
+def _migrate_046(conn):
+    """填空题开始自动判分：题目带一份「同义答案」清单（按空位给，规范化比较兜不住的说法用它兜底）；
+    答题记录标上「谁判的」（auto=机器判 / self=孩子自评）—— 改版前的老记录保持空串，
+    家长端会单独标成「改版前，分不清」，不硬塞进任何一边。"""
+    _add_column(conn, "quiz_questions", "accept_json TEXT DEFAULT '[]'")
+    _add_column(conn, "quiz_attempts", "judged_by TEXT DEFAULT ''")
 
 
 def _migrate_043(conn):
@@ -1385,6 +1394,7 @@ MIGRATIONS = (
     ("043_family_goal", _migrate_043),
     ("044_word_game", _migrate_044),
     ("045_checkin_hours", _migrate_045),
+    ("046_quiz_accept", _migrate_046),
 )
 
 

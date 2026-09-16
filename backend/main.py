@@ -4670,6 +4670,17 @@ def quiz_attempt(b: QuizAttemptIn):
         c.close()
 
 
+@app.get("/api/admin/quiz/summary", dependencies=[Depends(require_parent)])
+def admin_quiz_summary():
+    """家长端：孩子在大队委题库上练得怎么样。
+    刻意把「机器判的」和「孩子自评的」分开报 —— 两种数字的可信度不一样。"""
+    c = get_conn()
+    try:
+        return quizmod.admin_summary(c, _need_kid())
+    finally:
+        c.close()
+
+
 @app.post("/api/quiz/complete")
 def quiz_complete(b: QuizAttemptIn):
     """完成 quiz session；参数里的 session_id 取自 b.session_id（复用 QuizAttemptIn 的 session_id 字段）。"""

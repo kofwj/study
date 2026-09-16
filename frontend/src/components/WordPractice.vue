@@ -354,7 +354,7 @@ onBeforeUnmount(() => {
         <div class="word-slots" :class="wordDialog.feedback && wordDialog.feedback.kind" @click="focusWordInput">
           <i v-for="(s, i) in wordSlotCells" :key="i" :class="[s.kind, { cur: s.cur && !wordDialog.feedback }]">{{ s.fill }}</i>
           <input v-if="!wordDialog.feedback" ref="wordInputEl" v-model="wordDialog.input" class="word-input-ghost"
-            type="text" inputmode="text" autocomplete="off" autocapitalize="none" spellcheck="false"
+            type="text" lang="en" inputmode="latin" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"
             enterkeyhint="done" :disabled="wordDialog.busy" maxlength="60" aria-label="默写单词"
             @keyup.enter="wordCheck" />
         </div>

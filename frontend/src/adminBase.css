@@ -292,3 +292,16 @@
 /* —— 加载/渲染失败的提示条（壳里的 pack 失败 + PageBoundary 渲染出错都用它）—— */
 .admin .pack-err { border: 1px solid var(--danger); background: var(--danger-bg); }
 .admin .pack-err strong { color: var(--danger); }
+
+/* —— 大队委成绩页 —— */
+.admin .sec {
+  border: 1px solid var(--line); background: var(--surface); color: var(--ink-2);
+  padding: 7px 14px; border-radius: var(--radius-md); font-weight: 700;
+  cursor: pointer; font-family: inherit;
+}
+.admin .sec:disabled { opacity: .6; cursor: default; }
+.admin .a-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.admin .a-table th, .admin .a-table td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--surface-2); }
+.admin .a-table th { color: var(--ink-3); font-size: 11px; font-weight: 700; }
+.admin .member-row.err { background: var(--danger-bg); border-radius: var(--radius-md); padding-left: 8px; padding-right: 8px; }
+.admin .fld > b { font-size: 20px; letter-spacing: -.03em; }

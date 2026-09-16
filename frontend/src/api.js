@@ -126,6 +126,7 @@ export const api = {
     setFamilyGoal: (o) => j('/api/admin/family-goal', { method: 'PUT', ...body(o) }),
     closeFamilyGoal: () => j('/api/admin/family-goal/close', { method: 'POST' }),
     setPenalty: (enabled) => j('/api/admin/family/penalty', { method: 'PUT', ...body({ enabled }) }),
+    quizSummary: () => j('/api/admin/quiz/summary'),
     setCheckinHours: (o) => j('/api/admin/family/checkin-hours', { method: 'PUT', ...body(o) }),
     setBankHours: (o) => j('/api/admin/family/bank-hours', { method: 'PUT', ...body(o) }),
     penalties: () => j('/api/admin/penalty'),
