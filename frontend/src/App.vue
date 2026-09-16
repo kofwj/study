@@ -522,9 +522,10 @@ function subjectRank(id) {
   const i = SUBJECT_ORDER.indexOf(id)
   return i < 0 ? 99 : i
 }
-const SIDEBAR_DAILY_ONLY = new Set(['体育', '围棋'])
+const SIDEBAR_DAILY_ONLY = new Set(['围棋'])
 const orderedSubjects = computed(() => {
-  // 有课本进度才进侧栏；体育/围棋只有每日打卡，放今日推荐
+  // 有内容（课本进度或每日打卡）才进侧栏；围棋只有对弈，放今日推荐
+  // 体育不再默认退出侧栏：要不要显示由家长端「孩子端显示学科」开关决定
   const hidden = new Set(data.hidden_subjects || [])
   const list = data.subjects.filter(s => {
     if (hidden.has(s.id) || SIDEBAR_DAILY_ONLY.has(s.id)) return false
