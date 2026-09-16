@@ -808,11 +808,20 @@ def _accepts(raw):
     return [normalize_word(x) for x in arr if normalize_word(x)]
 
 
+def _letters_only(raw):
+    """只留字母（并小写）：空格、标点、撇号、大小写都不参与拼写判分。
+    页面本来就只让孩子敲字母（标点由答案带出），所以判分也只比字母 —— v0.3.58 起。
+    这样即使前端版本旧（撇号还当字母槽）、或答案里的标点换了写法，也不会把孩子判错。"""
+    return "".join(ch for ch in (raw or "").lower() if "a" <= ch <= "z")
+
+
 def _spell_ok(text, word_row):
-    got = normalize_word(text)
+    got = _letters_only(text)
     if not got:
         return False
-    return got == (word_row["word_norm"] or "") or got in _accepts(word_row["accept_json"])
+    if got == _letters_only(word_row["word_norm"] or ""):
+        return True
+    return any(got == _letters_only(x) for x in _accepts(word_row["accept_json"]))
 
 
 def _load_word(c, fam, word_id):

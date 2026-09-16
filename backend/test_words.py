@@ -282,6 +282,66 @@ def test_spell_srs_retry_and_normalize():
         assert same_round.json()["result"] == "right"
 
 
+
+def test_spell_judge_only_compares_letters():
+    """v0.3.58：拼写判分只看字母 —— 空格、标点、撇号、大小写都不参与。
+    起因：`It's your turn.` 里的撇号被前端当成「要敲的字母槽」，槽位上看不见，
+    孩子按槽位敲（不敲撇号）整串就错位一格（Itsy ourt urn.）→ 怎么改都判错。"""
+    def row(word, accept=()):
+        return {"word_norm": wordmod.normalize_word(word),
+                "accept_json": wordmod.accept_json_of({"accept": list(accept)})}
+
+    apostrophe = row("It's your turn.")
+    for said in ["It's your turn.", "its your turn", "ITSYOURTURN", "itsyourturn",
+                 "It’s your turn.", "  it's   your turn.  ", "Itsyourturn."]:
+        assert wordmod._spell_ok(said, apostrophe) is True, said
+    for wrong in ["", "   ", "...", "itsyourtur", "itsyourturnn", "whose turn", "zzz"]:
+        assert wordmod._spell_ok(wrong, apostrophe) is False, wrong
+
+    period = row("Good morning.")
+    assert wordmod._spell_ok("good morning", period) is True
+    assert wordmod._spell_ok("goodmorning.", period) is True
+    assert wordmod._spell_ok("good evening", period) is False
+
+    # accept 里的其它写法同样只比字母
+    both = row("colour", ["color"])
+    assert wordmod._spell_ok("color", both) is True
+    assert wordmod._spell_ok("colour", both) is True
+    assert wordmod._spell_ok("colr", both) is False
+
+
+def test_letters_only_typing_is_always_right():
+    """整条链路复现：带撇号的句型当到期词，孩子只敲字母 → 必须判对（v0.3.58 之前必错）。"""
+    db.init_db()
+    with TestClient(main.app) as cli:
+        kid = _parent(cli, "ws9", "wordpass", "字母家")
+        _enable(cli, new_per_day=10)
+        c = db.connect()
+        row = c.execute("SELECT id, word FROM words WHERE word LIKE 'It''s%'").fetchone()
+        assert row, "词库里应该有带撇号的句型"
+        c.execute(
+            "INSERT INTO word_progress(kid_id,word_id,interval_idx,due_at,first_seen_at,last_seen_at,"
+            "last_result,streak_right,correct_count,wrong_count) VALUES(?,?,1,?,?,?, 'wrong',0,1,1)",
+            (kid, row["id"], db.today(), db.now(), db.now()),
+        )
+        c.commit()
+        c.close()
+        sess = cli.post("/api/words/session/start").json()["session"]
+        sid, items = sess["id"], sess["items"]
+        target = next((x for x in items if x["word_id"] == row["id"]), None)
+        assert target, [x["word"] for x in items]
+        assert not target["word"].isalpha()          # 库里这条确实带标点/撇号
+        said = "".join(ch for ch in target["word"] if ch.isascii() and ch.isalpha())
+        r = _spell(cli, sid, target, text=said)
+        assert r.status_code == 200 and r.json()["result"] == "right", (target["word"], said, r.text)
+        # 这一局其余的词也一样：只敲字母一律判对
+        for it in items:
+            if it["word_id"] == row["id"]:
+                continue
+            said = "".join(ch for ch in it["word"] if ch.isascii() and ch.isalpha())
+            r = _spell(cli, sid, it, text=said)
+            assert r.status_code == 200 and r.json()["result"] == "right", (it["word"], said, r.text)
+
 def test_complete_reward_idempotent_and_snapshot():
     db.init_db()
     with TestClient(main.app) as cli:

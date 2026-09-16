@@ -2,6 +2,9 @@
 // 拼写题回归：拿真实词库逐条断言「孩子只敲字母 → 拼出来的文本 = 答案」。
 // 起因（v0.3.52）：答案里的句号/问号/叹号被当成一个字母槽位，导致带标点的句型永远判错
 // （家长端「英语单词」页看到「错 N 次」，孩子怎么改都错）。
+// v0.3.58 补：同一个坑还有**撇号** —— `'` 以前算进「要敲的字母」，槽位上看不见，
+//   孩子按槽位敲就会整串错位一格（`It's your turn.` → `Itsy ourt urn.`）→ 永远判错。
+//   现在几种敲法都必须拼出原答案：只敲字母 / 连标点一起敲 / 末尾多敲句号 / 字母之间乱加空格。
 //
 // 用法：node scripts/check_word_spell.mjs [词库路径]
 import { readFileSync } from 'fs'
@@ -26,17 +29,63 @@ if (!words.length) {
 }
 
 const problems = []
+let n = 0
+let punctWords = 0
+let aposWords = 0
 for (const it of words) {
-  const typed = lettersOf(it.word)                 // 孩子实际能敲的（字母 + 撇号）
-  const got = assembleSpelling(it.word, typed)
-  if (got !== it.word) problems.push([it.word, typed, got])
-  // 槽位：非字母必须是固定格（不吃输入），否则 UI 上会多出一个填不对的格子
-  const bad = slotCells(it.word, typed).filter((c, i) => !/[A-Za-z']/.test([...it.word][i]) && c.kind === 'letter')
-  if (bad.length) problems.push([it.word, typed, '槽位把标点当成字母格'])
+  const word = String(it.word)
+  const bare = word.replace(/[^A-Za-z]/g, '')      // 孩子最自然的敲法：只敲字母（连撇号都不敲）
+  const chars = [...word]
+  const cells = slotCells(word, bare)
+  if (/[^A-Za-z ]/.test(word)) punctWords += 1
+  if (/['’]/.test(word)) aposWords += 1
+
+  // 1) 各种「孩子可能怎么敲」都要拼出原答案
+  const ways = [
+    ['只敲字母', bare],
+    ['连标点一起敲', word],
+    ['末尾多敲一个句号', bare + '.'],
+    ['字母之间乱加空格', bare.replace(/([a-z])(?=[a-z])/g, '$1 ')],
+    ['只敲字母大写', bare.toUpperCase()],
+  ]
+  for (const [label, typed] of ways) {
+    n += 1
+    const got = assembleSpelling(word, typed)
+    // 大小写不参与判分（后端只比字母），所以这里也按小写比
+    if (got.toLowerCase() !== word.toLowerCase()) problems.push([word, label, typed, got])
+  }
+
+  // 2) 槽位：一个不多一个不少；除了 A–Z/a–z，全部是固定格（不吃输入）
+  n += 1
+  if (cells.length !== chars.length) problems.push([word, '槽位数和答案对不上', cells.length, chars.length])
+  cells.forEach((c, i) => {
+    n += 1
+    const ch = chars[i]
+    if (!/[A-Za-z]/.test(ch) && c.kind === 'letter') problems.push([word, '槽位把标点/撇号当成要敲的字母格', ch, c.kind])
+  })
+
+  // 3) 撇号必须是「看得见的固定格」：孩子要知道这里有个撇号，但不用敲
+  if (/['’]/.test(word)) {
+    n += 1
+    const qi = chars.findIndex((ch) => /['’]/.test(ch))
+    const cell = cells[qi]
+    if (!cell || cell.kind !== 'hyphen' || cell.fill !== chars[qi]) {
+      problems.push([word, '撇号不是「看得见的固定格」', JSON.stringify(chars[qi]), cell ? cell.kind + '/' + cell.fill : 'none'])
+    }
+  }
+
+  // 4) lettersOf 只留字母：撇号、空格、标点都要被剔掉
+  n += 1
+  if (lettersOf(word) !== bare) problems.push([word, 'lettersOf 没剔干净（撇号/标点还在）', lettersOf(word), bare])
+
+  // 5) 只敲标点（例如只按一个句号）＝ 没输入，页面该提示「先写一写」
+  n += 1
+  const onlyPunct = word.replace(/[A-Za-z]/g, '')
+  if (onlyPunct && lettersOf(onlyPunct) !== '') problems.push([word, '只敲标点竟然算有输入', onlyPunct, lettersOf(onlyPunct)])
 }
-const withPunct = words.filter((x) => /[^A-Za-z' ]/.test(x.word)).length
-console.log(`词条 ${words.length} 条（含标点 ${withPunct} 条）；拼不对的 ${problems.length} 条`)
-for (const [w, typed, got] of problems.slice(0, 10)) {
-  console.log(`  ${w}  ← 敲「${typed}」却拼出「${got}」`)
+
+console.log(`词条 ${words.length} 条（含标点 ${punctWords} 条，其中带撇号 ${aposWords} 条）；断言 ${n} 条，失败 ${problems.length} 条`)
+for (const [w, why, typed, got] of problems.slice(0, 10)) {
+  console.log(`  ${JSON.stringify(w)}  ${why}：敲「${typed}」却拼出「${got}」`)
 }
 process.exit(problems.length ? 1 : 0)
