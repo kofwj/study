@@ -159,6 +159,7 @@ function unitName(id) { return units.value.find(u => u.id === id)?.name || id }
 
 const loaded = new Set()
 const inflight = new Map()
+const packError = ref('')   // 按页加载里某个包失败时给家长一条能读的提示（别让页面静默空白）
 const KID_PACKS = new Set(['tasks', 'hist', 'weekly', 'insights', 'familyToday', 'redemptions', 'reviewDue', 'weak', 'tests', 'words', 'bank', 'sprites', 'penalties'])
 const SECTION_PACKS = {
   insights: ['tasks', 'hist', 'weekly', 'insights', 'familyToday', 'redemptions', 'reviewDue'],
@@ -200,12 +201,28 @@ async function loadPack(name, fn) {
   const gen = loadGen
   const kid = selectedKid.value
   const p = (async () => {
-    await fn()
-    if (staleNow(kid, gen)) return
-    loaded.add(name)
+    try {
+      await fn()
+      if (staleNow(kid, gen)) return
+      loaded.add(name)
+      packError.value = ''
+    } catch (e) {
+      // 一个包失败不该把整页拖空、也不该把 Promise 抛出去：留在条上给家长看
+      packError.value = `${name}：${(e && e.message) || e}`
+    }
   })().finally(() => { if (inflight.get(name) === p) inflight.delete(name) })
   inflight.set(name, p)
   return p
+}
+
+async function retryPacks() {
+  packError.value = ''
+  loaded.clear()
+  try {
+    await ensureSection(section.value)
+  } catch (e) {
+    packError.value = (e && e.message) || String(e)
+  }
 }
 
 function applyTasks(t) {
@@ -986,6 +1003,11 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload)
       @kid-removed="onKidRemoved"
     />
 
+      <div v-if="packError" class="w-next pack-err">
+        <strong>这一页的数据没加载上</strong>
+        <span>{{ packError }}</span>
+        <button type="button" class="ok" @click="retryPacks">重试</button>
+      </div>
       <div v-if="isDirty" class="w-next dirty-bar">
         <strong>有未保存的修改</strong>
         <span></span>
@@ -1037,6 +1059,8 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload)
 
 
 .dirty-bar { position: sticky; bottom: 0; margin: 0; z-index: 5; box-shadow: var(--shadow-md); padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
+.pack-err { border: 1px solid var(--danger); background: var(--danger-bg); }
+.pack-err strong { color: var(--danger); }
 
 @media (max-width: 760px) {
   .a-body { flex-direction: column; }
