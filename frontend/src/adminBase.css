@@ -238,3 +238,16 @@
 .admin .review-actions { flex-direction: column; }
 .admin .review-actions button { width: 100%; }
 }
+
+/* —— 扣分 chip / 净扣 —— */
+.admin .chip-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 10px; }
+.admin .chip-label { font-size: 12px; color: var(--ink-3); font-weight: 700; width: 48px; }
+.admin .chip {
+  border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+  border-radius: var(--radius-pill); padding: 6px 12px; font-weight: 700; font-size: 13px;
+  cursor: pointer; font-family: inherit;
+}
+.admin .chip.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+.admin .pen-amt { font-weight: 800; color: var(--danger); font-variant-numeric: tabular-nums; }
+.admin .pen-sum { margin: 12px 0 4px; }
+.admin .pen-sum .w-subj-name { width: 84px; }
