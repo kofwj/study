@@ -18,7 +18,8 @@ const bankPending = computed(() => (bankData.value.requests || []).filter(r => r
 const bankActiveDeposits = computed(() => (bankData.value.deposits || []).filter(d => d.state === 'active'))
 const bankClosed = computed(() => bankData.value.hours && bankData.value.hours.open === false)
 function bankClosedHint() {
-  return (bankData.value.hours && bankData.value.hours.hint) || '储蓄所每天 8:00 到 20:00 营业'
+  const h = bankData.value.hours || {}
+  return h.hint || `储蓄所每天 ${h.from || '08:00'} 到 ${h.until || '20:00'} 营业`
 }
 function guardBankOpen() {
   if (!bankClosed.value) return true

@@ -12,6 +12,7 @@ const props = defineProps({
   members: { type: Array, default: () => [] },
   invites: { type: Array, default: () => [] },
   inviteProtect: { type: Boolean, default: false },
+  hours: { type: Object, default: () => ({}) },
   isOwner: { type: Boolean, default: false },
   meAccount: { type: String, default: '' },
   showToast: { type: Function, required: true },
@@ -23,6 +24,24 @@ const { editKind, editId, findEditRow, clearEdit, beginEdit, cancelEdit, isEditi
 const newKid = reactive({ name: '', account: '', pin: '', pin2: '', term_id: 'g5s1', gender: '' })
 const kidAddOpen = ref(false)
 const pinForm = reactive({ cur: '', next: '', confirm: '' })
+
+// 打卡时间窗 / 储蓄所营业时间：各自一个开关 + 整点区间；后端会校验「开门必须早于打烊」
+async function saveHours(kind, patch) {
+  const cur = (props.hours || {})[kind]
+  if (!cur) return
+  const body = {
+    enabled: patch && 'enabled' in patch ? patch.enabled : cur.enabled,
+    open_hour: cur.open_hour,
+    close_hour: cur.close_hour,
+  }
+  try {
+    const r = kind === 'checkin' ? await api.admin.setCheckinHours(body) : await api.admin.setBankHours(body)
+    const next = (kind === 'checkin' ? r.checkin_hours : r.bank_hours) || {}
+    Object.assign(cur, next)
+    props.showToast(kind === 'checkin' ? '打卡时间已保存' : '储蓄所时间已保存')
+    emit('reload')
+  } catch (e) { props.showToast(e.message) }
+}
 async function addKid() {
   if (!newKid.name) return props.showToast('填名字')
   if (!(newKid.account || '').trim()) return props.showToast('填登录账号')
@@ -238,6 +257,36 @@ defineExpose({ isAddDirty, discardAdd, saveCurrentEdit })
         <button v-if="isOwner" class="del" @click="delInvite(iv.code)">删</button>
       </div>
       <p v-if="!invites.length" class="dim mt6">还没有邀请码。</p>
+    </section>
+
+    <section class="a-card enter">
+      <h3>打卡与储蓄所时间</h3>
+      <p class="dim">孩子端「每日签到」和「阳光储蓄所」各自的营业时间，按家里的作息改。按整点、每天生效；关掉某一项就等于那件事全天都能做。</p>
+
+      <div class="lock-row">
+        <span class="badge">打卡时间窗</span>
+        <span class="grow">关掉 = 全天都能签到</span>
+        <button type="button" :class="['toggle', { on: hours.checkin && hours.checkin.enabled }]"
+                @click="saveHours('checkin', { enabled: !(hours.checkin && hours.checkin.enabled) })">{{ hours.checkin && hours.checkin.enabled ? '开' : '关' }}</button>
+      </div>
+      <div v-if="hours.checkin && hours.checkin.enabled" class="frm-row">
+        <label class="fld w64"><span>开门</span><input v-model.number="hours.checkin.open_hour" type="number" min="0" max="23" /></label>
+        <label class="fld w64"><span>打烊</span><input v-model.number="hours.checkin.close_hour" type="number" min="1" max="24" /></label>
+        <button class="ok" @click="saveHours('checkin')">保存</button>
+      </div>
+
+      <div class="lock-row mt8">
+        <span class="badge">储蓄所营业</span>
+        <span class="grow">关掉 = 全天都能存取</span>
+        <button type="button" :class="['toggle', { on: hours.bank && hours.bank.enabled }]"
+                @click="saveHours('bank', { enabled: !(hours.bank && hours.bank.enabled) })">{{ hours.bank && hours.bank.enabled ? '开' : '关' }}</button>
+      </div>
+      <div v-if="hours.bank && hours.bank.enabled" class="frm-row">
+        <label class="fld w64"><span>开门</span><input v-model.number="hours.bank.open_hour" type="number" min="0" max="23" /></label>
+        <label class="fld w64"><span>打烊</span><input v-model.number="hours.bank.close_hour" type="number" min="1" max="24" /></label>
+        <button class="ok" @click="saveHours('bank')">保存</button>
+      </div>
+      <p class="dim mt6">默认：打卡 7:00–21:00，储蓄所 8:00–20:00。改时间只是换入口开关，已有记录、余额和利息都不受影响。</p>
     </section>
 
     <section class="a-card enter">

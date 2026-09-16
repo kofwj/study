@@ -401,6 +401,114 @@ BANK_OPEN_HOUR = 8
 BANK_CLOSE_HOUR = 20
 
 
+def _clamp_hour(v, default, lo, hi):
+    try:
+        n = int(v)
+    except (TypeError, ValueError):
+        n = default
+    return max(lo, min(hi, n))
+
+
+def _hhmm(hour):
+    h = 24 if hour == 24 else _clamp_hour(hour, 0, 0, 23)
+    return "%02d:00" % h
+
+
+def _default_checkin_hours():
+    return {
+        "enabled": True,
+        "open_hour": CHECKIN_OPEN_HOUR,
+        "close_hour": CHECKIN_CLOSE_HOUR,
+        "from": _hhmm(CHECKIN_OPEN_HOUR),
+        "until": _hhmm(CHECKIN_CLOSE_HOUR),
+    }
+
+
+def family_checkin_hours(c, fam):
+    """读这家的打卡时间窗。列还没迁到或行缺失时退回 7:00–21:00。"""
+    out = _default_checkin_hours()
+    if not fam or c is None:
+        return out
+    try:
+        row = c.execute(
+            "SELECT checkin_hours_enabled, checkin_open_hour, checkin_close_hour "
+            "FROM families WHERE id=?",
+            (fam,),
+        ).fetchone()
+    except sqlite3.OperationalError:
+        return out
+    if not row:
+        return out
+    enabled = int(row["checkin_hours_enabled"] if row["checkin_hours_enabled"] is not None else 1)
+    open_h = _clamp_hour(row["checkin_open_hour"], CHECKIN_OPEN_HOUR, 0, 23)
+    close_h = _clamp_hour(row["checkin_close_hour"], CHECKIN_CLOSE_HOUR, 1, 24)
+    if enabled and open_h >= close_h:
+        open_h, close_h = CHECKIN_OPEN_HOUR, CHECKIN_CLOSE_HOUR
+    out["enabled"] = bool(enabled)
+    out["open_hour"] = open_h
+    out["close_hour"] = close_h
+    out["from"] = _hhmm(open_h)
+    out["until"] = _hhmm(close_h)
+    return out
+
+
+def _hours_from_ctx():
+    fam = _fam.get()
+    if not fam:
+        return _default_checkin_hours()
+    c = get_conn()
+    try:
+        return family_checkin_hours(c, fam)
+    finally:
+        c.close()
+
+def _default_bank_hours():
+    return {
+        "enabled": True,
+        "open_hour": BANK_OPEN_HOUR,
+        "close_hour": BANK_CLOSE_HOUR,
+        "from": _hhmm(BANK_OPEN_HOUR),
+        "until": _hhmm(BANK_CLOSE_HOUR),
+    }
+
+
+def family_bank_hours(c, fam):
+    """读这家的储蓄所营业时间。列还没迁到或行缺失时退回 8:00–20:00。"""
+    out = _default_bank_hours()
+    if not fam or c is None:
+        return out
+    try:
+        row = c.execute(
+            "SELECT bank_hours_enabled, bank_open_hour, bank_close_hour FROM families WHERE id=?",
+            (fam,),
+        ).fetchone()
+    except sqlite3.OperationalError:
+        return out
+    if not row:
+        return out
+    enabled = int(row["bank_hours_enabled"] if row["bank_hours_enabled"] is not None else 1)
+    open_h = _clamp_hour(row["bank_open_hour"], BANK_OPEN_HOUR, 0, 23)
+    close_h = _clamp_hour(row["bank_close_hour"], BANK_CLOSE_HOUR, 1, 24)
+    if enabled and open_h >= close_h:
+        open_h, close_h = BANK_OPEN_HOUR, BANK_CLOSE_HOUR
+    out["enabled"] = bool(enabled)
+    out["open_hour"] = open_h
+    out["close_hour"] = close_h
+    out["from"] = _hhmm(open_h)
+    out["until"] = _hhmm(close_h)
+    return out
+
+
+def _bank_hours_from_ctx():
+    fam = _fam.get()
+    if not fam:
+        return _default_bank_hours()
+    c = get_conn()
+    try:
+        return family_bank_hours(c, fam)
+    finally:
+        c.close()
+
 
 def today_label():
     d = db.local_now()
@@ -424,21 +532,34 @@ def _bank_window_enforced():
 
 
 
-def checkin_window(now=None):
+def checkin_window(now=None, hours=None):
     now = now or db.local_now()
-    open_ok = CHECKIN_OPEN_HOUR <= now.hour < CHECKIN_CLOSE_HOUR
+    hours = hours if hours is not None else _hours_from_ctx()
+    enabled = hours.get("enabled", True)
+    open_h = _clamp_hour(hours.get("open_hour"), CHECKIN_OPEN_HOUR, 0, 23)
+    close_h = _clamp_hour(hours.get("close_hour"), CHECKIN_CLOSE_HOUR, 1, 24)
+    from_s = hours.get("from") or _hhmm(open_h)
+    until_s = hours.get("until") or _hhmm(close_h)
+    in_range = (not enabled) or (open_h <= now.hour < close_h)
+    open_ok = in_range
     if not _checkin_window_enforced():
         open_ok = True
-    if now.hour < CHECKIN_OPEN_HOUR:
-        hint = "每天 7:00 到 21:00 才能打卡，现在还太早"
-    elif now.hour >= CHECKIN_CLOSE_HOUR:
-        hint = "每天 7:00 到 21:00 才能打卡，现在已经打烊"
+    span = "每天 %s 到 %s" % (from_s, until_s)
+    if not enabled:
+        hint = "全天都可以打卡"
+    elif now.hour < open_h:
+        hint = "%s 才能打卡，现在还太早" % span
+    elif now.hour >= close_h:
+        hint = "%s 才能打卡，现在已经打烊" % span
     else:
-        hint = "今天 7:00 到 21:00 可以打卡"
+        hint = "今天 %s 到 %s 可以打卡" % (from_s, until_s)
     return {
         "open": open_ok,
-        "from": "07:00",
-        "until": "21:00",
+        "enabled": bool(enabled),
+        "open_hour": open_h,
+        "close_hour": close_h,
+        "from": from_s,
+        "until": until_s,
         "hint": hint if not open_ok else "",
         "now": now.strftime("%H:%M"),
     }
@@ -451,21 +572,35 @@ def require_checkin_open():
     return w
 
 
-def bank_window(now=None):
+
+def bank_window(now=None, hours=None):
+    """储蓄所营业时间。hours=None 时读这家的设置；没设置就是 8:00–20:00。"""
     now = now or db.local_now()
-    open_ok = BANK_OPEN_HOUR <= now.hour < BANK_CLOSE_HOUR
+    hours = hours if hours is not None else _bank_hours_from_ctx()
+    enabled = hours.get("enabled", True)
+    open_h = _clamp_hour(hours.get("open_hour"), BANK_OPEN_HOUR, 0, 23)
+    close_h = _clamp_hour(hours.get("close_hour"), BANK_CLOSE_HOUR, 1, 24)
+    from_s = hours.get("from") or _hhmm(open_h)
+    until_s = hours.get("until") or _hhmm(close_h)
+    open_ok = (not enabled) or (open_h <= now.hour < close_h)
     if not _bank_window_enforced():
         open_ok = True
-    if now.hour < BANK_OPEN_HOUR:
-        hint = "储蓄所每天 8:00 到 20:00 营业，现在还太早"
-    elif now.hour >= BANK_CLOSE_HOUR:
-        hint = "储蓄所每天 8:00 到 20:00 营业，现在已经打烊"
+    span = "每天 %s 到 %s" % (from_s, until_s)
+    if not enabled:
+        hint = "储蓄所全天都可以存取"
+    elif now.hour < open_h:
+        hint = "储蓄所 %s 营业，现在还太早" % span
+    elif now.hour >= close_h:
+        hint = "储蓄所 %s 营业，现在已经打烊" % span
     else:
-        hint = "今天 8:00 到 20:00 可以存取"
+        hint = "储蓄所 %s 可以存取" % span
     return {
         "open": open_ok,
-        "from": "08:00",
-        "until": "20:00",
+        "enabled": bool(enabled),
+        "open_hour": open_h,
+        "close_hour": close_h,
+        "from": from_s,
+        "until": until_s,
         "hint": hint if not open_ok else "",
         "now": now.strftime("%H:%M"),
     }
@@ -2792,9 +2927,81 @@ def family_info(request: Request):
     u = request.state.user
     c = get_conn()
     row = c.execute("SELECT id, name, invite_protect, penalty_enabled FROM families WHERE id=?", (u["family_id"],)).fetchone()
+    hours = family_checkin_hours(c, u["family_id"])
+    bank_hours = family_bank_hours(c, u["family_id"])
     c.close()
     return {"name": row["name"], "invite_protect": int(row["invite_protect"] or 0),
-            "penalty_enabled": int(row["penalty_enabled"] or 0)}
+            "penalty_enabled": int(row["penalty_enabled"] or 0),
+            "checkin_hours": hours, "bank_hours": bank_hours}
+
+
+class CheckinHoursIn(BaseModel):
+    enabled: bool = True
+    open_hour: int = CHECKIN_OPEN_HOUR
+    close_hour: int = CHECKIN_CLOSE_HOUR
+
+
+def _normalize_checkin_hours(enabled, open_hour, close_hour):
+    enabled = bool(enabled)
+    open_h = _clamp_hour(open_hour, CHECKIN_OPEN_HOUR, 0, 23)
+    close_h = _clamp_hour(close_hour, CHECKIN_CLOSE_HOUR, 1, 24)
+    if enabled and open_h >= close_h:
+        raise HTTPException(400, "开门时间必须早于打烊时间")
+    return {
+        "enabled": enabled,
+        "open_hour": open_h,
+        "close_hour": close_h,
+        "from": _hhmm(open_h),
+        "until": _hhmm(close_h),
+    }
+
+
+@app.put("/api/admin/family/checkin-hours", dependencies=[Depends(require_parent)])
+def family_checkin_hours_put(b: CheckinHoursIn, request: Request):
+    u = request.state.user
+    hours = _normalize_checkin_hours(b.enabled, b.open_hour, b.close_hour)
+    c = get_conn()
+    c.execute(
+        "UPDATE families SET checkin_hours_enabled=?, checkin_open_hour=?, checkin_close_hour=? WHERE id=?",
+        (1 if hours["enabled"] else 0, hours["open_hour"], hours["close_hour"], u["family_id"]),
+    )
+    c.commit()
+    c.close()
+    return {"checkin_hours": hours}
+
+class BankHoursIn(BaseModel):
+    enabled: bool = True
+    open_hour: int = BANK_OPEN_HOUR
+    close_hour: int = BANK_CLOSE_HOUR
+
+
+def _normalize_bank_hours(enabled, open_hour, close_hour):
+    enabled = bool(enabled)
+    open_h = _clamp_hour(open_hour, BANK_OPEN_HOUR, 0, 23)
+    close_h = _clamp_hour(close_hour, BANK_CLOSE_HOUR, 1, 24)
+    if enabled and open_h >= close_h:
+        raise HTTPException(400, "开门时间必须早于打烊时间")
+    return {
+        "enabled": enabled,
+        "open_hour": open_h,
+        "close_hour": close_h,
+        "from": _hhmm(open_h),
+        "until": _hhmm(close_h),
+    }
+
+
+@app.put("/api/admin/family/bank-hours", dependencies=[Depends(require_parent)])
+def family_bank_hours_put(b: BankHoursIn, request: Request):
+    u = request.state.user
+    hours = _normalize_bank_hours(b.enabled, b.open_hour, b.close_hour)
+    c = get_conn()
+    c.execute(
+        "UPDATE families SET bank_hours_enabled=?, bank_open_hour=?, bank_close_hour=? WHERE id=?",
+        (1 if hours["enabled"] else 0, hours["open_hour"], hours["close_hour"], u["family_id"]),
+    )
+    c.commit()
+    c.close()
+    return {"bank_hours": hours}
 
 
 @app.put("/api/admin/family/invite_protect", dependencies=[Depends(require_owner)])

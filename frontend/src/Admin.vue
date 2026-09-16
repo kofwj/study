@@ -22,6 +22,11 @@ const kids = ref([])
 const members = ref([])
 const inviteProtect = ref(false)
 const penaltyEnabled = ref(false)
+// 打卡时间窗 + 储蓄所营业时间（两家事、各有开关；后端 /api/admin/family 一起下发）
+const familyHours = reactive({
+  checkin: { enabled: true, open_hour: 7, close_hour: 21, from: '07:00', until: '21:00' },
+  bank: { enabled: true, open_hour: 8, close_hour: 20, from: '08:00', until: '20:00' },
+})
 const penalties = ref([])
 const penaltySummary = ref({ net: 0, count: 0, amount: 0, by_reason: [] })
 const invites = ref([])
@@ -392,6 +397,8 @@ async function loadCore() {
   members.value = ms
   inviteProtect.value = !!fam.invite_protect
   penaltyEnabled.value = !!fam.penalty_enabled
+  if (fam.checkin_hours) Object.assign(familyHours.checkin, fam.checkin_hours)
+  if (fam.bank_hours) Object.assign(familyHours.bank, fam.bank_hours)
   invites.value = inv
   if (!ks.length) {
     terms.value = [{ id: 'g5s1', label: '五年级上册' }]
@@ -998,6 +1005,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload)
       :invite-protect="inviteProtect"
       :is-owner="isOwner"
       :me-account="me.account"
+      :hours="familyHours"
       :show-toast="showToast"
       @reload="load"
       @reload-invites="refreshInvites"

@@ -965,6 +965,18 @@ def _migrate_044(conn):
                  "'word_daily','word_perfect','bank_interest','family_goal','word_game')")
 
 
+
+def _migrate_045(conn):
+    """全家孩子端打卡时间窗 + 储蓄所营业时间，家长可调。默认打卡 7:00–21:00、储蓄所 8:00–20:00。"""
+    _add_column(conn, "families", "checkin_hours_enabled INTEGER DEFAULT 1")
+    _add_column(conn, "families", "checkin_open_hour INTEGER DEFAULT 7")
+    _add_column(conn, "families", "checkin_close_hour INTEGER DEFAULT 21")
+    _add_column(conn, "families", "bank_hours_enabled INTEGER DEFAULT 1")
+    _add_column(conn, "families", "bank_open_hour INTEGER DEFAULT 8")
+    _add_column(conn, "families", "bank_close_hour INTEGER DEFAULT 20")
+
+
+
 def _migrate_043(conn):
     """家庭共同目标（B4）：family_goals 表 + 「同时只 1 个 active」唯一索引 +
     达标发放纳入一次性流水幂等（照 037 的模版，reason 列表要含之前全部 + family_goal）。"""
@@ -1372,7 +1384,9 @@ MIGRATIONS = (
     ("042_quiz", _migrate_042),
     ("043_family_goal", _migrate_043),
     ("044_word_game", _migrate_044),
+    ("045_checkin_hours", _migrate_045),
 )
+
 
 
 def apply_migrations(conn):
