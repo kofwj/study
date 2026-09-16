@@ -3742,6 +3742,18 @@ def daily_delete(did: str):
 
 # ---------------- 周报（家长端） -------------
 
+def _english_note_safe(c, kid, fam):
+    """家长端总览的「本周英语」一行（周 + 今天）。读不到就退化成一句提示，绝不把 weekly 拖垮。"""
+    try:
+        wk = wordmod.week_stats(c, kid, fam)
+        return dict(wk["week"], sentence=wk["week_sentence"],
+                    today_wrote=wk["today"]["wrote"], goal=wk["today"]["goal"],
+                    goal_done=wk["today"]["goal_done"])
+    except Exception:
+        return {"days": 0, "words": 0, "rate": None, "today_wrote": 0, "goal": 0,
+                "goal_done": False, "sentence": "暂时读不到英语记录"}
+
+
 
 @app.get("/api/admin/weekly", dependencies=[Depends(require_parent)])
 def weekly():
@@ -3817,9 +3829,11 @@ def weekly():
             done = _completed_between(c, kr["id"], this_from, this_to)
             done_last = _completed_between(c, kr["id"], last_from, last_to)
             items = _mastered_names(c, kr["id"], w_start, w_end)
+            words_note = _english_note_safe(c, kr["id"], fam)
             kids_cmp.append({"id": kr["id"], "name": kr["name"], "earned": ke, "spent": ks,
                              "streak": streak(c, kr["id"]), "current": kr["id"] == kid,
-                             "completed": done, "completed_last": done_last, "insight": ins})
+                             "completed": done, "completed_last": done_last, "insight": ins,
+                             "words": words_note})
             insight_rows.append({"kid_id": kr["id"], "name": kr["name"], "insight": ins})
             if items:
                 mastered_by_kid.append({"kid_id": kr["id"], "name": kr["name"], "items": items})

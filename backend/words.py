@@ -969,6 +969,76 @@ def _try_ledger(c, kid, delta, reason, ref, note):
     db.insert_ledger(c, db.today(), int(delta), reason, ref, note, kid_id=kid)
 
 
+def today_summary(c, kid, cfg):
+    """家长端「今天」这一排：孩子今天在 /word/ 的进展（服务端算，和页面口径同一套）。"""
+    row = _today_session(c, kid)
+    sid = row["id"] if row else ""
+    info = _game_today(c, kid, sid) if sid else {"rounds": [], "best_score": 0, "got": 0}
+    wrote = scored_words_today(c, kid)
+    goal = int(cfg.get("daily_goal") or 0)
+    return {
+        "date": db.today(),
+        "wrote": wrote,
+        "rounds": len(info["rounds"]),
+        "best_score": int(info["best_score"] or 0),
+        "sunshine": int(info["got"] or 0),
+        "sunshine_limit": GAME_MAX_SUNSHINE,
+        "goal": goal,
+        "goal_done": bool(goal and wrote >= goal),
+        "finished": bool(row and row["state"] == "completed"),
+    }
+
+
+def week_summary(week):
+    """从 week_stats 的 days 里数「练了几天 / 一共写了多少词 / 首轮正确率」。"""
+    done = [d for d in week["days"] if d["completed"]]
+    return {"days": len(done), "words": sum(int(d["items"]) for d in done), "rate": week["first_try_rate"]}
+
+
+def today_sentence(enabled, today):
+    """家长端「今天」那一句（后端拼好，前端只渲染 —— 不许有第二份文案）。"""
+    if not enabled:
+        return "英语单词没开"
+    n = int(today["wrote"])
+    if not n:
+        return "今天还没练"
+    goal = int(today["goal"])
+    if goal > 0:
+        tail = "已达标" if today["goal_done"] else ("还差 %d 词" % max(0, goal - n))
+        head = "今天写了 %d 词（目标 %d，%s）" % (n, goal, tail)
+    else:
+        head = "今天写了 %d 个词" % n
+    return " · ".join([head, "最好一轮 %d 分" % int(today["best_score"]),
+                       "阳光 %d/%d" % (int(today["sunshine"]), int(today["sunshine_limit"]))])
+
+
+def week_sentence(enabled, week, today):
+    """家长端总览那一句：这周（练了几天 + 首轮正确率）+ 今天。"""
+    if not enabled:
+        return "英语单词没开"
+    if int(week["days"]) <= 0:
+        head = "这周还没练过英语"
+    else:
+        head = "这周练了 %d 天" % int(week["days"])
+        if week["rate"] is not None:
+            head += "，首轮正确率 %d%%" % int(week["rate"])
+    n = int(today["wrote"])
+    goal = int(today["goal"])
+    if not n:
+        tail = "今天还没练"
+    elif goal > 0:
+        tail = "今天写了 %d/%d 词%s" % (n, goal, "（达标）" if today["goal_done"] else "")
+    else:
+        tail = "今天写了 %d 个词" % n
+    return head + "；" + tail
+
+
+def english_empty_today():
+    """读不到时的兜底（GAME_MAX_SUNSHINE 定义在后面，所以这里必须是函数、不能是模块级常量）。"""
+    return {"date": db.today(), "wrote": 0, "rounds": 0, "best_score": 0, "sunshine": 0,
+            "sunshine_limit": GAME_MAX_SUNSHINE, "goal": 0, "goal_done": False, "finished": False}
+
+
 def week_stats(c, kid, fam):
     today = _today_date()
     days = []
@@ -998,11 +1068,25 @@ def week_stats(c, kid, fam):
     done = [x for x in days if x["completed"]]
     tot_i = sum(x["items"] for x in done)
     tot_c = sum(x["correct_first_try"] for x in done)
-    return {
+    out = {
         "days": days,
         "completed_sessions": sum(x["completed"] for x in days),
         "first_try_rate": round(tot_c * 100 / tot_i) if tot_i else None,
     }
+    # 家长端要的「今天 + 本周一句」（只读；出错也不能把整个 stats 拖垮 —— B4 那次空白页的教训）
+    week = week_summary(out)
+    out["week"] = week
+    try:
+        cfg = kid_config(c, kid)
+        today = today_summary(c, kid, cfg)
+        out["today"] = today
+        out["today_sentence"] = today_sentence(cfg["enabled"], today)
+        out["week_sentence"] = week_sentence(cfg["enabled"], week, today)
+    except Exception:
+        out["today"] = english_empty_today()
+        out["today_sentence"] = "暂时读不到英语记录"
+        out["week_sentence"] = "暂时读不到英语记录"
+    return out
 
 
 def complete_session(c, kid, fam, sid):

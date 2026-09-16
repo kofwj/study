@@ -38,7 +38,12 @@ const {
         <div class="w-box"><span>首轮对</span><b>{{ wordOverview.correct }}/{{ wordOverview.total || 0 }}</b></div>
         <div class="w-box"><span>还没写完</span><b>{{ wordOverview.left }}</b></div>
         <div class="w-box"><span>积压到期</span><b>{{ wordOverview.backlog }}</b></div>
+        <div class="w-box"><span>今天写了</span><b>{{ (wordStats.today && wordStats.today.wrote) || 0 }}<template v-if="wordStats.today && wordStats.today.goal">/{{ wordStats.today.goal }}</template></b></div>
+        <div class="w-box"><span>最好一轮</span><b>{{ (wordStats.today && wordStats.today.best_score) ? wordStats.today.best_score + ' 分' : '—' }}</b></div>
+        <div class="w-box"><span>今天阳光</span><b>{{ (wordStats.today && wordStats.today.sunshine) || 0 }}/{{ (wordStats.today && wordStats.today.sunshine_limit) || 10 }}</b></div>
       </div>
+      <p v-if="wordStats.today_sentence" class="dim">{{ wordStats.today_sentence }}</p>
+      <p v-if="wordStats.week_sentence" class="dim">{{ wordStats.week_sentence }}</p>
       <h4 class="w-h">高频错词</h4>
       <p v-if="!wordProblems.length" class="dim">还没有错两次以上的词。</p>
       <div v-for="w in wordProblems" :key="w.word_id" class="word-row">

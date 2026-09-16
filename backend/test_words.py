@@ -507,3 +507,100 @@ def test_scope_review_books_filters_and_preserves_current_behavior():
         ).fetchall()}
         c.close()
         assert "g5s1-en-1" in old_books
+
+
+def test_english_sentences_pure():
+    """两句人话的所有分支（纯函数、不碰库）：没练 / 差几个 / 达标 / 目标关掉 / 英语关掉。"""
+    zero = {"wrote": 0, "rounds": 0, "best_score": 0, "sunshine": 0, "sunshine_limit": 10,
+            "goal": 10, "goal_done": False, "finished": False}
+    seven = dict(zero, wrote=7, best_score=70, sunshine=2)
+    done = dict(seven, wrote=20, goal_done=True)
+    assert wordmod.today_sentence(False, seven) == "英语单词没开"
+    assert wordmod.today_sentence(True, zero) == "今天还没练"
+    assert wordmod.today_sentence(True, seven) == "今天写了 7 词（目标 10，还差 3 词） · 最好一轮 70 分 · 阳光 2/10"
+    assert wordmod.today_sentence(True, done) == "今天写了 20 词（目标 10，已达标） · 最好一轮 70 分 · 阳光 2/10"
+    assert wordmod.today_sentence(True, dict(done, goal=0, goal_done=False)) == "今天写了 20 个词 · 最好一轮 70 分 · 阳光 2/10"
+
+    none = {"days": 0, "words": 0, "rate": None}
+    four = {"days": 4, "words": 58, "rate": 78}
+    assert wordmod.week_sentence(True, none, zero) == "这周还没练过英语；今天还没练"
+    assert wordmod.week_sentence(True, four, seven) == "这周练了 4 天，首轮正确率 78%；今天写了 7/10 词"
+    assert wordmod.week_sentence(True, four, done) == "这周练了 4 天，首轮正确率 78%；今天写了 20/10 词（达标）"
+    assert wordmod.week_sentence(True, four, dict(done, goal=0, goal_done=False)) == "这周练了 4 天，首轮正确率 78%；今天写了 20 个词"
+    assert wordmod.week_sentence(True, {"days": 2, "words": 12, "rate": None}, zero) == "这周练了 2 天；今天还没练"
+    assert wordmod.week_sentence(False, four, done) == "英语单词没开"
+
+
+def test_admin_words_stats_today_and_money_match():
+    """P4-a：家长端「今天」的数字要和 /word/ 那一局完全一致（写了 20 词 / 70 分 / 阳光 2）。"""
+    db.init_db()
+    real_now = os.environ.get("SUNSHINE_NOW")
+    os.environ["SUNSHINE_NOW"] = "2026-09-16T12:00:00"     # 固定时间：落在打卡时间窗内、due 也稳定
+    try:
+        with TestClient(main.app) as cli:
+            _parent(cli, "w8", "wordpass", "统计家")
+            _enable(cli, new_per_day=10, max_due=15, game_size=20, daily_goal=10)
+
+            s = cli.get("/api/admin/words/stats").json()
+            assert s["today"]["wrote"] == 0 and s["today"]["rounds"] == 0 and s["today"]["best_score"] == 0
+            assert s["today"]["goal"] == 10 and s["today"]["goal_done"] is False and s["today"]["finished"] is False
+            assert s["today_sentence"] == "今天还没练"
+            assert s["week_sentence"] == "这周还没练过英语；今天还没练"
+            assert s["week"]["days"] == 0 and s["week"]["rate"] is None
+
+            sess = cli.post("/api/words/game/start").json()["session"]
+            sid, items = sess["id"], sess["items"]
+            assert len(items) == 20
+            for i, it in enumerate(items):
+                r = _spell(cli, sid, it, text=(it["word"] if i < 14 else "zzz"))
+                assert r.status_code == 200, r.text
+            b = cli.post("/api/words/game/settle", json={"session_id": sid}).json()
+            assert b["round"]["score"] == 70 and b["today"]["granted"] == 2, b
+
+            s = cli.get("/api/admin/words/stats").json()
+            t = s["today"]
+            assert (t["wrote"], t["rounds"], t["best_score"], t["sunshine"], t["sunshine_limit"]) == (20, 1, 70, 2, 10), t
+            assert t["goal_done"] is True and t["finished"] is True
+            assert s["today_sentence"] == "今天写了 20 词（目标 10，已达标） · 最好一轮 70 分 · 阳光 2/10"
+            assert s["week"] == {"days": 1, "words": 20, "rate": 70}
+            assert s["week_sentence"] == "这周练了 1 天，首轮正确率 70%；今天写了 20/10 词（达标）"
+
+            # 目标关掉：句子不再提目标
+            assert cli.put("/api/admin/words/config", json={"daily_goal": 0}).status_code == 200
+            s = cli.get("/api/admin/words/stats").json()
+            assert s["today"]["goal"] == 0
+            assert s["today_sentence"] == "今天写了 20 个词 · 最好一轮 70 分 · 阳光 2/10"
+
+            # 英语关掉：两句都写「英语单词没开」，数字照样读得出来（页面不空白）
+            assert cli.put("/api/admin/words/config", json={"enabled": False}).status_code == 200
+            s = cli.get("/api/admin/words/stats").json()
+            assert s["today_sentence"] == "英语单词没开" and s["week_sentence"] == "英语单词没开"
+            assert s["today"]["wrote"] == 20
+
+            # 别的家看不到这一家的数字
+            with TestClient(main.app) as cli2:
+                _parent(cli2, "w5", "wordpass", "另一家")
+                _enable(cli2)
+                s2 = cli2.get("/api/admin/words/stats").json()
+                assert s2["today"]["wrote"] == 0 and s2["today"]["sunshine"] == 0
+                assert s2["today_sentence"] == "今天还没练"
+    finally:
+        if real_now is None:
+            os.environ.pop("SUNSHINE_NOW", None)
+        else:
+            os.environ["SUNSHINE_NOW"] = real_now
+
+
+def test_admin_weekly_has_english_line():
+    """总览页「本周英语」：/api/admin/weekly 的每个孩子带一句（顺带钉住字段形状）。"""
+    db.init_db()
+    with TestClient(main.app) as cli:
+        _parent(cli, "w7", "wordpass", "周报家")
+        _enable(cli, daily_goal=10)
+        w = cli.get("/api/admin/weekly").json()
+        kids = w.get("kids") or []
+        assert kids, w
+        note = kids[0]["words"]
+        assert note["days"] == 0 and note["words"] == 0 and note["rate"] is None, note
+        assert note["goal"] == 10 and note["goal_done"] is False and note["today_wrote"] == 0, note
+        assert note["sentence"] == "这周还没练过英语；今天还没练", note

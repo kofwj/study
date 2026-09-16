@@ -36,6 +36,11 @@ const goal = computed(() => {
   const g = props.familyToday && props.familyToday.family_goal
   return g && g.goal && g.progress ? g : null
 })
+
+// —— P4-a「本周英语」：一句后端拼好的话（这里只渲染，别再抄一份文案）——
+const englishNotes = computed(() => ((props.weekly && props.weekly.kids) || [])
+  .filter((k) => k && k.words && k.words.sentence)
+  .map((k) => ({ kid_id: k.id, name: k.name, sentence: k.words.sentence })))
 const goalPct = computed(() => {
   const p = goal.value && goal.value.progress
   if (!p || !p.target) return 0
@@ -243,6 +248,15 @@ const peCards = computed(() => {
             <span class="dim">{{ row.insight ? row.insight.text : '无' }}</span>
           </div>
           <button v-if="row.insight && row.insight.action" class="ok" @click="$emit('go-insight', row)">去解决</button>
+        </div>
+      </template>
+      <template v-if="englishNotes.length">
+        <h4 class="w-h">本周英语</h4>
+        <div v-for="row in englishNotes" :key="row.kid_id" class="apv-row">
+          <div class="apv-info">
+            <span v-if="isMultiKid" class="apv-name">{{ row.name }}</span>
+            <span class="dim">{{ row.sentence }}</span>
+          </div>
         </div>
       </template>
       <!-- B4 全家共同目标（达标每人发 0–20 阳光，默认 5；同时只 1 个进行中） -->

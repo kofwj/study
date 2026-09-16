@@ -33,6 +33,26 @@ const goal = (over) => ({
   by_kid: over.by_kid || [{ kid_id: 'k1', name: '乐乐', value: 7 }, { kid_id: 'k2', name: '弟弟', value: 5 }],
 })
 
+// P4-a「本周英语」：每个孩子一句（后端拼好，前端只渲染）
+const weeklyWithWords = Object.assign({}, weekly, {
+  kids: [
+    { id: 'k1', name: '乐乐', earned: 30, spent: 10, streak: 3, current: true,
+      completed: 12, completed_last: 9,
+      insight: { type: 'review_due', text: '有 2 个薄弱点该复习了', action: '今日复习' },
+      words: { days: 4, words: 58, rate: 78, today_wrote: 20, goal: 10, goal_done: true,
+               sentence: '这周练了 4 天，首轮正确率 78%；今天写了 20/10 词（达标）' } },
+    { id: 'k2', name: '弟弟', earned: 20, spent: 0, streak: 1, current: false,
+      completed: 6, completed_last: 6, insight: null,
+      words: { days: 0, words: 0, rate: null, today_wrote: 0, goal: 10, goal_done: false,
+               sentence: '这周还没练过英语；今天还没练' } },
+  ],
+})
+// 老后端（没有 words 字段）与「读不到」都不许崩
+const weeklyNoWords = Object.assign({}, weekly, {
+  kids: [{ id: 'k1', name: '乐乐', earned: 30, spent: 10, streak: 3, current: true,
+           completed: 12, completed_last: 9, insight: null }],
+})
+
 const warns = []
 async function render(props) {
   warns.length = 0
@@ -57,6 +77,10 @@ async function main() {
       ['完成卡数 12/20 张', '全家还差 8 张', '每娃贡献：乐乐 7 · 弟弟 5', '关掉目标']],
     ['已达标', Object.assign({}, base, { familyToday: { today: '2026-09-16', kids: [], family_goal: goal({ goal: { status: 'reached', reached_at: '2026-09-18' }, progress: { value: 20, target: 20, remaining: 0 } }) } }),
       ['已达成本周目标，每人 +5 阳光', '（2026-09-18）', '完成卡数 20/20 张']],
+    ['本周英语', Object.assign({}, base, { weekly: weeklyWithWords, familyToday: { today: '2026-09-16', kids: [], family_goal: null } }),
+      ['本周英语', '这周练了 4 天，首轮正确率 78%', '这周还没练过英语；今天还没练']],
+    ['本周英语(老后端没这字段)', Object.assign({}, base, { weekly: weeklyNoWords, familyToday: { today: '2026-09-16', kids: [], family_goal: null } }),
+      ['全家共同目标']],
   ]
   for (const [name, props, need] of cases) {
     const html = await render(props)

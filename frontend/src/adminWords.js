@@ -93,7 +93,15 @@ async function toggleReviewBook(book) {
 /* —— 今日 / 错词 / 统计 / 看词 / 导入 —— */
 const wordToday = ref({ enabled: false, finished: true, backlog_due: 0, session: null })
 const wordProblems = ref([])
-const wordStats = ref({ days: [], completed_sessions: 0, first_try_rate: null })
+// 家长端「今天 + 本周一句」的默认值：接口没回来时页面别显示 undefined（P4-a）
+const WORD_STATS_EMPTY = {
+  days: [], completed_sessions: 0, first_try_rate: null,
+  today: { date: '', wrote: 0, rounds: 0, best_score: 0, sunshine: 0, sunshine_limit: 10,
+           goal: 0, goal_done: false, finished: false },
+  week: { days: 0, words: 0, rate: null },
+  today_sentence: '', week_sentence: '',
+}
+const wordStats = ref({ ...WORD_STATS_EMPTY })
 const wordNewBook = ref('')
 const wordImport = reactive({ book_id: '', text: '', result: null })
 const wordOpenBook = ref(null)
@@ -134,7 +142,7 @@ export async function loadWords() {
       api.admin.wordConfig(),
       api.wordsToday().catch(() => null),
       api.admin.problemWords().catch(() => []),
-      api.admin.wordStats().catch(() => ({ days: [], completed_sessions: 0, first_try_rate: null })),
+      api.admin.wordStats().catch(() => ({ ...WORD_STATS_EMPTY })),
     ])
     if (ctx.getKid() !== kid) return
     Object.assign(wordCfg, {
@@ -156,7 +164,7 @@ export async function loadWords() {
     wordBooks.value = cfg.books || []
     wordToday.value = today || { enabled: false, finished: true, backlog_due: 0, session: null }
     wordProblems.value = problems || []
-    wordStats.value = stats || { days: [], completed_sessions: 0, first_try_rate: null }
+    wordStats.value = stats || { ...WORD_STATS_EMPTY }
   } catch (e) { ctx.toast(e.message) }
 }
 async function saveWordNow(patch) {
