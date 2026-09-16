@@ -288,3 +288,7 @@
 @media (max-width: 760px) {
 .admin .cursor-row { grid-template-columns: 1fr; gap: 6px; }
 }
+
+/* —— 加载/渲染失败的提示条（壳里的 pack 失败 + PageBoundary 渲染出错都用它）—— */
+.admin .pack-err { border: 1px solid var(--danger); background: var(--danger-bg); }
+.admin .pack-err strong { color: var(--danger); }

@@ -50,6 +50,9 @@ async function main() {
   const cases = [
     ['无目标', Object.assign({}, base, { familyToday: { today: '2026-09-16', kids: [], family_goal: null } }),
       ['全家共同目标', '还没有共同目标', '完成卡数（张）', '运动次数（次）', '签到天数（天）']],
+    // 真实「没有目标」的形状：后端给的是 { goal: null, progress: null, by_kid: [] }（外层对象为真）
+    ['无目标(真实形状)', Object.assign({}, base, { familyToday: { today: '2026-09-16', kids: [], family_goal: { goal: null, progress: null, by_kid: [] } } }),
+      ['全家共同目标', '还没有共同目标', '完成卡数（张）']],
     ['进行中', Object.assign({}, base, { familyToday: { today: '2026-09-16', kids: [], family_goal: goal({}) } }),
       ['完成卡数 12/20 张', '全家还差 8 张', '每娃贡献：乐乐 7 · 弟弟 5', '关掉目标']],
     ['已达标', Object.assign({}, base, { familyToday: { today: '2026-09-16', kids: [], family_goal: goal({ goal: { status: 'reached', reached_at: '2026-09-18' }, progress: { value: 20, target: 20, remaining: 0 } }) } }),

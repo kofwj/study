@@ -12,6 +12,7 @@ import AdminShop from './components/AdminShop.vue'
 import AdminKids from './components/AdminKids.vue'
 import AdminCursor from './components/AdminCursor.vue'
 import { initAdminEdit, useAdminEdit } from './adminEdit.js'
+import PageBoundary from './components/PageBoundary.vue'
 import { Eye, Baby, Store, ClipboardCheck, BookOpen, MapPinned, ArrowLeft, BookMarked, Globe } from '@lucide/vue'
 
 const props = defineProps({ recoveryCode: { type: String, default: '' } })
@@ -855,6 +856,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload)
       <main class="a-main">
 
     <!-- 今日复习 -->
+      <PageBoundary>
     <AdminReview
       v-if="section === 'review'"
       :review-due="reviewDue"
@@ -1002,6 +1004,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload)
       @toggle-protect="toggleProtect"
       @kid-removed="onKidRemoved"
     />
+      </PageBoundary>
 
       <div v-if="packError" class="w-next pack-err">
         <strong>这一页的数据没加载上</strong>
@@ -1056,11 +1059,8 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload)
 
 /* 任务页行样式（.a-item 等）在 adminBase.css：本文件的 scoped 规则到不了子组件 */
 .toast { position: fixed; left: 50%; bottom: 30px; transform: translateX(-50%); background: rgba(31,59,85,.92); color: #fff; padding: 10px 18px; border-radius: var(--radius-pill); font-size: 14px; z-index: 20; }
-
-
 .dirty-bar { position: sticky; bottom: 0; margin: 0; z-index: 5; box-shadow: var(--shadow-md); padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
-.pack-err { border: 1px solid var(--danger); background: var(--danger-bg); }
-.pack-err strong { color: var(--danger); }
+/* .pack-err（数据没加载上 / 页面渲染出错）在 adminBase.css：PageBoundary 是子组件，本文件的 scoped 到不了它 */
 
 @media (max-width: 760px) {
   .a-body { flex-direction: column; }

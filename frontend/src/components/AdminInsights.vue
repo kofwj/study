@@ -30,7 +30,12 @@ const emit = defineEmits([
 
 // —— B4 全家共同目标：只渲染 + 抛动作，接口在壳里 ——
 const goalForm = ref({ metric: 'cards', target: 10, reward: 5 })
-const goal = computed(() => (props.familyToday && props.familyToday.family_goal) || null)
+// 只有「真的有一个目标」才当有：后端没目标时给的是 { goal: null, progress: null, by_kid: [] }，
+// 外层对象为真 —— 只判外层会让模板去读 null.metric_label 直接抛错（概览页整块空白）。
+const goal = computed(() => {
+  const g = props.familyToday && props.familyToday.family_goal
+  return g && g.goal && g.progress ? g : null
+})
 const goalPct = computed(() => {
   const p = goal.value && goal.value.progress
   if (!p || !p.target) return 0
