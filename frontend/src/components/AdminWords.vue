@@ -113,8 +113,6 @@ const {
       <div class="frm-row">
         <label class="fld w64"><span>每天新词</span><input v-model.number="wordCfg.new_per_day" type="number" min="1" max="10" /></label>
         <label class="fld w64"><span>到期上限</span><input v-model.number="wordCfg.max_due" type="number" min="5" max="15" /></label>
-        <label class="fld w64"><span>完成阳光</span><input v-model.number="wordCfg.base_sunshine" type="number" min="0" max="10" /></label>
-        <label class="fld w64"><span>全对阳光</span><input v-model.number="wordCfg.perfect_sunshine" type="number" min="0" max="5" /></label>
         <button class="ok" @click="saveWordRhythm">保存节奏</button>
       </div>
       <div v-if="wordCfg.review_mode === 'current'" class="lock-row mt14">

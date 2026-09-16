@@ -24,8 +24,6 @@ class WordError(Exception):
 CFG_ENABLED = "words_enabled"
 CFG_NEW = "words_new_per_day"
 CFG_MAX_DUE = "words_max_due"
-CFG_BASE = "words_base_sunshine"
-CFG_PERFECT = "words_perfect_sunshine"
 CFG_CURSOR = "words_unlock_by_cursor"
 CFG_BOOK = "words_current_book"
 CFG_REVIEW_MODE = "words_review_mode"
@@ -117,8 +115,6 @@ def kid_config(c, kid):
         "enabled": enabled,
         "new_per_day": _clamp_int(db.get_kid_setting(c, kid, CFG_NEW, "5"), 5, 1, 10),
         "max_due": _clamp_int(db.get_kid_setting(c, kid, CFG_MAX_DUE, "10"), 10, 5, 15),
-        "base_sunshine": _clamp_int(db.get_kid_setting(c, kid, CFG_BASE, "3"), 3, 0, 10),
-        "perfect_sunshine": _clamp_int(db.get_kid_setting(c, kid, CFG_PERFECT, "2"), 2, 0, 5),
         "unlock_by_cursor": unlock,
         "current_book": db.get_kid_setting(c, kid, CFG_BOOK, "") or "",
         "review_mode": mode,
@@ -134,8 +130,6 @@ def set_kid_config(c, kid, **fields):
         "enabled": (CFG_ENABLED, lambda v: "1" if v else "0"),
         "new_per_day": (CFG_NEW, lambda v: str(_clamp_int(v, 5, 1, 10))),
         "max_due": (CFG_MAX_DUE, lambda v: str(_clamp_int(v, 10, 5, 15))),
-        "base_sunshine": (CFG_BASE, lambda v: str(_clamp_int(v, 3, 0, 10))),
-        "perfect_sunshine": (CFG_PERFECT, lambda v: str(_clamp_int(v, 2, 0, 5))),
         "unlock_by_cursor": (CFG_CURSOR, lambda v: "1" if v else "0"),
         "current_book": (CFG_BOOK, lambda v: (v or "").strip()),
         "review_mode": (CFG_REVIEW_MODE, lambda v: "scope" if v == "scope" else "current"),
@@ -576,10 +570,6 @@ def _counts(items):
     return {"due": due, "new": new, "answered": answered, "correct_first_try": correct}
 
 
-def _first_try_all_right(items):
-    return bool(items) and all(x.get("first_result") == "right" for x in items)
-
-
 def _reward(c, row):
     kid, sid = row["kid_id"], row["id"]
     base = c.execute(
@@ -676,7 +666,7 @@ def _create_session(c, kid, fam, cfg, picked):
         "started_at,completed_at,base_sunshine,perfect_sunshine) "
         "VALUES(?,?,?,?,?,?, 'active', ?, NULL, ?, ?) ON CONFLICT(kid_id, study_date) DO NOTHING",
         (sid, kid, fam or "", today, json.dumps(books, ensure_ascii=False),
-         json.dumps(task, ensure_ascii=False), now, int(cfg["base_sunshine"]), int(cfg["perfect_sunshine"])),
+         json.dumps(task, ensure_ascii=False), now, 0, 0),
     )
     if getattr(cur, "rowcount", 1) == 0:
         row = _today_session(c, kid)
@@ -968,7 +958,5 @@ def complete_session(c, kid, fam, sid):
     if getattr(cur, "rowcount", 0) == 0:
         return today_payload(c, kid, fam, create=False)
     row = _session_owned(c, kid, sid)
-    _try_ledger(c, kid, row["base_sunshine"], "word_daily", "word-" + sid, "今日单词背默")
-    if _first_try_all_right(items):
-        _try_ledger(c, kid, row["perfect_sunshine"], "word_perfect", "word-perfect-" + sid, "单词默写全对")
+    # v0.3.53：单词流程不再发阳光 —— 英语阳光改由独立页 /word/ 按当天最好成绩结算（≤10/天）
     return today_payload(c, kid, fam, create=False)

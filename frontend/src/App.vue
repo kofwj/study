@@ -11,7 +11,7 @@ import { Sun, Lock, Gift, Check, TrendingUp, Target, User, ShoppingCart, Medal, 
 import { soundManager, playSound, playCompleteBeep, playCoinBeep } from './sounds.js'
 import { getEncouragement, getCompanionMessage } from './encouragements.js'
 import { SUBJECT_ORDER, n1, isGoPlay } from './format.js'
-import { data, loading, err, me, authed, isAdmin, mustChangePin, pendingRecovery, rewards, achievements, boxes, recentLedger, ledgerSummary, weekOffset, reviewDue, activeTab, toast, showToast, newAchCount, achNew, companion, companionImage, companionTitle, companionPulse, companionEvolve, pendingLevelUp, pulseCompanion, showLevelCelebrate, triggerCompanionEvolve, wordToday, wordDueCard, wordNewCard, wordSun, sprites, capsule, spriteScene, spritesOpen, dutySprite, spImg, displayName, loadSprites, maybeShowMorning, applyCapsule, todayPenalty, quizToday } from './store.js'
+import { data, loading, err, me, authed, isAdmin, mustChangePin, pendingRecovery, rewards, achievements, boxes, recentLedger, ledgerSummary, weekOffset, reviewDue, activeTab, toast, showToast, newAchCount, achNew, companion, companionImage, companionTitle, companionPulse, companionEvolve, pendingLevelUp, pulseCompanion, showLevelCelebrate, triggerCompanionEvolve, wordToday, wordDueCard, wordNewCard, sprites, capsule, spriteScene, spritesOpen, dutySprite, spImg, displayName, loadSprites, maybeShowMorning, applyCapsule, todayPenalty, quizToday } from './store.js'
 
 
 import SunshinePage from './components/SunshinePage.vue'
@@ -702,7 +702,7 @@ function reloadApp() {
                   <div class="card-body">
                     <div class="card-title">{{ it.lane === 'due' ? '今日复习' : '今日新词' }}</div>
                     <div class="card-detail">{{ (it.lane === 'due' ? wordDueCard : wordNewCard).detail }}</div>
-                    <div class="plus">英语<template v-if="it.lane === 'new'"> · +{{ wordSun }} <Sun class="ico sun" :size="12" /></template></div>
+                    <div class="plus">英语<template v-if="it.lane === 'new'"> · 新词</template></div>
                   </div>
                 </div>
                 <div v-else class="card enter">
@@ -776,7 +776,6 @@ function reloadApp() {
                 <div class="card-body">
                   <div class="card-title">今日新词</div>
                   <div class="card-detail">{{ wordNewCard.detail }}</div>
-                  <div class="plus">+{{ wordSun }} <Sun class="ico sun" :size="12" /></div>
                 </div>
               </div>
               <div v-for="d in tabDailies" :key="d.id"

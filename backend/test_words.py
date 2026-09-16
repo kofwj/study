@@ -162,8 +162,7 @@ def test_normalize_and_focus():
 
 def _enable(cli, **extra):
     assert cli.post("/api/admin/cursor", json={"subject_id": "英语", "task_id": "g5s1-en-1-1"}).status_code == 200
-    body = {"enabled": True, "current_book": "g5s1-en-1", "new_per_day": 5, "max_due": 10,
-            "base_sunshine": 3, "perfect_sunshine": 2}
+    body = {"enabled": True, "current_book": "g5s1-en-1", "new_per_day": 5, "max_due": 10}
     body.update(extra)
     r = cli.put("/api/admin/words/config", json=body)
     assert r.status_code == 200, r.text
@@ -282,21 +281,21 @@ def test_complete_reward_idempotent_and_snapshot():
     db.init_db()
     with TestClient(main.app) as cli:
         kid = _parent(cli, "ws4", "wordpass", "奖家")
-        _enable(cli, new_per_day=2, base_sunshine=3, perfect_sunshine=2)
+        _enable(cli, new_per_day=2)
         before = cli.get("/api/overview").json()["earned"]
         sess = cli.post("/api/words/session/start").json()["session"]
         sid = sess["id"]
         assert cli.post(f"/api/words/session/{sid}/complete").status_code == 409
-        assert cli.put("/api/admin/words/config", json={"base_sunshine": 0, "perfect_sunshine": 0}).status_code == 200
         for it in sess["items"]:
             assert _spell(cli, sid, it).status_code == 200
         r = cli.post(f"/api/words/session/{sid}/complete")
         assert r.status_code == 200, r.text
         body = r.json()
         assert body["finished"] is True and body["session"]["state"] == "completed"
-        assert body["session"]["reward"]["base"] == 3 and body["session"]["reward"]["perfect"] == 2
+        # v0.3.53：单词流程不再发阳光（英语阳光改由独立页 /word/ 按当天最好成绩结算）
+        assert body["session"]["reward"]["base"] == 0 and body["session"]["reward"]["perfect"] == 0
         after = cli.get("/api/overview").json()["earned"]
-        assert after == before + 5
+        assert after == before
         r2 = cli.post(f"/api/words/session/{sid}/complete")
         assert r2.status_code == 200
         assert cli.get("/api/overview").json()["earned"] == after
@@ -307,7 +306,7 @@ def test_complete_reward_idempotent_and_snapshot():
         ).fetchall()
         wp = c.execute("SELECT COUNT(*) FROM weak_points").fetchone()[0]
         c.close()
-        assert {r["reason"]: r["n"] for r in n} == {"word_daily": 1, "word_perfect": 1}
+        assert {r["reason"]: r["n"] for r in n} == {}
         assert wp == 0
 
 

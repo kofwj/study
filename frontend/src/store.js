@@ -51,10 +51,6 @@ export const wordToday = ref({ enabled: false, finished: false, session: null, c
 export const quizToday = ref({ done: false, sessions: [] })
 export function wordItems() { return wordToday.value.session?.items || [] }
 export function wordLaneOf(item) { return item && item.source === 'due' ? 'due' : 'new' }
-export const wordSun = computed(() => {
-  const cfg = wordToday.value.config || {}
-  return cfg.base_sunshine != null ? cfg.base_sunshine : 3
-})
 export function buildWordLane(kind) {
   const t = wordToday.value
   if (!t.enabled) return null
@@ -74,7 +70,7 @@ export function buildWordLane(kind) {
   if (finished) detail = kind === 'due' ? `复习完成 · ${total} 个` : `新词完成 · ${total} 个`
   else if (items.length) detail = `还剩 ${left} 个 · ${kind === 'due' ? '到期复习' : '本课新词'}`
   else detail = kind === 'due' ? `约 ${total} 个到期` : '去学几个新词'
-  return { kind, title: kind === 'due' ? '今日复习' : '今日新词', detail, finished, left, total, sun: wordSun.value }
+  return { kind, title: kind === 'due' ? '今日复习' : '今日新词', detail, finished, left, total, sun: 0 }   // 单词流程不再发阳光（v0.3.53）
 }
 export const wordDueCard = computed(() => buildWordLane('due'))
 export const wordNewCard = computed(() => buildWordLane('new'))
