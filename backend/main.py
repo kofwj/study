@@ -3950,7 +3950,6 @@ def _goal_window():
     """目标窗口：本周一 → 本周日（跟周报同一口径；_monday() 返回 date）。"""
     mon = _monday()
     return mon.isoformat(), (mon + timedelta(days=6)).isoformat()
-    return mon.isoformat(), (mon + timedelta(days=6)).isoformat()
 
 
 def _goal_roster(c, fam):

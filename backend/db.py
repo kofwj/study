@@ -981,6 +981,7 @@ CREATE TABLE IF NOT EXISTS family_goals (
     conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS ux_family_goal_active "
                  "ON family_goals(family_id) WHERE status='active'")
     conn.execute("CREATE INDEX IF NOT EXISTS ix_family_goal_fam ON family_goals(family_id, status)")
+    conn.execute("DROP INDEX IF EXISTS ux_ledger_once")
     conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS ux_ledger_once ON ledger(kid_id, reason, ref_id) "
                  "WHERE reason IN ('cancel','box','penalty_cancel','redeem','test_cancel','milestone',"
                  "'word_daily','word_perfect','bank_interest','family_goal')")
