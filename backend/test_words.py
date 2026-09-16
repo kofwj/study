@@ -273,8 +273,13 @@ def test_spell_srs_retry_and_normalize():
         replay2 = _spell(cli, sid, new_item, text=new_item["word"] + "x")
         assert replay2.status_code == 200 and replay2.json()["replay"] is True
         assert replay2.json()["result"] == "right"
-        extra = _spell(cli, sid, new_item, text="x", attempt_no=2)
-        assert extra.status_code == 409
+        # v0.3.55：/word/ 的「再练一遍」用 attempt_no>1 的 spell 轮，允许再判；
+        # 同一轮（attempt_no=1）重复提交仍走缓存、不重判
+        extra = _spell(cli, sid, new_item, text=new_item["word"], attempt_no=2)
+        assert extra.status_code == 200 and extra.json()["result"] == "right"
+        same_round = _spell(cli, sid, new_item, text="x")
+        assert same_round.status_code == 200 and same_round.json()["replay"] is True
+        assert same_round.json()["result"] == "right"
 
 
 def test_complete_reward_idempotent_and_snapshot():

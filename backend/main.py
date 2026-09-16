@@ -4245,6 +4245,7 @@ class WordConfigIn(BaseModel):
     enabled: Optional[bool] = None
     new_per_day: Optional[int] = None
     max_due: Optional[int] = None
+    game_size: Optional[int] = None          # 一局多少词（独立页 /word/，10–40）
     base_sunshine: Optional[int] = None
     perfect_sunshine: Optional[int] = None
     unlock_by_cursor: Optional[bool] = None
@@ -4327,6 +4328,28 @@ def words_session_spell(sid: str, b: WordSpellIn):
 def words_session_complete(sid: str):
     require_checkin_open()
     return _word_call(wordmod.complete_session, kid_id(), _fam.get(), sid)
+
+
+# 英语复习独立页 /word/（P2）：按当天最好成绩补差发阳光 + 做完一轮等于今天打卡
+class WordGameSettleIn(BaseModel):
+    session_id: str
+
+
+@app.post("/api/words/game/start")
+def words_game_start():
+    require_checkin_open()
+    return _word_call(wordmod.start_game, kid_id(), _fam.get())
+
+
+@app.get("/api/words/game")
+def words_game_info():
+    return _word_call(wordmod.game_info, kid_id(), _fam.get())
+
+
+@app.post("/api/words/game/settle")
+def words_game_settle(b: WordGameSettleIn):
+    # 故意不校验打卡时间窗：孩子已经练完了，钱不该被时间窗吞掉（打卡写入本身幂等）
+    return _word_call(wordmod.settle_game, kid_id(), _fam.get(), b.session_id)
 
 
 # ---------------- Quiz（家长指定的短期冲刺题库）-------------

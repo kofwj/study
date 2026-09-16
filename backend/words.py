@@ -24,6 +24,7 @@ class WordError(Exception):
 CFG_ENABLED = "words_enabled"
 CFG_NEW = "words_new_per_day"
 CFG_MAX_DUE = "words_max_due"
+CFG_GAME_SIZE = "words_game_size"   # 一局多少词（独立页 /word/ 用，10–40）
 CFG_CURSOR = "words_unlock_by_cursor"
 CFG_BOOK = "words_current_book"
 CFG_REVIEW_MODE = "words_review_mode"
@@ -115,6 +116,7 @@ def kid_config(c, kid):
         "enabled": enabled,
         "new_per_day": _clamp_int(db.get_kid_setting(c, kid, CFG_NEW, "5"), 5, 1, 10),
         "max_due": _clamp_int(db.get_kid_setting(c, kid, CFG_MAX_DUE, "10"), 10, 5, 15),
+        "game_size": _clamp_int(db.get_kid_setting(c, kid, CFG_GAME_SIZE, "20"), 20, 10, 40),
         "unlock_by_cursor": unlock,
         "current_book": db.get_kid_setting(c, kid, CFG_BOOK, "") or "",
         "review_mode": mode,
@@ -130,6 +132,7 @@ def set_kid_config(c, kid, **fields):
         "enabled": (CFG_ENABLED, lambda v: "1" if v else "0"),
         "new_per_day": (CFG_NEW, lambda v: str(_clamp_int(v, 5, 1, 10))),
         "max_due": (CFG_MAX_DUE, lambda v: str(_clamp_int(v, 10, 5, 15))),
+        "game_size": (CFG_GAME_SIZE, lambda v: str(_clamp_int(v, 20, 10, 40))),
         "unlock_by_cursor": (CFG_CURSOR, lambda v: "1" if v else "0"),
         "current_book": (CFG_BOOK, lambda v: (v or "").strip()),
         "review_mode": (CFG_REVIEW_MODE, lambda v: "scope" if v == "scope" else "current"),
@@ -479,13 +482,16 @@ def _pick_new(c, kid, fam, book_id, limit, cfg=None):
     ).fetchall()]
 
 
-def _pick_items(c, kid, fam, cfg):
+def _pick_items(c, kid, fam, cfg, size=None):
+    """size=None 走 SPA 那条流程（SESSION_CAP + max_due + new_per_day）；
+    给了 size（独立页 /word/）就按这一局要多少词取满：到期优先，不够用未学词补。"""
     today = db.today()
     scope_ids = _review_book_ids(c, kid, fam, cfg)
-    due_limit = min(int(cfg["max_due"]), SESSION_CAP)
+    cap = min(int(size), 40) if size else SESSION_CAP
+    due_limit = cap if size else min(int(cfg["max_due"]), SESSION_CAP)
     due = _pick_due(c, kid, fam, today, due_limit, scope_ids)
-    remain = max(0, SESSION_CAP - len(due))
-    new_n = min(remain, int(cfg["new_per_day"]))
+    remain = max(0, cap - len(due))
+    new_n = remain if size else min(remain, int(cfg["new_per_day"]))
     seen = {int(r["word_id"]) for r in due}
     new = []
     if new_n > 0:
@@ -611,7 +617,7 @@ def _backlog(c, kid, fam, items, cfg=None):
     return max(0, total - in_session)
 
 
-def today_payload(c, kid, fam, create=False):
+def today_payload(c, kid, fam, create=False, size=None):
     abandon_stale(c, kid)
     cfg = kid_config(c, kid)
     if not cfg["enabled"]:
@@ -627,7 +633,7 @@ def today_payload(c, kid, fam, create=False):
             "config": cfg,
             "session": sess,
         }
-    picked = _pick_items(c, kid, fam, cfg)
+    picked = _pick_items(c, kid, fam, cfg, size=size)
     if not picked:
         return {"enabled": True, "finished": True, "backlog_due": 0, "config": cfg, "session": None}
     if not create:
@@ -699,11 +705,14 @@ def start_session(c, kid, fam):
     return today_payload(c, kid, fam, create=True)
 
 
-def _need_active(c, kid, sid):
+def _need_active(c, kid, sid, replay=False):
     row = _session_owned(c, kid, sid)
     if not row:
         raise WordError(404, "没找到今天的单词练习")
     if row["state"] == "completed":
+        # /word/ 的「再练一遍」：当天已经完成的会话也允许继续写（钱由 settle 按最好成绩幂等结算）
+        if replay and row["study_date"] == db.today():
+            return row
         raise WordError(409, "今天已经练完了")
     if row["state"] != "active":
         raise WordError(409, "这组练习已经关掉了")
@@ -827,7 +836,7 @@ def spell_item(c, kid, fam, sid, word_id, text, phase, attempt_no):
         raise WordError(400, "次数要填数字")
     if attempt_no < 1:
         raise WordError(400, "次数从 1 开始")
-    row = _need_active(c, kid, sid)
+    row = _need_active(c, kid, sid, replay=True)   # 当天已完成也允许「再练一遍」
     it = _item(c, kid, sid, word_id)
     if not it:
         raise WordError(404, "这组练习里没有这个词")
@@ -844,7 +853,8 @@ def spell_item(c, kid, fam, sid, word_id, text, phase, attempt_no):
         payload["replay"] = True
         return payload
     if phase == "spell":
-        if it["first_result"]:
+        # 第 1 轮每个词只判一次（防重复报分）；attempt_no>1 是 /word/ 的「再练一遍」轮，允许再判
+        if it["first_result"] and attempt_no <= 1:
             raise WordError(409, "这个词已经判过了")
     else:
         if it["first_result"] != "wrong":
@@ -960,3 +970,110 @@ def complete_session(c, kid, fam, sid):
     row = _session_owned(c, kid, sid)
     # v0.3.53：单词流程不再发阳光 —— 英语阳光改由独立页 /word/ 按当天最好成绩结算（≤10/天）
     return today_payload(c, kid, fam, create=False)
+
+
+# ---------------- 英语复习独立页 /word/（P2：按成绩发阳光 + 写打卡）----------------
+# 口径（2026-09-16 定）：一轮得分 = 该轮答对 / 这一局词数（没答的当没对）；
+# 当天按最好一轮结算一次额度：60 分以下 0，60–100 线性到 10（向下取整）。只补差额。
+# 「一轮」= word_attempts.attempt_no 分组（服务端算，不信客户端）。
+
+GAME_MAX_SUNSHINE = 10
+
+
+def sunshine_for_score(score):
+    """与前端 frontend/src/wordGame.js 的 sunshineFor 同一张表（两边都有测试钉住）。"""
+    try:
+        s = float(score)
+    except (TypeError, ValueError):
+        return 0
+    if s < 60:
+        return 0
+    capped = min(100.0, s)
+    return max(0, min(GAME_MAX_SUNSHINE, int((capped - 60) / 40 * GAME_MAX_SUNSHINE)))
+
+
+def _game_rounds(c, kid, sid):
+    size = int(c.execute(
+        "SELECT COUNT(*) FROM word_session_items WHERE session_id=? AND kid_id=?",
+        (sid, kid)).fetchone()[0] or 0)
+    rows = c.execute(
+        # 只数 phase='spell'：那是这一轮的正式作答；轮内「再写一次」(retry) 不计分
+        "SELECT attempt_no, COUNT(*) a, SUM(CASE WHEN result='right' THEN 1 ELSE 0 END) r "
+        "FROM word_attempts WHERE session_id=? AND kid_id=? AND phase='spell' "
+        "GROUP BY attempt_no ORDER BY attempt_no",
+        (sid, kid),
+    ).fetchall()
+    out = []
+    for row in rows:
+        a = int(row["a"] or 0)
+        r = int(row["r"] or 0)
+        denom = size or a
+        out.append({"attempt_no": int(row["attempt_no"]), "answered": a, "correct": r,
+                    "size": denom, "score": (round(r * 100 / denom) if denom else 0)})
+    return out
+
+
+def _game_got(c, kid, today):
+    return int(c.execute(
+        "SELECT COALESCE(SUM(delta),0) FROM ledger WHERE kid_id=? AND reason='word_game' AND date=?",
+        (kid, today)).fetchone()[0] or 0)
+
+
+def _game_today(c, kid, sid):
+    rounds = _game_rounds(c, kid, sid)
+    best = max([r["score"] for r in rounds], default=0)
+    should = sunshine_for_score(best)
+    got = _game_got(c, kid, db.today())
+    return {"rounds": rounds, "best_score": best, "should": should, "got": got,
+            "can_grant": max(0, should - got),
+            "checkin": c.execute("SELECT 1 FROM checkins WHERE date=? AND kid_id=?",
+                                 (db.today(), kid)).fetchone() is not None}
+
+
+def start_game(c, kid, fam):
+    """独立页开局：按「一局词数」建/复用今天的会话。"""
+    cfg = kid_config(c, kid)
+    if not cfg["enabled"]:
+        raise WordError(403, "单词练习没开，找家长打开")
+    return today_payload(c, kid, fam, create=True, size=int(cfg["game_size"]))
+
+
+def game_info(c, kid, fam):
+    """独立页刷新时要的：词数设置 + 今天的会话 + 今天的成绩/额度。"""
+    cfg = kid_config(c, kid)
+    row = _today_session(c, kid)
+    sess = _session_public(c, kid, fam, row) if row else None
+    today = _game_today(c, kid, row["id"]) if row else {"rounds": [], "best_score": 0,
+                                                        "should": 0, "got": 0, "can_grant": 0, "checkin": False}
+    today.pop("rounds", None)
+    return {"enabled": cfg["enabled"], "size": int(cfg["game_size"]), "session": sess, "today": today}
+
+
+def settle_game(c, kid, fam, sid):
+    """一轮结束：算本轮成绩 → 更新今日最好 → 补差发阳光 → 写当天打卡 → 标记会话完成。"""
+    row = _session_owned(c, kid, sid)
+    if not row:
+        raise WordError(404, "没找到今天的单词练习")
+    info = _game_today(c, kid, sid)
+    rounds = info["rounds"]
+    if not rounds or not rounds[-1]["answered"]:
+        raise WordError(409, "这一轮还没有答题")
+    round_now = rounds[-1]
+    should, got = info["should"], info["got"]
+    granted = max(0, should - got)
+    if granted:
+        db.insert_ledger(c, db.today(), granted, "word_game", "wg-%s-%d" % (db.today(), should),
+                         "英语复习 · 当天最好成绩 %d 分" % info["best_score"], kid_id=kid)
+    # 做完一轮就等于今天打卡（幂等；连击/全勤沿用既有逻辑）
+    db.insert(c, "INSERT INTO checkins(date,sunshine,created_at,kid_id) VALUES(?,?,?,?) ON CONFLICT DO NOTHING",
+              (db.today(), 0, db.now(), kid))
+    c.execute("UPDATE word_sessions SET state='completed', completed_at=? WHERE id=? AND kid_id=? AND state='active'",
+              (db.now(), sid, kid))
+    payload = {
+        "round": round_now,
+        "today": {"best_score": info["best_score"], "should": should, "got": got + granted,
+                  "granted": granted, "limit": GAME_MAX_SUNSHINE, "checkin": True},
+        "day_best_hint": ("今天最好 %d 分（今天英语阳光 %d/%d）"
+                          % (info["best_score"], got + granted, GAME_MAX_SUNSHINE)),
+    }
+    return payload

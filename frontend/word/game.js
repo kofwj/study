@@ -9,13 +9,14 @@ const state = {
   sid: '',
   queue: [],
   idx: 0,
-  attempt: 2,          // 第几轮（第 1 轮 = spell，之后 = retry）
+  round: 1,            // 第几轮（每轮正式作答都走 spell，轮内「再写一次」走 retry、不计分）
   right: 0,
   answered: 0,
   streak: 0,
   best: 0,
   item: null,
   typing: '',
+  retryNext: false,    // 这一题下一步提交按「再写一次」(retry) 走
   phase: 'idle',       // idle | ask | feedback | sum
   busy: false,
 }
@@ -88,6 +89,7 @@ function renderActions() {
 function ask() {
   state.item = state.queue[state.idx] || null
   state.typing = ''
+  state.retryNext = false
   state.phase = state.item ? 'ask' : 'sum'
   $('feedback').innerHTML = ''
   $('streak').className = 'streak' + (state.streak >= 3 ? ' on' : '')
@@ -116,15 +118,15 @@ function renderFeedback(right, typed) {
     '<div class="row"><button class="do" id="next" type="button">下一题</button>' +
     (right ? '' : '<button class="sec" id="retry" type="button">再写一次</button>') + '</div>'
   $('next').onclick = () => { state.idx += 1; ask() }
-  if (!right) $('retry').onclick = () => { state.phase = 'ask'; renderActions(); $('feedback').innerHTML = ''; renderSlots(''); focusInput() }
+  if (!right) $('retry').onclick = () => { state.retryNext = true; state.phase = 'ask'; renderActions(); $('feedback').innerHTML = ''; renderSlots(''); focusInput() }
 }
 
-async function submit(text) {
+async function submit(text, retry) {
   const item = state.item
   state.busy = true
   try {
     const payload = await api(`/api/words/session/${state.sid}/spell`, 'POST', {
-      word_id: item.word_id, text, phase: state.attempt > 1 ? 'retry' : 'spell', attempt_no: state.attempt,
+      word_id: item.word_id, text, phase: retry ? 'retry' : 'spell', attempt_no: state.round,
     })
     const right = payload && payload.result === 'right'
     state.answered += 1
@@ -149,7 +151,7 @@ function check() {
   const text = assembleSpelling(state.item.word, state.typing)
   if (!lettersOf(state.typing)) { $('hint').textContent = '先写一写'; focusInput(); return }
   hideErr()
-  submit(text)
+  submit(text, state.retryNext)
 }
 
 function peek() {
@@ -172,17 +174,34 @@ async function finish() {
   state.phase = 'sum'
   $('card-quiz').hidden = true
   $('card-sum').hidden = false
-  const pct = scoreOf(state.right, state.answered)
+  const size = state.queue.length || state.answered
+  const pct = scoreOf(state.right, size)
   $('sum-pct').textContent = pct + '%'
-  $('sum-sub').textContent = `这一轮答对 ${state.right}/${state.answered} 题 · 最高连击 ${state.best}`
+  $('sum-sub').textContent = `这一轮答对 ${state.right}/${size} 题 · 最高连击 ${state.best}`
   $('progress').style.width = '100%'
   $('stat').textContent = ''
-  if (state.sid) { try { await api(`/api/words/session/${state.sid}/complete`, 'POST') } catch { /* 结算失败不影响这一轮的成绩展示 */ } }
+  if (!state.sid) return
+  try {
+    const res = await api('/api/words/game/settle', 'POST', { session_id: state.sid })
+    const t = res.today || {}
+    const rnd = res.round || {}
+    const got = t.granted || 0
+    const n = rnd.size || size
+    const right = rnd.correct != null ? rnd.correct : state.right
+    if (rnd.score != null) $('sum-pct').textContent = rnd.score + '%'
+    $('sum-sub').textContent = `这一轮答对 ${right}/${n} 题 · 最高连击 ${state.best}`
+    $('sum-note').textContent = (got > 0 ? `阳光 +${got} · ` : '') +
+      `今天英语阳光 ${t.got || 0}/${t.limit || 10}（最好 ${t.best_score || 0} 分）`
+    $('sum-note').hidden = false
+  } catch (e) {
+    $('sum-note').textContent = '这次没记上成绩：' + e.message
+    $('sum-note').hidden = false
+  }
 }
 
 function again() {
   state.idx = 0
-  state.attempt += 1
+  state.round += 1
   state.right = 0
   state.answered = 0
   state.streak = 0
@@ -198,10 +217,7 @@ async function load() {
   hideErr()
   let today
   try {
-    today = await api('/api/words/today')
-    if (!today.session || !(today.session.items || []).length) {
-      today = await api('/api/words/session/start', 'POST')
-    }
+    today = await api('/api/words/game/start', 'POST')
   } catch (e) {
     $('card-loading').hidden = true
     if (e.status === 401 || e.status === 403) return showErr('还没登录', '先用孩子的账号登录，再打开这一页')

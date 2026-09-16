@@ -24,7 +24,7 @@ export function initAdminWords(next) {
 
 /* —— 配置 / 词书 —— */
 const wordCfg = reactive({
-  enabled: false, new_per_day: 5, max_due: 10,
+  enabled: false, new_per_day: 5, max_due: 10, game_size: 20,
   unlock_by_cursor: true, current_book: '', review_mode: 'current', review_books: [],
   tts: true, tts_autoplay: false, tts_lang: 'en-GB',
 })
@@ -140,6 +140,7 @@ export async function loadWords() {
       enabled: !!cfg.enabled,
       new_per_day: cfg.new_per_day,
       max_due: cfg.max_due,
+      game_size: cfg.game_size,
       unlock_by_cursor: cfg.unlock_by_cursor !== false,
       current_book: cfg.current_book || '',
       review_mode: cfg.review_mode === 'scope' ? 'scope' : 'current',
@@ -176,6 +177,7 @@ async function saveWordRhythm() {
     await api.admin.setWordConfig({
       new_per_day: wordCfg.new_per_day,
       max_due: wordCfg.max_due,
+      game_size: wordCfg.game_size,
     })
     ctx.toast('已保存，明天的新练习才按这个来')
   } catch (e) { ctx.toast(e.message) }

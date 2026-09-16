@@ -957,6 +957,14 @@ CREATE TABLE IF NOT EXISTS quiz_attempts (
     quizmod.seed_system_banks(conn)
 
 
+def _migrate_044(conn):
+    """英语复习独立页 /word/ 的阳光流水纳入一次性幂等（同一天同一档位只发一次）。"""
+    conn.execute("DROP INDEX IF EXISTS ux_ledger_once")
+    conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS ux_ledger_once ON ledger(kid_id, reason, ref_id) "
+                 "WHERE reason IN ('cancel','box','penalty_cancel','redeem','test_cancel','milestone',"
+                 "'word_daily','word_perfect','bank_interest','family_goal','word_game')")
+
+
 def _migrate_043(conn):
     """家庭共同目标（B4）：family_goals 表 + 「同时只 1 个 active」唯一索引 +
     达标发放纳入一次性流水幂等（照 037 的模版，reason 列表要含之前全部 + family_goal）。"""
@@ -1363,6 +1371,7 @@ MIGRATIONS = (
     ("041_daily_link", _migrate_041),
     ("042_quiz", _migrate_042),
     ("043_family_goal", _migrate_043),
+    ("044_word_game", _migrate_044),
 )
 
 

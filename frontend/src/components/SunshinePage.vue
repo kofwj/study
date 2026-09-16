@@ -11,18 +11,18 @@ import { ledgerSummary, weekOffset, data, wordDueCard, wordNewCard, reviewDue, t
 const emit = defineEmits(['navigate'])
 
 
-const SUN_EARN = new Set(['task', 'daily', 'word_daily', 'word_perfect', 'test', 'box', 'milestone', 'bank_deposit', 'bank_interest'])
+const SUN_EARN = new Set(['task', 'daily', 'word_game', 'word_daily', 'word_perfect', 'test', 'box', 'milestone', 'bank_deposit', 'bank_interest'])
 const SUN_REVERT = new Set(['cancel', 'test_cancel'])
 const SUN_SPEND = new Set(['redeem'])
 const SUN_PATHS = [
   { id: 'task', name: '课文任务', hint: '把今天的课往前推', reasons: ['task'], icon: BookOpen, tab: null },
-  { id: 'word', name: '英语单词', hint: '复习或新词还没写完', reasons: ['word_daily', 'word_perfect'], icon: Globe, tab: '英语' },
+  { id: 'word', name: '英语复习', hint: '去 /word/ 复习今天的词', reasons: ['word_game', 'word_daily', 'word_perfect'], icon: Globe, tab: '英语' },
   { id: 'daily', name: '每日打卡', hint: '今天的打卡还空着', reasons: ['daily'], icon: CalendarDays, tab: '今日推荐' },
   { id: 'test', name: '单元测试', hint: '测完告诉家长登分', reasons: ['test'], icon: FileText, tab: null },
   { id: 'box', name: '宝箱连击', hint: '连续打卡才会开箱', reasons: ['box', 'milestone'], icon: Gift, tab: null },
 ]
 const REASON_LABEL = {
-  task: '课文任务', daily: '每日打卡', word_daily: '单词练习', word_perfect: '单词全对',
+  task: '课文任务', daily: '每日打卡', word_game: '英语复习', word_daily: '单词练习', word_perfect: '单词全对',
   test: '单元测试', box: '开宝箱', milestone: '连击奖励', bank_deposit: '存进银行',
   bank_interest: '银行利息', cancel: '取消打卡', test_cancel: '删测试', redeem: '商店兑换',
   penalty: '约定扣分', penalty_cancel: '撤回约定',
