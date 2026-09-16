@@ -5,7 +5,7 @@
 // 用法：node scripts/check_word_game.mjs
 import {
   scoreOf, sunshineFor, streakUpdate,
-  questionPlan, buildOptions, matchGroups, buildMatchBoard, planSession,
+  questionPlan, buildOptions, matchGroups, buildMatchBoard, planSession, entryCardText,
 } from '../frontend/src/wordGame.js'
 
 let bad = 0
@@ -152,6 +152,38 @@ const fewHot = [...Array.from({ length: 3 }, (_, i) => hot(i + 1)), cold(10)]
 const planFew = planSession(fewHot, { matchSize: 5, matchBlocks: 3 })
 ok(planFew.steps.filter((s) => s.kind === 'match').length === 0, '凑不满一块 → 不开板')
 ok(planFew.steps.filter((s) => s.kind === 'spell').length === 4, '凑不满也照样写 4 次')
+
+/* ---------- 孩子端「今天」页的入口卡文案（entryCardText） ---------- */
+const sessOf = (states, due) => ({
+  counts: { due, new: 0, answered: states.filter((x) => x === 'done').length, correct_first_try: 0 },
+  items: states.map((s, i) => ({ word_id: i + 1, state: s })),
+})
+const goalOf = (scored, target, done) => ({ scored_words: scored, goal: target, goal_done: done })
+const c1 = entryCardText({ enabled: true, finished: false, backlog_due: 5, config: { game_size: 20 }, goal: goalOf(0, 10, false) })
+ok(c1.ready === true && c1.title === '英语复习', '入口卡：开了就能玩')
+ok(c1.detail === '今天 0/10 词 · 到期 5 个', `入口卡：有到期没练 → ${c1.detail}`)
+ok(c1.hint === '这一局 20 词', `入口卡：还没开局 → ${c1.hint}`)
+ok(c1.pct === 0 && c1.bar === '还差 10 个', `入口卡：进度条 → ${c1.pct}/${c1.bar}`)
+const c2 = entryCardText({
+  enabled: true, finished: false, backlog_due: 0, config: { game_size: 20 },
+  session: sessOf(['done', 'done', 'done', 'study', 'study'], 2), goal: goalOf(2, 10, false),
+})
+ok(c2.detail === '今天 2/10 词 · 到期 2 个', `入口卡：练了一半 → ${c2.detail}`)
+ok(c2.hint === '这一局 20 词 · 还有 2 个没练', `入口卡：还剩几个 → ${c2.hint}`)
+ok(c2.pct === 20 && c2.bar === '还差 8 个', `入口卡：进度 20% → ${c2.pct}/${c2.bar}`)
+const c3 = entryCardText({ enabled: true, finished: true, config: { game_size: 20 }, goal: goalOf(10, 10, true) })
+ok(c3.bar === '达标了 🎉' && c3.pct === 100, `入口卡：达标 → ${c3.bar}/${c3.pct}`)
+ok(c3.hint === '今天的目标达成了 🎉 · 再练一遍也行', `入口卡：达标提示 → ${c3.hint}`)
+const c4 = entryCardText({ enabled: true, finished: true, backlog_due: 0, config: { game_size: 10 }, goal: goalOf(7, 0, false) })
+ok(c4.detail === '今天写了 7 个词' && c4.pct === null && c4.bar === '', `入口卡：目标关掉 → ${c4.detail}/${c4.pct}`)
+ok(c4.hint === '今天已经练完一局，再练一遍也行', `入口卡：练完没目标 → ${c4.hint}`)
+const c5 = entryCardText({ enabled: true, finished: false, backlog_due: 0, session: null, goal: goalOf(0, 10, false) })
+ok(c5.detail === '今天没有要复习的词', `入口卡：空态 → ${c5.detail}`)
+ok(c5.hint === '明天再来，或让家长加点新词', `入口卡：空态提示 → ${c5.hint}`)
+const c6 = entryCardText({ enabled: false })
+ok(c6.ready === false && c6.detail === '今天没有要复习的词', '入口卡：英语关掉不炸')
+ok(entryCardText(undefined).title === '英语复习' && entryCardText({}).pct === null, '入口卡：空 payload 不炸')
+ok(entryCardText({ enabled: true, config: {}, goal: goalOf(3, 10, false), session: sessOf(['study'], 0) }).pct === 30, '入口卡：只给最小字段也能算进度')
 
 console.log(`英语复习页规则：${n} 条断言，失败 ${bad} 条`)
 process.exit(bad ? 1 : 0)

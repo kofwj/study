@@ -564,6 +564,9 @@ def test_admin_words_stats_today_and_money_match():
             assert s["today_sentence"] == "今天写了 20 词（目标 10，已达标） · 最好一轮 70 分 · 阳光 2/10"
             assert s["week"] == {"days": 1, "words": 20, "rate": 70}
             assert s["week_sentence"] == "这周练了 1 天，首轮正确率 70%；今天写了 20/10 词（达标）"
+            # 孩子端「今天」也带目标环（P4-b 的入口卡靠它算「今天写了 7/10」）
+            kid_today = cli.get("/api/words/today").json()
+            assert kid_today["goal"] == {"scored_words": 20, "goal": 10, "goal_done": True}, kid_today["goal"]
 
             # 目标关掉：句子不再提目标
             assert cli.put("/api/admin/words/config", json={"daily_goal": 0}).status_code == 200

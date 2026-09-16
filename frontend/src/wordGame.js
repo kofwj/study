@@ -122,3 +122,49 @@ export function planSession(items, opts = {}) {
   }
   return { steps, blocks }
 }
+
+/* ============================================================
+   孩子端「今天」页的入口卡文案（P4-b）
+   ------------------------------------------------------------
+   给 /word/ 一个正门：卡上就说清「今天写了几个 / 目标多少 / 这一局几个词」。
+   纯函数放这里是为了能跑 scripts/check_word_game.mjs 断言（组件只渲染，不写文案）。
+   today = GET /api/words/today 的 payload（enabled / finished / backlog_due / session / goal / config）
+   ============================================================ */
+export function entryCardText(today) {
+  const t = today || {}
+  const goal = t.goal || {}
+  const scored = Number(goal.scored_words || 0)
+  const target = Number(goal.goal || 0)
+  const done = !!goal.goal_done
+  const items = (t.session && t.session.items) || []
+  const counts = (t.session && t.session.counts) || {}
+  const due = Number(counts.due || t.backlog_due || 0)
+  const size = Number((t.config && t.config.game_size) || items.length || 20)
+  const left = items.filter((x) => x && x.state !== 'done').length
+  // 「今天真没东西可练」：没组、没过期词、今天也没写过 → 说清楚，别显示 0/10 让人以为漏了
+  const nothing = !items.length && !due && scored === 0
+
+  let detail
+  if (nothing) {
+    detail = '今天没有要复习的词'
+  } else if (target > 0) {
+    detail = `今天 ${scored}/${target} 词`
+    if (due > 0) detail += ` · 到期 ${due} 个`
+  } else if (scored > 0) {
+    detail = `今天写了 ${scored} 个词`
+  } else {
+    detail = `到期 ${due} 个`
+  }
+
+  const pct = target > 0 ? Math.max(0, Math.min(100, Math.round((scored / target) * 100))) : null
+  const bar = target > 0 ? (done ? '达标了 🎉' : `还差 ${Math.max(0, target - scored)} 个`) : ''
+
+  let hint
+  if (nothing) hint = '明天再来，或让家长加点新词'
+  else if (done) hint = '今天的目标达成了 🎉 · 再练一遍也行'
+  else if (t.finished) hint = '今天已经练完一局，再练一遍也行'
+  else if (left > 0) hint = `这一局 ${size} 词 · 还有 ${left} 个没练`
+  else hint = `这一局 ${size} 词`
+
+  return { title: '英语复习', detail, bar, pct, hint, ready: !!t.enabled }
+}

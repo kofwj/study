@@ -3,7 +3,7 @@
 // 用法：父组件 <DailyDialog ref="dailyRef" @submit="submitDaily" />，
 // 调 dailyRef.value.open(task) 打开；提交只 emit，父级调 dailyRef.value.close() 关闭。
 import { reactive, computed } from 'vue'
-import { Sun } from '@lucide/vue'
+import { Sun, ArrowRight } from '@lucide/vue'
 import { isTimeMetric, pad2, secondsToMetric, isGoPlay, goWinCount } from '../format.js'
 import { quizToday } from '../store.js'
 
@@ -87,10 +87,15 @@ function submit(event) {
   <div v-if="dailyDialog.open" class="mask" @click.self="close">
     <div class="shop-modal enter">
       <h3>{{ dailyDialog.task.name }}</h3>
-      <p v-if="dailyDialog.task.note" class="daily-dialog-note">怎么做：{{ dailyDialog.task.note }}</p>
-      <p v-if="quizBlocked" class="daily-dialog-note quiz-need">需先完成今日题库练习</p>
-      <button v-if="dailyDialog.task.link" type="button" class="go-first" @click="emit('go-link', dailyDialog.task)">{{ quizBlocked ? '先去做题库' : '去做' }}</button>
+      <p v-if="dailyDialog.task.note" class="daily-how">怎么做：{{ dailyDialog.task.note }}</p>
+
+      <!-- 有去处的任务（如大队委题库）：主行动是「去做」，通栏；打卡降为次按钮（P4-b 统一层级） -->
+      <button v-if="dailyDialog.task.link" type="button" class="do big" @click="emit('go-link', dailyDialog.task)">
+        {{ quizBlocked ? '先去做题库' : '去做' }} <ArrowRight class="ico" :size="15" />
+      </button>
+      <p v-if="quizBlocked" class="daily-steps quiz-need">做完今日题库练习，再回来点打卡</p>
       <p v-if="isGoPlay(dailyDialog.task)" class="daily-dialog-award">{{ dailySunshineHint(dailyDialog.task) }}</p>
+
       <div v-for="m in dailyDialog.task.metrics" :key="m.id" class="metric">
         <label>{{ m.label }}</label>
         <div v-if="m.note" class="metric-note">{{ m.note }}</div>
@@ -103,8 +108,12 @@ function submit(event) {
         </div>
         <input v-else v-model.number="dailyDialog.vals[m.id]" type="number" inputmode="decimal" min="0" :placeholder="m.unit" />
       </div>
-      <button v-if="!quizBlocked" class="do big" @click="submit($event)">{{ dailySubmitLabel(dailyDialog.task) }} <Sun v-if="!(isGoPlay(dailyDialog.task) && goDialogWins < 1)" class="ico" :size="15" /></button>
-      <button class="ghost" @click="close">取消</button>
+
+      <!-- 打卡：任务有「去做」时它是次要动作，没有时它就是主按钮 -->
+      <button v-if="!quizBlocked" type="button" :class="dailyDialog.task.link ? 'daily-sub' : 'do big'" @click="submit($event)">
+        {{ dailySubmitLabel(dailyDialog.task) }} <Sun v-if="!(isGoPlay(dailyDialog.task) && goDialogWins < 1)" class="ico" :size="15" />
+      </button>
+      <button type="button" class="ghost" @click="close">取消</button>
     </div>
   </div>
 </template>
@@ -112,9 +121,10 @@ function submit(event) {
 <style scoped>
 .metric { margin-bottom: 10px; }
 .metric label { display: block; font-size: 13px; margin-bottom: 4px; }
-.daily-dialog-note, .metric-note { margin: -4px 0 8px; color: var(--ink-3); font-size: 12px; line-height: 1.5; }
-.go-first { display: inline-block; margin: 2px 0 10px; padding: 9px 14px; border: none; border-radius: var(--radius-md); background: var(--brand-deep); color: #fff; font-size: 14px; font-weight: 700; font-family: inherit; cursor: pointer; }
-.go-first:hover { filter: brightness(1.08); }
+.daily-how { margin: 0 0 12px; padding: 10px 12px; background: var(--surface-2); border-radius: var(--radius-md); color: var(--ink-2); font-size: 13px; line-height: 1.5; }
+.daily-steps { margin: -2px 0 10px; }
+.daily-sub { display: block; width: 100%; margin-top: 8px; padding: 12px; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface); color: var(--ink); font-size: 15px; font-weight: 800; font-family: inherit; cursor: pointer; }
+.daily-sub:hover { background: var(--surface-2); }
 .quiz-need { color: #E08A2E; }
 .daily-dialog-award { margin: -2px 0 10px; color: var(--accent-ink); font-size: 13px; line-height: 1.5; font-weight: 700; }
 .metric-note { margin: -1px 0 4px; }

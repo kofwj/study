@@ -666,6 +666,17 @@ def _backlog(c, kid, fam, items, cfg=None):
 
 
 def today_payload(c, kid, fam, create=False, size=None):
+    """孩子端今天这一组（SPA 与独立页共用）。外面套一层，统一补上「每日目标环」进度。"""
+    out = _today_payload(c, kid, fam, create=create, size=size)
+    try:
+        out["goal"] = goal_state(c, kid, kid_config(c, kid))
+    except Exception:
+        # 目标环只是展示：读不到也不许把今天这一组拖垮
+        out["goal"] = {"scored_words": 0, "goal": 0, "goal_done": False}
+    return out
+
+
+def _today_payload(c, kid, fam, create=False, size=None):
     abandon_stale(c, kid)
     cfg = kid_config(c, kid)
     if not cfg["enabled"]:
@@ -1176,9 +1187,8 @@ def start_game(c, kid, fam):
     cfg = kid_config(c, kid)
     if not cfg["enabled"]:
         raise WordError(403, "单词练习没开，找家长打开")
-    payload = today_payload(c, kid, fam, create=True, size=int(cfg["game_size"]))
-    payload["goal"] = goal_state(c, kid, cfg)     # 每日目标环（只展示，不发钱）
-    return payload
+    # goal（每日目标环）由 today_payload 统一补，这里不再重复设
+    return today_payload(c, kid, fam, create=True, size=int(cfg["game_size"]))
 
 
 def game_info(c, kid, fam):

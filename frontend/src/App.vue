@@ -22,6 +22,7 @@ import LoginScreen from './components/LoginScreen.vue'
 import DailyDialog from './components/DailyDialog.vue'
 import CompanionDrawer from './components/CompanionDrawer.vue'
 import WordPractice from './components/WordPractice.vue'
+import WordGameCard from './components/WordGameCard.vue'
 import SpritesBase from './components/SpritesBase.vue'
 import CapsuleBox from './components/CapsuleBox.vue'
 import BankPage from './components/BankPage.vue'
@@ -63,6 +64,12 @@ const wordRef = ref(null)
 function openWordLane(kind) {
   if (!guardCheckinOpen()) return
   wordRef.value?.open(kind)
+}
+// 英语复习独立页 /word/（P4-b 的正门）；走独立页那条流程，和 SPA 里的单词弹窗并存
+function openWordGame() {
+  if (!wordToday.value.enabled) return
+  if (!guardCheckinOpen()) return
+  window.location.href = '/word/'
 }
 // 时间胶囊（components/CapsuleBox.vue）+ 秘密基地（components/SpritesBase.vue）
 const capsuleRef = ref(null)
@@ -449,6 +456,8 @@ const dailyTodo = computed(() => {
 
 const todayCheckinItems = computed(() => {
   const items = []
+  // P4-b：英语复习的正门（去 /word/ 独立页），排在每日打卡最前面（时间胶囊仍最前）
+  if (wordToday.value.enabled) items.push({ key: 'word-game', kind: 'wordgame' })
   let wordPlaced = false
   const putWord = () => {
     if (wordPlaced || !wordToday.value.enabled) return
@@ -697,6 +706,7 @@ function reloadApp() {
                     <div class="card-detail">有一封给自己的信可以拆了</div>
                   </div>
                 </div>
+                <WordGameCard v-else-if="it.kind === 'wordgame'" :today="wordToday" @play="openWordGame" />
                 <div v-else-if="it.kind === 'word'" class="card enter word-daily-card" role="button" @click="openWordLane(it.lane)">
                   <button type="button" class="circle" @click.stop="openWordLane(it.lane)"></button>
                   <div class="card-body">
