@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#2fa6de" />
+  <title>英语复习</title>
+  <style>
+    :root {
+      --ink: #1f3b55; --ink-2: #557089; --ink-3: #8ba0b3; --line: #dbe6ef;
+      --surface: #fff; --surface-2: #f2f7fb; --brand: #2fa6de; --brand-deep: #1c6f96;
+      --ok: #2e9e63; --ok-bg: #e6f6ed; --warm: #fff4e0; --warm-2: #fffaf0; --accent: #f5a524;
+      --radius-lg: 18px; --radius-md: 12px; --radius-pill: 999px; --shadow: 0 6px 18px rgba(31,59,85,.08);
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body {
+      margin: 0; min-height: 100vh; background: var(--surface-2); color: var(--ink);
+      font-family: system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+      padding: 14px 14px calc(18px + env(safe-area-inset-bottom));
+    }
+    .wrap { max-width: 620px; margin: 0 auto; }
+    .bar { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .bar a { color: var(--ink-2); text-decoration: none; font-weight: 700; font-size: 14px; }
+    .bar h1 { flex: 1; margin: 0; font-size: 18px; }
+    .bar .stat { font-size: 13px; color: var(--ink-2); font-weight: 700; }
+    .track { height: 10px; border-radius: var(--radius-pill); background: #e4eef5; overflow: hidden; }
+    .track i { display: block; height: 100%; background: linear-gradient(90deg, #9ad7f2, var(--brand)); transition: width .18s ease; }
+    .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg); box-shadow: var(--shadow); padding: 18px 16px; margin-top: 14px; }
+    .cn { font-size: 26px; font-weight: 800; text-align: center; letter-spacing: -.01em; }
+    .hint { text-align: center; color: var(--ink-3); font-size: 12px; margin: 6px 0 0; }
+    .slots { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: 16px 0 8px; min-height: 42px; cursor: text; }
+    .slots i { width: 22px; height: 34px; border-bottom: 2px solid var(--ink-3); display: inline-flex; align-items: flex-end; justify-content: center; font-weight: 800; font-size: 21px; line-height: 1; font-style: normal; }
+    .slots i.space { width: 12px; border: none; }
+    .slots i.fix { border: none; align-items: center; }
+    .slots i.cur { border-color: var(--accent); }
+    .slots.right i { border-color: var(--ok); color: var(--ok); }
+    .slots.wrong i { border-color: var(--accent); color: #b06a00; }
+    .ghost { position: absolute; opacity: 0; pointer-events: none; height: 1px; width: 1px; }
+    .row { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 12px; }
+    button { font-family: inherit; font-size: 16px; font-weight: 800; border-radius: var(--radius-pill); padding: 12px 20px; cursor: pointer; border: 1px solid transparent; }
+    .do { background: var(--brand); color: #fff; min-width: 128px; }
+    .do:disabled { opacity: .5; }
+    .sec { background: var(--surface); color: var(--ink-2); border-color: var(--line); }
+    .big { font-size: 20px; }
+    .fb { margin: 12px 0 0; text-align: center; font-weight: 800; }
+    .fb.ok { color: var(--ok); }
+    .fb.no { color: #b06a00; }
+    .big-en { text-align: center; font-size: 30px; font-weight: 800; margin: 10px 0 2px; }
+    .ipa { text-align: center; color: var(--ink-3); font-size: 13px; }
+    .sum { text-align: center; }
+    .sum .pct { font-size: 44px; font-weight: 800; letter-spacing: -.03em; }
+    .sum .sub { color: var(--ink-2); font-size: 14px; margin-top: 4px; }
+    .err { margin-top: 12px; padding: 12px 14px; border: 1px solid #e9b4b4; background: #fdeeee; border-radius: var(--radius-md); }
+    .err strong { display: block; margin-bottom: 4px; color: #a33; }
+    .err span { color: var(--ink-2); font-size: 13px; word-break: break-all; }
+    .streak { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 10px; color: var(--ink-2); font-weight: 700; font-size: 13px; }
+    .streak.on { color: #b06a00; }
+    .foot { text-align: center; color: var(--ink-3); font-size: 12px; margin-top: 16px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="bar">
+      <a href="/">← 回今天</a>
+      <h1>英语复习</h1>
+      <span class="stat" id="stat"></span>
+    </div>
+    <div class="track"><i id="progress" style="width:0%"></i></div>
+
+    <div id="err" class="err" hidden>
+      <strong id="err-title">加载失败</strong>
+      <span id="err-body"></span>
+      <div class="row" style="justify-content:flex-start">
+        <button class="sec" id="err-retry" type="button">重试</button>
+      </div>
+    </div>
+
+    <div class="card" id="card-loading">正在准备今天的词…</div>
+
+    <div class="card" id="card-quiz" hidden>
+      <div class="cn" id="cn"></div>
+      <p class="hint" id="hint">按中文写出英文，只敲字母就行（空格和标点会自动补）</p>
+      <div class="slots" id="slots"></div>
+      <input class="ghost" id="input" type="text" inputmode="text" autocomplete="off"
+             autocapitalize="none" spellcheck="false" enterkeyhint="done" maxlength="60" aria-label="默写" />
+      <div class="row" id="actions"></div>
+      <div id="feedback"></div>
+      <div class="streak" id="streak"></div>
+    </div>
+
+    <div class="card sum" id="card-sum" hidden>
+      <div class="pct" id="sum-pct">0%</div>
+      <div class="sub" id="sum-sub"></div>
+      <div class="row">
+        <button class="do big" id="again" type="button">再练一遍</button>
+        <button class="sec big" id="home" type="button">回今天</button>
+      </div>
+    </div>
+
+    <p class="foot">写完这一局，回「今天」看看还有哪些事</p>
+  </div>
+  <script type="module" src="./game.js"></script>
+</body>
+</html>

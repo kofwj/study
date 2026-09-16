@@ -50,6 +50,14 @@ function stampSW() {
 
 export default defineConfig({
   plugins: [vue(), stampSW()],
+  build: {
+    rollupOptions: {
+      input: {
+        main: resolve(process.cwd(), 'index.html'),
+        word: resolve(process.cwd(), 'word/index.html'),   // 英语复习独立页 /word/
+      },
+    },
+  },
   define: {
     __APP_VERSION__: JSON.stringify(appVersion()),
     __APP_REVISION__: JSON.stringify(appRevision()),
