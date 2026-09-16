@@ -1052,13 +1052,8 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload)
 @media (max-width: 560px) {
   .admin { padding: 10px; padding-top: calc(10px + env(safe-area-inset-top)); }
 }
-.a-item { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 8px 0; border-bottom: 1px solid var(--surface-2); }
-.a-item.add { border-top: 1px dashed var(--line); margin-top: 8px; padding-top: 12px; }
-.a-subject-h { font-weight: 800; color: var(--brand-deep); margin-top: 8px; font-size: 14px; }
-.a-item input, .a-item select { border: 1px solid var(--line); border-radius: var(--radius-md); padding: 8px 10px; font-size: 15px; color: var(--ink); background: var(--surface); font-family: inherit; min-height: 40px; }
-.a-item input:focus, .a-item select:focus { outline: none; border-color: var(--brand); }
-.w-name { flex: 1; min-width: 120px; }
-.w-cat { width: 90px; }
+
+/* 任务页行样式（.a-item 等）在 adminBase.css：本文件的 scoped 规则到不了子组件 */
 .toast { position: fixed; left: 50%; bottom: 30px; transform: translateX(-50%); background: rgba(31,59,85,.92); color: #fff; padding: 10px 18px; border-radius: var(--radius-pill); font-size: 14px; z-index: 20; }
 
 
