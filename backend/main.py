@@ -4246,6 +4246,9 @@ class WordConfigIn(BaseModel):
     new_per_day: Optional[int] = None
     max_due: Optional[int] = None
     game_size: Optional[int] = None          # 一局多少词（独立页 /word/，10–40）
+    daily_goal: Optional[int] = None         # 每日目标：今天写够几个词（0 = 关闭）5–40
+    match_size: Optional[int] = None         # 「连一连」一块几个词 3–6
+    match_blocks: Optional[int] = None       # 「连一连」一局最多几块 0–3（0 = 不玩）
     base_sunshine: Optional[int] = None
     perfect_sunshine: Optional[int] = None
     unlock_by_cursor: Optional[bool] = None

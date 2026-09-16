@@ -114,8 +114,13 @@ const {
         <label class="fld w64"><span>每天新词</span><input v-model.number="wordCfg.new_per_day" type="number" min="1" max="10" /></label>
         <label class="fld w64"><span>到期上限</span><input v-model.number="wordCfg.max_due" type="number" min="5" max="15" /></label>
         <label class="fld w64"><span>一局词数</span><input v-model.number="wordCfg.game_size" type="number" min="10" max="40" /></label>
+        <label class="fld w64"><span>每日目标</span><input v-model.number="wordCfg.daily_goal" type="number" min="0" max="40" /></label>
+        <label class="fld w64"><span>连线每块</span><input v-model.number="wordCfg.match_size" type="number" min="3" max="6" /></label>
+        <label class="fld w64"><span>连线块数</span><input v-model.number="wordCfg.match_blocks" type="number" min="0" max="3" /></label>
         <button class="ok" @click="saveWordRhythm">保存节奏</button>
       </div>
+      <p class="dim">每日目标：今天写够几个词点亮目标环，<b>0 = 不显示</b>；连线每块 3–6 个词（默认 5），
+        连线块数 <b>0 = 不玩「连一连」</b>（只认 + 写）。这三项下一局生效。</p>
       <div v-if="wordCfg.review_mode === 'current'" class="lock-row mt14">
         <span class="badge">词书锁</span>
         <span class="grow">系统词书跟着英语「已学到」</span>

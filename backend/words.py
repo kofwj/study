@@ -25,6 +25,9 @@ CFG_ENABLED = "words_enabled"
 CFG_NEW = "words_new_per_day"
 CFG_MAX_DUE = "words_max_due"
 CFG_GAME_SIZE = "words_game_size"   # 一局多少词（独立页 /word/ 用，10–40）
+CFG_DAILY_GOAL = "words_daily_goal"     # 每日目标：今天写够几个词算达标（0 = 关闭）5–40
+CFG_MATCH_SIZE = "words_match_size"     # 「连一连」一块几个词 3–6
+CFG_MATCH_BLOCKS = "words_match_blocks"  # 「连一连」一局最多几块 0–3（0 = 不玩连一连）
 CFG_CURSOR = "words_unlock_by_cursor"
 CFG_BOOK = "words_current_book"
 CFG_REVIEW_MODE = "words_review_mode"
@@ -89,6 +92,17 @@ def _clamp_int(raw, default, lo, hi):
     return max(lo, min(hi, v))
 
 
+
+def _clamp_goal(raw):
+    """每日目标：0 = 关闭；否则 5–40（不取 1–4，太少没意义）。"""
+    try:
+        v = int(str(raw).strip())
+    except (TypeError, ValueError):
+        v = 10
+    if v <= 0:
+        return 0
+    return max(5, min(40, v))
+
 def _parse_review_books(raw):
     try:
         value = json.loads(raw or "[]")
@@ -117,6 +131,9 @@ def kid_config(c, kid):
         "new_per_day": _clamp_int(db.get_kid_setting(c, kid, CFG_NEW, "5"), 5, 1, 10),
         "max_due": _clamp_int(db.get_kid_setting(c, kid, CFG_MAX_DUE, "10"), 10, 5, 15),
         "game_size": _clamp_int(db.get_kid_setting(c, kid, CFG_GAME_SIZE, "20"), 20, 10, 40),
+        "daily_goal": _clamp_goal(db.get_kid_setting(c, kid, CFG_DAILY_GOAL, "10")),
+        "match_size": _clamp_int(db.get_kid_setting(c, kid, CFG_MATCH_SIZE, "5"), 5, 3, 6),
+        "match_blocks": _clamp_int(db.get_kid_setting(c, kid, CFG_MATCH_BLOCKS, "3"), 3, 0, 3),
         "unlock_by_cursor": unlock,
         "current_book": db.get_kid_setting(c, kid, CFG_BOOK, "") or "",
         "review_mode": mode,
@@ -133,6 +150,9 @@ def set_kid_config(c, kid, **fields):
         "new_per_day": (CFG_NEW, lambda v: str(_clamp_int(v, 5, 1, 10))),
         "max_due": (CFG_MAX_DUE, lambda v: str(_clamp_int(v, 10, 5, 15))),
         "game_size": (CFG_GAME_SIZE, lambda v: str(_clamp_int(v, 20, 10, 40))),
+        "daily_goal": (CFG_DAILY_GOAL, lambda v: str(_clamp_goal(v))),
+        "match_size": (CFG_MATCH_SIZE, lambda v: str(_clamp_int(v, 5, 3, 6))),
+        "match_blocks": (CFG_MATCH_BLOCKS, lambda v: str(_clamp_int(v, 3, 0, 3))),
         "unlock_by_cursor": (CFG_CURSOR, lambda v: "1" if v else "0"),
         "current_book": (CFG_BOOK, lambda v: (v or "").strip()),
         "review_mode": (CFG_REVIEW_MODE, lambda v: "scope" if v == "scope" else "current"),
@@ -539,10 +559,12 @@ def _ensure_items(c, row, kid, fam):
 def _session_items(c, kid, fam, sid):
     rows = c.execute(
         "SELECT i.word_id, i.source, i.item_order, i.state, i.first_result, i.retry_used, "
-        "w.word, w.cn, w.ipa, w.example_en, w.page, w.entry_type, w.core "
+        "w.word, w.cn, w.ipa, w.example_en, w.page, w.entry_type, w.core, "
+        "p.interval_idx, p.streak_right, p.wrong_count, p.first_seen_at, p.last_result "
         "FROM word_session_items i "
         "JOIN words w ON w.id=i.word_id "
         "JOIN word_books b ON b.id=w.book_id "
+        "LEFT JOIN word_progress p ON p.kid_id=i.kid_id AND p.word_id=i.word_id "
         "WHERE i.session_id=? AND i.kid_id=? AND (b.is_system=1 OR b.family_id=?) "
         "ORDER BY i.item_order, i.word_id",
         (sid, kid, fam or ""),
@@ -562,6 +584,14 @@ def _session_items(c, kid, fam, sid):
             "state": r["state"],
             "first_result": r["first_result"],
             "retry_used": int(r["retry_used"] or 0),
+            # 掌握度：页面按它决定「先认一认 / 先连一连 / 直接写」（frontend/src/wordGame.js 的 questionPlan）
+            "progress": {
+                "first_seen_at": r["first_seen_at"] or "",
+                "interval_idx": int(r["interval_idx"] or 0),
+                "streak_right": int(r["streak_right"] or 0),
+                "wrong_count": int(r["wrong_count"] or 0),
+                "last_result": r["last_result"] or "",
+            },
         })
     return out
 
@@ -574,6 +604,24 @@ def _counts(items):
     answered = sum(1 for x in items if x["state"] in ("done", "retry") or x.get("first_result"))
     correct = sum(1 for x in items if x.get("first_result") == "right")
     return {"due": due, "new": new, "answered": answered, "correct_first_try": correct}
+
+
+def scored_words_today(c, kid):
+    """今天「写过」的词数（去重）：只数 phase='spell' 的正式作答，retry 不算。
+    服务端算，不信客户端 —— 和「一轮得分」的分母同一套数据。"""
+    return int(c.execute(
+        "SELECT COUNT(DISTINCT a.word_id) FROM word_attempts a "
+        "JOIN word_sessions s ON s.id=a.session_id "
+        "WHERE a.kid_id=? AND a.phase='spell' AND s.study_date=?",
+        (kid, db.today()),
+    ).fetchone()[0] or 0)
+
+
+def goal_state(c, kid, cfg):
+    """每日目标环：今天写够 goal 个词就算达标（只展示，不发钱）。goal=0 表示家长关掉了。"""
+    goal = int(cfg.get("daily_goal") or 0)
+    n = scored_words_today(c, kid)
+    return {"scored_words": n, "goal": goal, "goal_done": bool(goal and n >= goal)}
 
 
 def _reward(c, row):
@@ -1035,18 +1083,22 @@ def start_game(c, kid, fam):
     cfg = kid_config(c, kid)
     if not cfg["enabled"]:
         raise WordError(403, "单词练习没开，找家长打开")
-    return today_payload(c, kid, fam, create=True, size=int(cfg["game_size"]))
+    payload = today_payload(c, kid, fam, create=True, size=int(cfg["game_size"]))
+    payload["goal"] = goal_state(c, kid, cfg)     # 每日目标环（只展示，不发钱）
+    return payload
 
 
 def game_info(c, kid, fam):
-    """独立页刷新时要的：词数设置 + 今天的会话 + 今天的成绩/额度。"""
+    """独立页刷新时要的：设置（一局词数 / 连一连 / 每日目标）+ 今天的会话 + 今天的成绩/额度。"""
     cfg = kid_config(c, kid)
     row = _today_session(c, kid)
     sess = _session_public(c, kid, fam, row) if row else None
     today = _game_today(c, kid, row["id"]) if row else {"rounds": [], "best_score": 0,
                                                         "should": 0, "got": 0, "can_grant": 0, "checkin": False}
     today.pop("rounds", None)
-    return {"enabled": cfg["enabled"], "size": int(cfg["game_size"]), "session": sess, "today": today}
+    today.update(goal_state(c, kid, cfg))
+    return {"enabled": cfg["enabled"], "size": int(cfg["game_size"]), "config": cfg,
+            "session": sess, "today": today}
 
 
 def settle_game(c, kid, fam, sid):
@@ -1072,7 +1124,8 @@ def settle_game(c, kid, fam, sid):
     payload = {
         "round": round_now,
         "today": {"best_score": info["best_score"], "should": should, "got": got + granted,
-                  "granted": granted, "limit": GAME_MAX_SUNSHINE, "checkin": True},
+                  "granted": granted, "limit": GAME_MAX_SUNSHINE, "checkin": True,
+                  **goal_state(c, kid, kid_config(c, kid))},
         "day_best_hint": ("今天最好 %d 分（今天英语阳光 %d/%d）"
                           % (info["best_score"], got + granted, GAME_MAX_SUNSHINE)),
     }

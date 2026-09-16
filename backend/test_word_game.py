@@ -179,3 +179,113 @@ def test_unanswered_counts_against_score():
             assert b["round"]["score"] == 70 and b["round"]["answered"] == 14, b
             assert b["round"]["size"] == 20 and b["today"]["granted"] == 2, b
             assert _sum_ledger(kid) == 2
+
+
+def test_game_settings_defaults_and_clamp():
+    """P3 三个家长旋钮：每日目标（0 = 关闭，5–40）、连线每块（3–6）、一局连线块数（0–3）。"""
+    db.init_db()
+    with TestClient(main.app) as cli:
+        _family(cli, "wm")
+        cfg = cli.get("/api/admin/words/config").json()
+        assert (cfg["daily_goal"], cfg["match_size"], cfg["match_blocks"]) == (10, 5, 3), cfg
+        assert cli.put("/api/admin/words/config", json={"daily_goal": 0}).json()["daily_goal"] == 0
+        assert cli.put("/api/admin/words/config", json={"daily_goal": 3}).json()["daily_goal"] == 5
+        assert cli.put("/api/admin/words/config", json={"daily_goal": 999}).json()["daily_goal"] == 40
+        assert cli.put("/api/admin/words/config", json={"match_size": 2}).json()["match_size"] == 3
+        assert cli.put("/api/admin/words/config", json={"match_size": 9}).json()["match_size"] == 6
+        assert cli.put("/api/admin/words/config", json={"match_blocks": 9}).json()["match_blocks"] == 3
+        assert cli.put("/api/admin/words/config", json={"match_blocks": -1}).json()["match_blocks"] == 0
+        # 孩子端拿到的配置也带这三项（/word/ 开局时读一次）
+        kid_cfg = cli.get("/api/words/today").json()["config"]
+        assert (kid_cfg["daily_goal"], kid_cfg["match_size"], kid_cfg["match_blocks"]) == (40, 6, 0), kid_cfg
+
+
+def test_scored_words_counts_written_words_only():
+    """每日目标环看的是「今天写过几个词」（去重、只数正式作答）：再写一次不重复计。"""
+    db.init_db()
+    with TestClient(main.app) as cli:
+        _family(cli, "wn")
+        with _kid("wn") as k:
+            sess = k.post("/api/words/game/start").json()["session"]
+            sid, items = sess["id"], sess["items"]
+            assert len(items) == 20
+            for it in items[:2]:
+                r = k.post(f"/api/words/session/{sid}/spell",
+                           json={"word_id": it["word_id"], "text": it["word"], "phase": "spell", "attempt_no": 1})
+                assert r.status_code == 200, r.text
+            w3 = items[2]
+            r = k.post(f"/api/words/session/{sid}/spell",
+                       json={"word_id": w3["word_id"], "text": "zzz", "phase": "spell", "attempt_no": 1})
+            assert r.json()["result"] == "wrong", r.text
+            r = k.post(f"/api/words/session/{sid}/spell",
+                       json={"word_id": w3["word_id"], "text": w3["word"], "phase": "retry", "attempt_no": 1})
+            assert r.json()["result"] == "right", r.text
+            info = k.get("/api/words/game").json()
+            assert info["today"]["scored_words"] == 3, info["today"]
+            assert info["today"]["goal"] == 10 and info["today"]["goal_done"] is False, info["today"]
+            started = k.post("/api/words/game/start").json()
+            assert started["goal"]["scored_words"] == 3 and started["goal"]["goal"] == 10, started["goal"]
+            assert started["config"]["match_size"] == 5 and started["config"]["match_blocks"] == 3, started["config"]
+
+
+def test_daily_goal_reached_but_no_extra_money():
+    """达标只展示：写够目标不发钱，钱仍只看当天最好成绩。"""
+    db.init_db()
+    with TestClient(main.app) as cli:
+        kid = _family(cli, "wo")
+        assert cli.put("/api/admin/words/config", json={"daily_goal": 5}).status_code == 200
+        with _kid("wo") as k:
+            sess = k.post("/api/words/game/start").json()["session"]
+            sid, items = sess["id"], sess["items"]
+            _play(k, sid, items, 5, 1)                       # 5/20 = 25 分
+            b = k.post("/api/words/game/settle", json={"session_id": sid}).json()
+            assert b["round"]["score"] == 25 and b["today"]["granted"] == 0, b
+            assert b["today"]["scored_words"] == 20 and b["today"]["goal_done"] is True, b["today"]
+            assert _sum_ledger(kid) == 0
+            # 目标改成 0 = 关闭：环没了，但钱的口径不变
+            assert cli.put("/api/admin/words/config", json={"daily_goal": 0}).status_code == 200
+            info = k.get("/api/words/game").json()
+            assert info["today"]["goal"] == 0 and info["today"]["goal_done"] is False, info["today"]
+            assert info["today"]["scored_words"] == 20, info["today"]
+
+
+def test_match_blocks_zero_turns_pairing_off():
+    db.init_db()
+    with TestClient(main.app) as cli:
+        _family(cli, "wp")
+        assert cli.put("/api/admin/words/config", json={"match_blocks": 0, "match_size": 3}).status_code == 200
+        with _kid("wp") as k:
+            started = k.post("/api/words/game/start").json()
+            assert started["config"]["match_blocks"] == 0 and started["config"]["match_size"] == 3, started["config"]
+            info = k.get("/api/words/game").json()
+            assert info["config"]["match_blocks"] == 0 and info["config"]["match_size"] == 3, info["config"]
+            assert info["size"] == 20, info
+
+
+def test_session_items_carry_progress_for_question_plan():
+    """每题带 word_progress：页面按它决定「先认一认 / 先连一连 / 直接写」；写对后进度照样回灌。"""
+    db.init_db()
+    with TestClient(main.app) as cli:
+        _family(cli, "wq")
+        with _kid("wq") as k:
+            sess = k.post("/api/words/game/start").json()["session"]
+            sid, items = sess["id"], sess["items"]
+            it = items[0]
+            assert it["progress"] == {"first_seen_at": "", "interval_idx": 0, "streak_right": 0,
+                                      "wrong_count": 0, "last_result": ""}, it["progress"]
+            r = k.post(f"/api/words/session/{sid}/spell",
+                       json={"word_id": it["word_id"], "text": it["word"], "phase": "spell", "attempt_no": 1})
+            assert r.status_code == 200, r.text
+            again = [x for x in k.get("/api/words/game").json()["session"]["items"]
+                     if x["word_id"] == it["word_id"]][0]
+            assert again["progress"]["first_seen_at"], again["progress"]
+            assert again["progress"]["streak_right"] == 1 and again["progress"]["last_result"] == "right"
+            assert again["progress"]["wrong_count"] == 0 and again["progress"]["interval_idx"] == 0
+            # 写错的词：下次还得出「认」，页面靠 wrong_count / last_result 判断
+            it2 = items[1]
+            r = k.post(f"/api/words/session/{sid}/spell",
+                       json={"word_id": it2["word_id"], "text": "zzz", "phase": "spell", "attempt_no": 1})
+            assert r.status_code == 200, r.text
+            bad = [x for x in k.get("/api/words/game").json()["session"]["items"]
+                   if x["word_id"] == it2["word_id"]][0]
+            assert bad["progress"]["wrong_count"] == 1 and bad["progress"]["last_result"] == "wrong", bad["progress"]

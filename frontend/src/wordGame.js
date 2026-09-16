@@ -1,9 +1,12 @@
-// 英语复习页（/word/）的纯逻辑：算分、连击、阳光档位。
+// 英语复习页（/word/）的纯逻辑：算分、连击、阳光档位、题型编排。
 // 单独放一个模块是为了能跑 scripts/check_word_game.mjs 逐条断言（别再把规则写死在页面里）。
 //
 // 阳光口径（2026-09-16 定）：一局得分 = 本局正确率（整数百分比）；
 // 当天按**最好成绩**结算一次额度：60 分以下 0，60–100 分线性到 10，向下取整。
 // （补差额与幂等由后端负责，这里只给「这个分数对应多少阳光」。）
+//
+// 题型口径（P3）：认（4 选 1，不计分）→ 写（拼写，唯一计分）；熟词先过一遍「连一连」（不计分）。
+// 每个词最后都要「写」，所以分数与分母口径完全没变。
 
 export function scoreOf(right, total) {
   if (!total) return 0
@@ -24,4 +27,98 @@ export function streakUpdate(streak, right) {
 // 关卡文案：孩子看得懂就行，别出现「失败」「扣分」这类词
 export function verdictText(right) {
   return right ? '对了' : '再看一眼'
+}
+
+/* ============================================================
+   题型：按掌握度自动切（阈值全部来自 word_progress，服务端随每题下发）
+   ------------------------------------------------------------
+   recognize 认（4 选 1）· plain 直接写 · match 先连一连再写
+   ============================================================ */
+export function questionPlan(item, progress) {
+  const p = progress || (item && item.progress) || {}
+  if (!p.first_seen_at) return 'recognize'                                  // 从没见过 → 先认一认
+  if (Number(p.wrong_count || 0) >= 2 || p.last_result === 'wrong') return 'recognize'  // 老错 → 再认一认
+  if (Number(p.interval_idx || 0) >= 2 && Number(p.streak_right || 0) >= 2) return 'match'  // 熟 → 先连一连
+  return 'plain'
+}
+
+function shuffle(list, rand) {
+  const r = typeof rand === 'function' ? rand : Math.random
+  const out = [...list]
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(r() * (i + 1))
+    const t = out[i]; out[i] = out[j]; out[j] = t
+  }
+  return out
+}
+
+/* 认题的 4 个选项：必含正确答案；池子不够时补「—」，绝不崩。 */
+export function buildOptions(item, pool, n = 4, rand = Math.random) {
+  const want = Math.max(2, Number(n) || 4)
+  const answer = item && item.cn != null ? String(item.cn) : ''
+  const seen = new Set([answer])
+  const others = []
+  for (const x of pool || []) {
+    const cn = x && typeof x === 'object' ? (x.cn == null ? '' : String(x.cn)) : String(x == null ? '' : x)
+    if (!cn || seen.has(cn)) continue
+    const wid = x && typeof x === 'object' ? x.word_id : null
+    if (wid != null && item && item.word_id != null && wid === item.word_id) continue   // 别把自己当干扰项
+    seen.add(cn)
+    others.push(cn)
+  }
+  const picks = shuffle(others, rand).slice(0, want - 1)
+  while (picks.length < want - 1) picks.push('—')
+  return shuffle([answer, ...picks], rand)
+}
+
+/* 配对分组：只挑熟词，一块 size 个（默认 5），一局最多 maxBlocks 块（0 = 不玩）。
+   凑不满一块就整块不要（不足就是 0 块，不拼半块板给孩子）；同一块里中文重复的丢掉（免得没法分辨）。 */
+export function matchGroups(items, size = 5, maxBlocks = 3) {
+  const s = Math.max(2, Number(size) || 5)
+  const cap = Number(maxBlocks)
+  if (!Number.isFinite(cap) || cap <= 0) return []
+  const seenCn = new Set()
+  const eligible = []
+  for (const x of items || []) {
+    if (!x || questionPlan(x) !== 'match') continue
+    const cn = String(x.cn == null ? '' : x.cn)
+    if (!cn || seenCn.has(cn)) continue
+    seenCn.add(cn)
+    eligible.push(x)
+  }
+  const out = []
+  for (let i = 0; i + s <= eligible.length && out.length < cap; i += s) out.push(eligible.slice(i, i + s))
+  return out
+}
+
+/* 一块板的左右两列：左边英文按原顺序，右边中文打乱（靠着 word_id 判对错，不靠文字）。 */
+export function buildMatchBoard(group, rand = Math.random) {
+  const words = (group || []).filter(Boolean)
+  return {
+    left: words.map((x) => ({ word_id: x.word_id, text: x.word || '' })),
+    right: shuffle(words.map((x) => ({ word_id: x.word_id, text: x.cn || '' })), rand),
+  }
+}
+
+/* 整局编排：先把熟词的「连一连」板放前面，然后逐词走「（认）→ 写」。
+   - 认最多出现在前一半的词上（后面超过上限的强制直接写），免得前半天全是选择题
+   - 进了连线板的词就不再出认题（刚连过，直接写） */
+export function planSession(items, opts = {}) {
+  const list = (items || []).filter(Boolean)
+  const matchSize = Number(opts.matchSize) > 0 ? Number(opts.matchSize) : 5
+  const matchBlocks = Number(opts.matchBlocks) > 0 ? Number(opts.matchBlocks) : 0
+  const blocks = matchGroups(list, matchSize, matchBlocks)
+  const inBlock = new Set()
+  for (const g of blocks) for (const x of g) inBlock.add(x.word_id)
+  let recognizeLeft = Math.ceil(list.length / 2)
+  const steps = []
+  for (const group of blocks) steps.push({ kind: 'match', items: group })
+  for (const it of list) {
+    if (!inBlock.has(it.word_id) && questionPlan(it) === 'recognize' && recognizeLeft > 0) {
+      recognizeLeft -= 1
+      steps.push({ kind: 'recognize', item: it })
+    }
+    steps.push({ kind: 'spell', item: it })
+  }
+  return { steps, blocks }
 }

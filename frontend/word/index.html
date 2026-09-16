@@ -25,9 +25,29 @@
     .bar .stat { font-size: 13px; color: var(--ink-2); font-weight: 700; }
     .track { height: 10px; border-radius: var(--radius-pill); background: #e4eef5; overflow: hidden; }
     .track i { display: block; height: 100%; background: linear-gradient(90deg, #9ad7f2, var(--brand)); transition: width .18s ease; }
+    .goal { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 12px; font-weight: 700; color: var(--ink-2); }
+    .goal .gtrack { flex: 1; height: 8px; border-radius: var(--radius-pill); background: #e4eef5; overflow: hidden; }
+    .goal .gtrack i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #9ad7f2, var(--brand)); transition: width .18s ease; }
+    .goal.done { color: var(--ok); }
+    .goal.done .gtrack i { background: var(--ok); }
     .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg); box-shadow: var(--shadow); padding: 18px 16px; margin-top: 14px; }
+    .qhead { display: flex; justify-content: center; margin-bottom: 4px; }
+    .kind { display: inline-block; background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--radius-pill); padding: 3px 10px; font-size: 12px; font-weight: 800; color: var(--ink-2); }
     .cn { font-size: 26px; font-weight: 800; text-align: center; letter-spacing: -.01em; }
+    .en { font-size: 30px; font-weight: 800; text-align: center; margin: 4px 0 2px; letter-spacing: -.01em; }
     .hint { text-align: center; color: var(--ink-3); font-size: 12px; margin: 6px 0 0; }
+    .opts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+    .opt { min-height: 52px; border: 1px solid var(--line); background: var(--surface); border-radius: var(--radius-md); padding: 12px 10px; font-size: 16px; font-weight: 800; color: var(--ink); cursor: pointer; }
+    .opt.ok { background: var(--ok-bg); border-color: var(--ok); color: var(--ok); }
+    .opt.no { background: #fdeeee; border-color: #e9b4b4; color: #a33; }
+    .opt:disabled { cursor: default; }
+    .board { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; margin-top: 12px; }
+    .col { display: flex; flex-direction: column; gap: 8px; }
+    .cell { min-height: 46px; border: 1px solid var(--line); background: var(--surface); border-radius: var(--radius-md); padding: 12px 8px; text-align: center; font-size: 15px; font-weight: 800; color: var(--ink); cursor: pointer; word-break: break-word; }
+    .cell.pick { border-color: var(--accent); background: #fff7e8; }
+    .cell.done { border-color: var(--ok); background: var(--ok-bg); color: var(--ok); opacity: .8; cursor: default; }
+    .cell.bad { border-color: #e9b4b4; background: #fdeeee; color: #a33; }
+    .mbar { display: flex; justify-content: space-between; align-items: center; font-size: 12px; font-weight: 700; color: var(--ink-2); }
     .slots { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: 16px 0 8px; min-height: 42px; cursor: text; }
     .slots i { width: 22px; height: 34px; border-bottom: 2px solid var(--ink-3); display: inline-flex; align-items: flex-end; justify-content: center; font-weight: 800; font-size: 21px; line-height: 1; font-style: normal; }
     .slots i.space { width: 12px; border: none; }
@@ -50,6 +70,8 @@
     .sum { text-align: center; }
     .sum .pct { font-size: 44px; font-weight: 800; letter-spacing: -.03em; }
     .sum .sub { color: var(--ink-2); font-size: 14px; margin-top: 4px; }
+    .sum .goal-line { font-weight: 800; }
+    .sum .goal-line.done { color: var(--ok); }
     .err { margin-top: 12px; padding: 12px 14px; border: 1px solid #e9b4b4; background: #fdeeee; border-radius: var(--radius-md); }
     .err strong { display: block; margin-bottom: 4px; color: #a33; }
     .err span { color: var(--ink-2); font-size: 13px; word-break: break-all; }
@@ -66,6 +88,11 @@
       <span class="stat" id="stat"></span>
     </div>
     <div class="track"><i id="progress" style="width:0%"></i></div>
+    <div class="goal" id="goal" hidden>
+      <span id="goal-text">今天目标 0/10</span>
+      <span class="gtrack"><i id="goal-fill"></i></span>
+      <span id="goal-mark"></span>
+    </div>
 
     <div id="err" class="err" hidden>
       <strong id="err-title">加载失败</strong>
@@ -78,12 +105,32 @@
     <div class="card" id="card-loading">正在准备今天的词…</div>
 
     <div class="card" id="card-quiz" hidden>
-      <div class="cn" id="cn"></div>
-      <p class="hint" id="hint">按中文写出英文，只敲字母就行（空格和标点会自动补）</p>
-      <div class="slots" id="slots"></div>
-      <input class="ghost" id="input" type="text" inputmode="text" autocomplete="off"
-             autocapitalize="none" spellcheck="false" enterkeyhint="done" maxlength="60" aria-label="默写" />
-      <div class="row" id="actions"></div>
+      <div class="qhead"><span class="kind" id="kind"></span></div>
+
+      <div id="q-recognize" hidden>
+        <div class="en" id="rec-word"></div>
+        <p class="hint">选出它的意思（不计分，认一认就好）</p>
+        <div class="opts" id="rec-opts"></div>
+      </div>
+
+      <div id="q-match" hidden>
+        <div class="mbar"><span id="m-block"></span><span id="m-stat"></span></div>
+        <div class="board">
+          <div class="col" id="m-left"></div>
+          <div class="col" id="m-right"></div>
+        </div>
+        <p class="hint">先点左边一个、再点右边一个（反过来也行）</p>
+      </div>
+
+      <div id="q-spell">
+        <div class="cn" id="cn"></div>
+        <p class="hint" id="hint">按中文写出英文，只敲字母就行（空格和标点会自动补）</p>
+        <div class="slots" id="slots"></div>
+        <input class="ghost" id="input" type="text" inputmode="text" autocomplete="off"
+               autocapitalize="none" spellcheck="false" enterkeyhint="done" maxlength="60" aria-label="默写" />
+        <div class="row" id="actions"></div>
+      </div>
+
       <div id="feedback"></div>
       <div class="streak" id="streak"></div>
     </div>
@@ -91,6 +138,7 @@
     <div class="card sum" id="card-sum" hidden>
       <div class="pct" id="sum-pct">0%</div>
       <div class="sub" id="sum-sub"></div>
+      <div class="sub goal-line" id="sum-goal" hidden></div>
       <div class="sub" id="sum-note" hidden></div>
       <div class="row">
         <button class="do big" id="again" type="button">再练一遍</button>

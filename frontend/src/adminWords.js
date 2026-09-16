@@ -25,6 +25,7 @@ export function initAdminWords(next) {
 /* —— 配置 / 词书 —— */
 const wordCfg = reactive({
   enabled: false, new_per_day: 5, max_due: 10, game_size: 20,
+  daily_goal: 10, match_size: 5, match_blocks: 3,
   unlock_by_cursor: true, current_book: '', review_mode: 'current', review_books: [],
   tts: true, tts_autoplay: false, tts_lang: 'en-GB',
 })
@@ -142,6 +143,9 @@ export async function loadWords() {
       max_due: cfg.max_due,
       game_size: cfg.game_size,
       unlock_by_cursor: cfg.unlock_by_cursor !== false,
+      daily_goal: cfg.daily_goal,
+      match_size: cfg.match_size,
+      match_blocks: cfg.match_blocks,
       current_book: cfg.current_book || '',
       review_mode: cfg.review_mode === 'scope' ? 'scope' : 'current',
       review_books: Array.isArray(cfg.review_books) ? cfg.review_books : [],
@@ -167,6 +171,9 @@ async function saveWordNow(patch) {
       tts_autoplay: !!cfg.tts_autoplay,
       tts_lang: cfg.tts_lang === 'en-US' ? 'en-US' : 'en-GB',
       unlock_by_cursor: cfg.unlock_by_cursor !== false,
+      daily_goal: cfg.daily_goal,
+      match_size: cfg.match_size,
+      match_blocks: cfg.match_blocks,
     })
     wordBooks.value = cfg.books || []
     await loadWords()
@@ -178,8 +185,11 @@ async function saveWordRhythm() {
       new_per_day: wordCfg.new_per_day,
       max_due: wordCfg.max_due,
       game_size: wordCfg.game_size,
+      daily_goal: wordCfg.daily_goal,
+      match_size: wordCfg.match_size,
+      match_blocks: wordCfg.match_blocks,
     })
-    ctx.toast('已保存，明天的新练习才按这个来')
+    ctx.toast('已保存：新词/到期明天生效，一局词数、连一连、每日目标下一局生效')
   } catch (e) { ctx.toast(e.message) }
 }
 async function addWordBook() {
