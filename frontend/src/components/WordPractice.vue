@@ -7,6 +7,7 @@ import { reactive, ref, computed, watch, onMounted, onBeforeUnmount, nextTick } 
 import { Volume2 } from '@lucide/vue'
 import { api } from '../api.js'
 import { wordToday, wordItems, wordLaneOf, showToast } from '../store.js'
+import { slotCells, assembleSpelling } from '../wordSpell.js'
 
 const emit = defineEmits(['collected'])
 
@@ -56,29 +57,9 @@ const wordOverlayTitle = computed(() => {
   if (wordDialog.filter === 'new') return '今日新词'
   return '今日单词'
 })
-const wordSlotCells = computed(() => {
-  const w = wordCurrent.value?.word || ''
-  const letters = String(wordDialog.input || '').replace(/[^A-Za-z']/g, '')
-  let li = 0
-  return [...w].map(ch => {
-    if (ch === ' ') return { kind: 'space', fill: '', cur: false }
-    if (ch === '-') return { kind: 'hyphen', fill: '-', cur: false }
-    const fill = letters[li] || ''
-    const cur = li === letters.length
-    li += 1
-    return { kind: 'letter', fill, cur }
-  })
-})
+const wordSlotCells = computed(() => slotCells(wordCurrent.value?.word || '', wordDialog.input))
 function spellSubmitText() {
-  const w = wordCurrent.value?.word || ''
-  const letters = String(wordDialog.input || '').replace(/[^A-Za-z']/g, '')
-  let li = 0
-  let out = ''
-  for (const ch of w) {
-    if (ch === ' ' || ch === '-') out += ch
-    else out += letters[li++] || ''
-  }
-  return out.trim().slice(0, 60)
+  return assembleSpelling(wordCurrent.value?.word || '', wordDialog.input)
 }
 function ipaText(w) { return (w && String(w.ipa || '').trim()) ? w.ipa : '暂无音标' }
 function wordPeekLeft(id) {
