@@ -236,3 +236,56 @@ async function ackMorning() {
     </div>
   </div>
 </template>
+
+<style scoped>
+/* —— 从 App.vue 搬来（页专属样式）—— */
+@media (max-width: 1100px) {
+    .atlas-stage-page { max-width: none; }
+}
+@media (max-width: 700px) {
+    .atlas-stage { margin-left: -4px; margin-right: -4px; width: calc(100% + 8px); border-radius: 10px; }
+}
+  .atlas-stage { position: relative; width: 100%; aspect-ratio: 1448 / 543; border-radius: 12px; overflow: hidden; background: #1a1410; margin-bottom: 12px; }
+  .atlas-stage-page { max-width: 920px; overflow: visible; }
+  .atlas-building {
+  position: absolute; inset: 0; z-index: 8;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+  background: rgba(26,20,16,.42); color: #fffdf8; text-align: center; pointer-events: none;
+}
+  .atlas-building b { font-size: 22px; letter-spacing: .12em; }
+  .atlas-building span { font-size: 13px; opacity: .9; }
+  .atlas-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+  .atlas-buddy { position: absolute; transform: translate(-50%, -100%); z-index: 5; filter: drop-shadow(0 2px 3px rgba(0,0,0,.3)); pointer-events: none; }
+  .atlas-plane { position: absolute; width: 10%; top: 28%; left: -12%; animation: plane-fly 4.5s linear infinite; z-index: 6; }
+  .atlas-star { position: absolute; left: 18%; top: 14%; color: #ffe9a8; font-size: 18px; filter: drop-shadow(0 0 6px #ffe9a8); }
+  .atlas-stage.moon-full::after {
+  content: "";
+  position: absolute;
+  left: 86.5%;
+  top: 12.6%;
+  width: 7.2%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  box-shadow: 0 0 22px 10px rgba(255, 244, 210, .45);
+  animation: moon-glow 2.4s ease-in-out infinite;
+}
+  .atlas-cell-face { width: 48px; height: 48px; object-fit: contain; }
+  .atlas-sil { width: 48px; height: 48px; margin: 0 auto; border-radius: 50%; background: var(--ink); opacity: .18; }
+  .dust-chip {
+  display: inline-flex; align-items: center; font-size: 14px; font-weight: 700;
+  background: var(--warm-2); color: var(--accent-ink); padding: 4px 12px; border-radius: 999px;
+}
+  .toy-shop-dust { margin: 0 0 12px; }
+  .toy-shop-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px; margin: 8px 0 14px; }
+  .toy-shop-card {
+  display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center;
+  background: var(--surface-2); border-radius: var(--radius-lg); padding: 12px 8px;
+}
+  .toy-shop-card img { width: 72px; height: 72px; object-fit: contain; }
+  .toy-shop-card.have { opacity: .55; }
+  .toy-shop-card b { font-size: 14px; }
+  .toy-shop-card span { font-size: 12px; color: var(--ink-2); }
+  .atlas-shop-hint { margin: 8px 0 0; font-size: 13px; }
+</style>

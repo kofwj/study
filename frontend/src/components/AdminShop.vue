@@ -337,3 +337,11 @@ defineExpose({ isAddDirty, discardAdd, saveCurrentEdit })
       </div>
     </section>
 </template>
+
+<style scoped>
+/* —— 从 App.vue 搬来（页专属样式）—— */
+  .sun-hero { display: grid; grid-template-columns: 1.15fr 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+@media (max-width: 700px) {
+    .sun-hero { grid-template-columns: 1fr 1fr; }
+}
+</style>

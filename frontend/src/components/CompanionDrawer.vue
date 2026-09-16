@@ -76,3 +76,22 @@ async function saveName() {
     </div>
   </div>
 </template>
+
+<style scoped>
+/* —— 从 App.vue 搬来（页专属样式）—— */
+  .companion-img-big { width: 100%; height: 100%; object-fit: contain; display: block; }
+  .companion-sheet {
+  width: min(360px, calc(100vw - 32px)); background: var(--surface); border-radius: var(--radius-xl);
+  padding: 22px 20px 16px; text-align: center; box-shadow: var(--shadow-lg);
+}
+  .companion-evolve-card { min-width: min(280px, calc(100vw - 40px)); }
+  .companion-evolve-figure { width: 152px; height: 152px; margin-bottom: 4px; background: transparent; }
+  .companion-sheet strong { display: block; font-size: 18px; }
+  .companion-bar { margin: 10px 0 14px; background: var(--surface-2); }
+  .companion-evolve { pointer-events: auto; cursor: pointer; }
+  .celebrate { position: fixed; inset: 0; z-index: 40; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+  .celebrate-card { position: relative; z-index: 2; background: var(--surface); border-radius: var(--radius-xl); padding: 32px 44px; text-align: center; box-shadow: var(--shadow-lg); animation: pop .5s cubic-bezier(.2,1.6,.4,1) both; }
+  .celebrate-icon { font-size: 64px; animation: bounce 1s ease-in-out infinite; }
+  .celebrate-title { font-size: 22px; font-weight: 800; color: var(--accent); margin-top: 8px; }
+  .celebrate-name { font-size: 18px; font-weight: 700; color: var(--ink); margin-top: 6px; }
+</style>

@@ -250,3 +250,45 @@ async function bankBreak(d) {
     </div>
   </template>
 </template>
+
+<style scoped>
+/* —— 从 App.vue 搬来（页专属样式）—— */
+  .bank-hall { max-width: 860px; padding-bottom: 28px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-xl); overflow: hidden; box-shadow: var(--shadow-sm); }
+  .bank-sign { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; width: 100%; padding: 16px 18px 14px; background: var(--warm); border-bottom: 1px solid rgba(245,165,36,.28); }
+  .bank-sign-board { flex: 1; min-width: 0; }
+  .bank-sign-board h1 { margin: 6px 0 0; font-size: 26px; letter-spacing: -.03em; }
+  .bank-sign-board p { margin: 4px 0 0; color: var(--ink-2); font-size: 13px; font-weight: 600; }
+  .bank-sign-rate { flex: none; background: var(--surface); border: 1px solid rgba(245,165,36,.35); border-radius: var(--radius-lg); padding: 8px 12px; }
+  .bank-sign-rate strong { display: block; font-size: 14px; color: var(--accent-ink); }
+  .bank-sign-rate small { display: block; margin-top: 2px; font-size: 11px; font-weight: 700; color: var(--ink-2); }
+  .bank-deposits { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+  .bank-dep { display: flex; justify-content: space-between; align-items: center; gap: 8px; background: var(--surface-2); border-radius: var(--radius-lg); padding: 10px 12px; }
+  .bank-dep strong { display: block; font-size: 13px; }
+  .bank-dep small { display: block; margin-top: 2px; font-size: 12px; color: var(--ink-2); font-weight: 700; }
+  .bank-room { display: grid; grid-template-columns: 1.15fr .85fr; gap: 0; align-items: stretch; }
+  .bank-window { display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--surface-2); border-radius: var(--radius-lg); }
+  .bank-teller-ico { flex: none; width: 44px; height: 44px; padding: 8px; border-radius: var(--radius-lg); background: linear-gradient(160deg, #ffd27a, var(--accent)); color: var(--accent-ink); }
+  .bank-window strong { display: block; font-size: 15px; }
+  .bank-window small { display: block; margin-top: 2px; font-size: 12px; color: var(--ink-2); font-weight: 700; }
+  .bank-chips { display: flex; gap: 8px; flex-wrap: wrap; margin: 14px 0 12px; }
+  .bank-desk-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .bank-wait { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+  .bank-wait-slip { display: flex; justify-content: space-between; align-items: center; gap: 8px; background: var(--warm); border-radius: var(--radius-lg); padding: 10px 12px; }
+  .bank-wait-slip strong { font-size: 13px; }
+  .bank-wait-slip em { font-style: normal; font-size: 12px; font-weight: 800; color: var(--accent-ink); }
+  .bank-vault-door { position: relative; overflow: hidden; min-height: 148px; border-radius: var(--radius-lg); background: linear-gradient(160deg, #ffe3a8 0%, var(--accent) 100%); }
+  .bank-vault-glow { position: absolute; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,.28); }
+  .bank-passbook { margin-top: 12px; background: var(--surface-2); border-radius: var(--radius-lg); padding: 10px 12px; max-height: 240px; overflow: auto; }
+  .bank-passbook h3 { margin: 0 0 8px; font-size: 14px; }
+  .bank-pass-empty { font-size: 13px; color: var(--ink-3); font-weight: 700; padding: 8px 0; }
+@media (max-width: 1100px) {
+    .bank-hall { max-width: none; }
+    .bank-sign { align-items: flex-start; padding: 14px 14px 12px; }
+    .bank-sign-board h1 { font-size: 22px; }
+    .bank-room { grid-template-columns: 1fr; }
+}
+@media (max-width: 700px) {
+    .bank-desk-btns { grid-template-columns: 1fr; }
+    .bank-chips { gap: 6px; }
+}
+</style>

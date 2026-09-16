@@ -995,8 +995,6 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload)
 }
 .kid-switch button.on { background: #fff; color: var(--brand-deep); }
 .kid-one { font-weight: 700; font-size: 14px; opacity: .95; }
-.a-term { display: block; margin-top: 8px; font-size: 12px; }
-.a-term select { margin-left: 6px; padding: 4px 8px; border-radius: var(--radius-sm); border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
 .a-exit { background: rgba(255,255,255,.22); border: none; color: #fff; border-radius: var(--radius-pill); padding: 9px 16px; font-weight: 700; cursor: pointer; font-family: inherit; }
 .a-body { display: flex; gap: 22px; align-items: flex-start; margin-top: 18px; }
 .a-side { width: 200px; flex: none; background: var(--surface); border-radius: var(--radius-xl); padding: 12px 10px; box-shadow: var(--shadow-md); border: 1px solid var(--line); position: sticky; top: calc(12px + env(safe-area-inset-top)); }

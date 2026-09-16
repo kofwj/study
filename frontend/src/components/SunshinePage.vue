@@ -436,5 +436,20 @@ function fmtDelta(n) {
   .sun-col-n { font-size: 10px; }
   .sun-track.dual i, .sun-pair, .sun-pair i { width: 7px; }
 }
+
+/* —— 从 App.vue 搬来（页专属样式）—— */
+  .bank-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
+  .bank-title { display: flex; align-items: center; gap: 12px; }
+  .bank-icon { flex: none; width: 48px; height: 48px; padding: 10px; border-radius: var(--radius-lg); background: linear-gradient(160deg, #ffd27a, var(--accent)); color: var(--accent-ink); box-shadow: var(--shadow-button); }
+  .bank-title h1 { margin: 0; font-size: 24px; letter-spacing: -.03em; }
+  .bank-title p { margin: 4px 0 0; color: var(--ink-2); font-size: 13px; font-weight: 600; }
+  .bank-operations { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-xl); padding: 16px; margin-bottom: 16px; box-shadow: var(--shadow-sm); }
+  .op-header { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .op-header h3 { margin: 0; font-size: 15px; }
+  .section-title { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; font-size: 15px; }
+@media (max-width: 1100px) {
+    .bank-title h1 { font-size: 22px; }
+    .bank-title p { font-size: 13px; }
+}
 </style>
 
