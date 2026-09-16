@@ -247,3 +247,30 @@ def test_kid_payload_has_family_goal_without_siblings():
         with _login("gk", 0) as k0:
             fg = k0.get("/api/tasks").json()["family_goal"]
             assert fg["reached"] is True and "达成" in fg["text"], fg
+
+
+def test_goal_error_does_not_break_core_pages(monkeypatch):
+    """B4 是可选功能：目标这块出任何问题，概览页（family-today）和孩子端 payload 都必须照常返回，
+    打卡也要照常成功（结算失败不冒泡）。"""
+    db.init_db()
+    with TestClient(main.app) as cli:
+        _family(cli, "gl")
+        task = _daily(cli, "全家跳绳")
+        cli.put("/api/admin/family-goal", json={"metric": "cards", "target": 5, "reward": 5})
+
+        def boom(*a, **k):
+            raise RuntimeError("goal side broken")
+
+        monkeypatch.setattr(main, "_goal_breakdown", boom)
+
+        r = cli.get("/api/admin/family-today")
+        assert r.status_code == 200, r.text
+        assert r.json()["family_goal"]["goal"] is None, r.text
+        assert "kids" in r.json(), r.text
+
+        with _login("gl", 0) as k0:
+            r = k0.get("/api/tasks")
+            assert r.status_code == 200, r.text
+            assert r.json()["family_goal"] is None, r.text
+            r = k0.post("/api/complete", json={"task_id": task})
+            assert r.status_code == 200, r.text

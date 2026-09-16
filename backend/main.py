@@ -1301,18 +1301,7 @@ def tasks(request: Request):
     out["weak_tags"] = weak
     out["companion"] = companion_info(c)
     out["checkin_window"] = checkin_window()
-    _goal = _goal_current(c, _fam.get())
-    out["family_goal"] = None
-    if _goal:
-        _grows = _goal_breakdown(c, _fam.get(), _goal["metric"], _goal["started_at"], _goal["ends_at"])
-        _gval = sum(r["value"] for r in _grows)
-        _grem = max(0, _goal["target"] - _gval)
-        _greached = _goal["status"] == "reached"
-        _gunit = GOAL_UNITS[_goal["metric"]]
-        out["family_goal"] = {"metric": _goal["metric"], "metric_label": GOAL_METRICS[_goal["metric"]],
-                              "unit": _gunit, "target": _goal["target"], "progress": _gval,
-                              "remaining": _grem, "reached": _greached,
-                              "text": ("全家达成目标啦" if _greached else f"全家还差 {_grem} {_gunit}")}
+    out["family_goal"] = _goal_kid_view(c, _fam.get())
     c.commit()
     return out
 
@@ -1330,7 +1319,7 @@ def checkin():
         raise HTTPException(409, "今天已经签到过啦")
     m = maybe_milestone(c)
     c.commit()
-    _family_goal_settle(c, _fam.get())
+    _goal_settle_safe(c, _fam.get())
     res = {"delta": 0, "milestone": m, "level": level_info(c), "streak": streak(c)}
     c.close()
     return res
@@ -1423,7 +1412,7 @@ def complete(body: CompleteBody):
             insert_ledger(c, t, delta, "task", f"cmp-{cid}", row["title"])
             m = maybe_milestone(c)
             c.commit()
-            _family_goal_settle(c, _fam.get())
+            _goal_settle_safe(c, _fam.get())
             res = {"delta": delta, "bonus": 0, "milestone": m, "level": level_info(c)}
             return res
         d = c.execute("SELECT * FROM daily_tasks WHERE id=? AND (family_id IS NULL "
@@ -1448,7 +1437,7 @@ def complete(body: CompleteBody):
             insert_ledger(c, t, delta, "daily", f"cmp-{cid}", note)
             m = maybe_milestone(c)
             c.commit()
-            _family_goal_settle(c, _fam.get())
+            _goal_settle_safe(c, _fam.get())
             res = {"delta": delta, "bonus": bonus, "bonus_detail": detail, "milestone": m, "level": level_info(c)}
             return res
         raise HTTPException(404, "没找到这个任务")
@@ -3934,7 +3923,7 @@ def family_today():
         })
     if roster:
         db.apply_scope(c, fam, kid_id())
-    goal_payload = _goal_payload(c, fam, _goal_current(c, fam))
+    goal_payload = _goal_payload_safe(c, fam)
     c.commit()
     c.close()
     return {"today": today, "kids": kids, "family_goal": goal_payload}
@@ -4030,6 +4019,45 @@ def _family_goal_settle(c, fam):
     c.execute("UPDATE family_goals SET status='reached', reached_at=? WHERE id=?", (db.today(), goal["id"]))
     c.commit()
     return True
+
+GOAL_EMPTY = {"goal": None, "progress": None, "by_kid": []}
+
+
+def _goal_kid_view(c, fam):
+    """孩子端那一行的数据（全家庭口径，不给别的娃明细）；任何问题都返回 None → 前端整行不渲染。"""
+    try:
+        g = _goal_current(c, fam)
+        if not g:
+            return None
+        rows = _goal_breakdown(c, fam, g["metric"], g["started_at"], g["ends_at"])
+        val = sum(r["value"] for r in rows)
+        rem = max(0, g["target"] - val)
+        reached = g["status"] == "reached"
+        unit = GOAL_UNITS[g["metric"]]
+        return {"metric": g["metric"], "metric_label": GOAL_METRICS[g["metric"]], "unit": unit,
+                "target": g["target"], "progress": val, "remaining": rem, "reached": reached,
+                "text": ("全家达成目标啦" if reached else f"全家还差 {rem} {unit}")}
+    except Exception:
+        _rollback(c)
+        return None
+
+
+def _goal_payload_safe(c, fam):
+    """B4 是可选功能：这里出任何问题都不能把 family-today（概览页核心包）拖垮。"""
+    try:
+        return _goal_payload(c, fam, _goal_current(c, fam))
+    except Exception:
+        _rollback(c)
+        return dict(GOAL_EMPTY)
+
+
+def _goal_settle_safe(c, fam):
+    """打卡/签到后的结算：失败不冒泡（用户那次打卡/签到照常成功）。"""
+    try:
+        return _family_goal_settle(c, fam)
+    except Exception:
+        _rollback(c)
+        return False
 
 
 class FamilyGoalIn(BaseModel):

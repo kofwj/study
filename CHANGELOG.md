@@ -1,5 +1,10 @@
 # 更新记录
 
+## 2026-09-16 v0.3.49 - 共同目标出问题不拖垮页面
+
+- B4 是最新加的可选功能，它那部分一旦抛错不能把「概览」页的核心接口（`/api/admin/family-today`）或孩子端 payload 带崩：目标进度读取、孩子端那行、打卡/签到后的结算三处都改成失败即降级（页面照常渲染，打卡照常成功）
+- 新增用例 `test_goal_error_does_not_break_core_pages`：把目标进度搞成必抛，断言 `family-today` 与 `/api/tasks` 仍 200、打卡仍成功
+
 ## 2026-09-16 v0.3.48 - 家庭共同目标幂等索引补上 family_goal
 
 - 迁移 043 先 drop 再建 ux_ledger_once，生产库才能把 family_goal 纳入一次性流水幂等
