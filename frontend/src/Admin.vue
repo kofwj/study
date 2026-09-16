@@ -282,6 +282,27 @@ async function loadFamilyToday() {
   if (staleKid(kid)) return
   familyToday.value = ft
 }
+
+// —— B4 家庭共同目标：动作放壳里（子组件只 emit；改完重拉 family-today 拿新进度）——
+async function saveFamilyGoal(o) {
+  await withBusy(async () => {
+    try {
+      await api.admin.setFamilyGoal(o)
+      await loadFamilyToday()
+      showToast('共同目标已设好')
+    } catch (e) { showToast(e.message) }
+  })
+}
+async function closeFamilyGoal() {
+  if (!confirm('关掉当前共同目标？不扣分，也不会补发。')) return
+  await withBusy(async () => {
+    try {
+      await api.admin.closeFamilyGoal()
+      await loadFamilyToday()
+      showToast('已关掉共同目标')
+    } catch (e) { showToast(e.message) }
+  })
+}
 async function loadRedemptions() {
   const kid = selectedKid.value
   const rd = await api.admin.redemptions()
@@ -849,6 +870,8 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload)
       @save-weekly-goal="saveWeeklyGoal"
       @go-section="goSection"
       @pick-kid="pickKid"
+      @save-family-goal="saveFamilyGoal"
+      @close-family-goal="closeFamilyGoal"
       @go-review-kid="goReviewKid"
       @go-insight="goInsight"
       @undo-daily="undoDaily"

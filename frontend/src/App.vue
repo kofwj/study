@@ -658,6 +658,10 @@ function reloadApp() {
           <p v-if="todayPenalty" class="today-pact">
             今天有约定：{{ todayPenalty.reason }} · {{ todayPenalty.n }}
           </p>
+          <!-- B4 全家共同目标：孩子端只显示这一行（文案由后端拼好） -->
+          <p v-if="data.family_goal" class="today-pact">
+            🎯 {{ data.family_goal.text }}<span v-if="!data.family_goal.reached">（共同目标）</span>
+          </p>
 
           <section v-if="reviewDue.length" class="plan-section review-today">
             <div class="plan-head">

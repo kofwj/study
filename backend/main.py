@@ -1301,6 +1301,18 @@ def tasks(request: Request):
     out["weak_tags"] = weak
     out["companion"] = companion_info(c)
     out["checkin_window"] = checkin_window()
+    _goal = _goal_current(c, _fam.get())
+    out["family_goal"] = None
+    if _goal:
+        _grows = _goal_breakdown(c, _fam.get(), _goal["metric"], _goal["started_at"], _goal["ends_at"])
+        _gval = sum(r["value"] for r in _grows)
+        _grem = max(0, _goal["target"] - _gval)
+        _greached = _goal["status"] == "reached"
+        _gunit = GOAL_UNITS[_goal["metric"]]
+        out["family_goal"] = {"metric": _goal["metric"], "metric_label": GOAL_METRICS[_goal["metric"]],
+                              "unit": _gunit, "target": _goal["target"], "progress": _gval,
+                              "remaining": _grem, "reached": _greached,
+                              "text": ("全家达成目标啦" if _greached else f"全家还差 {_grem} {_gunit}")}
     c.commit()
     return out
 
@@ -1318,6 +1330,7 @@ def checkin():
         raise HTTPException(409, "今天已经签到过啦")
     m = maybe_milestone(c)
     c.commit()
+    _family_goal_settle(c, _fam.get())
     res = {"delta": 0, "milestone": m, "level": level_info(c), "streak": streak(c)}
     c.close()
     return res
@@ -1410,6 +1423,7 @@ def complete(body: CompleteBody):
             insert_ledger(c, t, delta, "task", f"cmp-{cid}", row["title"])
             m = maybe_milestone(c)
             c.commit()
+            _family_goal_settle(c, _fam.get())
             res = {"delta": delta, "bonus": 0, "milestone": m, "level": level_info(c)}
             return res
         d = c.execute("SELECT * FROM daily_tasks WHERE id=? AND (family_id IS NULL "
@@ -1434,6 +1448,7 @@ def complete(body: CompleteBody):
             insert_ledger(c, t, delta, "daily", f"cmp-{cid}", note)
             m = maybe_milestone(c)
             c.commit()
+            _family_goal_settle(c, _fam.get())
             res = {"delta": delta, "bonus": bonus, "bonus_detail": detail, "milestone": m, "level": level_info(c)}
             return res
         raise HTTPException(404, "没找到这个任务")
@@ -3919,8 +3934,156 @@ def family_today():
         })
     if roster:
         db.apply_scope(c, fam, kid_id())
+    goal_payload = _goal_payload(c, fam, _goal_current(c, fam))
+    c.commit()
     c.close()
-    return {"today": today, "kids": kids}
+    return {"today": today, "kids": kids, "family_goal": goal_payload}
+
+# ---------- B4 家庭共同目标 ----------
+GOAL_METRICS = {"cards": "完成卡数", "sport": "运动次数", "checkin_days": "签到天数"}
+GOAL_UNITS = {"cards": "张", "sport": "次", "checkin_days": "天"}
+GOAL_MAX_TARGET = 999
+GOAL_MAX_REWARD = 20
+
+
+def _goal_window():
+    """目标窗口：本周一 → 本周日（跟周报同一口径；_monday() 返回 date）。"""
+    mon = _monday()
+    return mon.isoformat(), (mon + timedelta(days=6)).isoformat()
+    return mon.isoformat(), (mon + timedelta(days=6)).isoformat()
+
+
+def _goal_roster(c, fam):
+    return c.execute("SELECT id, name FROM users WHERE family_id=? AND role='kid' ORDER BY created_at",
+                     (fam,)).fetchall()
+
+
+def _goal_kid_value(c, kid, metric, start, end):
+    if metric == "sport":
+        # 运动次数 = 体育类「每日任务」完成次数（课本任务不算）
+        return c.execute(
+            "SELECT COUNT(*) FROM completions c JOIN daily_tasks t ON t.id=c.task_id "
+            "WHERE c.status='completed' AND c.kid_id=? AND t.subject_id='体育' AND c.date BETWEEN ? AND ?",
+            (kid, start, end)).fetchone()[0]
+    if metric == "checkin_days":
+        return c.execute("SELECT COUNT(DISTINCT date) FROM checkins WHERE kid_id=? AND date BETWEEN ? AND ?",
+                         (kid, start, end)).fetchone()[0]
+    # cards：当日完成的卡（取消不算）
+    return c.execute("SELECT COUNT(*) FROM completions WHERE status='completed' AND kid_id=? "
+                     "AND date BETWEEN ? AND ?", (kid, start, end)).fetchone()[0]
+
+
+def _goal_breakdown(c, fam, metric, start, end):
+    """逐娃口径：全家值 = 各娃之和（签到天数也是各娃之和，不是全家去重）。"""
+    out = []
+    for k in _goal_roster(c, fam):
+        db.apply_scope(c, fam, k["id"])
+        out.append({"kid_id": k["id"], "name": k["name"],
+                    "value": _goal_kid_value(c, k["id"], metric, start, end)})
+    cur = _kid.get()
+    if cur:
+        db.apply_scope(c, fam, cur)
+    return out
+
+
+def _goal_current(c, fam):
+    """当前目标（active 或本周内已 reached）；顺手把过期的标记掉（不扣分、不发放）。"""
+    c.execute("UPDATE family_goals SET status='expired' WHERE family_id=? AND status IN ('active','reached') "
+              "AND ends_at < ?", (fam, db.today()))
+    return c.execute("SELECT * FROM family_goals WHERE family_id=? AND status IN ('active','reached') "
+                     "ORDER BY id DESC LIMIT 1", (fam,)).fetchone()
+
+
+def _goal_payload(c, fam, goal):
+    if not goal:
+        return {"goal": None, "progress": None, "by_kid": []}
+    rows = _goal_breakdown(c, fam, goal["metric"], goal["started_at"], goal["ends_at"])
+    value = sum(r["value"] for r in rows)
+    return {
+        "goal": {"id": goal["id"], "metric": goal["metric"], "metric_label": GOAL_METRICS[goal["metric"]],
+                 "unit": GOAL_UNITS[goal["metric"]], "target": goal["target"], "reward": goal["reward"],
+                 "status": goal["status"], "started_at": goal["started_at"], "ends_at": goal["ends_at"],
+                 "reached_at": goal["reached_at"]},
+        "progress": {"value": value, "target": goal["target"], "remaining": max(0, goal["target"] - value)},
+        "by_kid": rows,
+    }
+
+
+def _family_goal_settle(c, fam):
+    """达标就按人发一次；只发一次靠 ux_ledger_once(kid_id, reason='family_goal', ref_id='goal-<id>')。"""
+    if not fam:
+        return False
+    goal = c.execute("SELECT * FROM family_goals WHERE family_id=? AND status='active' "
+                     "ORDER BY id DESC LIMIT 1", (fam,)).fetchone()
+    if not goal:
+        return False
+    rows = _goal_breakdown(c, fam, goal["metric"], goal["started_at"], goal["ends_at"])
+    if sum(r["value"] for r in rows) < goal["target"]:
+        return False
+    if goal["reward"] > 0:                      # reward=0：只推进度，不写流水
+        for r in rows:
+            db.apply_scope(c, fam, r["kid_id"])
+            db.insert_ledger(c, db.today(), goal["reward"], "family_goal", f"goal-{goal['id']}",
+                             "全家共同目标达成", kid_id=r["kid_id"])
+        cur = _kid.get()
+        if cur:
+            db.apply_scope(c, fam, cur)
+    c.execute("UPDATE family_goals SET status='reached', reached_at=? WHERE id=?", (db.today(), goal["id"]))
+    c.commit()
+    return True
+
+
+class FamilyGoalIn(BaseModel):
+    metric: str
+    target: int
+    reward: int = 5
+
+
+@app.get("/api/admin/family-goal", dependencies=[Depends(require_parent)])
+def family_goal_get():
+    c = get_conn()
+    fam = _fam.get()
+    out = _goal_payload(c, fam, _goal_current(c, fam))
+    c.commit()
+    c.close()
+    return out
+
+
+@app.put("/api/admin/family-goal", dependencies=[Depends(require_parent)])
+def family_goal_put(b: FamilyGoalIn, request: Request):
+    if b.metric not in GOAL_METRICS:
+        raise HTTPException(400, "没有这个指标")
+    if not 1 <= b.target <= GOAL_MAX_TARGET:
+        raise HTTPException(400, "目标填 1~999")
+    if not 0 <= b.reward <= GOAL_MAX_REWARD:
+        raise HTTPException(400, "每人阳光填 0~20")
+    c = get_conn()
+    fam = _fam.get()
+    u = request.state.user
+    start, end = _goal_window()
+    # 同时只 1 个进行中目标：旧的先关掉（同一事务）
+    c.execute("UPDATE family_goals SET status='closed', closed_at=? WHERE family_id=? AND status='active'",
+              (db.today(), fam))
+    c.execute("INSERT INTO family_goals(family_id,metric,target,reward,status,started_at,ends_at,created_by,created_at) "
+              "VALUES(?,?,?,?,'active',?,?,?,?)",
+              (fam, b.metric, b.target, b.reward, start, end, u["id"], db.now()))
+    c.commit()
+    _family_goal_settle(c, fam)                 # 目标很小、当下就达标 → 立刻发
+    out = _goal_payload(c, fam, _goal_current(c, fam))
+    c.commit()
+    c.close()
+    return out
+
+
+@app.post("/api/admin/family-goal/close", dependencies=[Depends(require_parent)])
+def family_goal_close():
+    c = get_conn()
+    fam = _fam.get()
+    c.execute("UPDATE family_goals SET status='closed', closed_at=? WHERE family_id=? "
+              "AND status IN ('active','reached')", (db.today(), fam))
+    c.commit()
+    c.close()
+    return {"ok": True}
 
 
 def _gender(val):

@@ -22,10 +22,26 @@ const props = defineProps({
   weeklyGoalBusy: { type: Boolean, default: false },
   subjectName: { type: Function, required: true },
 })
-defineEmits([
+const emit = defineEmits([
   'update:weeklyGoal', 'save-weekly-goal', 'go-section',
   'pick-kid', 'go-review-kid', 'go-insight', 'undo-daily',
+  'save-family-goal', 'close-family-goal',
 ])
+
+// —— B4 全家共同目标：只渲染 + 抛动作，接口在壳里 ——
+const goalForm = ref({ metric: 'cards', target: 10, reward: 5 })
+const goal = computed(() => (props.familyToday && props.familyToday.family_goal) || null)
+const goalPct = computed(() => {
+  const p = goal.value && goal.value.progress
+  if (!p || !p.target) return 0
+  return Math.min(100, Math.round((p.value / p.target) * 100))
+})
+const goalKids = computed(() => ((goal.value && goal.value.by_kid) || []).map((x) => `${x.name} ${x.value}`).join(' · '))
+function startGoal() {
+  const t = Math.max(1, Math.min(999, Math.round(Number(goalForm.value.target) || 0)))
+  const r = Math.max(0, Math.min(20, Math.round(Number(goalForm.value.reward) || 0)))
+  emit('save-family-goal', { metric: goalForm.value.metric, target: t, reward: r })
+}
 
 // 「本周详情」折叠：属于这一页，切页回来从收起开始（B1 的减负要求）
 const dashWeekOpen = ref(false)
@@ -222,6 +238,35 @@ const peCards = computed(() => {
             <span class="dim">{{ row.insight ? row.insight.text : '无' }}</span>
           </div>
           <button v-if="row.insight && row.insight.action" class="ok" @click="$emit('go-insight', row)">去解决</button>
+        </div>
+      </template>
+      <!-- B4 全家共同目标（达标每人发 0–20 阳光，默认 5；同时只 1 个进行中） -->
+      <h4 class="w-h">全家共同目标</h4>
+      <template v-if="goal">
+        <div class="w-subj-row">
+          <div class="w-subj-track"><i :style="{ width: goalPct + '%' }"></i></div>
+          <span class="w-subj-num">{{ goal.goal.metric_label }} {{ goal.progress.value }}/{{ goal.progress.target }} {{ goal.goal.unit }}</span>
+        </div>
+        <p class="dim">
+          <template v-if="goal.goal.status === 'reached'">已达成本周目标，每人 +{{ goal.goal.reward }} 阳光<template v-if="goal.goal.reached_at">（{{ goal.goal.reached_at }}）</template></template>
+          <template v-else>全家还差 {{ goal.progress.remaining }} {{ goal.goal.unit }}<template v-if="goal.goal.reward === 0">（这个目标不发阳光）</template></template>
+        </p>
+        <p v-if="goalKids" class="dim">每娃贡献：{{ goalKids }}</p>
+        <button type="button" class="ghost-s" @click="$emit('close-family-goal')">关掉目标</button>
+      </template>
+      <template v-else>
+        <p class="dim">还没有共同目标。全家一起完成一件小事：本周累计完成卡数 / 运动次数 / 签到天数，达标每人发阳光。</p>
+        <div class="frm-row">
+          <label class="fld"><span>指标</span>
+            <select v-model="goalForm.metric">
+              <option value="cards">完成卡数（张）</option>
+              <option value="sport">运动次数（次）</option>
+              <option value="checkin_days">签到天数（天）</option>
+            </select>
+          </label>
+          <label class="fld w84"><span>目标</span><input v-model.number="goalForm.target" type="number" min="1" max="999" /></label>
+          <label class="fld w84"><span>每人阳光</span><input v-model.number="goalForm.reward" type="number" min="0" max="20" /></label>
+          <button type="button" class="ok" @click="startGoal">设好开始</button>
         </div>
       </template>
       <button type="button" class="ghost-s rules-toggle" @click="dashWeekOpen = !dashWeekOpen">{{ dashWeekOpen ? '收起本周详情' : '本周详情' }}</button>
