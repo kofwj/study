@@ -11,6 +11,7 @@ import AdminTasks from './components/AdminTasks.vue'
 import AdminApprove from './components/AdminApprove.vue'
 import AdminReview from './components/AdminReview.vue'
 import AdminShop from './components/AdminShop.vue'
+import AdminKids from './components/AdminKids.vue'
 import { initAdminEdit, useAdminEdit } from './adminEdit.js'
 import { Eye, Baby, Store, ClipboardCheck, BookOpen, MapPinned, Sun, Check, ArrowLeft, BookMarked, Globe } from '@lucide/vue'
 
@@ -25,7 +26,6 @@ const penalties = ref([])
 const penaltySummary = ref({ net: 0, count: 0, amount: 0, by_reason: [] })
 const invites = ref([])
 const selectedKid = ref('')
-const newKid = reactive({ name: '', account: '', pin: '', pin2: '', term_id: 'g5s1', gender: '' })
 const setupKid = reactive({ name: '', account: '', pin: '', pin2: '', term_id: 'g5s1', gender: '' })
 const setupBusy = ref(false)
 const shownRecovery = ref('')
@@ -118,9 +118,9 @@ function snapBankGoal() { bankGoalSnap.value = { name: bankGoal.name, target: ba
 const weekly = ref({ days: [], weeks: [], by_subject: [], kids: [], total_earned: 0, total_spent: 0, net: 0, balance: 0, earned_all: 0, streak: 0, checkins: 0, week_start: '', week_end: '', insight: null, family_insight: null, mastered_by_kid: [], penalty_net: 0, penalty_count: 0 })
 const insights = ref({ rules: { test_fail_count: 2, test_fail_score: 80, drop_ratio: 0.3, streak_break: 2 }, kids: [] })
 const familyToday = ref({ today: '', kids: [] })
-const kidAddOpen = ref(false)
 const tasksRef = ref(null)  // 任务页子组件：脏条要调它的 isAddDirty/discardAdd/saveCurrentEdit
 const shopRef = ref(null)  // 阳光页子组件：脏条要调它的 isAddDirty/discardAdd/saveCurrentEdit
+const kidsRef = ref(null)  // 家庭页子组件：脏条要调它的 isAddDirty/discardAdd/saveCurrentEdit
 // 编辑会话在 adminEdit.js（模块级单例）：商店、等级、家长任务、每日任务、孩子共用同一套
 initAdminEdit({
   getLists: () => ({ rewards: rewards.value, ranks: ranks.value, dailyAll: dailyAll.value, daily: daily.value, tasks: tasks.value, kids: kids.value }),
@@ -521,11 +521,6 @@ const kidName = (id) => kids.value.find(k => k.id === id)?.name || '某个孩子
 // 管理列表看全家的任务；系统内置排最后，其余按「全家 → 各孩子」分组
 
 function sameJson(a, b) { return JSON.stringify(a) === JSON.stringify(b) }
-function filled(v) { return String(v ?? '').trim() !== '' }
-function isAddDirty() {
-  if (filled(newKid.name) || filled(newKid.account) || filled(newKid.pin) || filled(newKid.pin2) || (newKid.term_id || 'g5s1') !== 'g5s1' || (newKid.gender || '')) return true
-  return false
-}
 function isWeeklyDirty() {
   if (weeklyGoalSnap.value == null) return false
   return Number(weeklyGoal.value) !== Number(weeklyGoalSnap.value)
@@ -538,19 +533,18 @@ function isBankDirty() {
   if (bankGoalSnap.value == null) return false
   return (bankGoal.name || '') !== (bankGoalSnap.value.name || '') || Number(bankGoal.target) !== Number(bankGoalSnap.value.target)
 }
-const isDirty = computed(() => isEditDirty() || isAddDirty() || !!shopRef.value?.isAddDirty?.() || !!tasksRef.value?.isAddDirty?.() || isWeeklyDirty() || isBandsDirty() || isBankDirty())
+const isDirty = computed(() => isEditDirty() || !!kidsRef.value?.isAddDirty?.() || !!shopRef.value?.isAddDirty?.() || !!tasksRef.value?.isAddDirty?.() || isWeeklyDirty() || isBandsDirty() || isBankDirty())
 function discardDirty() {
   cancelEdit()
   if (weeklyGoalSnap.value != null) weeklyGoal.value = weeklyGoalSnap.value
   if (testBandsSnap.value != null) testBands.value = testBandsSnap.value.map(x => [...x])
   if (bankGoalSnap.value != null) Object.assign(bankGoal, { name: bankGoalSnap.value.name, target: bankGoalSnap.value.target })
   shopRef.value?.discardAdd?.()
-  Object.assign(newKid, { name: '', account: '', pin: '', pin2: '', term_id: 'g5s1', gender: '' })
+  kidsRef.value?.discardAdd?.()
   tasksRef.value?.discardAdd?.()
-  kidAddOpen.value = false
 }
 async function saveDirty() {
-  if (isAddDirty() || tasksRef.value?.isAddDirty?.() || shopRef.value?.isAddDirty?.()) {
+  if (kidsRef.value?.isAddDirty?.() || tasksRef.value?.isAddDirty?.() || shopRef.value?.isAddDirty?.()) {
     showToast('新增还没提交，点新增或放弃')
     return
   }
@@ -560,7 +554,7 @@ async function saveDirty() {
     const kind = editKind.value
     if (kind === 'reward' || kind === 'rank') await shopRef.value?.saveCurrentEdit?.()
     else if (kind === 'daily' || kind === 'task') await tasksRef.value?.saveCurrentEdit?.()
-    else if (kind === 'kid') await saveKid(row)
+    else if (kind === 'kid') await kidsRef.value?.saveCurrentEdit?.()
     if (isEditDirty()) return
   }
   if (isWeeklyDirty()) {
@@ -590,7 +584,6 @@ function exitAdminView() {
 }
 
 // —— 密码 / 游标 ——
-const pinForm = reactive({ cur: '', next: '', confirm: '' })
 async function setCursor(subj, taskId) {
   const kid = selectedKid.value
   try {
@@ -613,21 +606,10 @@ async function pickKid(id) {
   await switchKid()
 }
 
-async function addKid() {
-  if (!newKid.name) return showToast('填名字')
-  if (!(newKid.account || '').trim()) return showToast('填登录账号')
-  if ((newKid.pin || '').trim() && newKid.pin.length < 6) return showToast('密码至少 6 位')
-  try {
-    const r = await api.admin.createKid({ ...newKid })
-    const kidName = newKid.name || r.account || '孩子'
-    newKid.name = newKid.account = newKid.pin = newKid.pin2 = ''
-    newKid.gender = ''
-    if (r && r.pin) alert(`已添加。${kidName}的登录密码是：${r.pin}\n（系统随机生成，只显示这一次，请记下来告诉孩子）`)
-    else showToast('已添加')
-    kidAddOpen.value = false
-    await load()
-  } catch (e) { showToast(e.message) }
+function onKidRemoved(id) {
+  if (selectedKid.value === id) { selectedKid.value = ''; setSelectedKid('') }
 }
+
 async function finishSetup() {
   if (!setupKid.name) return showToast('填孩子在家里怎么叫')
   if (!(setupKid.account || '').trim()) return showToast('填孩子登录账号')
@@ -648,38 +630,6 @@ function dismissRecovery() {
   emit('consumed-recovery')
 }
 
-async function saveKid(k) {
-  if (k._pin) {
-    if (String(k._pin).trim().length < 6) return showToast('孩子密码至少 6 位')
-    if (!confirm('要改「' + k.name + '」的登录密码？改完孩子要用新密码登录。')) return
-  }
-  try {
-    await api.admin.updateKid(k.id, { name: k.name, account: k.account, term_id: k.term_id, pin: k._pin || '', gender: k.gender || '' })
-    k._pin = ''
-    clearEdit()
-    showToast('已保存')
-    await load()
-  } catch (e) { showToast(e.message) }
-}
-async function delKid(k) {
-  if (!isOwner.value) return showToast('只有创建者能删除孩子')
-  if (!confirm('删除「' + k.name + '」？打卡记录还在库里，只是账号没了。')) return
-  try {
-    await api.admin.delKid(k.id)
-    if (selectedKid.value === k.id) { selectedKid.value = ''; setSelectedKid('') }
-    showToast('已删除')
-    await load()
-  } catch (e) { showToast(e.message) }
-}
-async function transferOwner(m) {
-  if (!isOwner.value) return showToast('只有创建者能转让')
-  if (!confirm(`把创建者交给「${m.name}」？交出去后你变成普通成员，不能再删人、删孩子、发邀请码。`)) return
-  try {
-    await api.admin.transferOwner(m.id)
-    showToast('已交给 ' + m.name)
-    await load()
-  } catch (e) { showToast(e.message) }
-}
 
 async function saveRule(key, val) {
   try {
@@ -791,45 +741,8 @@ async function toggleSubjectVisible(id) {
   } catch (e) { showToast(e.message) }
 }
 
-async function changePin() {
-  const cur = pinForm.cur.trim()
-  const next = pinForm.next.trim()
-  if (!cur) return showToast('请输入当前密码')
-  if (!next) return showToast('请输入新密码')
-  if (next.length < 8) return showToast('家长密码至少 8 位')
-  if (next !== pinForm.confirm) return showToast('两次新密码不一致')
-  try {
-    await api.admin.changePin(next, cur)
-    pinForm.cur = pinForm.next = pinForm.confirm = ''
-    showToast('密码已改，其他设备需要重新登录')
-  } catch (e) { showToast(e.message) }
-}
-async function refreshInvites() { invites.value = await api.admin.invites() }
-async function makeInvite() {
-  try {
-    const r = await api.admin.invite()
-    await refreshInvites()
-    showToast('已生成 ' + r.code + '，点「复制」分享')
-  } catch (e) { showToast(e.message) }
-}
-function inviteStatus(iv) {
-  if (iv.expired) return '已过期'
-  if (iv.used_up) return '已用' + (iv.used_by ? '（' + iv.used_by + '）' : '')
-  if (iv.used_count > 0) return '已用 ' + iv.used_count + ' 次' + (iv.used_by ? '（最近 ' + iv.used_by + '）' : '')
-  return '未用'
-}
-async function copyCode(code) {
-  try {
-    await navigator.clipboard.writeText(code)
-  } catch {
-    const t = document.createElement('textarea')
-    t.value = code; document.body.appendChild(t); t.select()
-    document.execCommand('copy'); document.body.removeChild(t)
-  }
-  showToast('已复制 ' + code)
-}
-async function delInvite(code) {
-  try { await api.admin.delInvite(code); await refreshInvites(); showToast('已删除') } catch (e) { showToast(e.message) }
+async function refreshInvites() {
+  try { invites.value = await api.admin.invites() } catch (e) { showToast(e.message) }
 }
 async function toggleProtect() {
   if (!isOwner.value) return showToast('只有创建者能开关')
@@ -846,14 +759,6 @@ async function togglePenalty() {
     const r = await api.admin.setPenalty(!penaltyEnabled.value)
     penaltyEnabled.value = !!r.penalty_enabled
     showToast(penaltyEnabled.value ? '已开启记下扣分' : '已关闭记下扣分')
-  } catch (e) { showToast(e.message) }
-}
-async function delMember(m) {
-  if (!confirm('删除「' + m.name + '」？立刻失效。')) return
-  try {
-    await api.admin.delMember(m.id)
-    showToast('已删除')
-    await load()
   } catch (e) { showToast(e.message) }
 }
 
@@ -1072,131 +977,24 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload)
     </section>
     <!-- 单元测试成绩 -->
 
-    <section v-if="section === 'kids'" class="a-card">
-      <h3>家庭</h3>
-      <h4 class="w-h">孩子账号</h4>
-      <p v-if="!terms.length" class="dim">学期列表还没载入，退出再进一次家长端。</p>
+    <!-- 家庭（孩子账号 / 家长成员 / 邀请码 / 家长密码）-->
+    <AdminKids
+      v-if="section === 'kids'"
+      ref="kidsRef"
+      :kids="kids"
+      :terms="terms"
+      :members="members"
+      :invites="invites"
+      :invite-protect="inviteProtect"
+      :is-owner="isOwner"
+      :me-account="me.account"
+      :show-toast="showToast"
+      @reload="load"
+      @reload-invites="refreshInvites"
+      @toggle-protect="toggleProtect"
+      @kid-removed="onKidRemoved"
+    />
 
-      <div class="kid-card" v-for="k in kids" :key="k.id">
-        <template v-if="isEditing('kid', k.id)">
-          <label class="fld"><span>家里怎么叫</span><input v-model="k.name" placeholder="如：乐乐" /></label>
-          <label class="fld"><span>登录账号</span><input v-model="k.account" placeholder="如：lele" /></label>
-          <label class="fld"><span>现在读哪册</span>
-            <select v-model="k.term_id">
-              <option disabled value="">请选择</option>
-              <option v-for="tm in terms" :key="tm.id" :value="tm.id">{{ tm.label }}</option>
-            </select>
-          </label>
-          <label class="fld"><span>性别</span>
-            <select v-model="k.gender">
-              <option value="">还没填</option>
-              <option value="男">男</option>
-              <option value="女">女</option>
-            </select>
-          </label>
-          <label class="fld kid-pin"><span>改密码</span><input v-model="k._pin" type="password" autocomplete="new-password" placeholder="至少 6 位，不要重复或连续数字" /></label>
-          <div class="ops">
-            <button class="ok" @click="saveKid(k)">保存资料</button>
-            <button class="ghost-s" @click="cancelEdit">取消</button>
-            <button v-if="isOwner" class="del" @click="delKid(k)">删除账号</button>
-            <span v-else class="dim">只有创建者能删除孩子</span>
-          </div>
-        </template>
-        <template v-else>
-          <div class="sys-row kid-readonly">
-            <span class="sys-name">{{ k.name }}</span>
-            <span class="dim">{{ k.account }} · {{ (terms.find(tm => tm.id === k.term_id) || {}).label || k.term_id }}<template v-if="k.gender"> · {{ k.gender }}</template></span>
-            <div class="ops">
-              <button class="ghost-s" @click="beginEdit('kid', k)">改</button>
-              <button v-if="isOwner" class="del" @click="delKid(k)">删</button>
-            </div>
-          </div>
-        </template>
-      </div>
-      <button type="button" class="ghost-s rules-toggle" @click="kidAddOpen = !kidAddOpen">{{ kidAddOpen ? '收起新增' : '＋再加一个孩子' }}</button>
-      <div v-if="kidAddOpen" class="add-box">
-        <div class="add-title">再加一个孩子</div>
-        <div class="frm-row">
-          <label class="fld grow"><span>家里怎么叫</span><input v-model="newKid.name" placeholder="如：弟弟" /></label>
-          <label class="fld grow"><span>登录账号</span><input v-model="newKid.account" placeholder="如：didi" /></label>
-          <label class="fld grow"><span>密码</span><input v-model="newKid.pin" type="password" autocomplete="new-password" placeholder="留空自动生成；自填至少 6 位" /></label>
-        </div>
-        <div class="frm-row">
-          <label class="fld grow"><span>现在读哪册</span>
-            <select v-model="newKid.term_id">
-              <option v-for="tm in terms" :key="tm.id" :value="tm.id">{{ tm.label }}</option>
-            </select>
-          </label>
-          <label class="fld w84"><span>性别</span>
-            <select v-model="newKid.gender">
-              <option value="">还没填</option>
-              <option value="男">男</option>
-              <option value="女">女</option>
-            </select>
-          </label>
-        </div>
-        <button class="ok wide" @click="addKid">添加</button>
-      </div>
-    </section>
-
-    <!-- 家长成员 -->
-    <section v-if="section === 'kids'" class="a-card enter">
-      <h3>家长成员</h3>
-      <div class="member-row" v-for="m in members" :key="m.id">
-        <div class="member-info">
-          <strong>{{ m.name }}</strong>
-          <span class="dim">{{ m.account }}</span>
-        </div>
-        <span class="badge" :class="{ daily: m.parent_role === 'owner' }">{{ m.parent_role === 'owner' ? '创建者' : '成员' }}</span>
-        <button v-if="isOwner && m.account !== me.account" class="ok" @click="transferOwner(m)">交给创建者</button>
-        <button v-if="isOwner && m.account !== me.account" class="del" @click="delMember(m)">删</button>
-        <span v-else-if="!isOwner" class="dim">只有创建者能改成员</span>
-      </div>
-      <p v-if="!members.length" class="dim">还没有家长成员。</p>
-    </section>
-
-    <!-- 邀请码 -->
-    <section v-if="section === 'kids'" class="a-card enter">
-      <h3>邀请码</h3>
-      <div class="lock-row">
-        <span class="badge">邀请码保护</span>
-        <span class="grow">开着时邀请码一次性 + 24 小时；关掉则常驻复用</span>
-        <button v-if="isOwner" type="button" :class="['toggle', { on: inviteProtect }]" @click="toggleProtect">{{ inviteProtect ? '开' : '关' }}</button>
-      </div>
-      <p v-if="!isOwner" class="dim">只有创建者能开关保护和生成邀请码。</p>
-      <div class="frm-row mt8">
-        <button v-if="isOwner" class="ok" @click="makeInvite()">生成邀请码</button>
-      </div>
-      <div class="member-row" v-for="iv in invites" :key="iv.code">
-        <div class="member-info">
-          <code class="invite-code">{{ iv.code }}</code>
-          <span class="dim">{{ inviteStatus(iv) }}</span>
-        </div>
-        <button class="ok" @click="copyCode(iv.code)">复制</button>
-        <button v-if="isOwner" class="del" @click="delInvite(iv.code)">删</button>
-      </div>
-      <p v-if="!invites.length" class="dim mt6">还没有邀请码。</p>
-    </section>
-
-    <section v-if="section === 'kids'" class="a-card enter">
-      <h3>修改家长密码</h3>
-      <p class="dim">当前账号 {{ me.account || '—' }}</p>
-      <form class="settings-form" @submit.prevent="changePin">
-        <label class="fld">
-          <span>当前密码</span>
-          <input v-model="pinForm.cur" type="password" autocomplete="current-password" />
-        </label>
-        <label class="fld">
-          <span>新密码</span>
-          <input v-model="pinForm.next" type="password" autocomplete="new-password" placeholder="至少 8 位" />
-        </label>
-        <label class="fld">
-          <span>确认新密码</span>
-          <input v-model="pinForm.confirm" type="password" autocomplete="new-password" />
-        </label>
-        <button class="ok" type="submit">保存新密码</button>
-      </form>
-    </section>
       <div v-if="isDirty" class="w-next dirty-bar">
         <strong>有未保存的修改</strong>
         <span></span>
@@ -1229,7 +1027,6 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload)
 }
 .kid-switch button.on { background: #fff; color: var(--brand-deep); }
 .kid-one { font-weight: 700; font-size: 14px; opacity: .95; }
-.invite-code { font-family: ui-monospace, monospace; font-weight: 700; font-size: 14px; }
 .a-term { display: block; margin-top: 8px; font-size: 12px; }
 .a-term select { margin-left: 6px; padding: 4px 8px; border-radius: var(--radius-sm); border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
 .a-exit { background: rgba(255,255,255,.22); border: none; color: #fff; border-radius: var(--radius-pill); padding: 9px 16px; font-weight: 700; cursor: pointer; font-family: inherit; }
@@ -1265,14 +1062,6 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload)
 .toast { position: fixed; left: 50%; bottom: 30px; transform: translateX(-50%); background: rgba(31,59,85,.92); color: #fff; padding: 10px 18px; border-radius: var(--radius-pill); font-size: 14px; z-index: 20; }
 
 
-.settings-form { display: flex; flex-direction: column; gap: 12px; max-width: 380px; margin-top: 12px; }
-.settings-form .ok { align-self: flex-start; }
-.member-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 12px 0; border-bottom: 1px solid var(--surface-2); }
-.member-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
-.kid-card { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 14px; padding: 16px 0; border-bottom: 1px solid var(--line); }
-.kid-card .fld { min-width: 0; }
-.kid-pin { grid-column: 1 / -1; }
-.kid-card .ops { grid-column: 1 / -1; justify-content: space-between; }
 .dirty-bar { position: sticky; bottom: 0; margin: 0; z-index: 5; box-shadow: var(--shadow-md); padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
 
 @media (max-width: 760px) {
@@ -1281,7 +1070,6 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload)
   .a-group { display: none; }
   .a-nav { flex: 0 0 auto; width: auto; white-space: nowrap; }
   .cursor-row { grid-template-columns: 1fr; gap: 6px; }
-  .kid-card { grid-template-columns: 1fr; }
   .a-title { font-size: 22px; }
 }
 .setup { min-height: 80vh; display: flex; align-items: center; justify-content: center; }
