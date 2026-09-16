@@ -3,6 +3,7 @@
 import csv
 import io
 import json
+import random
 import sqlite3
 import uuid
 from datetime import datetime, timedelta
@@ -11,6 +12,7 @@ import db
 
 WORD_INTERVALS = [1, 3, 7, 14, 30]
 SESSION_CAP = 10
+_rand = random.Random()   # 「还没作答时每次打开换一批」用的随机源（测试可以替换成固定种子）
 NON_PRACTICE_ENTRY_TYPES = frozenset({"专名", "节日名", "课程名", "社团名", "菜名"})
 WORDS_SEED = db.BASE.parent / "data" / "words.seed.multi.json"
 
@@ -502,9 +504,11 @@ def _pick_new(c, kid, fam, book_id, limit, cfg=None):
     ).fetchall()]
 
 
-def _pick_items(c, kid, fam, cfg, size=None):
+def _pick_items(c, kid, fam, cfg, size=None, shuffle=False):
     """size=None 走 SPA 那条流程（SESSION_CAP + max_due + new_per_day）；
-    给了 size（独立页 /word/）就按这一局要多少词取满：到期优先，不够用未学词补。"""
+    给了 size（独立页 /word/）就按这一局要多少词取满：到期优先，不够用未学词补。
+    shuffle=True（P4-c：还没作答时每次打开换一批）把「未学词」的候选**随机采样**取 ——
+    到期词仍按「最到期优先」，各书内的取词顺序仍受家长设的「新词词书」约束（只是那一本里换几个）。"""
     today = db.today()
     scope_ids = _review_book_ids(c, kid, fam, cfg)
     cap = min(int(size), 40) if size else SESSION_CAP
@@ -515,9 +519,15 @@ def _pick_items(c, kid, fam, cfg, size=None):
     seen = {int(r["word_id"]) for r in due}
     new = []
     if new_n > 0:
-        candidates = (_pick_new_scope(c, kid, fam, cfg, new_n + 5)
+        pool = (new_n + 5) if not shuffle else min(60, new_n * 3 + 10)
+        candidates = (_pick_new_scope(c, kid, fam, cfg, pool)
                       if scope_ids is not None else
-                      _pick_new(c, kid, fam, cfg.get("current_book") or "", new_n + 5, cfg=cfg))
+                      _pick_new(c, kid, fam, cfg.get("current_book") or "", pool, cfg=cfg))
+        if shuffle:
+            # 先把已经要考的去掉，再打乱 —— 取前 new_n 个就是「随机一批未学词」
+            rest = [r for r in candidates if int(r["word_id"]) not in seen]
+            _rand.shuffle(rest)
+            candidates = rest
         for r in candidates:
             wid = int(r["word_id"])
             if wid in seen:
@@ -529,9 +539,6 @@ def _pick_items(c, kid, fam, cfg, size=None):
     picked = [{"word_id": int(r["word_id"]), "source": "due"} for r in due]
     picked += [{"word_id": int(r["word_id"]), "source": "new"} for r in new]
     return picked
-
-
-
 
 def _ensure_items(c, row, kid, fam):
     n = c.execute(
@@ -758,6 +765,42 @@ def _create_session(c, kid, fam, cfg, picked):
         "config": cfg,
         "session": sess,
     }
+
+
+def _session_untouched(c, kid, sid):
+    """这一局还没有任何作答 —— 只有这种时候才允许整批换词。
+    一旦作答过就不再换：保证「这一局词数 = 这一轮的分母」和结算口径不会被换词搅乱。"""
+    n = c.execute(
+        "SELECT COUNT(*) FROM word_attempts WHERE session_id=? AND kid_id=?", (sid, kid)
+    ).fetchone()[0]
+    return int(n or 0) == 0
+
+
+def _repick_items(c, kid, fam, cfg, row, size):
+    """整批换词（只在 _session_untouched 时调用）：重挑一批（未学词随机采样）→ 重写 items 与 task_json。
+    会话本身不换（还是今天这一条），所以钱的口径完全不变：分母 = 换完之后的这一局词数。"""
+    picked = _pick_items(c, kid, fam, cfg, size=size, shuffle=True)
+    if not picked:
+        return False
+    books = []
+    for it in picked:
+        r = c.execute("SELECT book_id FROM words WHERE id=?", (it["word_id"],)).fetchone()
+        if r and r["book_id"] not in books:
+            books.append(r["book_id"])
+    task = [{"word_id": it["word_id"], "source": it["source"], "order": i} for i, it in enumerate(picked)]
+    c.execute("DELETE FROM word_session_items WHERE session_id=? AND kid_id=?", (row["id"], kid))
+    c.execute(
+        "UPDATE word_sessions SET task_json=?, book_ids_json=? WHERE id=? AND kid_id=?",
+        (json.dumps(task, ensure_ascii=False), json.dumps(books, ensure_ascii=False), row["id"], kid),
+    )
+
+    for i, it in enumerate(picked):
+        c.execute(
+            "INSERT INTO word_session_items(session_id,kid_id,family_id,word_id,source,item_order,state,"
+            "first_result,retry_used,answered_at) VALUES(?,?,?,?,?,?, 'study', NULL, 0, NULL)",
+            (row["id"], kid, fam or "", it["word_id"], it["source"], i),
+        )
+    return True
 
 
 def start_session(c, kid, fam):
@@ -1244,12 +1287,18 @@ def _game_today(c, kid, sid):
 
 
 def start_game(c, kid, fam):
-    """独立页开局：按「一局词数」建/复用今天的会话。"""
+    """独立页开局：按「一局词数」建/复用今天的会话。
+    P4-c：今天这局**还没作答**时，每次打开都**换一批词**（未学词随机采样）——
+    孩子来回打开看到的不再是同一批；一旦作答过就锁定，钱的分母与结算口径不受影响。"""
     cfg = kid_config(c, kid)
     if not cfg["enabled"]:
         raise WordError(403, "单词练习没开，找家长打开")
+    size = int(cfg["game_size"])
+    row = _today_session(c, kid)
+    if row and row["state"] != "abandoned" and _session_untouched(c, kid, row["id"]):
+        _repick_items(c, kid, fam, cfg, row, size)
     # goal（每日目标环）由 today_payload 统一补，这里不再重复设
-    return today_payload(c, kid, fam, create=True, size=int(cfg["game_size"]))
+    return today_payload(c, kid, fam, create=True, size=size)
 
 
 def game_info(c, kid, fam):

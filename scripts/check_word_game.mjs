@@ -5,7 +5,7 @@
 // 用法：node scripts/check_word_game.mjs
 import {
   scoreOf, sunshineFor, streakUpdate,
-  questionPlan, buildOptions, matchGroups, buildMatchBoard, planSession, entryCardText,
+  questionPlan, buildOptions, matchGroups, buildMatchBoard, planSession, entryCardText, shuffleQueue,
 } from '../frontend/src/wordGame.js'
 
 let bad = 0
@@ -184,6 +184,18 @@ const c6 = entryCardText({ enabled: false })
 ok(c6.ready === false && c6.detail === '今天没有要复习的词', '入口卡：英语关掉不炸')
 ok(entryCardText(undefined).title === '英语复习' && entryCardText({}).pct === null, '入口卡：空 payload 不炸')
 ok(entryCardText({ enabled: true, config: {}, goal: goalOf(3, 10, false), session: sessOf(['study'], 0) }).pct === 30, '入口卡：只给最小字段也能算进度')
+
+/* ---------- 换顺序（shuffleQueue，P4-c ①） ---------- */
+const q = [{ word_id: 1 }, { word_id: 2 }, { word_id: 3 }, { word_id: 4 }, { word_id: 5 }]
+const s1 = shuffleQueue(q, seeded(11))
+const s2 = shuffleQueue(q, seeded(11))
+ok(s1.length === 5 && new Set(s1.map((x) => x.word_id)).size === 5, '换顺序：词一个不多一个不少')
+ok(s1.map((x) => x.word_id).join(',') !== q.map((x) => x.word_id).join(','), '换顺序：顺序真的变了')
+ok(s1.map((x) => x.word_id).join(',') === s2.map((x) => x.word_id).join(','), '换顺序：同一个随机源可复现')
+ok(shuffleQueue([]).length === 0 && shuffleQueue().length === 0 && shuffleQueue(null).length === 0, '换顺序：空/非数组不炸')
+ok(q.map((x) => x.word_id).join(',') === '1,2,3,4,5', '换顺序：不改原数组')
+const many = shuffleQueue(Array.from({ length: 40 }, (_, i) => ({ word_id: i + 1 })))
+ok(many.length === 40 && new Set(many.map((x) => x.word_id)).size === 40, '换顺序：40 个词也不丢不重')
 
 console.log(`英语复习页规则：${n} 条断言，失败 ${bad} 条`)
 process.exit(bad ? 1 : 0)

@@ -52,6 +52,13 @@ function shuffle(list, rand) {
   return out
 }
 
+
+/* 一局的词序打乱（P4-c ①）：每次打开都换顺序，孩子背不了「第几题是什么」。
+   只换顺序、不换词（换词在后端，且只在还没作答时允许）。空数组/非数组不炸。 */
+export function shuffleQueue(items, rand) {
+  return shuffle(Array.isArray(items) ? items : [], rand)
+}
+
 /* 认题的 4 个选项：必含正确答案；池子不够时补「—」，绝不崩。 */
 export function buildOptions(item, pool, n = 4, rand = Math.random) {
   const want = Math.max(2, Number(n) || 4)

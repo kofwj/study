@@ -2,7 +2,7 @@
 // 口径没变：只有「写」计分（分母 = 这一局词数），钱由后端按当天最好一轮补差；认/连一连不计分、不发钱。
 // 拼写判分用 src/wordSpell.js（标点/空格自动带出，孩子只敲字母）；题型规则用 src/wordGame.js（有单测）。
 import { slotCells, assembleSpelling, lettersOf } from '../src/wordSpell.js'
-import { scoreOf, streakUpdate, planSession, buildOptions, buildMatchBoard } from '../src/wordGame.js'
+import { scoreOf, streakUpdate, planSession, buildOptions, buildMatchBoard, shuffleQueue } from '../src/wordGame.js'
 
 const $ = (id) => document.getElementById(id)
 
@@ -397,6 +397,7 @@ function again() {
   state.streak = 0
   state.best = 0
   state.blockNo = 0
+  state.queue = shuffleQueue(state.queue)          // ① 每次「再练一遍」也换顺序
   state.steps = planSession(state.queue, { matchSize: cfg.matchSize, matchBlocks: cfg.matchBlocks }).steps
   $('card-sum').hidden = true
   $('card-quiz').hidden = false
@@ -433,6 +434,7 @@ async function load() {
   if (!state.queue.length) state.queue = items            // 今天已经全答对过：允许再练一遍
   // 今天已经写过的词先记下来：目标环的乐观更新靠它判重（结算时再按服务端数字对齐）
   state.counted = new Set(items.filter((x) => x.first_result).map((x) => x.word_id))
+  state.queue = shuffleQueue(state.queue)          // ① 每次打开都换顺序（词序不固定）
   state.si = 0
   state.round = 1
   state.right = 0

@@ -7,6 +7,7 @@
 做完一轮就等于今天打卡（不再单独发打卡阳光）；不发星尘、不碰宝箱。
 """
 import os
+import random
 import tempfile
 from pathlib import Path
 
@@ -289,3 +290,34 @@ def test_session_items_carry_progress_for_question_plan():
             bad = [x for x in k.get("/api/words/game").json()["session"]["items"]
                    if x["word_id"] == it2["word_id"]][0]
             assert bad["progress"]["wrong_count"] == 1 and bad["progress"]["last_result"] == "wrong", bad["progress"]
+
+
+def test_start_repicks_until_first_answer():
+    """P4-c ②：还没作答 → 每次开局换一批词；答过一题 → 锁定同一批（分母口径不变）。"""
+    db.init_db()
+    with TestClient(main.app) as cli:
+        _family(cli, "wr")
+        full = {"enabled": True, "current_book": "g5s1-en-1", "new_per_day": 5, "max_due": 10}
+        # 一局 10 词、书里有 20 个 → 候选比一局多，换一批才看得出区别
+        assert cli.put("/api/admin/words/config", json=dict(full, game_size=10)).status_code == 200
+        saved = wordmod._rand
+        wordmod._rand = random.Random(7)          # 固定随机源：断言可复现
+        try:
+            with _kid("wr") as k:
+                first = k.post("/api/words/game/start").json()["session"]
+                a = [it["word_id"] for it in first["items"]]
+                assert len(a) == 10, a
+                second = k.post("/api/words/game/start").json()["session"]
+                b = [it["word_id"] for it in second["items"]]
+                assert second["id"] == first["id"], "换词不换会话（今天还是这一条）"
+                assert sorted(a) != sorted(b), (a, b)          # 换了一批
+                assert len(b) == 10, b
+                # 作答一题后就锁定：再开局还是这一批
+                sid = first["id"]
+                r = k.post(f"/api/words/session/{sid}/spell",
+                           json={"word_id": b[0], "text": "zzz", "phase": "spell", "attempt_no": 1})
+                assert r.status_code == 200, r.text
+                locked = [it["word_id"] for it in k.post("/api/words/game/start").json()["session"]["items"]]
+                assert locked == b, (locked, b)
+        finally:
+            wordmod._rand = saved
