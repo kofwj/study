@@ -44,6 +44,7 @@ const {
       </div>
       <p v-if="wordStats.today_sentence" class="dim">{{ wordStats.today_sentence }}</p>
       <p v-if="wordStats.week_sentence" class="dim">{{ wordStats.week_sentence }}</p>
+      <p v-if="wordStats.today_source" class="dim">{{ wordStats.today_source }}</p>
       <h4 class="w-h">高频错词</h4>
       <p v-if="!wordProblems.length" class="dim">还没有错两次以上的词。</p>
       <div v-for="w in wordProblems" :key="w.word_id" class="word-row">

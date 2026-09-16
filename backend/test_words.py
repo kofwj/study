@@ -545,6 +545,7 @@ def test_admin_words_stats_today_and_money_match():
             assert s["today"]["wrote"] == 0 and s["today"]["rounds"] == 0 and s["today"]["best_score"] == 0
             assert s["today"]["goal"] == 10 and s["today"]["goal_done"] is False and s["today"]["finished"] is False
             assert s["today_sentence"] == "今天还没练"
+            assert s["today_source"] == "今天还没开局（下一局按「新词词书」取词）", s["today_source"]
             assert s["week_sentence"] == "这周还没练过英语；今天还没练"
             assert s["week"]["days"] == 0 and s["week"]["rate"] is None
 
@@ -571,6 +572,8 @@ def test_admin_words_stats_today_and_money_match():
             # 目标关掉：句子不再提目标
             assert cli.put("/api/admin/words/config", json={"daily_goal": 0}).status_code == 200
             s = cli.get("/api/admin/words/stats").json()
+            assert s["today"]["books"] and s["today"]["books"][0]["n"] == 20, s["today"]["books"]
+            assert s["today_source"].startswith("这批词来自：") and "新词：" in s["today_source"], s["today_source"]
             assert s["today"]["goal"] == 0
             assert s["today_sentence"] == "今天写了 20 个词 · 最好一轮 70 分 · 阳光 2/10"
 
@@ -592,6 +595,24 @@ def test_admin_words_stats_today_and_money_match():
             os.environ.pop("SUNSHINE_NOW", None)
         else:
             os.environ["SUNSHINE_NOW"] = real_now
+
+
+def test_source_sentence_variants():
+    """「这批词来自：X · 新词：Y」的几种情况（纯函数，不碰库）。"""
+    books = [{"id": "g3s1-en-1", "name": "三年级上 Unit 1", "n": 12},
+             {"id": "g5s1-en-1", "name": "五年级上 Unit 1", "n": 8}]
+    nb_none = {"id": "", "name": "", "blocked": False, "mode": "current"}
+    nb_ok = {"id": "g5s1-en-1", "name": "五年级上 Unit 1", "blocked": False, "mode": "current"}
+    nb_blocked = {"id": "g5s1-en-1", "name": "五年级上 Unit 1", "blocked": True, "mode": "current"}
+    nb_scope = {"id": "g5s1-en-1", "name": "五年级上 Unit 1", "blocked": False, "mode": "scope"}
+    assert wordmod.source_sentence(False, books, nb_ok, True) == ""
+    assert wordmod.source_sentence(True, [], nb_ok, False) == "今天还没开局（下一局按「新词词书」取词）"
+    got = wordmod.source_sentence(True, books, nb_none, True)
+    assert got == "这批词来自：三年级上 Unit 1（12 个）、五年级上 Unit 1（8 个） · 新词：还没选词书 → 不会出新词", got
+    assert "被词书锁挡住" in wordmod.source_sentence(True, books, nb_blocked, True)
+    assert wordmod.source_sentence(True, books, nb_ok, True).endswith("新词：五年级上 Unit 1")
+    assert "（自定义范围）" in wordmod.source_sentence(True, books, nb_scope, True)
+    assert wordmod.source_sentence(True, [], nb_ok, True).startswith("这批词来自：没取到词")
 
 
 def test_admin_weekly_has_english_line():

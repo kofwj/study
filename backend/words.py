@@ -980,13 +980,68 @@ def _try_ledger(c, kid, delta, reason, ref, note):
     db.insert_ledger(c, db.today(), int(delta), reason, ref, note, kid_id=kid)
 
 
-def today_summary(c, kid, cfg):
+def today_books(c, kid, sid):
+    """今天这一局的词来自哪些书（家长端「这批词来自」那一行用）。"""
+    if not sid:
+        return []
+    rows = c.execute(
+        "SELECT b.id AS book_id, b.name AS name, COUNT(*) AS n "
+        "FROM word_session_items i JOIN words w ON w.id=i.word_id "
+        "JOIN word_books b ON b.id=w.book_id "
+        "WHERE i.session_id=? AND i.kid_id=? GROUP BY b.id, b.name ORDER BY n DESC, b.id",
+        (sid, kid),
+    ).fetchall()
+    return [{"id": r["book_id"], "name": r["name"], "n": int(r["n"] or 0)} for r in rows]
+
+
+def new_book_note(c, kid, fam, cfg):
+    """新词从哪本来（以及为什么可能出不来）：给孩子端/家长端一句话解释，别再让家长猜。"""
+    bid = (cfg.get("current_book") or "").strip()
+    if (cfg.get("review_mode") or "current") == "scope":
+        scope = _review_book_ids(c, kid, fam, cfg) or []
+        start = bid if bid in scope else (scope[0] if scope else "")
+        name = ""
+        if start:
+            b = get_book(c, fam, start)
+            name = (b["name"] if b else start) or start
+        return {"id": start, "name": name, "blocked": False, "mode": "scope"}
+    if not bid:
+        return {"id": "", "name": "", "blocked": False, "mode": "current"}
+    book = get_book(c, fam, bid)
+    name = (book["name"] if book else bid) or bid
+    blocked = bool(book) and not book_selectable(c, kid, fam, book, cfg)
+    return {"id": bid, "name": name, "blocked": blocked, "mode": "current"}
+
+
+def source_sentence(enabled, books, new_book, has_session):
+    """「这批词来自：X · 新词：Y」——只解释，不给操作；纯函数，方便 pytest 钉住。"""
+    if not enabled:
+        return ""
+    if not has_session:
+        return "今天还没开局（下一局按「新词词书」取词）"
+    head = "、".join("%s（%d 个）" % (b["name"], b["n"]) for b in (books or [])) or "没取到词"
+    if not new_book:
+        return "这批词来自：" + head
+    if not new_book.get("id"):
+        tail = "新词：还没选词书 → 不会出新词"
+    elif new_book.get("blocked"):
+        tail = "新词：%s 被词书锁挡住（先去「已学到」设英语进度）" % new_book["name"]
+    elif new_book.get("mode") == "scope":
+        tail = "新词：从 %s 往后取（自定义范围）" % new_book["name"]
+    else:
+        tail = "新词：%s" % new_book["name"]
+    return "这批词来自：" + head + " · " + tail
+
+
+def today_summary(c, kid, fam, cfg):
     """家长端「今天」这一排：孩子今天在 /word/ 的进展（服务端算，和页面口径同一套）。"""
     row = _today_session(c, kid)
     sid = row["id"] if row else ""
     info = _game_today(c, kid, sid) if sid else {"rounds": [], "best_score": 0, "got": 0}
     wrote = scored_words_today(c, kid)
     goal = int(cfg.get("daily_goal") or 0)
+    books = today_books(c, kid, sid)
+    new_book = new_book_note(c, kid, fam, cfg)
     return {
         "date": db.today(),
         "wrote": wrote,
@@ -997,6 +1052,8 @@ def today_summary(c, kid, cfg):
         "goal": goal,
         "goal_done": bool(goal and wrote >= goal),
         "finished": bool(row and row["state"] == "completed"),
+        "books": books,
+        "new_book": new_book,
     }
 
 
@@ -1047,7 +1104,8 @@ def week_sentence(enabled, week, today):
 def english_empty_today():
     """读不到时的兜底（GAME_MAX_SUNSHINE 定义在后面，所以这里必须是函数、不能是模块级常量）。"""
     return {"date": db.today(), "wrote": 0, "rounds": 0, "best_score": 0, "sunshine": 0,
-            "sunshine_limit": GAME_MAX_SUNSHINE, "goal": 0, "goal_done": False, "finished": False}
+            "sunshine_limit": GAME_MAX_SUNSHINE, "goal": 0, "goal_done": False, "finished": False,
+            "books": [], "new_book": {"id": "", "name": "", "blocked": False, "mode": "current"}}
 
 
 def week_stats(c, kid, fam):
@@ -1089,14 +1147,17 @@ def week_stats(c, kid, fam):
     out["week"] = week
     try:
         cfg = kid_config(c, kid)
-        today = today_summary(c, kid, cfg)
+        today = today_summary(c, kid, fam, cfg)
         out["today"] = today
         out["today_sentence"] = today_sentence(cfg["enabled"], today)
         out["week_sentence"] = week_sentence(cfg["enabled"], week, today)
+        out["today_source"] = source_sentence(cfg["enabled"], today["books"], today["new_book"],
+                                             bool(today["books"]))
     except Exception:
         out["today"] = english_empty_today()
         out["today_sentence"] = "暂时读不到英语记录"
         out["week_sentence"] = "暂时读不到英语记录"
+        out["today_source"] = ""
     return out
 
 

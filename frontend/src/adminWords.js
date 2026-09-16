@@ -99,7 +99,7 @@ const WORD_STATS_EMPTY = {
   today: { date: '', wrote: 0, rounds: 0, best_score: 0, sunshine: 0, sunshine_limit: 10,
            goal: 0, goal_done: false, finished: false },
   week: { days: 0, words: 0, rate: null },
-  today_sentence: '', week_sentence: '',
+  today_sentence: '', week_sentence: '', today_source: '',
 }
 const wordStats = ref({ ...WORD_STATS_EMPTY })
 const wordNewBook = ref('')

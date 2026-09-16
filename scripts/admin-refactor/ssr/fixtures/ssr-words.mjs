@@ -66,8 +66,10 @@ async function main() {
       today: TODAY_DONE, week: { days: 4, words: 58, rate: 78 },
       today_sentence: '今天写了 20 词（目标 10，已达标） · 最好一轮 70 分 · 阳光 2/10',
       week_sentence: '这周练了 4 天，首轮正确率 78%；今天写了 20/10 词（达标）',
+      today_source: '这批词来自：五年级上 Unit 1（20 个） · 新词：五年级上 Unit 1',
     }, {}, ['今天写了', '20/10', '最好一轮', '70 分', '今天阳光', '2/10',
-             '今天写了 20 词（目标 10，已达标）', '这周练了 4 天，首轮正确率 78%']],
+             '今天写了 20 词（目标 10，已达标）', '这周练了 4 天，首轮正确率 78%',
+             '这批词来自：五年级上 Unit 1（20 个）']],
     ['今天还没练', {
       days: DAYS.map((d) => (d.date === '2026-09-16' ? { ...d, completed: 0, items: 0, correct_first_try: 0, rate: null } : d)),
       completed_sessions: 3, first_try_rate: 78,
