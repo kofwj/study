@@ -199,3 +199,42 @@
   .admin .tag-guide-row { grid-template-columns: 1fr; }
   .admin .w-summary { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* —— 状态徽章（审批 / 银行取出 等）—— */
+.admin .st { font-size: 11px; padding: 3px 9px; border-radius: var(--radius-sm); font-weight: 700; white-space: nowrap; }
+.admin .st.pending { background: var(--warm); color: var(--accent-ink); }
+.admin .st.done { background: var(--surface-2); color: var(--brand-deep); }
+.admin .st.delivered { background: var(--ok-bg); color: var(--ok); }
+
+/* —— 今日复习 / 考点日期 —— */
+.admin .review-date { max-width: 220px; margin-bottom: 10px; }
+.admin .review-total { color: var(--accent-ink); font-size: 13px; font-weight: 800; }
+.admin .review-steps { display: flex; align-items: center; gap: 7px; margin: 0 0 16px; padding: 10px 12px; background: var(--surface-2); border-radius: var(--radius-md); color: var(--ink-2); font-size: 12px; }
+.admin .review-steps b { display: inline-flex; width: 20px; height: 20px; align-items: center; justify-content: center; margin-right: 4px; border-radius: var(--radius-circle); background: var(--brand); color: #fff; font-size: 11px; }
+.admin .review-steps i { color: var(--ink-3); font-style: normal; }
+.admin .review-empty { display: flex; flex-direction: column; gap: 4px; padding: 18px 0 8px; color: var(--ink-2); }
+.admin .review-empty span { color: var(--ink-3); font-size: 12px; }
+.admin .review-item { padding: 12px 0; border-top: 1px solid var(--surface-2); }
+.admin .review-item-info { display: flex; flex-direction: column; gap: 4px; }
+.admin .review-item-title { font-size: 15px; font-weight: 800; color: var(--ink); }
+.admin .review-actions { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 10px; }
+.admin .review-actions button { font-size: 12px; }
+.admin .review-help { margin: 12px 0 0; color: var(--ink-3); font-size: 11px; line-height: 1.5; }
+.admin .review-recorded { margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--line); }
+.admin .review-recorded h4 { margin: 0; font-size: 14px; color: var(--ink); }
+.admin .review-recorded > p { margin: 4px 0 10px; color: var(--ink-3); font-size: 11px; line-height: 1.5; }
+.admin .review-recorded-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 0; border-top: 1px solid var(--surface-2); }
+.admin .review-recorded-row > div { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.admin .review-recorded-row strong { font-size: 13px; color: var(--ink); }
+.admin .review-recorded-row span { color: var(--ink-3); font-size: 11px; }
+.admin .review-recorded-row em { flex: none; font-style: normal; color: var(--ink-3); font-size: 11px; }
+.admin .review-recorded-row em.due { color: var(--danger); font-weight: 800; }
+.admin .review-how { display: flex; flex-direction: column; gap: 5px; margin-top: 18px; padding: 12px; background: var(--surface-2); border-radius: var(--radius-md); color: var(--ink-2); }
+.admin .review-how span { color: var(--ink-3); font-size: 12px; line-height: 1.5; }
+.admin .review-link { width: auto; align-self: flex-start; margin-top: 2px; padding: 0; }
+@media (max-width: 560px) {
+.admin .review-steps { align-items: flex-start; flex-direction: column; gap: 5px; }
+.admin .review-steps i { display: none; }
+.admin .review-actions { flex-direction: column; }
+.admin .review-actions button { width: 100%; }
+}

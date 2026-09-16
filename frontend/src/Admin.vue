@@ -9,6 +9,8 @@ import { initAdminWords, loadWords } from './adminWords.js'
 import AdminWords from './components/AdminWords.vue'
 import AdminInsights from './components/AdminInsights.vue'
 import AdminTasks from './components/AdminTasks.vue'
+import AdminApprove from './components/AdminApprove.vue'
+import AdminReview from './components/AdminReview.vue'
 import { initAdminEdit, useAdminEdit } from './adminEdit.js'
 import { Eye, Baby, Store, ClipboardCheck, BookOpen, MapPinned, Sun, Star, Check, ArrowLeft, BookMarked, Globe } from '@lucide/vue'
 
@@ -120,7 +122,6 @@ function snapBankGoal() { bankGoalSnap.value = { name: bankGoal.name, target: ba
 const weekly = ref({ days: [], weeks: [], by_subject: [], kids: [], total_earned: 0, total_spent: 0, net: 0, balance: 0, earned_all: 0, streak: 0, checkins: 0, week_start: '', week_end: '', insight: null, family_insight: null, mastered_by_kid: [], penalty_net: 0, penalty_count: 0 })
 const insights = ref({ rules: { test_fail_count: 2, test_fail_score: 80, drop_ratio: 0.3, streak_break: 2 }, kids: [] })
 const familyToday = ref({ today: '', kids: [] })
-const redeemFilter = ref('pending')
 const bankHistoryOpen = ref(false)
 const kidAddOpen = ref(false)
 const tasksRef = ref(null)  // 任务页子组件：脏条要调它的 isAddDirty/discardAdd/saveCurrentEdit
@@ -554,14 +555,6 @@ const unitsBySubject = computed(() => {
 })
 const tagFor = (id) => (catalog.value.tags || []).find(t => t.id === id) || { id, name: id }
 const tagName = (id) => tagFor(id).name
-function weakPointTiming(x) {
-  if (!x.review_due_at) return '等待安排'
-  const now = new Date()
-  const todayLocal = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
-  if (x.review_due_at <= todayLocal) return '今天要复习' // 后端 db.today() 是上海时区，这里不能用 UTC 的 toISOString
-  const [, month, day] = x.review_due_at.split('-')
-  return `下次：${Number(month)}月${Number(day)}日`
-}
 async function toggleTag(uid, tid) {
   const kid = selectedKid.value
   const prev = { ...(weakByUnit.value[uid] || {}) }
@@ -674,7 +667,6 @@ async function setCursor(subj, taskId) {
 
 async function switchKid() {
   setSelectedKid(selectedKid.value)
-  reviewSubject.value = ''
   emit('switched')
   await load()
 }
@@ -775,15 +767,6 @@ async function resetTestBands() {
   testBands.value = DEFAULT_TEST_BANDS.map(x => [...x])
   await saveTestBands()
 }
-const reviewSubject = ref('')
-const reviewSubjects = computed(() => {
-  const ids = [...new Set((reviewDue.value || []).map(x => x.subject_id).filter(Boolean))]
-  return ids
-})
-const filteredReviewDue = computed(() => {
-  const rows = reviewDue.value || []
-  return reviewSubject.value ? rows.filter(x => x.subject_id === reviewSubject.value) : rows
-})
 const familyTodayEmpty = computed(() => {
   const ks = familyToday.value.kids || []
   if (!ks.length) return ''
@@ -804,17 +787,6 @@ function goReviewKid(k) {
 }
 const currentKidName = computed(() => kids.value.find(k => k.id === selectedKid.value)?.name || '')
 const pendingRedeem = computed(() => (redemptions.value || []).filter(r => r.status === 'pending').length)
-const filteredRedemptions = computed(() => {
-  const rows = redemptions.value || []
-  if (redeemFilter.value === 'pending') return rows.filter(r => r.status === 'pending')
-  if (redeemFilter.value === 'done') return rows.filter(r => r.status === 'done')
-  return rows.filter(r => r.status !== 'pending' && r.status !== 'done')
-})
-const redeemEmptyText = computed(() => {
-  if (redeemFilter.value === 'pending') return '没有待同意的申请'
-  if (redeemFilter.value === 'done') return '没有待兑现的'
-  return '还没有结束的记录'
-})
 const pendingBankRequests = computed(() => (bankRequests.value || []).filter(r => r.status === 'pending'))
 const historyBankRequests = computed(() => (bankRequests.value || []).filter(r => r.status !== 'pending'))
 const reviewCount = computed(() => (reviewDue.value || []).length)
@@ -1056,46 +1028,15 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload)
       <main class="a-main">
 
     <!-- 今日复习 -->
-    <section v-if="section === 'review'" class="a-card enter">
-      <h3>今天复习 <span class="review-total">{{ reviewDue.length }} 项</span></h3>
-      <div v-if="reviewDue.length && reviewSubjects.length > 1" class="subj-tabs review-filter">
-        <button type="button" :class="['subj-tab', { on: !reviewSubject }]" @click="reviewSubject = ''">全部</button>
-        <button v-for="sid in reviewSubjects" :key="sid" type="button"
-          :class="['subj-tab', { on: reviewSubject === sid }]" @click="reviewSubject = sid">{{ subjectName(sid) }}</button>
-      </div>
-      <div v-if="!reviewDue.length && !weakPoints.length" class="review-empty">
-        <strong>没有薄弱考点</strong>
-        <button class="ghost-s review-link" @click="goSection('unit-task')">去记录 →</button>
-      </div>
-      <div v-else-if="!reviewDue.length" class="review-empty">
-        <strong>今天没有到期复习</strong>
-      </div>
-      <div v-else-if="!filteredReviewDue.length" class="review-empty">
-        <strong>这一科今天没有复习</strong>
-      </div>
-      <div v-for="x in filteredReviewDue" :key="x.id" class="review-item">
-        <div class="review-item-info">
-          <span class="review-item-title">{{ x.tag_name }}</span>
-          <span class="dim">{{ subjectName(x.subject_id) }} · {{ x.unit_name }} · 第 {{ (x.interval_idx || 0) + 1 }} 次复习</span>
-        </div>
-        <div class="review-actions">
-          <button class="ok" @click="judge(x.id, 'pass')">会了</button>
-          <button class="del" @click="judge(x.id, 'fail')">还不熟</button>
-          <button class="ok ghost-o" @click="judge(x.id, 'done')">已掌握</button>
-        </div>
-      </div>
-
-      <div v-if="weakPoints.length" class="review-recorded">
-        <h4>已记录的薄弱考点</h4>
-        <div v-for="x in weakPoints" :key="x.id" class="review-recorded-row">
-          <div>
-            <strong>{{ x.tag_name }}</strong>
-            <span>{{ subjectName(x.subject_id) }} · {{ x.unit_name }}</span>
-          </div>
-          <em :class="{ due: reviewDue.some(r => r.id === x.id) }">{{ weakPointTiming(x) }}</em>
-        </div>
-      </div>
-    </section>
+    <AdminReview
+      v-if="section === 'review'"
+      :review-due="reviewDue"
+      :weak-points="weakPoints"
+      :kid="selectedKid"
+      :subject-name="subjectName"
+      @judge="judge"
+      @go-section="goSection"
+    />
 
     <!-- 概览：全家今日 + 本周盯点 -->
     <AdminInsights
@@ -1281,34 +1222,13 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload)
     </section>
 
     <!-- 审批 -->
-    <section v-if="section === 'approve'" class="a-card enter">
-      <h3>兑换审批与兑现</h3>
-      <div class="subj-tabs review-filter">
-        <button type="button" :class="['subj-tab', { on: redeemFilter === 'pending' }]" @click="redeemFilter = 'pending'">待同意</button>
-        <button type="button" :class="['subj-tab', { on: redeemFilter === 'done' }]" @click="redeemFilter = 'done'">待兑现</button>
-        <button type="button" :class="['subj-tab', { on: redeemFilter === 'ended' }]" @click="redeemFilter = 'ended'">已结束</button>
-      </div>
-      <div v-if="!filteredRedemptions.length" class="dim">{{ redeemEmptyText }}</div>
-      <div class="apv-row" v-for="rd in filteredRedemptions" :key="rd.id">
-        <div class="apv-info">
-          <span class="apv-name">{{ rd.name }}</span>
-          <span class="dim">{{ rd.date }} · -{{ rd.price }} <Sun class="ico sun" :size="12" /></span>
-        </div>
-        <div class="apv-right">
-          <template v-if="rd.status === 'pending'">
-            <span class="st pending">待同意</span>
-            <button class="ok" @click="approveRedeem(rd.id)">同意</button>
-            <button class="del" @click="rejectRedeem(rd.id)">拒绝</button>
-          </template>
-          <template v-else-if="rd.status === 'done'">
-            <span class="st done">已扣阳光</span>
-            <button class="ok ghost-o" @click="deliverRedeem(rd.id)">标记已兑现</button>
-          </template>
-          <span v-else-if="rd.status === 'rejected'" class="st pending">已拒绝</span>
-          <span v-else class="st delivered">已兑现 <Check class="ico" :size="12" /></span>
-        </div>
-      </div>
-    </section>
+    <AdminApprove
+      v-if="section === 'approve'"
+      :redemptions="redemptions"
+      @approve="approveRedeem"
+      @reject="rejectRedeem"
+      @deliver="deliverRedeem"
+    />
 
     <!-- 等级 -->
     <section v-if="section === 'shop'" class="a-card enter">
@@ -1575,7 +1495,6 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload)
 }
 .kid-switch button.on { background: #fff; color: var(--brand-deep); }
 .kid-one { font-weight: 700; font-size: 14px; opacity: .95; }
-.review-date { max-width: 220px; margin-bottom: 10px; }
 .invite-code { font-family: ui-monospace, monospace; font-weight: 700; font-size: 14px; }
 .a-term { display: block; margin-top: 8px; font-size: 12px; }
 .a-term select { margin-left: 6px; padding: 4px 8px; border-radius: var(--radius-sm); border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
@@ -1608,36 +1527,8 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload)
 }
 .chip.on { background: var(--accent); color: #fff; border-color: var(--accent); }
 .pen-amt { font-weight: 800; color: var(--danger); font-variant-numeric: tabular-nums; }
-.review-total { color: var(--accent-ink); font-size: 13px; font-weight: 800; }
-.review-steps { display: flex; align-items: center; gap: 7px; margin: 0 0 16px; padding: 10px 12px; background: var(--surface-2); border-radius: var(--radius-md); color: var(--ink-2); font-size: 12px; }
-.review-steps b { display: inline-flex; width: 20px; height: 20px; align-items: center; justify-content: center; margin-right: 4px; border-radius: var(--radius-circle); background: var(--brand); color: #fff; font-size: 11px; }
-.review-steps i { color: var(--ink-3); font-style: normal; }
-.review-empty { display: flex; flex-direction: column; gap: 4px; padding: 18px 0 8px; color: var(--ink-2); }
-.review-empty span { color: var(--ink-3); font-size: 12px; }
-.review-item { padding: 12px 0; border-top: 1px solid var(--surface-2); }
-.review-item-info { display: flex; flex-direction: column; gap: 4px; }
-.review-item-title { font-size: 15px; font-weight: 800; color: var(--ink); }
-.review-actions { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 10px; }
-.review-actions button { font-size: 12px; }
-.review-help { margin: 12px 0 0; color: var(--ink-3); font-size: 11px; line-height: 1.5; }
-.review-recorded { margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--line); }
-.review-recorded h4 { margin: 0; font-size: 14px; color: var(--ink); }
-.review-recorded > p { margin: 4px 0 10px; color: var(--ink-3); font-size: 11px; line-height: 1.5; }
-.review-recorded-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 0; border-top: 1px solid var(--surface-2); }
-.review-recorded-row > div { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-.review-recorded-row strong { font-size: 13px; color: var(--ink); }
-.review-recorded-row span { color: var(--ink-3); font-size: 11px; }
-.review-recorded-row em { flex: none; font-style: normal; color: var(--ink-3); font-size: 11px; }
-.review-recorded-row em.due { color: var(--danger); font-weight: 800; }
-.review-how { display: flex; flex-direction: column; gap: 5px; margin-top: 18px; padding: 12px; background: var(--surface-2); border-radius: var(--radius-md); color: var(--ink-2); }
-.review-how span { color: var(--ink-3); font-size: 12px; line-height: 1.5; }
-.review-link { width: auto; align-self: flex-start; margin-top: 2px; padding: 0; }
 @media (max-width: 560px) {
   .admin { padding: 10px; padding-top: calc(10px + env(safe-area-inset-top)); }
-  .review-steps { align-items: flex-start; flex-direction: column; gap: 5px; }
-  .review-steps i { display: none; }
-  .review-actions { flex-direction: column; }
-  .review-actions button { width: 100%; }
 }
 .a-item { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 8px 0; border-bottom: 1px solid var(--surface-2); }
 .a-item.add { border-top: 1px dashed var(--line); margin-top: 8px; padding-top: 12px; }
@@ -1646,10 +1537,6 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload)
 .a-item input:focus, .a-item select:focus { outline: none; border-color: var(--brand); }
 .w-name { flex: 1; min-width: 120px; }
 .w-cat { width: 90px; }
-.st { font-size: 11px; padding: 3px 9px; border-radius: var(--radius-sm); font-weight: 700; white-space: nowrap; }
-.st.pending { background: var(--warm); color: var(--accent-ink); }
-.st.done { background: var(--surface-2); color: var(--brand-deep); }
-.st.delivered { background: var(--ok-bg); color: var(--ok); }
 .toast { position: fixed; left: 50%; bottom: 30px; transform: translateX(-50%); background: rgba(31,59,85,.92); color: #fff; padding: 10px 18px; border-radius: var(--radius-pill); font-size: 14px; z-index: 20; }
 
 .pen-sum { margin: 12px 0 4px; }
