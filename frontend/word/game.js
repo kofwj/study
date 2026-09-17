@@ -9,7 +9,7 @@
 // components/WordPractice.vue），/api/words/game/start 也一直在返回这三个值，这一页以前没用。
 // 现在：认一认自动念、连一连点左边念、写完后各念一遍，默写时另有「🔊 听一听」当提示（比「看一眼」轻）。
 // 拼写判分用 src/wordSpell.js；题型/小关规则用 src/wordGame.js（有单测）。
-import { slotCells, assembleSpelling, lettersOf } from '../src/wordSpell.js'
+import { slotCells, assembleSpelling, typedOf } from '../src/wordSpell.js'
 import {
   streakUpdate, planSession, buildOptions, buildMatchBoard, shuffleQueue, chunkLevels, levelEnds,
 } from '../src/wordGame.js'
@@ -196,9 +196,10 @@ function renderSlots(cls) {
    为什么不用输入框自己的光标：**平板（Android WebView）会把插入点钉在最前面**，
    于是按顺序敲 g-o-o-d 会显示成 d-o-o-g。所以这里只把输入框当「按键来源」：
    每次读完立刻清空它，字符插到我们自己维护的 letters 上的 caret 处 —— 平台怎么插都不影响。 */
+// 只收「要孩子敲的字符」：字母 + 撇号（弯撇号折成直的）。
+// 这里的 letters 是**要敲的字符**，不是「字母」—— 撇号也在这条线上（v0.3.66 改）。
 function insertLetters(chars) {
-  for (const ch of String(chars || '')) {
-    if (!/[A-Za-z]/.test(ch)) continue
+  for (const ch of typedOf(chars)) {
     if (state.caret < state.letters.length) {
       state.letters = state.letters.slice(0, state.caret) + ch + state.letters.slice(state.caret + 1)
     } else {
@@ -282,7 +283,7 @@ function askSpell() {
   state.phase = 'ask'
   $('feedback').innerHTML = ''
   $('cn').textContent = item.cn || ''
-  $('hint').textContent = '按中文写出英文，只敲字母就行（空格和标点会自动补）'
+  $('hint').textContent = '按中文写出英文。字母和撇号要自己敲，空格和句号会自动补'
   renderActions()
   renderSlots('')
   focusInput()
@@ -487,7 +488,7 @@ function check() {
   if (state.busy || state.phase !== 'ask' || !state.item) return
   if (!state.step || state.step.kind !== 'spell') return
   const text = assembleSpelling(state.item.word, state.letters)
-  if (!lettersOf(state.letters)) { $('hint').textContent = '先写一写'; focusInput(); return }
+  if (!typedOf(state.letters)) { $('hint').textContent = '先写一写'; focusInput(); return }
   hideErr()
   submit(text, state.retryNext)
 }
@@ -667,7 +668,7 @@ $('input').addEventListener('input', (e) => {
   if (type.indexOf('delete') === 0) {
     backspaceLetter()
   } else {
-    insertLetters(lettersOf(diffInserted(state.buf, raw)))
+    insertLetters(typedOf(diffInserted(state.buf, raw)))
   }
   clearBuf()                       // 读完就清空：平台的插入位置从此与我们无关
   renderSlots('')

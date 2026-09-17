@@ -874,20 +874,25 @@ def _accepts(raw):
     return [normalize_word(x) for x in arr if normalize_word(x)]
 
 
-def _letters_only(raw):
-    """只留字母（并小写）：空格、标点、撇号、大小写都不参与拼写判分。
-    页面本来就只让孩子敲字母（标点由答案带出），所以判分也只比字母 —— v0.3.58 起。
-    这样即使前端版本旧（撇号还当字母槽）、或答案里的标点换了写法，也不会把孩子判错。"""
-    return "".join(ch for ch in (raw or "").lower() if "a" <= ch <= "z")
+def _typed_only(raw):
+    """只留**孩子要敲的字符**：字母 + 撇号（弯撇号 ’ 折成直撇号 '，大小写不算）。
+
+    空格、句号、问号、逗号这些由答案带出，不参与判分。
+    **撇号要参与** —— 它是单词的一部分（`let's` / `It's` / `o'clock`），自动补等于孩子永远没练过它；
+    v0.3.66 改。v0.3.58 曾把撇号也抹掉（那时撇号在页面上看不见，孩子按槽位敲会整串错位一格）——
+    现在页面上撇号是**看得见、必须填**的格子，那个 bug 不会回来。
+    前端同口径：`frontend/src/wordSpell.js` 的 `typedOf`，两边都有测试钉住。"""
+    t = (raw or "").replace("\u2018", "'").replace("\u2019", "'").lower()
+    return "".join(ch for ch in t if ("a" <= ch <= "z") or ch == "'")
 
 
 def _spell_ok(text, word_row):
-    got = _letters_only(text)
+    got = _typed_only(text)
     if not got:
         return False
-    if got == _letters_only(word_row["word_norm"] or ""):
+    if got == _typed_only(word_row["word_norm"] or ""):
         return True
-    return any(got == _letters_only(x) for x in _accepts(word_row["accept_json"]))
+    return any(got == _typed_only(x) for x in _accepts(word_row["accept_json"]))
 
 
 def _load_word(c, fam, word_id):

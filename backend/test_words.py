@@ -283,38 +283,49 @@ def test_spell_srs_retry_and_normalize():
 
 
 
-def test_spell_judge_only_compares_letters():
-    """v0.3.58：拼写判分只看字母 —— 空格、标点、撇号、大小写都不参与。
-    起因：`It's your turn.` 里的撇号被前端当成「要敲的字母槽」，槽位上看不见，
-    孩子按槽位敲（不敲撇号）整串就错位一格（Itsy ourt urn.）→ 怎么改都判错。"""
+def test_spell_judge_requires_apostrophe_but_not_sentence_punctuation():
+    """v0.3.66 口径：**字母和撇号都算数**，空格/句末标点不算。
+    撇号是单词的一部分（let's / It's / o'clock）—— 漏敲要判错，弯撇号 ’ 要算对。"""
     def row(word, accept=()):
         return {"word_norm": wordmod.normalize_word(word),
                 "accept_json": wordmod.accept_json_of({"accept": list(accept)})}
 
-    apostrophe = row("It's your turn.")
-    for said in ["It's your turn.", "its your turn", "ITSYOURTURN", "itsyourturn",
-                 "It’s your turn.", "  it's   your turn.  ", "Itsyourturn."]:
-        assert wordmod._spell_ok(said, apostrophe) is True, said
-    for wrong in ["", "   ", "...", "itsyourtur", "itsyourturnn", "whose turn", "zzz"]:
-        assert wordmod._spell_ok(wrong, apostrophe) is False, wrong
+    it = row("It's your turn.")
+    # 对：敲了撇号（直的弯的、大小写、空格、末尾句号都不计较）
+    for said in ["It's your turn.", "it's your turn", "IT'SYOURTURN", "it's your turn.",
+                 "It\u2019s your turn.", "  it's   your turn.  "]:
+        assert wordmod._spell_ok(said, it) is True, said
+    # 错：漏了撇号（这才是练它的意义）
+    for wrong in ["its your turn", "itsyourturn", "Its your turn.", "Itsyourturn."]:
+        assert wordmod._spell_ok(wrong, it) is False, wrong
+    # 错：真错了的地方照样错
+    for wrong in ["", "   ", "...", "it's your tur", "it's your turnn", "it's whose turn"]:
+        assert wordmod._spell_ok(wrong, it) is False, wrong
 
+    # 句末标点仍然免敲
     period = row("Good morning.")
     assert wordmod._spell_ok("good morning", period) is True
     assert wordmod._spell_ok("goodmorning.", period) is True
     assert wordmod._spell_ok("good evening", period) is False
 
-    # accept 里的其它写法同样只比字母
-    both = row("colour", ["color"])
-    assert wordmod._spell_ok("color", both) is True
-    assert wordmod._spell_ok("colour", both) is True
-    assert wordmod._spell_ok("colr", both) is False
+    # 撇号居中：o'clock
+    oclock = row("o'clock")
+    assert wordmod._spell_ok("o'clock", oclock) is True
+    assert wordmod._spell_ok("o\u2019clock", oclock) is True
+    assert wordmod._spell_ok("oclock", oclock) is False
+
+    # accept 里的其它写法同口径：也要带撇号
+    both = row("don't", ["do not"])
+    assert wordmod._spell_ok("don't", both) is True
+    assert wordmod._spell_ok("dont", both) is False
+    assert wordmod._spell_ok("do not", both) is True     # accept 里那条本来就靠空格分隔，免敲
 
 
-def test_letters_only_typing_is_always_right():
-    """整条链路复现：带撇号的句型当到期词，孩子只敲字母 → 必须判对（v0.3.58 之前必错）。"""
+def test_apostrophe_round_trip_through_the_api():
+    """整条链路：带撇号的词当到期词，孩子**敲了撇号**判对、**漏敲**判错。"""
     db.init_db()
     with TestClient(main.app) as cli:
-        kid = _parent(cli, "ws9", "wordpass", "字母家")
+        kid = _parent(cli, "ws9", "wordpass", "撇号家")
         _enable(cli, new_per_day=10)
         c = db.connect()
         row = c.execute("SELECT id, word FROM words WHERE word LIKE 'It''s%'").fetchone()
@@ -331,16 +342,21 @@ def test_letters_only_typing_is_always_right():
         target = next((x for x in items if x["word_id"] == row["id"]), None)
         assert target, [x["word"] for x in items]
         assert not target["word"].isalpha()          # 库里这条确实带标点/撇号
-        said = "".join(ch for ch in target["word"] if ch.isascii() and ch.isalpha())
+        # 敲「字母 + 撇号」（句末标点和空格免敲）→ 判对
+        said = "".join(ch for ch in target["word"] if ch.isascii() and (ch.isalpha() or ch == "'"))
+        assert "'" in said, said
         r = _spell(cli, sid, target, text=said)
         assert r.status_code == 200 and r.json()["result"] == "right", (target["word"], said, r.text)
-        # 这一局其余的词也一样：只敲字母一律判对
+        # 同一份答案漏掉撇号 → 判分必须为假
+        assert wordmod._spell_ok(said.replace("'", ""), {
+            "word_norm": target["word"].lower(), "accept_json": "[]"}) is False
+        # 这一局其余的词也一样：敲「字母 + 撇号」一律判对
         for it in items:
             if it["word_id"] == row["id"]:
                 continue
-            said = "".join(ch for ch in it["word"] if ch.isascii() and ch.isalpha())
-            r = _spell(cli, sid, it, text=said)
-            assert r.status_code == 200 and r.json()["result"] == "right", (it["word"], said, r.text)
+            typed = "".join(ch for ch in it["word"] if ch.isascii() and (ch.isalpha() or ch == "'"))
+            r = _spell(cli, sid, it, text=typed)
+            assert r.status_code == 200 and r.json()["result"] == "right", (it["word"], typed, r.text)
 
 def test_complete_reward_idempotent_and_snapshot():
     db.init_db()
