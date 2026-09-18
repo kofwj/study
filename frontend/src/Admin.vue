@@ -827,7 +827,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload)
           <option value="女">女</option>
         </select>
       </label>
-      <button class="ok wide" :disabled="setupBusy" @click="finishSetup">{{ setupBusy ? '正在创建…' : '创建并进入' }}</button>
+      <button class="ok wide lg" :disabled="setupBusy" @click="finishSetup">{{ setupBusy ? '正在创建…' : '创建并进入' }}</button>
       <p v-if="toast" class="dim">{{ toast }}</p>
     </div>
   </div>
@@ -835,7 +835,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload)
     <div class="a-card enter setup-card">
       <h3>找回码</h3>
       <p class="recovery-code">{{ shownRecovery }}</p>
-      <button class="ok wide" @click="dismissRecovery">我已抄好，进入工作台</button>
+      <button class="ok wide lg" @click="dismissRecovery">我已抄好，进入工作台</button>
     </div>
   </div>
   <div v-else class="admin">

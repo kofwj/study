@@ -37,9 +37,13 @@ async function main() {
   if (warns.length) console.log(warns.slice(0, 8).join('\n---\n'))
   for (const s of need) console.log('  ' + (html.includes(s) ? 'OK   ' : '缺失 ') + s)
   // 开关状态：显示学科 3 个（语文开 / 数学开 / 英语关）+ 进度锁开 + 阳光图鉴开 + 秘密基地关
-  const on = (html.match(/class="toggle on"/g) || []).length
-  const off = (html.match(/class="toggle"/g) || []).length
-  console.log('  开关：on ' + on + ' / off ' + off + '（期望 4 / 2）')
+  // 这里以前数的是「.toggle 文字按钮」，换成 AdminSwitch 之后那两行永远 0/0、看着通过其实什么都没验，
+  // 所以改成数真的开关：role="switch" 的个数 + aria-checked 的真假。对不上就打「缺失」→ run_ssr.sh 会红。
+  const swCount = (html.match(/role="switch"/g) || []).length
+  const swOn = (html.match(/aria-checked="true"/g) || []).length
+  const swOff = (html.match(/aria-checked="false"/g) || []).length
+  const swOk = swCount === 6 && swOn === 4 && swOff === 2
+  console.log('  ' + (swOk ? 'OK   ' : '缺失 ') + '开关：' + swCount + ' 个 / on ' + swOn + ' / off ' + swOff + '（期望 6 / 4 / 2）')
   console.log('  渲染出 undefined 的次数 ' + (html.match(/undefined/g) || []).length)
 }
 main()

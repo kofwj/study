@@ -1,5 +1,34 @@
 # 更新记录
 
+## 2026-09-18 v0.3.67 - 家长工作台：开关换成真开关 + 按钮高度统一
+
+- **开关**：家长端「开 / 关」以前是带文字的胶囊按钮（`.admin .toggle`），每处还要自己写
+  `{{ x ? '开' : '关' }}`，状态文字在行里常常再重复一遍。现在统一成新的
+  `frontend/src/components/AdminSwitch.vue` —— 开 = **品牌蓝 `var(--brand)` 实心胶囊 + 白色圆钮**（滑到右边），
+  关 = **iOS 那种浅灰轨道（`#e9e9ea`）+ 白钮在左**（浅灰在白卡片上本来就淡，所以靠一圈 16% 的内描边
+  定住形状、钮带阴影，和 iOS 一样）；48×28（`size="sm"` 备用 40×24），圆钮 `translateX(--sw-w - --sw-h)` 用 `--spring` 滑过去；
+  按下时整块不缩放，动的是里面那颗钮。无障碍：原生 `<button>` + `role="switch"` + `aria-checked`，
+  Tab 可聚焦、Enter/Space 可切；`label` 只给读屏（开关左侧本来就有说明文字，不再重复渲染）。
+- 替换 **14 处**：家庭 3（邀请码保护 / 打卡时间窗 / 储蓄所营业）、英语单词 4（单词练习 / 词书锁 / 朗读 / 自动读）、
+  阳光 3（银行 / 利息 / 扣分）、已学到 4（显示学科 / 进度锁 / 图鉴 / 基地）。
+  事件接法不变：值归壳的那几处继续 `$emit`，本页即时保存的仍直接调；阳光页利息开关从模板里那行
+  `enabled = !enabled; saveBankInterest()` 收进 `toggleInterest()`。
+- **按钮统一**：在这之前「保存 / 确认 / 添加 / 删除 / 批准」各写各的 padding，高 30–34px、
+  圆角 md 和 lg 混着来，同一行里也一高一矮。现在收成一套（`adminBase.css`）：
+  动作按钮 `.ok` / `.del` / `.sec` **高 34px、圆角 md、14px 字**；整页主 CTA 单独一档 `.ok.lg`（44px，
+  只用在「创建并进入 / 我已抄好」这种单独一张卡的按钮）；表格里那种极小「×」用 `.del.xs`（28px，
+  任务页破纪录指标两处）；次要文字按钮（取消 / 改 / 放弃 / 撤回）在 `.ops` / `.apv-right` / `.w-next` /
+  阈值行（`.band-actions`）里对齐 34px；筛选件 `.chip`（扣分筹码）与 `.subj-tab`（科目 tab）统一 32px。
+  另外三处收口：复习页三个动作按钮（会了 / 还不熟 / 已掌握）删掉 12px 覆盖、跟统一字阶走；
+  `.sec:disabled` 的 0.6 与 `.ok/.del` 的 0.55 合成一套；总览卡片里那个 `<span class="ok fam-go">去复习</span>`
+  单独压成 26px 小片（卡片本身是 `<button>`，span 不能再嵌 button，但也不该长得像主按钮）。
+  顺手删掉重复定义的 `.admin .sec` padding/圆角和重复的 `.admin .ok.wide`。
+- 体检：`bash scripts/admin-refactor/run_checks.sh --with-ssr` **退出码 0**（23 个子组件样式行 0 个「拿不到样式」；
+  20 个 SSR 用例 0 警告 / 0 缺失 / 0 个 undefined），`bash scripts/smoke_frontend.sh` 通过（1893 modules，1.02s）。
+- ⚠️ 顺带修了体检自己的一个**哑火点**：`ssr-cursor.mjs` 原来数的是 `class="toggle on"` / `class="toggle"`，
+  开关换组件之后那行会永远 `on 0 / off 0`「看着通过、其实什么都没验」。现在改成数 `role="switch"` 的个数
+  加 `aria-checked` 的真假（期望 6 个 / on 4 / off 2），对不上就打「缺失」，`run_ssr.sh` 会红。
+
 ## 2026-09-16 v0.3.66 - 英语默写：撇号要孩子自己敲
 
 - 家长反馈「英语单词的撇号还是要自己输入」：`let's` / `It's` / `o'clock` 这种**撇号是单词的一部分**，

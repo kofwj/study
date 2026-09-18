@@ -4,6 +4,7 @@
 // 这一页四个开关都是即时保存，动作仍由工作台执行（含切孩子在途请求的守卫），子组件只 emit。
 import { computed } from 'vue'
 import { SUBJECT_ORDER } from '../format.js'
+import AdminSwitch from './AdminSwitch.vue'
 
 const props = defineProps({
   cursors: { type: Object, default: () => ({}) },
@@ -54,24 +55,24 @@ function subjectShown(id) {
       <div class="lock-row" v-for="s in displaySubjects" :key="'vis-' + s.id">
         <span class="badge">{{ s.name }}</span>
         <span class="grow">孩子端显示</span>
-        <button type="button" :class="['toggle', { on: subjectShown(s.id) }]" @click="$emit('set-subject-visible', s.id)">{{ subjectShown(s.id) ? '开' : '关' }}</button>
+        <AdminSwitch :model-value="subjectShown(s.id)" :label="s.name + ' 孩子端显示'" @update:model-value="$emit('set-subject-visible', s.id)" />
       </div>
       <div class="lock-row mt14">
         <span class="badge">进度锁</span>
         <span class="grow">只让打「当前单元」</span>
-        <button :class="['toggle', { on: progressLock }]" @click="$emit('toggle-lock')">{{ progressLock ? '开' : '关' }}</button>
+        <AdminSwitch :model-value="progressLock" label="进度锁" @update:model-value="$emit('toggle-lock')" />
       </div>
       <h4 class="w-h">图鉴与基地</h4>
       <p class="dim">给 {{ kidName || '当前孩子' }} 用。关掉图鉴后，连击宝箱只给阳光；秘密基地仍在，孩子端显示「建设中」。</p>
       <div class="lock-row">
         <span class="badge">阳光图鉴</span>
         <span class="grow">连击宝箱会孵出阳光精灵，进图鉴。关掉则宝箱只给阳光。</span>
-        <button type="button" :class="['toggle', { on: spriteCfg.enabled }]" @click="$emit('save-sprites-cfg', { enabled: !spriteCfg.enabled })">{{ spriteCfg.enabled ? '开' : '关' }}</button>
+        <AdminSwitch :model-value="spriteCfg.enabled" label="阳光图鉴" @update:model-value="$emit('save-sprites-cfg', { enabled: !spriteCfg.enabled })" />
       </div>
       <div class="lock-row">
         <span class="badge">秘密基地</span>
         <span class="grow">精灵住进天台/树屋/云上，星尘可以买小玩具。关掉则图鉴只显示格子。</span>
-        <button type="button" :class="['toggle', { on: spriteCfg.base_enabled }]" @click="$emit('save-sprites-cfg', { base_enabled: !spriteCfg.base_enabled })">{{ spriteCfg.base_enabled ? '开' : '关' }}</button>
+        <AdminSwitch :model-value="spriteCfg.base_enabled" label="秘密基地" @update:model-value="$emit('save-sprites-cfg', { base_enabled: !spriteCfg.base_enabled })" />
       </div>
     </section>
 </template>

@@ -283,7 +283,7 @@ defineExpose({ isAddDirty, discardAdd, saveCurrentEdit })
             </select>
           </label>
           <label class="fld grow"><span>记录说明</span><input v-model="m.note" placeholder="如：只记完整正确的次数" /></label>
-          <button class="del" @click="newDaily.metrics.splice(i, 1)">×</button>
+          <button class="del xs" @click="newDaily.metrics.splice(i, 1)">×</button>
         </div>
         <button class="ghost-s" @click="addMetric(newDaily.metrics)">＋加破纪录指标</button>
         <div class="mt10"><button class="ok wide" @click="addDaily">＋新增任务</button></div>
@@ -332,7 +332,7 @@ defineExpose({ isAddDirty, discardAdd, saveCurrentEdit })
                   </select>
                 </label>
                 <label class="fld grow"><span>记录说明</span><input v-model="m.note" placeholder="如：只记完整正确的次数" /></label>
-                <button class="del" @click="d.metrics.splice(i, 1)">×</button>
+                <button class="del xs" @click="d.metrics.splice(i, 1)">×</button>
               </div>
             </div>
             <button class="ghost-s" @click="addMetric(d.metrics)">＋加破纪录指标</button>

@@ -7,6 +7,7 @@ import { Star } from '@lucide/vue'
 import { api } from '../api.js'
 import { rankIcon } from '../icons.js'
 import { useAdminEdit } from '../adminEdit.js'
+import AdminSwitch from './AdminSwitch.vue'
 
 const props = defineProps({
   rewards: { type: Array, default: () => [] },
@@ -114,6 +115,12 @@ async function saveBankInterest() {
   } catch (e) { props.showToast(e.message) }
   finally { busy.value = false }
 }
+// 利息开关：原来在模板里写成一行 `enabled = !enabled; saveBankInterest()`，
+// 换成 AdminSwitch 后收进函数，模板里只留一个事件名。
+function toggleInterest() {
+  props.bankInterest.enabled = !props.bankInterest.enabled
+  saveBankInterest()
+}
 async function bankGoalDeliver() {
   if (!confirm('确认这个目标已经兑现？')) return
   try { Object.assign(props.bankData, await api.admin.deliverBankGoal()); props.showToast('已标记兑现') }
@@ -189,7 +196,7 @@ defineExpose({ isAddDirty, discardAdd, saveCurrentEdit })
       <div class="lock-row">
         <span class="badge">孩子端开关</span>
         <span class="grow">关闭后不显示入口，余额和目标保留</span>
-        <button type="button" :class="['toggle', { on: bankData.enabled }]" @click="toggleBank" :disabled="bankBusy">{{ bankData.enabled ? '开' : '关' }}</button>
+        <AdminSwitch :model-value="bankData.enabled" label="阳光银行" :disabled="bankBusy" @update:model-value="toggleBank" />
       </div>
       <div class="sun-hero bank-admin-hero">
         <div class="sun-box"><span>银行余额</span><b>{{ bankData.balance }}</b></div>
@@ -222,7 +229,7 @@ defineExpose({ isAddDirty, discardAdd, saveCurrentEdit })
       <div class="lock-row">
         <span class="badge">利息开关</span>
         <span class="grow">关闭后不再结算利息</span>
-        <button type="button" :class="['toggle', { on: bankInterest.enabled }]" @click="bankInterest.enabled = !bankInterest.enabled; saveBankInterest()" :disabled="bankBusy">{{ bankInterest.enabled ? '开' : '关' }}</button>
+        <AdminSwitch :model-value="bankInterest.enabled" label="利息开关" :disabled="bankBusy" @update:model-value="toggleInterest" />
       </div>
       <div v-if="bankInterest.enabled" class="frm-row">
         <label class="fld"><span>结算周期</span>
@@ -259,7 +266,7 @@ defineExpose({ isAddDirty, discardAdd, saveCurrentEdit })
       <div class="lock-row">
         <span class="badge">扣分开关</span>
         <span class="grow">{{ penaltyEnabled ? '已开' : '未开' }}</span>
-        <button v-if="isOwner" :class="['toggle', { on: penaltyEnabled }]" @click="$emit('toggle-penalty')">{{ penaltyEnabled ? '已开' : '未开' }}</button>
+        <AdminSwitch v-if="isOwner" :model-value="penaltyEnabled" label="扣分开关" @update:model-value="$emit('toggle-penalty')" />
         <span v-else class="dim">只有创建者能开关</span>
       </div>
       <template v-if="penaltyEnabled">

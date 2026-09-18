@@ -3,6 +3,7 @@
 // 数据与请求在 ../adminWords.js（模块级单例），这样侧栏来回切换不会重拉
 import { ref, watch } from 'vue'
 import { useAdminWords } from '../adminWords.js'
+import AdminSwitch from './AdminSwitch.vue'
 
 const props = defineProps({
   kid: { type: String, default: '' },
@@ -69,7 +70,7 @@ const {
       <div class="lock-row mt14">
         <span class="badge">单词练习</span>
         <span class="grow">孩子端显示今日单词</span>
-        <button type="button" :class="['toggle', { on: wordCfg.enabled }]" @click="saveWordNow({ enabled: !wordCfg.enabled })">{{ wordCfg.enabled ? '开' : '关' }}</button>
+        <AdminSwitch :model-value="wordCfg.enabled" label="单词练习" @update:model-value="saveWordNow({ enabled: !wordCfg.enabled })" />
       </div>
       <div class="frm-row mt14">
         <label class="fld grow"><span>复习范围</span>
@@ -132,17 +133,17 @@ const {
       <div v-if="wordCfg.review_mode === 'current'" class="lock-row mt14">
         <span class="badge">词书锁</span>
         <span class="grow">系统词书跟着英语「已学到」</span>
-        <button type="button" :class="['toggle', { on: wordCfg.unlock_by_cursor }]" @click="saveWordNow({ unlock_by_cursor: !wordCfg.unlock_by_cursor })">{{ wordCfg.unlock_by_cursor ? '开' : '关' }}</button>
+        <AdminSwitch :model-value="wordCfg.unlock_by_cursor" label="词书锁" @update:model-value="saveWordNow({ unlock_by_cursor: !wordCfg.unlock_by_cursor })" />
       </div>
       <div class="lock-row">
         <span class="badge">朗读</span>
         <span class="grow">看词页听读音</span>
-        <button type="button" :class="['toggle', { on: wordCfg.tts }]" @click="saveWordNow({ tts: !wordCfg.tts })">{{ wordCfg.tts ? '开' : '关' }}</button>
+        <AdminSwitch :model-value="wordCfg.tts" label="朗读" @update:model-value="saveWordNow({ tts: !wordCfg.tts })" />
       </div>
       <div class="lock-row">
         <span class="badge">自动读</span>
         <span class="grow">进入看词页读一次（默写不出声）</span>
-        <button type="button" :class="['toggle', { on: wordCfg.tts_autoplay }]" @click="saveWordNow({ tts_autoplay: !wordCfg.tts_autoplay })">{{ wordCfg.tts_autoplay ? '开' : '关' }}</button>
+        <AdminSwitch :model-value="wordCfg.tts_autoplay" label="自动读" @update:model-value="saveWordNow({ tts_autoplay: !wordCfg.tts_autoplay })" />
       </div>
       <div class="frm-row">
         <label class="fld w104"><span>口音</span>

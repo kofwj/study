@@ -46,10 +46,9 @@
 .admin .dim { color: var(--ink-3); font-size: 12px; }
 .admin .unit-wp-count { margin-left: 6px; color: var(--accent-ink); font-size: 11px; font-weight: 700; }
 
-/* —— 开关行 / 开关 —— */
+/* —— 开关行（开关本体是 components/AdminSwitch.vue，这里只管这一行的排版）—— */
 .admin .lock-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; color: var(--ink-2); font-weight: 700; }
-.admin .toggle { border: none; background: var(--surface-2); color: var(--ink-2); padding: 7px 16px; border-radius: var(--radius-pill); font-weight: 800; cursor: pointer; font-family: inherit; }
-.admin .toggle.on { background: var(--accent); color: #fff; }
+.admin .lock-row .badge { flex: none; }
 
 /* —— 表单列宽 —— */
 .admin .w-num { width: 70px; }
@@ -60,9 +59,40 @@
 .admin .badge.scope { font-weight: 600; }
 .admin .badge.scope.kid { background: var(--brand-deep); color: #fff; }
 .admin .rank-icon { font-size: 18px; }
-.admin .ok { padding: 7px 14px; border: none; border-radius: var(--radius-md); background: var(--accent); color: #fff; font-weight: 700; cursor: pointer; font-family: inherit; }
+/* —— 动作按钮统一（一套高度 / 一套圆角 / 一套字号）——
+   在这之前每个页面的「保存 / 确认 / 添加 / 删除 / 批准」各写各的 padding：
+   高 30–34px、圆角 md 和 lg 混着来，同一行里点起来也一高一矮。
+   现在收成一套：高 34px、圆角 md、14px 字；整页主 CTA 单独一档 .ok.lg（44px）；
+   表格/指标行里的极小「×」用 .del.xs，别被统一尺寸撑大。 */
+.admin .ok, .admin .del, .admin .sec {
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--space-1);
+  height: 34px; padding: 0 14px; border: none; border-radius: var(--radius-md);
+  font-family: inherit; font-size: var(--text-base); font-weight: 700; line-height: 1;
+  white-space: nowrap; cursor: pointer;
+}
+.admin .ok { background: var(--accent); color: #fff; }
 .admin .ok.ghost-o { background: var(--brand); }
-.admin .del { padding: 6px 10px; border: none; border-radius: var(--radius-md); background: var(--danger-bg); color: var(--danger); cursor: pointer; font-family: inherit; }
+.admin .ok.lg { height: 44px; font-size: var(--text-lg); }
+.admin .ok.wide { width: 100%; }
+.admin .del { background: var(--danger-bg); color: var(--danger); }
+.admin .del.xs { width: 28px; height: 28px; padding: 0; border-radius: var(--radius-sm); font-size: var(--text-lg); }
+.admin .sec { background: var(--surface); border: 1px solid var(--line); color: var(--ink-2); }
+.admin .ok:disabled, .admin .del:disabled, .admin .sec:disabled { opacity: .55; cursor: default; }
+
+/* 次要动作（取消 / 改 / 放弃 / 撤回…）：文字型按钮，但和主按钮同高，
+   只在「和主按钮同一行」的地方对齐（.ops / .apv-right / .w-next / 复习动作区 / 阈值行），
+   不碰 .dash-undo、.review-link 这类自己的内联小链接。 */
+.admin .ops > .ghost-s, .admin .apv-right > .ghost-s, .admin .w-next > .ghost-s, .admin .review-actions > .ghost-s,
+.admin .band-actions > .ghost-s {
+  display: inline-flex; align-items: center; height: 34px; padding: 0 10px;
+  border: none; border-radius: var(--radius-md); background: none;
+  color: var(--brand-deep); font-family: inherit; font-size: var(--text-base); font-weight: 600; cursor: pointer;
+  /* 别被挤到换行：窄屏上一行放不下时，「取消」两字竖起来比按钮高矮不一更难认 */
+  white-space: nowrap; flex: none;
+}
+@media (hover: hover) {
+  .admin .ops > .ghost-s:hover, .admin .apv-right > .ghost-s:hover, .admin .w-next > .ghost-s:hover, .admin .band-actions > .ghost-s:hover { background: var(--surface-2); }
+}
 .admin .ghost-s { background: none; border: none; color: var(--brand-deep); font-size: 12px; cursor: pointer; font-family: inherit; }
 .admin .daily .d-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; width: 100%; padding: 4px 0; }
 
@@ -76,6 +106,9 @@
 .admin .fam-st.gray { color: var(--ink-3); }
 .admin .fam-st.green { color: var(--ok); }
 .admin .fam-go { margin-top: 4px; }
+/* 「去复习」是卡内 <span>（卡片本身就是 <button>，里面不能再嵌 button），
+   别让它长出动作按钮那身 34px 胶囊 —— 保持小号强调片。 */
+.admin .fam-card .ok.fam-go { height: 26px; padding: 0 10px; border-radius: var(--radius-sm); font-size: 12px; white-space: nowrap; }
 
 /* —— 折叠按钮 —— */
 .admin .rules-toggle { margin: 12px 0 8px; }
@@ -140,7 +173,7 @@
 
 /* —— 科目 tab / 单元块 —— */
 .admin .subj-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
-.admin .subj-tab { border: 1px solid var(--line); border-radius: var(--radius-pill); padding: 6px 14px; font-size: 13px; font-weight: 700; color: var(--ink); background: var(--surface); cursor: pointer; }
+.admin .subj-tab { display: inline-flex; align-items: center; height: 32px; padding: 0 14px; border: 1px solid var(--line); border-radius: var(--radius-pill); font-size: 13px; font-weight: 700; color: var(--ink); background: var(--surface); cursor: pointer; white-space: nowrap; flex: none; }
 .admin .subj-tab.on { background: var(--brand); color: #fff; border-color: var(--brand); }
 .admin .subj { border: 1px solid var(--line); border-radius: var(--radius-md); margin-bottom: 8px; background: var(--surface); overflow: hidden; }
 .admin .subj .unit-block:first-child { border-top: none; }
@@ -178,7 +211,6 @@
 .admin .add-box { margin-top: 14px; border: 1px dashed var(--line); border-radius: var(--radius-md); padding: 14px; background: var(--surface-2); }
 .admin .add-title { font-size: 12px; font-weight: 800; color: var(--ink-2); margin-bottom: 10px; }
 .admin .frm-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
-.admin .ok.wide { width: 100%; }
 
 /* —— 审批 / 测试行 —— */
 .admin .apv-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--surface-2); flex-wrap: wrap; }
@@ -218,7 +250,6 @@
 .admin .review-item-info { display: flex; flex-direction: column; gap: 4px; }
 .admin .review-item-title { font-size: 15px; font-weight: 800; color: var(--ink); }
 .admin .review-actions { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 10px; }
-.admin .review-actions button { font-size: 12px; }
 .admin .review-help { margin: 12px 0 0; color: var(--ink-3); font-size: 11px; line-height: 1.5; }
 .admin .review-recorded { margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--line); }
 .admin .review-recorded h4 { margin: 0; font-size: 14px; color: var(--ink); }
@@ -243,9 +274,10 @@
 .admin .chip-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 10px; }
 .admin .chip-label { font-size: 12px; color: var(--ink-3); font-weight: 700; width: 48px; }
 .admin .chip {
+  display: inline-flex; align-items: center; height: 32px; padding: 0 12px;
   border: 1px solid var(--line); background: var(--surface); color: var(--ink);
-  border-radius: var(--radius-pill); padding: 6px 12px; font-weight: 700; font-size: 13px;
-  cursor: pointer; font-family: inherit;
+  border-radius: var(--radius-pill); font-weight: 700; font-size: 13px;
+  cursor: pointer; font-family: inherit; white-space: nowrap; flex: none;
 }
 .admin .chip.on { background: var(--accent); color: #fff; border-color: var(--accent); }
 .admin .pen-amt { font-weight: 800; color: var(--danger); font-variant-numeric: tabular-nums; }
@@ -294,12 +326,11 @@
 .admin .pack-err strong { color: var(--danger); }
 
 /* —— 大队委成绩页 —— */
+/* 尺寸/圆角/字号统一在文件上方的「动作按钮统一」块里，这里只补配色 */
 .admin .sec {
   border: 1px solid var(--line); background: var(--surface); color: var(--ink-2);
-  padding: 7px 14px; border-radius: var(--radius-md); font-weight: 700;
-  cursor: pointer; font-family: inherit;
+  font-weight: 700;
 }
-.admin .sec:disabled { opacity: .6; cursor: default; }
 .admin .a-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .admin .a-table th, .admin .a-table td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--surface-2); }
 .admin .a-table th { color: var(--ink-3); font-size: 11px; font-weight: 700; }

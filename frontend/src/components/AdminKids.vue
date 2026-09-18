@@ -5,6 +5,7 @@
 import { reactive, ref } from 'vue'
 import { api } from '../api.js'
 import { useAdminEdit } from '../adminEdit.js'
+import AdminSwitch from './AdminSwitch.vue'
 
 const props = defineProps({
   kids: { type: Array, default: () => [] },
@@ -242,7 +243,7 @@ defineExpose({ isAddDirty, discardAdd, saveCurrentEdit })
       <div class="lock-row">
         <span class="badge">邀请码保护</span>
         <span class="grow">开着时邀请码一次性 + 24 小时；关掉则常驻复用</span>
-        <button v-if="isOwner" type="button" :class="['toggle', { on: inviteProtect }]" @click="$emit('toggle-protect')">{{ inviteProtect ? '开' : '关' }}</button>
+        <AdminSwitch v-if="isOwner" :model-value="inviteProtect" label="邀请码保护" @update:model-value="$emit('toggle-protect')" />
       </div>
       <p v-if="!isOwner" class="dim">只有创建者能开关保护和生成邀请码。</p>
       <div class="frm-row mt8">
@@ -266,8 +267,8 @@ defineExpose({ isAddDirty, discardAdd, saveCurrentEdit })
       <div class="lock-row">
         <span class="badge">打卡时间窗</span>
         <span class="grow">关掉 = 全天都能签到</span>
-        <button type="button" :class="['toggle', { on: hours.checkin && hours.checkin.enabled }]"
-                @click="saveHours('checkin', { enabled: !(hours.checkin && hours.checkin.enabled) })">{{ hours.checkin && hours.checkin.enabled ? '开' : '关' }}</button>
+        <AdminSwitch :model-value="!!(hours.checkin && hours.checkin.enabled)" label="打卡时间窗"
+                     @update:model-value="saveHours('checkin', { enabled: !(hours.checkin && hours.checkin.enabled) })" />
       </div>
       <div v-if="hours.checkin && hours.checkin.enabled" class="frm-row">
         <label class="fld w64"><span>开门</span><input v-model.number="hours.checkin.open_hour" type="number" min="0" max="23" /></label>
@@ -278,8 +279,8 @@ defineExpose({ isAddDirty, discardAdd, saveCurrentEdit })
       <div class="lock-row mt8">
         <span class="badge">储蓄所营业</span>
         <span class="grow">关掉 = 全天都能存取</span>
-        <button type="button" :class="['toggle', { on: hours.bank && hours.bank.enabled }]"
-                @click="saveHours('bank', { enabled: !(hours.bank && hours.bank.enabled) })">{{ hours.bank && hours.bank.enabled ? '开' : '关' }}</button>
+        <AdminSwitch :model-value="!!(hours.bank && hours.bank.enabled)" label="储蓄所营业"
+                     @update:model-value="saveHours('bank', { enabled: !(hours.bank && hours.bank.enabled) })" />
       </div>
       <div v-if="hours.bank && hours.bank.enabled" class="frm-row">
         <label class="fld w64"><span>开门</span><input v-model.number="hours.bank.open_hour" type="number" min="0" max="23" /></label>
