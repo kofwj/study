@@ -216,11 +216,17 @@
 /* —— 新增表单盒 —— */
 .admin .add-box { margin-top: 14px; border: 1px dashed var(--line); border-radius: var(--radius-md); padding: 14px; background: var(--surface-2); }
 .admin .add-title { font-size: 12px; font-weight: 800; color: var(--ink-2); margin-bottom: 10px; }
-/* align-items: flex-end：表单行里的按钮要跟输入框对齐。
-   默认 stretch + 按钮固定 34px，会把按钮顶到行首、跟 <span> 标签齐平（截图里「＋新建」「设好开始」
-   就是这样浮在上面）；改 flex-end 后按钮底边贴住输入框底边，顺便让「有标签 / 没标签」的字段
-   把输入框对齐在同一条底线上。 */
+/* 表单行：按钮要跟输入框在同一条水平线上。
+   ① align-items: flex-end —— 默认 stretch + 按钮固定高度会把按钮顶到行首、跟 <span> 标签齐平
+      （截图里「＋新建」「设好开始」「保存节奏」就是这样浮在上面），底对齐后顺便让「有标签 / 没标签」
+      的字段把输入框对齐在同一条底线上。
+   ② 光底对齐还不够：按钮 34px、输入框 40px，底边齐了顶边仍差 6px，看着还是「一上一下」。
+      所以表单行里的按钮直接跟输入框同高（40px）—— 量过：顶差 0、底差 0、中心差 0。
+      行外的按钮仍是统一的 34px，整页 CTA（.ok.lg）不受影响。 */
 .admin .frm-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; align-items: flex-end; }
+/* 排除同类里的「小号件」：.lg 是整页 CTA（44px）、.xs 是表格里的「×」（28px）、
+   .fam-go 是卡片里的小片（26px）——它们特异性跟这条一样，不写护栏的话哪天被挪进表单行就会被撑成 40px */
+.admin .frm-row .ok:not(.lg):not(.fam-go), .admin .frm-row .del:not(.xs), .admin .frm-row .sec { height: 40px; }
 
 /* —— 审批 / 测试行 —— */
 .admin .apv-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--surface-2); flex-wrap: wrap; }
