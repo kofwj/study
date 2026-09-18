@@ -49,6 +49,12 @@
 /* —— 开关行（开关本体是 components/AdminSwitch.vue，这里只管这一行的排版）—— */
 .admin .lock-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; color: var(--ink-2); font-weight: 700; }
 .admin .lock-row .badge { flex: none; }
+/* 相邻开关行之间留一口气：开关本体 28px 高、行高也就 28px，挨着排会连成一条竖链 */
+.admin .lock-row + .lock-row { margin-top: 12px; }
+/* 一排短开关（孩子端显示学科）排成 2–3 列，别在宽卡片上拉成一长条；窄屏 auto-fit 自动回单列 */
+.admin .lock-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px 20px; }
+.admin .lock-grid .lock-row { justify-content: space-between; }
+.admin .lock-grid .lock-row + .lock-row { margin-top: 0; }
 
 /* —— 表单列宽 —— */
 .admin .w-num { width: 70px; }
@@ -210,7 +216,11 @@
 /* —— 新增表单盒 —— */
 .admin .add-box { margin-top: 14px; border: 1px dashed var(--line); border-radius: var(--radius-md); padding: 14px; background: var(--surface-2); }
 .admin .add-title { font-size: 12px; font-weight: 800; color: var(--ink-2); margin-bottom: 10px; }
-.admin .frm-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+/* align-items: flex-end：表单行里的按钮要跟输入框对齐。
+   默认 stretch + 按钮固定 34px，会把按钮顶到行首、跟 <span> 标签齐平（截图里「＋新建」「设好开始」
+   就是这样浮在上面）；改 flex-end 后按钮底边贴住输入框底边，顺便让「有标签 / 没标签」的字段
+   把输入框对齐在同一条底线上。 */
+.admin .frm-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; align-items: flex-end; }
 
 /* —— 审批 / 测试行 —— */
 .admin .apv-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--surface-2); flex-wrap: wrap; }

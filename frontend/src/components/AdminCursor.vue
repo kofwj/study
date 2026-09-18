@@ -52,10 +52,11 @@ function subjectShown(id) {
       </div>
       <h4 class="w-h">孩子端显示学科</h4>
       <p class="dim">关掉的科目，孩子侧栏和今日推荐都看不到；任务还在，随时开回来。</p>
-      <div class="lock-row" v-for="s in displaySubjects" :key="'vis-' + s.id">
-        <span class="badge">{{ s.name }}</span>
-        <span class="grow">孩子端显示</span>
-        <AdminSwitch :model-value="subjectShown(s.id)" :label="s.name + ' 孩子端显示'" @update:model-value="$emit('set-subject-visible', s.id)" />
+      <div class="lock-grid">
+        <div class="lock-row" v-for="s in displaySubjects" :key="'vis-' + s.id">
+          <span class="badge">{{ s.name }}</span>
+          <AdminSwitch :model-value="subjectShown(s.id)" :label="s.name + ' 孩子端显示'" @update:model-value="$emit('set-subject-visible', s.id)" />
+        </div>
       </div>
       <div class="lock-row mt14">
         <span class="badge">进度锁</span>

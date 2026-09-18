@@ -44,6 +44,11 @@ async function main() {
   const swOff = (html.match(/aria-checked="false"/g) || []).length
   const swOk = swCount === 6 && swOn === 4 && swOff === 2
   console.log('  ' + (swOk ? 'OK   ' : '缺失 ') + '开关：' + swCount + ' 个 / on ' + swOn + ' / off ' + swOff + '（期望 6 / 4 / 2）')
+  // 学科开关要排成 .lock-grid（宽屏多列、窄屏单列）：2026-09-18 的排版修正。
+  // 光断言 need 里那句「孩子端显示学科」守不住 —— 读屏名（aria-label）里也含这几个字，
+  // 就算把行内重复文案全删掉照样能命中，所以这里直接盯结构。
+  const gridOk = html.includes('class="lock-grid"')
+  console.log('  ' + (gridOk ? 'OK   ' : '缺失 ') + '孩子端显示学科排成网格（.lock-grid）')
   console.log('  渲染出 undefined 的次数 ' + (html.match(/undefined/g) || []).length)
 }
 main()
