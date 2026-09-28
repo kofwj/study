@@ -26,7 +26,7 @@ vi ~/.ssh/authorized_keys
 | Name | Value | 说明 |
 |------|-------|------|
 | `VPS_SSH_KEY` | (见下方私钥内容) | GitHub Actions 用于连接 VPS 的 SSH 私钥 |
-| `VPS_HOST` | `192.168.100.5` | VPS 的 IP 地址或域名 |
+| `VPS_HOST` | `192.168.200.5` | VPS 的 IP 地址或域名 |
 | `VPS_USER` | `root` | VPS 的 SSH 用户名 |
 
 #### VPS_SSH_KEY 私钥内容
@@ -54,14 +54,14 @@ vi ~/.ssh/authorized_keys
 
 3. **部署结果**：
    - APK 自动上传到 VPS
-   - 平板可通过 `http://192.168.100.5:9000/api/apk/latest` 下载最新版本
+   - 平板可通过 `http://192.168.200.5:9000/api/apk/latest` 下载最新版本
    - 在 GitHub Actions 页面可查看构建日志和部署摘要
 
 ## 平板端更新流程
 
 ### 方式一：手动下载安装（当前）
 
-1. 平板浏览器访问 `http://192.168.100.5:9000/api/apk/latest`
+1. 平板浏览器访问 `http://192.168.200.5:9000/api/apk/latest`
 2. 下载 APK 并安装
 
 ### 方式二：应用内更新（后续实现）
@@ -86,7 +86,7 @@ ls -lh app/build/outputs/apk/release/app-release.apk
 
 # 4. 手动上传到 VPS（测试用）
 scp app/build/outputs/apk/release/app-release.apk \
-  root@192.168.100.5:/home/kofwj/sunshine/static/sunshine-latest.apk
+  root@192.168.200.5:/home/kofwj/sunshine/static/sunshine-latest.apk
 ```
 
 ## 查看构建状态

@@ -139,7 +139,7 @@ python3 scripts/gen_knowledge_tags.py
 
 ```bash
 # 1. SSH 登录 VPS
-ssh root@192.168.100.5
+ssh root@192.168.200.5
 
 # 2. 进入项目目录
 cd /home/kofwj/sunshine
@@ -165,10 +165,10 @@ chmod 600 .env
 
 ```bash
 # 使用部署脚本（推荐）
-ssh root@192.168.100.5 'cd /home/kofwj/sunshine && bash scripts/deploy_vps.sh'
+ssh root@192.168.200.5 'cd /home/kofwj/sunshine && bash scripts/deploy_vps.sh'
 
 # 或手动部署
-ssh root@192.168.100.5 'cd /home/kofwj/sunshine && \
+ssh root@192.168.200.5 'cd /home/kofwj/sunshine && \
   python3 scripts/backup_db.py && \
   git pull --ff-only origin main && \
   docker compose build --no-cache && \
@@ -194,7 +194,7 @@ curl -s https://study.anemy.org/api/health
 
 **重置密码**（如果忘记）：
 ```bash
-ssh root@192.168.100.5 'cd /home/kofwj/sunshine && docker compose exec -T sunshine python3 << "PYEOF"
+ssh root@192.168.200.5 'cd /home/kofwj/sunshine && docker compose exec -T sunshine python3 << "PYEOF"
 import sys
 sys.path.insert(0, "/app/backend")
 import db

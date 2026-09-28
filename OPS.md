@@ -50,14 +50,14 @@ dzkbw 目录 → scripts/fetch_catalog.py(单本) → scripts/gen_catalog.py(批
 **定时备份**（每天 02:15、18:15，保留最近 20 份）：
 
 ```bash
-ssh -o BatchMode=yes root@192.168.100.5 \
+ssh -o BatchMode=yes root@192.168.200.5 \
   'cd /home/kofwj/sunshine && bash scripts/install_backup_cron.sh'
 ```
 
 手动备份：
 
 ```bash
-ssh -o BatchMode=yes root@192.168.100.5 \
+ssh -o BatchMode=yes root@192.168.200.5 \
   'cd /home/kofwj/sunshine && bash scripts/enhanced_backup.sh'
 ```
 
@@ -67,13 +67,13 @@ ssh -o BatchMode=yes root@192.168.100.5 \
 
 ```bash
 # 列出备份（流水条数 / 阳光）
-ssh root@192.168.100.5 'cd /home/kofwj/sunshine && bash scripts/restore_db.sh'
+ssh root@192.168.200.5 'cd /home/kofwj/sunshine && bash scripts/restore_db.sh'
 
 # 先看会还原哪一份
-ssh root@192.168.100.5 'cd /home/kofwj/sunshine && bash scripts/restore_db.sh --latest --dry-run'
+ssh root@192.168.200.5 'cd /home/kofwj/sunshine && bash scripts/restore_db.sh --latest --dry-run'
 
 # 真正还原最近一份
-ssh root@192.168.100.5 'cd /home/kofwj/sunshine && bash scripts/restore_db.sh --latest'
+ssh root@192.168.200.5 'cd /home/kofwj/sunshine && bash scripts/restore_db.sh --latest'
 ```
 
 ## 2.5 本地前端（改 Vue 必跑，不用上 VPS 才知道白屏）
@@ -92,11 +92,11 @@ bash scripts/pre_deploy.sh              # pytest + 上面这条
 在本机仓库根执行（会 SSH 到 VPS 跑检查 → 备份 → 拉代码 → 构建）：
 
 ```bash
-ssh -o BatchMode=yes root@192.168.100.5 \
+ssh -o BatchMode=yes root@192.168.200.5 \
   'cd /home/kofwj/sunshine && bash scripts/deploy_vps.sh'
 ```
 
-前端烘焙进镜像，**改前端必须 build**。部署后等几秒，手机/PWA 会提示刷新。孩子端底栏、家长端顶栏和 `curl https://study.anemy.org/api/health` 都能看到当前版本号。健康检查走内网 `http://192.168.100.5:9000/api/health`（端口绑在这台机器上，不是 127.0.0.1）。
+前端烘焙进镜像，**改前端必须 build**。部署后等几秒，手机/PWA 会提示刷新。孩子端底栏、家长端顶栏和 `curl https://study.anemy.org/api/health` 都能看到当前版本号。健康检查走 `http://192.168.200.5:9000/api/health`（端口监听 `0.0.0.0:9000`，局域网/隧道机器都可访问）。
 
 本机首次克隆后执行一次 `bash scripts/install_git_hooks.sh`。之后每次提交会自动把 `VERSION` 最后一位加 1（`0.1.0` → `0.1.1`，`0.1.99` → `0.2.0`）。如果这次已经手动改并暂存了 `VERSION`，就不会再自动加。跳过用 `SKIP_VERSION_BUMP=1 git commit`。
 
@@ -105,7 +105,7 @@ ssh -o BatchMode=yes root@192.168.100.5 \
 清空所有活动数据（流水/完成/签到/每日记录/兑换/测试/里程碑/宝箱），**保留课程、商店、等级、游标**。
 
 ```bash
-ssh -o BatchMode=yes root@192.168.100.5 'cd ~/sunshine && ./scripts/reset_data.py'
+ssh -o BatchMode=yes root@192.168.200.5 'cd ~/sunshine && ./scripts/reset_data.py'
 ```
 
 > 必须 root（DB 文件归属 root）。执行前建议先备份（见「二」）。
@@ -115,8 +115,8 @@ ssh -o BatchMode=yes root@192.168.100.5 'cd ~/sunshine && ./scripts/reset_data.p
 ```bash
 # 外网（本地可直接访问）
 curl -s https://study.anemy.org/api/health
-# VPS 内网（绑的是 192.168.100.5，不是 127.0.0.1）
-ssh -o BatchMode=yes root@192.168.100.5 'curl -s http://192.168.100.5:9000/api/health'
+# VPS 内网（端口监听 0.0.0.0:9000，局域网可达）
+ssh -o BatchMode=yes root@192.168.200.5 'curl -s http://192.168.200.5:9000/api/health'
 ```
 
 期望返回 `{"ok":true}`。
@@ -124,7 +124,7 @@ ssh -o BatchMode=yes root@192.168.100.5 'curl -s http://192.168.100.5:9000/api/h
 ## 六、直接查库 / 调试（root）
 
 ```bash
-ssh root@192.168.100.5 'SUNSHINE_DB=/home/kofwj/sunshine/data/sunshine.db python3 -c "
+ssh root@192.168.200.5 'SUNSHINE_DB=/home/kofwj/sunshine/data/sunshine.db python3 -c "
 import sqlite3; c = sqlite3.connect(\"/home/kofwj/sunshine/data/sunshine.db\")
 print(c.execute(\"SELECT key,value FROM settings ORDER BY key\").fetchall())
 print(c.execute(\"SELECT COALESCE(SUM(delta),0) FROM ledger\").fetchone())
@@ -154,4 +154,4 @@ cd frontend && npm install && npm run dev
 
 ---
 
-**登录**：家长 `parent` / `parent88`（至少 8 位）；孩子 `lele` / `888888`（至少 6 位，不要重复或连续数字）。HttpOnly Cookie：家长 `pid`、娃 `sid`。公网 HTTPS 带 `Secure`；内网 `http://192.168.100.5:9000` 无 `Secure`。改密后旧会话失效。`SECRET_KEY` 写在 VPS `.env`，不进 git。
+**登录**：家长 `parent` / `parent88`（至少 8 位）；孩子 `lele` / `888888`（至少 6 位，不要重复或连续数字）。HttpOnly Cookie：家长 `pid`、娃 `sid`。公网 HTTPS 带 `Secure`；内网 `http://192.168.200.5:9000` 无 `Secure`。改密后旧会话失效。`SECRET_KEY` 写在 VPS `.env`，不进 git。
